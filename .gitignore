@@ -1,0 +1,50 @@
+# OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# Environment variables & secrets
+.env
+.env*.local
+*.pem
+*.key
+
+# Node.js
+node_modules/
+dist/
+build/
+coverage/
+.npm/
+*.log
+
+# Gradle / Java / Kotlin
+.gradle/
+build/
+!src/**/build/
+out/
+target/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# Temporary & test outputs
+test-results/
+.system_generated/
+scratch/
+tmp/
