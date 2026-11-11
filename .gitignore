@@ -1,0 +1,55 @@
+# OS files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+Thumbs.db
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# Environment variables & secrets
+.env
+.env*.local
+*.pem
+*.key
+
+# Node.js
+node_modules/
+dist/
+build/
+coverage/
+.npm/
+*.log
+
+# Gradle / Java / Kotlin
+.gradle/
+build/
+!src/**/build/
+out/
+target/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+
+# Temporary & test outputs
+test-results/
+.system_generated/
+scratch/
+tmp/
+
+# 팀 규칙(private 레포 axteamc/team에서 setup-team.sh가 만든다) — 올리지 않는다
+/CLAUDE.md
+/.claude/
+/개발산출물/완료/team_초안_20261110/
