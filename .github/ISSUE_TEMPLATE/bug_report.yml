@@ -1,0 +1,47 @@
+name: 버그 리포트
+description: 동작이 명세·요구사항과 다를 때
+title: "[버그] <화면·기능>: <한 줄 증상>"
+labels: ["bug"]
+body:
+  - type: input
+    id: where
+    attributes:
+      label: 어디서
+      description: 화면 이름 또는 파일:줄
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 기대 (근거)
+      description: 요구사항 ID·수용 기준(AC)·명세서 문구
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 실제
+      description: 실제 출력이나 화면. 비밀값·개인정보는 지우고 붙여 넣기
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 재현 순서
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 환경
+      options: [웹, Android, iOS, 서버, 여러 환경]
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: 심각도
+      description: 남의 데이터가 보이거나 철회한 카드가 노출되면 치명
+      options: [치명, 높음, 보통, 낮음]
+    validations:
+      required: true
