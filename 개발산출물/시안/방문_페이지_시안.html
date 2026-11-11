@@ -12,6 +12,8 @@
   --ink:#26262A; --muted:#7B766D; --line:#CFC8BC;
   --mustard:#EEC96B; --cream:#F4EFE2; --peach:#F2C9A4; --paper:#FDFCF9; --char:#33333A; --sage:#B8BFB0;
 }
+.phone[data-theme=vivid]{--concrete:#E8EAF0;--concrete2:#D2D6E2;--concrete3:#BCC2D2;--mustard:#5B7DFF;--peach:#FFB547;--sage:#74D6BC;--cream:#F2F4FC;--paper:#FDFDFF;--char:#1D2236;--muted:#6C7285;--line:#CBD0DE}
+.phone[data-theme=forest]{--concrete:#E3E8E0;--concrete2:#CCD5C8;--concrete3:#B5C1B1;--mustard:#A6D186;--peach:#F0D9A6;--sage:#7DB3A0;--cream:#F2F1E5;--paper:#FCFDF9;--char:#2C3A32;--muted:#6F7B70;--line:#C6D0C2}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Noto Sans KR',system-ui,sans-serif;background:#2B2A28;color:var(--ink);min-height:100vh;display:flex;gap:32px;align-items:flex-start;justify-content:center;padding:24px;flex-wrap:wrap}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
@@ -99,9 +101,9 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .blurstrip i:nth-child(3){-webkit-backdrop-filter:blur(2.5px);backdrop-filter:blur(2.5px);-webkit-mask-image:linear-gradient(to bottom,transparent 30%,#000 60%);mask-image:linear-gradient(to bottom,transparent 30%,#000 60%)}
 .blurstrip i:nth-child(4){-webkit-backdrop-filter:blur(3.5px);backdrop-filter:blur(3.5px);-webkit-mask-image:linear-gradient(to bottom,transparent 45%,#000 75%);mask-image:linear-gradient(to bottom,transparent 45%,#000 75%)}
 .blurstrip i:nth-child(5){-webkit-backdrop-filter:blur(4.5px);backdrop-filter:blur(4.5px);-webkit-mask-image:linear-gradient(to bottom,transparent 60%,#000 90%);mask-image:linear-gradient(to bottom,transparent 60%,#000 90%)}
-.blurstrip::after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,#D5CEC300,#D5CEC3d9 100%)}
+.blurstrip::after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,color-mix(in srgb,var(--concrete2) 0%,transparent),color-mix(in srgb,var(--concrete2) 85%,transparent))}
 .phone[data-blur=B] .blurstrip i{-webkit-backdrop-filter:none;backdrop-filter:none}
-.phone[data-blur=B] .blurstrip::after{background:linear-gradient(to bottom,#D5CEC300,#D5CEC3f2 85%)}
+.phone[data-blur=B] .blurstrip::after{background:linear-gradient(to bottom,color-mix(in srgb,var(--concrete2) 0%,transparent),color-mix(in srgb,var(--concrete2) 95%,transparent) 85%)}
 .shelf{position:absolute;left:0;right:0;bottom:72px;height:224px;background:var(--concrete2);z-index:15;display:flex;flex-direction:column}
 .shelf .top{display:flex;justify-content:space-between;align-items:baseline;padding:10px 16px 0}
 .shelf .top b{font-size:13px}
@@ -166,6 +168,12 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
     <label><input type="radio" name="ord" value="pop"> 인기 → 읽은 책 → 테마</label>
     <label><input type="checkbox" id="emptyRead"> "읽은 책" 집계가 비어 있음(초기)</label>
     <div class="note">비어 있으면 그 페이지를 숨기고 다른 페이지를 먼저 보입니다.</div></fieldset>
+  <fieldset><legend>4. 도서관별 색감 (아이디어)</legend>
+    <label><input type="radio" name="theme" value="auto" checked> 도서관별 자동(한빛=기본, 달빛=모던 쨍, 푸른=숲)</label>
+    <label><input type="radio" name="theme" value="warm"> 모두 기본(웜 콘크리트)</label>
+    <label><input type="radio" name="theme" value="vivid"> 모두 모던 쨍</label>
+    <label><input type="radio" name="theme" value="forest"> 모두 숲</label>
+    <div class="note">운영자가 도서관마다 프리셋을 고르는 안. 핀 색도 도서관 색을 따릅니다.</div></fieldset>
   <button class="reset" id="reset">처음으로(오늘 첫 입장 상태로 되돌리기)</button>
   <div class="note" style="margin-top:12px">시연 순서: 홈에서 핀 누르기 → 입장 전환 → 우측 상단 "다녀왔어요" → 책장 넘기기 → 책 누르기(대출 가능 문구·실시간 확인).</div>
 </aside>
@@ -289,7 +297,12 @@ document.addEventListener('click',e=>{if(!e.target.closest('#bsheet')&&!e.target
   if(!e.target.closest('#pop')&&!e.target.closest('#stampbtn'))$('#pop').classList.remove('on');});
 $('.live').onclick=()=>toast('도서관 사이트로 이동합니다 (시안에서는 이동하지 않음)');
 function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),1900);}
+const THEME={'한빛 시립도서관':'warm','달빛 작은도서관':'vivid','푸른 구립도서관':'forest'};
+const ACC={warm:'#EEC96B',vivid:'#5B7DFF',forest:'#A6D186'};
+function themeFor(name){const o=document.querySelector('input[name=theme]:checked').value;return o==='auto'?(THEME[name]||'warm'):o;}
+function paintPins(){$$('.pin').forEach(p=>{const t=themeFor(p.dataset.lib);const b=p.querySelector('b');b.style.background=ACC[t];b.querySelector('span').style.color=t==='vivid'?'#fff':'var(--ink)';});}
 function enter(name){
+  phone.dataset.theme=themeFor(name);
   $('#libname').textContent=name;phone.classList.add('in');
   setTimeout(()=>toast(name+'에 입장했어요'),260);
   updateStamp();
@@ -300,7 +313,7 @@ function updateStamp(){
   else{b.classList.remove('done');$('#stamptxt').textContent='다녀왔어요';}
 }
 $$('.pin').forEach(p=>p.onclick=()=>enter(p.dataset.lib));
-$('#back').onclick=()=>phone.classList.remove('in');
+$('#back').onclick=()=>{phone.classList.remove('in');setTimeout(()=>{if(!phone.classList.contains('in'))phone.dataset.theme='warm';},360);};
 $('#stampbtn').onclick=e=>{e.stopPropagation();if(!stampState)$('#pop').classList.toggle('on');};
 $$('#pop button').forEach(b=>b.onclick=()=>{stampState=b.dataset.pub==='1'?'pub':'priv';$('#pop').classList.remove('on');updateStamp();renderFeed();$('#feed').scrollTop=0;toast(stampState==='pub'?'방문 스탬프를 공개로 남겼어요':'방문 스탬프를 나만 보기로 남겼어요');});
 $$('[data-open-drawer]').forEach(b=>b.onclick=()=>phone.classList.add('dr'));
@@ -310,7 +323,10 @@ $$('input[name=mine]').forEach(r=>r.onchange=()=>phone.dataset.mine=r.value);
 $$('input[name=ord]').forEach(r=>r.onchange=renderShelf);
 $('#emptyRead').onchange=renderShelf;
 $('#reset').onclick=()=>{stampState=null;phone.classList.remove('in','dr');updateStamp();renderFeed();};
-renderFeed();renderShelf();
+$$('input[name=theme]').forEach(r=>r.onchange=()=>{paintPins();if(phone.classList.contains('in'))phone.dataset.theme=themeFor($('#libname').textContent);});
+renderFeed();renderShelf();paintPins();
+if(location.hash==='#vivid')enter('달빛 작은도서관');
+if(location.hash==='#forest')enter('푸른 구립도서관');
 if(location.hash==='#visit'){phone.classList.add('in');$('#feed').scrollTop=0;}
 if(location.hash==='#scroll'){phone.classList.add('in');setTimeout(()=>{$('#feed').scrollTop=150},50);}
 if(location.hash==='#book'){phone.classList.add('in');setTimeout(()=>openBook('아몬드'),50);}
