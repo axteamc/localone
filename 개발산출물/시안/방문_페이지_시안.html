@@ -10,7 +10,7 @@
 :root{
   --concrete:#E6E1D9; --concrete2:#D5CEC3; --concrete3:#C4BCB0;
   --ink:#26262A; --muted:#7B766D; --line:#CFC8BC;
-  --mustard:#D9A53D; --cream:#F4EFE2; --peach:#F2C9A4; --paper:#FAF8F3; --char:#33333A; --sage:#B8BFB0;
+  --mustard:#EEC96B; --cream:#F4EFE2; --peach:#F2C9A4; --paper:#FDFCF9; --char:#33333A; --sage:#B8BFB0;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Noto Sans KR',system-ui,sans-serif;background:#2B2A28;color:var(--ink);min-height:100vh;display:flex;gap:32px;align-items:flex-start;justify-content:center;padding:24px;flex-wrap:wrap}
@@ -20,7 +20,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .panel h1{font-size:16px;margin-bottom:4px}
 .panel p.s{color:#A8A296;margin-bottom:14px}
 .panel fieldset{border:1px solid #4A4844;border-radius:12px;padding:10px 12px;margin-bottom:10px}
-.panel legend{padding:0 6px;color:#D9A53D;font-weight:700;font-size:12px}
+.panel legend{padding:0 6px;color:#EEC96B;font-weight:700;font-size:12px}
 .panel label{display:block;padding:2px 0;cursor:pointer}
 .panel .note{color:#A8A296;font-size:12px;margin-top:4px}
 .panel button.reset{background:#3A3834;border-radius:10px;padding:8px 12px;margin-top:4px;width:100%}
@@ -73,7 +73,8 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .pop p{font-size:11px;color:var(--muted);padding:2px 6px 8px}
 .pop button{display:block;width:100%;text-align:left;padding:10px;border-radius:10px;font-size:13px;font-weight:500}
 .pop button:hover{background:var(--concrete)}
-.feed{position:absolute;top:176px;left:0;right:0;bottom:248px;overflow-y:auto;padding:4px 12px 56px;columns:2;column-gap:10px;scrollbar-width:none}
+.feed{position:absolute;top:176px;left:0;right:0;bottom:296px;overflow-y:auto;padding:4px 12px 80px;scrollbar-width:none}
+.cols{columns:2;column-gap:10px}
 .feed::-webkit-scrollbar{display:none}
 .card{break-inside:avoid;margin-bottom:10px;border-radius:18px;overflow:hidden;background:var(--paper);position:relative}
 .card .tag{position:absolute;top:8px;left:8px;font-size:10px;font-weight:700;border-radius:9px;padding:2px 8px;background:#fffc;z-index:2}
@@ -91,23 +92,29 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .card.stampc p{color:#C9C3B6}
 .card.stampc .ring{width:54px;height:54px;border-radius:50%;border:3px solid var(--mustard);margin:0 auto 8px;display:grid;place-items:center;color:var(--mustard);font-size:11px;font-weight:700;transform:rotate(-8deg)}
 /* shelf */
-.blurstrip{position:absolute;left:0;right:0;bottom:248px;height:44px;z-index:14;pointer-events:none;
-  background:linear-gradient(to top,var(--concrete2),#D5CEC300);
-  -webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);
-  -webkit-mask-image:linear-gradient(to top,#000 40%,transparent);mask-image:linear-gradient(to top,#000 40%,transparent)}
-.phone[data-blur=B] .blurstrip{-webkit-backdrop-filter:none;backdrop-filter:none;height:56px}
-.shelf{position:absolute;left:0;right:0;bottom:72px;height:176px;background:var(--concrete2);z-index:15;display:flex;flex-direction:column}
+.blurstrip{position:absolute;left:0;right:0;bottom:296px;height:72px;z-index:14;pointer-events:none}
+.blurstrip i{position:absolute;inset:0}
+.blurstrip i:nth-child(1){-webkit-backdrop-filter:blur(1px);backdrop-filter:blur(1px);-webkit-mask-image:linear-gradient(to bottom,transparent 0%,#000 30%);mask-image:linear-gradient(to bottom,transparent 0%,#000 30%)}
+.blurstrip i:nth-child(2){-webkit-backdrop-filter:blur(1.5px);backdrop-filter:blur(1.5px);-webkit-mask-image:linear-gradient(to bottom,transparent 15%,#000 45%);mask-image:linear-gradient(to bottom,transparent 15%,#000 45%)}
+.blurstrip i:nth-child(3){-webkit-backdrop-filter:blur(2.5px);backdrop-filter:blur(2.5px);-webkit-mask-image:linear-gradient(to bottom,transparent 30%,#000 60%);mask-image:linear-gradient(to bottom,transparent 30%,#000 60%)}
+.blurstrip i:nth-child(4){-webkit-backdrop-filter:blur(3.5px);backdrop-filter:blur(3.5px);-webkit-mask-image:linear-gradient(to bottom,transparent 45%,#000 75%);mask-image:linear-gradient(to bottom,transparent 45%,#000 75%)}
+.blurstrip i:nth-child(5){-webkit-backdrop-filter:blur(4.5px);backdrop-filter:blur(4.5px);-webkit-mask-image:linear-gradient(to bottom,transparent 60%,#000 90%);mask-image:linear-gradient(to bottom,transparent 60%,#000 90%)}
+.blurstrip::after{content:"";position:absolute;inset:0;background:linear-gradient(to bottom,#D5CEC300,#D5CEC3d9 100%)}
+.phone[data-blur=B] .blurstrip i{-webkit-backdrop-filter:none;backdrop-filter:none}
+.phone[data-blur=B] .blurstrip::after{background:linear-gradient(to bottom,#D5CEC300,#D5CEC3f2 85%)}
+.shelf{position:absolute;left:0;right:0;bottom:72px;height:224px;background:var(--concrete2);z-index:15;display:flex;flex-direction:column}
 .shelf .top{display:flex;justify-content:space-between;align-items:baseline;padding:10px 16px 0}
 .shelf .top b{font-size:13px}
 .shelf .top span{font-size:11px;color:var(--muted);white-space:nowrap}.shelf .top b{white-space:nowrap}
 .pages{flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
 .pages::-webkit-scrollbar{display:none}
-.pg{flex:none;width:100%;scroll-snap-align:start;padding:6px 16px 0;display:flex;gap:9px;align-items:flex-end}
-.bk{flex:none;width:58px;height:80px;border-radius:4px 7px 7px 4px;padding:6px 5px;font-size:9.5px;font-weight:700;line-height:1.25;display:flex;align-items:flex-end;position:relative;box-shadow:inset 4px 0 0 #0002}
+  .pg{flex:none;width:100%;scroll-snap-align:start;padding:8px 16px 0;display:flex;gap:16px;align-items:flex-end;justify-content:center}
+.bk{flex:none;width:104px;height:150px;border-radius:5px 9px 9px 5px;padding:12px 10px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;position:relative;box-shadow:inset 5px 0 0 #0002,0 6px 12px #0002}
+.bk b{font-size:14px;line-height:1.3;font-weight:700}
+.bk span{font-size:10.5px;opacity:.75;font-weight:500}
 .bk:hover{transform:translateY(-4px)}
-.bk.t{height:88px}
 .plank{height:7px;background:var(--char);margin:0 8px}
-.cab{height:26px;margin:0 8px;display:flex;gap:4px}
+.cab{height:22px;margin:0 8px;display:flex;gap:4px}
 .cab div{flex:1;position:relative}
 .cab div:nth-child(1){background:var(--mustard)}.cab div:nth-child(2){background:var(--cream)}.cab div:nth-child(3){background:var(--sage)}
 .cab div::after{content:"";position:absolute;right:10px;top:50%;width:18px;height:6px;border-radius:50%;background:var(--char);transform:translateY(-50%)}
@@ -202,7 +209,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
       <button data-pub="1">공개로 남기기 (피드에 카드로 표시)</button>
       <button data-pub="0">나만 보기</button></div>
     <div class="feed" id="feed"></div>
-    <div class="blurstrip"></div>
+    <div class="blurstrip"><i></i><i></i><i></i><i></i><i></i></div>
     <div class="shelf">
       <div class="top"><b id="shelftitle"></b><span id="shelfhint"></span></div>
       <div class="dots" id="dots"></div>
@@ -240,10 +247,12 @@ const feedData=[
   {t:'post',tag:'게시물',bg:'var(--sage)',h:190,title:'동네 서점과 도서관 비교',meta:'♡ 17 · 한결'},
   {t:'guest',tag:'방명록',text:'아이랑 그림책 코너 자주 와요. 사서님 추천 감사합니다.',meta:'하루 · 어제'},
   {t:'post',tag:'게시물',bg:'var(--concrete3)',h:120,title:'이번 주 빌린 책',meta:'♡ 9 · 하루'},
+  {t:'post',tag:'게시물',bg:'var(--sage)',h:230,noText:true},
+  {t:'post',tag:'게시물',bg:'var(--char)',h:140,noText:true,over:'"오늘도 한 줄"',light:true},
   {t:'club',tag:'모임',title:'어린이 그림책 모임',meta:'이번 달 책 · 구름빵 · 5명',btn:'들어가기'}
 ];
 function card(c){
-  if(c.t==='post')return `<div class="card"><span class="tag">${c.tag}</span><div class="img" style="background:${c.bg};height:${c.h}px">${c.over||'IMG'}</div><div class="body"><h4>${c.title}</h4><p>${c.meta}</p></div></div>`;
+  if(c.t==='post')return `<div class="card"><span class="tag">${c.tag}</span><div class="img" style="background:${c.bg};height:${c.h}px${c.light?';color:#F4EFE2':''}">${c.over||'IMG'}</div>${c.noText?'':`<div class="body"><h4>${c.title}</h4><p>${c.meta}</p></div>`}</div>`;
   if(c.t==='guest')return `<div class="card guest"><span class="tag">${c.tag}</span><h4>${c.text}</h4><p>${c.meta}</p></div>`;
   if(c.t==='club')return `<div class="card club"><span class="tag">${c.tag}</span><h4>${c.title}</h4><p>${c.meta}</p><span class="btn">${c.btn}</span></div>`;
   if(c.t==='stamp')return `<div class="card stampc"><span class="tag" style="color:#26262A">방문 기록</span><div class="ring">다녀옴</div><h4>오늘 한빛 시립도서관에 다녀왔어요</h4><p>나 · 방금</p></div>`;
@@ -251,19 +260,19 @@ function card(c){
 let stampState=null; // null | 'pub' | 'priv'
 function renderFeed(){
   const items=[...(stampState==='pub'?[{t:'stamp'}]:[]),...feedData];
-  $('#feed').innerHTML=items.map(card).join('');
+  $('#feed').innerHTML='<div class="cols">'+items.map(card).join('')+'</div>';
 }
 const COLORS=['var(--mustard)','var(--peach)','var(--cream)','var(--sage)','var(--char)'];
 const SH={
-  read:{title:'요즘 사람들이 읽은 책',hint:'반납 처리 익명 집계',books:['아몬드','불편한 편의점','소년이 온다','채식주의자','달러구트']},
-  pop:{title:'인기 도서',hint:'정보나루 인기대출도서',books:['세이노의 가르침','트렌드 코리아','어른의 문해력','역행자','도둑맞은 집중력']},
-  theme:{title:'이번 주 테마 · 비 오는 날',hint:'운영자 추천',books:['우산 없이','비의 기억','빗소리','젖은 책방','구름 정원']}
+  read:{title:'요즘 사람들이 읽은 책',hint:'반납 처리 익명 집계',books:[['아몬드','손원평'],['불편한 편의점','김호연'],['소년이 온다','한강']]},
+  pop:{title:'인기 도서',hint:'정보나루 인기대출도서',books:[['어른의 문해력','김선영'],['도둑맞은 집중력','요한 하리'],['역행자','자청']]},
+  theme:{title:'이번 주 테마 · 비 오는 날',hint:'운영자 추천',books:[['우산 없이','이도우'],['비의 기억','박소현'],['젖은 책방','한결']]}
 };
 function renderShelf(){
   const ord=document.querySelector('input[name=ord]:checked').value;
   let keys=ord==='read'?['read','pop','theme']:['pop','read','theme'];
   if($('#emptyRead').checked)keys=keys.filter(k=>k!=='read');
-  $('#pages').innerHTML=keys.map((k,pi)=>`<div class="pg" data-k="${k}">${SH[k].books.map((b,i)=>`<button class="bk ${i%2?'t':''}" data-title="${b}" style="background:${COLORS[(i+pi)%5]};color:${(i+pi)%5===4?'var(--cream)':'var(--ink)'}">${b}</button>`).join('')}</div>`).join('');
+  $('#pages').innerHTML=keys.map((k,pi)=>`<div class="pg" data-k="${k}">${SH[k].books.map((b,i)=>`<button class="bk" data-title="${b[0]}" style="background:${COLORS[(i+pi)%5]};color:${(i+pi)%5===4?'var(--cream)':'var(--ink)'}"><span>${b[1]}</span><b>${b[0]}</b></button>`).join('')}</div>`).join('');
   $('#dots').innerHTML=keys.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('');
   $('#pages').scrollLeft=0;
   setShelfLabel(keys[0],keys);
@@ -303,6 +312,7 @@ $('#emptyRead').onchange=renderShelf;
 $('#reset').onclick=()=>{stampState=null;phone.classList.remove('in','dr');updateStamp();renderFeed();};
 renderFeed();renderShelf();
 if(location.hash==='#visit'){phone.classList.add('in');$('#feed').scrollTop=0;}
+if(location.hash==='#scroll'){phone.classList.add('in');setTimeout(()=>{$('#feed').scrollTop=150},50);}
 if(location.hash==='#book'){phone.classList.add('in');setTimeout(()=>openBook('아몬드'),50);}
 if(location.hash==='#stamp'){phone.classList.add('in');$('#pop').classList.add('on');}
 </script>
