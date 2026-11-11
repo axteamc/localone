@@ -12,8 +12,10 @@
   --ink:#26262A; --muted:#7B766D; --line:#CFC8BC;
   --mustard:#EEC96B; --cream:#F4EFE2; --peach:#F2C9A4; --paper:#FDFCF9; --char:#33333A; --sage:#B8BFB0;
 }
-.phone[data-theme=vivid]{--concrete:#E8EAF0;--concrete2:#D2D6E2;--concrete3:#BCC2D2;--mustard:#5B7DFF;--peach:#FFB547;--sage:#74D6BC;--cream:#F2F4FC;--paper:#FDFDFF;--char:#1D2236;--muted:#6C7285;--line:#CBD0DE}
-.phone[data-theme=forest]{--concrete:#E3E8E0;--concrete2:#CCD5C8;--concrete3:#B5C1B1;--mustard:#A6D186;--peach:#F0D9A6;--sage:#7DB3A0;--cream:#F2F1E5;--paper:#FCFDF9;--char:#2C3A32;--muted:#6F7B70;--line:#C6D0C2}
+.phone[data-shape=modern]{--r-card:6px;--r-club:6px;--r-arch:3px;--r-pill:6px;--r-book:2px 4px 4px 2px}
+.phone[data-shape=arch]{--r-card:18px;--r-club:70px 70px 18px 18px;--r-arch:23px 23px 6px 6px;--r-pill:18px;--r-book:5px 9px 9px 5px}
+.phone[data-shape=soft]{--r-card:28px;--r-club:34px;--r-arch:50%;--r-pill:20px;--r-book:10px}
+.phone[data-shape=classic]{--r-card:3px;--r-club:3px;--r-arch:0;--r-pill:3px;--r-book:1px 3px 3px 1px}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Noto Sans KR',system-ui,sans-serif;background:#2B2A28;color:var(--ink);min-height:100vh;display:flex;gap:32px;align-items:flex-start;justify-content:center;padding:24px;flex-wrap:wrap}
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
@@ -59,15 +61,15 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .phone.in .visit{transform:none}
 .phone.in .home{transform:translateX(-22%);opacity:.35;filter:blur(2px)}
 .vhead{position:absolute;top:44px;left:0;right:0;height:84px;padding:0 16px;display:flex;align-items:center;gap:12px;z-index:12}
-.back{font-size:13px;font-weight:700;color:var(--ink);background:var(--paper);border-radius:16px;padding:6px 12px;box-shadow:0 1px 4px #0002}
-.arch{width:46px;height:60px;border-radius:23px 23px 6px 6px;background:var(--mustard);display:grid;place-items:center;font-weight:700;flex:none}
+.back{font-size:13px;font-weight:700;color:var(--ink);background:var(--paper);border-radius:var(--r-pill,16px);padding:6px 12px;box-shadow:0 1px 4px #0002}
+.arch{width:46px;height:60px;border-radius:var(--r-arch,23px 23px 6px 6px);background:var(--mustard);display:grid;place-items:center;font-weight:700;flex:none}
 .vhead h2{font-size:19px;line-height:1.2}
 .vhead p{font-size:12px;color:var(--muted)}
 .vhead .menu{margin-left:auto;display:none;font-size:20px}
 .phone[data-mine=side] .vhead .menu{display:block}
 .fbar{position:absolute;top:132px;left:0;right:0;height:44px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;z-index:12}
 .fbar span{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.02em}
-.stampbtn{display:flex;align-items:center;gap:6px;background:var(--char);color:var(--cream);border-radius:18px;padding:7px 12px;font-size:12px;font-weight:700;box-shadow:0 2px 8px #0003}
+.stampbtn{display:flex;align-items:center;gap:6px;background:var(--char);color:var(--cream);border-radius:var(--r-pill,18px);padding:7px 12px;font-size:12px;font-weight:700;box-shadow:0 2px 8px #0003}
 .stampbtn.done{background:var(--cream);color:var(--ink);box-shadow:none;border:1px solid var(--line)}
 .stampbtn i{width:14px;height:14px;border-radius:50%;border:2px solid currentColor;display:inline-block}
 .pop{position:absolute;right:16px;top:176px;width:204px;background:var(--paper);border-radius:16px;box-shadow:0 8px 24px #0004;padding:10px;z-index:40;display:none}
@@ -78,15 +80,15 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .feed{position:absolute;top:176px;left:0;right:0;bottom:296px;overflow-y:auto;padding:4px 12px 80px;scrollbar-width:none}
 .cols{columns:2;column-gap:10px}
 .feed::-webkit-scrollbar{display:none}
-.card{break-inside:avoid;margin-bottom:10px;border-radius:18px;overflow:hidden;background:var(--paper);position:relative}
-.card .tag{position:absolute;top:8px;left:8px;font-size:10px;font-weight:700;border-radius:9px;padding:2px 8px;background:#fffc;z-index:2}
+.card{break-inside:avoid;margin-bottom:10px;border-radius:var(--r-card,18px);overflow:hidden;background:var(--paper);position:relative}
+.card .tag{position:absolute;top:8px;left:8px;font-size:10px;font-weight:700;border-radius:var(--r-pill,9px);padding:2px 8px;background:#fffc;z-index:2}
 .card .img{display:grid;place-items:center;font-size:12px;color:#0007;padding:14px;text-align:center;font-weight:500}
 .card .body{padding:10px 12px 12px}
 .card h4{font-size:13px;line-height:1.35;font-weight:700}
 .card p{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.45}
 .card.guest{background:var(--cream);padding:26px 12px 12px}
 .card.guest h4{font-weight:500;font-size:13px;line-height:1.55}
-.card.club{background:var(--peach);border-radius:70px 70px 18px 18px;padding:30px 14px 14px;text-align:center}
+.card.club{background:var(--peach);border-radius:var(--r-club,70px 70px 18px 18px);padding:30px 14px 14px;text-align:center}
 .card.club .tag{left:50%;transform:translateX(-50%);top:14px}
 .card.club h4{margin-top:10px}
 .card.club .btn{display:inline-block;margin-top:8px;background:var(--char);color:var(--cream);border-radius:14px;padding:5px 12px;font-size:11px;font-weight:700}
@@ -111,7 +113,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .pages{flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
 .pages::-webkit-scrollbar{display:none}
   .pg{flex:none;width:100%;scroll-snap-align:start;padding:8px 16px 0;display:flex;gap:16px;align-items:flex-end;justify-content:center}
-.bk{flex:none;width:104px;height:150px;border-radius:5px 9px 9px 5px;padding:12px 10px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;position:relative;box-shadow:inset 5px 0 0 #0002,0 6px 12px #0002}
+.bk{flex:none;width:104px;height:150px;border-radius:var(--r-book,5px 9px 9px 5px);padding:12px 10px;text-align:left;display:flex;flex-direction:column;justify-content:space-between;align-items:flex-start;position:relative;box-shadow:inset 5px 0 0 #0002,0 6px 12px #0002}
 .bk b{font-size:14px;line-height:1.3;font-weight:700}
 .bk span{font-size:10.5px;opacity:.75;font-weight:500}
 .bk:hover{transform:translateY(-4px)}
@@ -120,6 +122,14 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .cab div{flex:1;position:relative}
 .cab div:nth-child(1){background:var(--mustard)}.cab div:nth-child(2){background:var(--cream)}.cab div:nth-child(3){background:var(--sage)}
 .cab div::after{content:"";position:absolute;right:10px;top:50%;width:18px;height:6px;border-radius:50%;background:var(--char);transform:translateY(-50%)}
+.phone[data-shape=modern] .cab{height:12px}
+.phone[data-shape=modern] .cab div{background:var(--char)!important}
+.phone[data-shape=modern] .cab div::after{display:none}
+.phone[data-shape=soft] .cab{gap:8px}
+.phone[data-shape=soft] .cab div{border-radius:11px}
+.phone[data-shape=soft] .cab div::after{width:8px;height:8px;right:14px}
+.phone[data-shape=classic] .cab div{border-radius:2px}
+.phone[data-shape=classic] .cab div::after{width:28px;height:3px;border-radius:1px;right:50%;transform:translate(50%,-50%)}
 .dots{position:absolute;right:16px;top:34px;display:flex;gap:4px}
 .dots i{width:6px;height:6px;border-radius:50%;background:var(--concrete3)}
 .dots i.on{background:var(--char)}
@@ -168,12 +178,13 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
     <label><input type="radio" name="ord" value="pop"> 인기 → 읽은 책 → 테마</label>
     <label><input type="checkbox" id="emptyRead"> "읽은 책" 집계가 비어 있음(초기)</label>
     <div class="note">비어 있으면 그 페이지를 숨기고 다른 페이지를 먼저 보입니다.</div></fieldset>
-  <fieldset><legend>4. 도서관별 색감 (아이디어)</legend>
-    <label><input type="radio" name="theme" value="auto" checked> 도서관별 자동(한빛=기본, 달빛=모던 쨍, 푸른=숲)</label>
-    <label><input type="radio" name="theme" value="warm"> 모두 기본(웜 콘크리트)</label>
-    <label><input type="radio" name="theme" value="vivid"> 모두 모던 쨍</label>
-    <label><input type="radio" name="theme" value="forest"> 모두 숲</label>
-    <div class="note">운영자가 도서관마다 프리셋을 고르는 안. 핀 색도 도서관 색을 따릅니다.</div></fieldset>
+  <fieldset><legend>4. 도서관 룩 (색감 확정 / 형태×색감 12종 검토)</legend>
+    <div class="note" style="margin:0 0 4px">운영자는 "모던"인 도서관만 고르고, 나머지는 이름으로 고정 배정(같은 도서관은 항상 같은 룩).</div>
+    <label><input type="checkbox" class="mod" value="한빛 시립도서관"> 한빛 = 모던</label>
+    <label><input type="checkbox" class="mod" value="달빛 작은도서관" checked> 달빛 = 모던</label>
+    <label><input type="checkbox" class="mod" value="푸른 구립도서관"> 푸른 = 모던</label>
+    <label>룩 강제: <select id="lookSel" style="background:#3A3834;color:#EDE8DE;border:0;border-radius:6px;padding:2px 4px"></select></label>
+    <div class="note" id="assign"></div></fieldset>
   <button class="reset" id="reset">처음으로(오늘 첫 입장 상태로 되돌리기)</button>
   <div class="note" style="margin-top:12px">시연 순서: 홈에서 핀 누르기 → 입장 전환 → 우측 상단 "다녀왔어요" → 책장 넘기기 → 책 누르기(대출 가능 문구·실시간 확인).</div>
 </aside>
@@ -297,12 +308,36 @@ document.addEventListener('click',e=>{if(!e.target.closest('#bsheet')&&!e.target
   if(!e.target.closest('#pop')&&!e.target.closest('#stampbtn'))$('#pop').classList.remove('on');});
 $('.live').onclick=()=>toast('도서관 사이트로 이동합니다 (시안에서는 이동하지 않음)');
 function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),1900);}
-const THEME={'한빛 시립도서관':'warm','달빛 작은도서관':'vivid','푸른 구립도서관':'forest'};
-const ACC={warm:'#EEC96B',vivid:'#5B7DFF',forest:'#A6D186'};
-function themeFor(name){const o=document.querySelector('input[name=theme]:checked').value;return o==='auto'?(THEME[name]||'warm'):o;}
-function paintPins(){$$('.pin').forEach(p=>{const t=themeFor(p.dataset.lib);const b=p.querySelector('b');b.style.background=ACC[t];b.querySelector('span').style.color=t==='vivid'?'#fff':'var(--ink)';});}
+const mix=(a,b,t)=>{const A=[1,3,5].map(i=>parseInt(a.slice(i,i+2),16)),B=[1,3,5].map(i=>parseInt(b.slice(i,i+2),16));return '#'+A.map((v,i)=>Math.round(v+(B[i]-v)*t).toString(16).padStart(2,'0')).join('');};
+const hash=s=>[...s].reduce((h,c)=>(h*31+c.charCodeAt(0))>>>0,7);
+const LOOKS=[ // id,이름,형태,포인트,보조,세번째,배경
+['M1','모던·코발트','modern','#5B7DFF','#FFB547','#74D6BC','#E8EAF0'],
+['M2','모던·코랄','modern','#FF5C5C','#FFD166','#4DB6AC','#F0E9E9'],
+['M3','모던·바이올렛','modern','#8A5CFF','#FF9F5A','#5AD1E0','#ECE9F2'],
+['A1','아치·버터','arch','#EEC96B','#F2C9A4','#B8BFB0','#E6E1D9'],
+['A2','아치·숲','arch','#A6D186','#F0D9A6','#7DB3A0','#E3E8E0'],
+['A3','아치·로즈','arch','#E9A5A0','#F5D6B8','#B9C7A6','#EDE5E1'],
+['S1','소프트·스카이','soft','#8EC5F0','#F6C6D6','#C8E6B5','#E4E9EE'],
+['S2','소프트·피치','soft','#F7B58E','#F7E3A1','#A9D6C7','#EEE6DF'],
+['S3','소프트·라일락','soft','#B9A5E8','#F4C7DC','#BFE0D0','#E9E6EE'],
+['C1','클래식·올리브','classic','#B5B86A','#E8C98A','#9DB7A6','#E6E5DC'],
+['C2','클래식·틸','classic','#5FB1B0','#F0D29A','#C6D6A0','#E0E8E6'],
+['C3','클래식·테라코타','classic','#E39B72','#EFD9A8','#A9B79D','#EBE3DC']];
+$('#lookSel').innerHTML='<option value="auto">자동 배정</option>'+LOOKS.map(l=>`<option value="${l[0]}">${l[0]} ${l[1]}</option>`).join('');
+function lookFor(name){
+  const f=$('#lookSel').value;if(f!=='auto')return LOOKS.find(l=>l[0]===f);
+  const modern=$$('.mod').some(c=>c.checked&&c.value===name);
+  return modern?LOOKS[hash(name)%3]:LOOKS[3+hash(name)%9];}
+const LIBS=['한빛 시립도서관','달빛 작은도서관','푸른 구립도서관'];
+function showAssign(){$('#assign').innerHTML=LIBS.map(n=>{const l=lookFor(n);return n.slice(0,2)+' → '+l[0]+' '+l[1];}).join('<br>');}
+function applyLook(name){const l=lookFor(name),bg=l[6];phone.dataset.shape=l[2];const st=phone.style;
+  st.setProperty('--concrete',bg);st.setProperty('--concrete2',mix(bg,'#000000',.08));st.setProperty('--concrete3',mix(bg,'#000000',.15));
+  st.setProperty('--mustard',l[3]);st.setProperty('--peach',l[4]);st.setProperty('--sage',l[5]);
+  st.setProperty('--cream',mix(bg,'#ffffff',.55));st.setProperty('--char',mix('#2B2B33',l[3],.14));st.setProperty('--muted',mix(bg,'#000000',.5));st.setProperty('--line',mix(bg,'#000000',.13));}
+function resetLook(){delete phone.dataset.shape;['--concrete','--concrete2','--concrete3','--mustard','--peach','--sage','--cream','--char','--muted','--line'].forEach(k=>phone.style.removeProperty(k));}
+function paintPins(){$$('.pin').forEach(p=>{const l=lookFor(p.dataset.lib);const b=p.querySelector('b');b.style.background=l[3];const y=[1,3,5].map(i=>parseInt(l[3].slice(i,i+2),16));b.querySelector('span').style.color=(y[0]*299+y[1]*587+y[2]*114)/1000<150?'#fff':'#26262A';});showAssign();}
 function enter(name){
-  phone.dataset.theme=themeFor(name);
+  applyLook(name);
   $('#libname').textContent=name;phone.classList.add('in');
   setTimeout(()=>toast(name+'에 입장했어요'),260);
   updateStamp();
@@ -313,7 +348,7 @@ function updateStamp(){
   else{b.classList.remove('done');$('#stamptxt').textContent='다녀왔어요';}
 }
 $$('.pin').forEach(p=>p.onclick=()=>enter(p.dataset.lib));
-$('#back').onclick=()=>{phone.classList.remove('in');setTimeout(()=>{if(!phone.classList.contains('in'))phone.dataset.theme='warm';},360);};
+$('#back').onclick=()=>{phone.classList.remove('in');setTimeout(()=>{if(!phone.classList.contains('in'))resetLook();},360);};
 $('#stampbtn').onclick=e=>{e.stopPropagation();if(!stampState)$('#pop').classList.toggle('on');};
 $$('#pop button').forEach(b=>b.onclick=()=>{stampState=b.dataset.pub==='1'?'pub':'priv';$('#pop').classList.remove('on');updateStamp();renderFeed();$('#feed').scrollTop=0;toast(stampState==='pub'?'방문 스탬프를 공개로 남겼어요':'방문 스탬프를 나만 보기로 남겼어요');});
 $$('[data-open-drawer]').forEach(b=>b.onclick=()=>phone.classList.add('dr'));
@@ -323,8 +358,9 @@ $$('input[name=mine]').forEach(r=>r.onchange=()=>phone.dataset.mine=r.value);
 $$('input[name=ord]').forEach(r=>r.onchange=renderShelf);
 $('#emptyRead').onchange=renderShelf;
 $('#reset').onclick=()=>{stampState=null;phone.classList.remove('in','dr');updateStamp();renderFeed();};
-$$('input[name=theme]').forEach(r=>r.onchange=()=>{paintPins();if(phone.classList.contains('in'))phone.dataset.theme=themeFor($('#libname').textContent);});
+[...$$('.mod'),$('#lookSel')].forEach(r=>r.onchange=()=>{paintPins();if(phone.classList.contains('in'))applyLook($('#libname').textContent);});
 renderFeed();renderShelf();paintPins();
+{const m=location.hash.match(/^#look-(\w\d)/);if(m){$('#lookSel').value=m[1];paintPins();enter('한빛 시립도서관');}}
 if(location.hash==='#vivid')enter('달빛 작은도서관');
 if(location.hash==='#forest')enter('푸른 구립도서관');
 if(location.hash==='#visit'){phone.classList.add('in');$('#feed').scrollTop=0;}
