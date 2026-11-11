@@ -8,7 +8,7 @@
 
 ## 1. 수행 내용
 
-`~/config` 및 ULevelP 검증 거버넌스 체계를 바탕으로 `libmarks` 프로젝트에 표준 AI 협업 체계를 반영함:
+`~/config` 및 ULevelP 검증 거버넌스 체계를 바탕으로 `localone` 프로젝트에 표준 AI 협업 체계를 반영함:
 1. **AI 에이전트 3대 규칙 세팅:**
    - `GEMINI.md`: Antigravity / Gemini 작업 규칙 (최신 4단계 협업, 골디락스 Step 분할, Pre-flight 5대 관문, 13대 실수 방지 가드레일)
    - `CLAUDE.md`: Claude Code 작업 규칙 (메뉴얼 vs 자유, 진행 파일 라이프사이클)

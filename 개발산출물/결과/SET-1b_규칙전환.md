@@ -16,9 +16,9 @@
 
 **axteamc/team** (로컬 `../team`)
 - 기존 전부 → `stockmind/`(보관 표시 추가). 루트 `CLAUDE.md` 첫 줄: StockMind 코드 레포면 `stockmind/CLAUDE.md`를 따르라는 안내
-- 루트 새로: `CLAUDE.md`(범용 팀 규칙 + 의도된 무지 3절·낚시 질문 4절·쉬운 말 금지어 표 2절·퀴즈 7절), `PROJECT.md`·`기능_배정.md`(한책, 계획 기준 A=LIB, B=LOAN, C=READ→LOCAL, D=INIT·AUTH·엔진·RELEASE), `prompts/1_기획.md`(4-1 낚시 절차, 필수 예외 4장면, 넘기기 점검 ⑤항), `3_구현.md`(가드 제거 확인, A↔B 격리, 늦은 응답, 이해 확인 단계), `templates/`(정상 흐름·충돌 확인 기록 칸, 결정 번호를 `결정 n`으로 — 역할 D와 혼동 방지), `skills/pr-review`(충돌 기록 검사), `tests/규칙_점검/`
+- 루트 새로: `CLAUDE.md`(범용 팀 규칙 + 의도된 무지 3절·낚시 질문 4절·쉬운 말 금지어 표 2절·퀴즈 7절), `PROJECT.md`·`기능_배정.md`(동네한권, 계획 기준 A=LIB, B=LOAN, C=READ→LOCAL, D=INIT·AUTH·엔진·RELEASE), `prompts/1_기획.md`(4-1 낚시 절차, 필수 예외 4장면, 넘기기 점검 ⑤항), `3_구현.md`(가드 제거 확인, A↔B 격리, 늦은 응답, 이해 확인 단계), `templates/`(정상 흐름·충돌 확인 기록 칸, 결정 번호를 `결정 n`으로 — 역할 D와 혼동 방지), `skills/pr-review`(충돌 기록 검사), `tests/규칙_점검/`
 
-**libproject**
+**localone**
 - 삭제: `GEMINI.md`, `AGENTS.md`, `개발산출물/협업_시니어주니어.md`·`프롬프트_템플릿_4단계.md`·`주니어_체크리스트.md`·`프론트_정렬규격.md`, `docs/rules/` 4개(Kotlin·ULevelP 전용, 없는 검사기 전제)
 - team 초안 원본 → `개발산출물/완료/team_초안_20261110/`
 - `CLAUDE.md`(팀 규칙 진입점 + D 전용 절), `README.md`, `../team/docs/문서_운영.md`(D 문서 역할 + 파트 크기), 계획(담당 칸·시니어/주니어 표현 제거), 요구사항 §8, 진행 파일, 인수인계, SET-0 결과(폐기 표시)
@@ -43,7 +43,7 @@
 - 낚시는 10턴 안에 1번만 관찰. "넘기기 전 2번"은 7단계 점검(④)과 D 리뷰(pr-review A-4)가 막는다. 실제 팀원 대화로 한 번 더 볼 것
 - 주니어 흉내가 늘 동의하는 성격이라 '간파' 경로는 실행하지 않음. 테스트 모델은 sonnet 한 가지
 - 쉬운 말은 금지어 자동 검사 + 사람이 읽은 판정. 실제 비개발자의 이해도는 미검증
-- libproject는 미커밋(원격 없음). team 레포는 `0300b25`로 push 완료
+- localone는 미커밋(원격 없음). team 레포는 `0300b25`로 push 완료
 
 ## 5. 후속: 규칙 비공개화 (2026-11-11)
 
