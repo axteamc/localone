@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>동네한권 방문 페이지 시안</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --concrete:#E6E1D9; --concrete2:#D5CEC3; --concrete3:#C4BCB0;
+  --ink:#26262A; --muted:#7B766D; --line:#CFC8BC;
+  --mustard:#D9A53D; --cream:#F4EFE2; --peach:#F2C9A4; --paper:#FAF8F3; --char:#33333A; --sage:#B8BFB0;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',system-ui,sans-serif;background:#2B2A28;color:var(--ink);min-height:100vh;display:flex;gap:32px;align-items:flex-start;justify-content:center;padding:24px;flex-wrap:wrap}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+/* ---------- control panel (시안 확인용, 앱 화면 아님) ---------- */
+.panel{width:300px;color:#EDE8DE;font-size:13px;line-height:1.5}
+.panel h1{font-size:16px;margin-bottom:4px}
+.panel p.s{color:#A8A296;margin-bottom:14px}
+.panel fieldset{border:1px solid #4A4844;border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.panel legend{padding:0 6px;color:#D9A53D;font-weight:700;font-size:12px}
+.panel label{display:block;padding:2px 0;cursor:pointer}
+.panel .note{color:#A8A296;font-size:12px;margin-top:4px}
+.panel button.reset{background:#3A3834;border-radius:10px;padding:8px 12px;margin-top:4px;width:100%}
+/* ---------- phone ---------- */
+.phone{position:relative;width:390px;height:844px;overflow:hidden;border-radius:38px;background:var(--concrete);box-shadow:0 20px 60px #0008;flex:none}
+.screen{position:absolute;inset:0;transition:transform .34s cubic-bezier(.2,.8,.2,1),opacity .34s,filter .34s}
+.status{position:absolute;top:0;left:0;right:0;height:44px;display:flex;justify-content:space-between;align-items:center;padding:0 24px;font-size:13px;font-weight:700;z-index:30;pointer-events:none}
+/* home */
+.home{background:#ECE9E2}
+.map{position:absolute;inset:0 0 auto 0;height:600px;overflow:hidden;background:#E9E6DD}
+.map i{position:absolute;display:block}
+.road{background:#fff}
+.park{background:#D6DCCB;border-radius:16px}
+.river{background:#CBD8DE}
+.lm{background:#DDD8CF;border-radius:10px}
+.map small{position:absolute;font-size:11px;color:#8E897F;font-weight:500}
+.pin{position:absolute;width:48px;display:flex;flex-direction:column;align-items:center;gap:3px;transform:translate(-50%,-100%);z-index:5}
+.pin b{width:38px;height:38px;border-radius:50% 50% 50% 8px;transform:rotate(-45deg);background:var(--mustard);border:3px solid #fff;box-shadow:0 3px 8px #0003;display:grid;place-items:center}
+.pin b span{transform:rotate(45deg);font-size:13px;font-weight:700;color:var(--ink)}
+.pin em{font-style:normal;font-size:10px;font-weight:700;background:#fff;border-radius:8px;padding:2px 7px;white-space:nowrap;box-shadow:0 1px 4px #0002}
+.pin:hover b{transform:rotate(-45deg) scale(1.12)}
+.me{position:absolute;width:14px;height:14px;border-radius:50%;background:#E8453C;border:2px solid #fff;box-shadow:0 0 0 14px #3B6FD426;z-index:4}
+.search{position:absolute;top:52px;left:16px;right:16px;height:44px;border-radius:22px;background:var(--paper);box-shadow:0 4px 14px #0002;display:flex;align-items:center;gap:10px;padding:0 16px;font-size:13px;font-weight:500;z-index:10}
+.search .menu{display:none;font-size:18px}
+.phone[data-mine=side] .search .menu{display:block}
+.hsheet{position:absolute;left:0;right:0;top:540px;bottom:0;background:var(--paper);border-radius:26px 26px 0 0;box-shadow:0 -6px 20px #0002;padding:10px 16px;z-index:8}
+.grab{width:48px;height:5px;border-radius:3px;background:var(--concrete3);margin:0 auto 12px}
+.hsheet h3{font-size:16px}
+.hsheet p{font-size:12px;color:var(--muted);margin:2px 0 10px}
+.mini{display:flex;gap:10px}
+.mini div{flex:1;height:110px;border-radius:16px;background:var(--concrete2)}
+/* visit */
+.visit{background:var(--concrete);transform:translateX(100%)}
+.phone.in .visit{transform:none}
+.phone.in .home{transform:translateX(-22%);opacity:.35;filter:blur(2px)}
+.vhead{position:absolute;top:44px;left:0;right:0;height:84px;padding:0 16px;display:flex;align-items:center;gap:12px;z-index:12}
+.back{font-size:13px;font-weight:700;color:var(--ink);background:var(--paper);border-radius:16px;padding:6px 12px;box-shadow:0 1px 4px #0002}
+.arch{width:46px;height:60px;border-radius:23px 23px 6px 6px;background:var(--mustard);display:grid;place-items:center;font-weight:700;flex:none}
+.vhead h2{font-size:19px;line-height:1.2}
+.vhead p{font-size:12px;color:var(--muted)}
+.vhead .menu{margin-left:auto;display:none;font-size:20px}
+.phone[data-mine=side] .vhead .menu{display:block}
+.fbar{position:absolute;top:132px;left:0;right:0;height:44px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;z-index:12}
+.fbar span{font-size:12px;font-weight:700;color:var(--muted);letter-spacing:.02em}
+.stampbtn{display:flex;align-items:center;gap:6px;background:var(--char);color:var(--cream);border-radius:18px;padding:7px 12px;font-size:12px;font-weight:700;box-shadow:0 2px 8px #0003}
+.stampbtn.done{background:var(--cream);color:var(--ink);box-shadow:none;border:1px solid var(--line)}
+.stampbtn i{width:14px;height:14px;border-radius:50%;border:2px solid currentColor;display:inline-block}
+.pop{position:absolute;right:16px;top:176px;width:204px;background:var(--paper);border-radius:16px;box-shadow:0 8px 24px #0004;padding:10px;z-index:40;display:none}
+.pop.on{display:block}
+.pop p{font-size:11px;color:var(--muted);padding:2px 6px 8px}
+.pop button{display:block;width:100%;text-align:left;padding:10px;border-radius:10px;font-size:13px;font-weight:500}
+.pop button:hover{background:var(--concrete)}
+.feed{position:absolute;top:176px;left:0;right:0;bottom:248px;overflow-y:auto;padding:4px 12px 56px;columns:2;column-gap:10px;scrollbar-width:none}
+.feed::-webkit-scrollbar{display:none}
+.card{break-inside:avoid;margin-bottom:10px;border-radius:18px;overflow:hidden;background:var(--paper);position:relative}
+.card .tag{position:absolute;top:8px;left:8px;font-size:10px;font-weight:700;border-radius:9px;padding:2px 8px;background:#fffc;z-index:2}
+.card .img{display:grid;place-items:center;font-size:12px;color:#0007;padding:14px;text-align:center;font-weight:500}
+.card .body{padding:10px 12px 12px}
+.card h4{font-size:13px;line-height:1.35;font-weight:700}
+.card p{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.45}
+.card.guest{background:var(--cream);padding:26px 12px 12px}
+.card.guest h4{font-weight:500;font-size:13px;line-height:1.55}
+.card.club{background:var(--peach);border-radius:70px 70px 18px 18px;padding:30px 14px 14px;text-align:center}
+.card.club .tag{left:50%;transform:translateX(-50%);top:14px}
+.card.club h4{margin-top:10px}
+.card.club .btn{display:inline-block;margin-top:8px;background:var(--char);color:var(--cream);border-radius:14px;padding:5px 12px;font-size:11px;font-weight:700}
+.card.stampc{background:var(--char);color:var(--cream);padding:28px 14px 14px;text-align:center}
+.card.stampc p{color:#C9C3B6}
+.card.stampc .ring{width:54px;height:54px;border-radius:50%;border:3px solid var(--mustard);margin:0 auto 8px;display:grid;place-items:center;color:var(--mustard);font-size:11px;font-weight:700;transform:rotate(-8deg)}
+/* shelf */
+.blurstrip{position:absolute;left:0;right:0;bottom:248px;height:44px;z-index:14;pointer-events:none;
+  background:linear-gradient(to top,var(--concrete2),#D5CEC300);
+  -webkit-backdrop-filter:blur(9px);backdrop-filter:blur(9px);
+  -webkit-mask-image:linear-gradient(to top,#000 40%,transparent);mask-image:linear-gradient(to top,#000 40%,transparent)}
+.phone[data-blur=B] .blurstrip{-webkit-backdrop-filter:none;backdrop-filter:none;height:56px}
+.shelf{position:absolute;left:0;right:0;bottom:72px;height:176px;background:var(--concrete2);z-index:15;display:flex;flex-direction:column}
+.shelf .top{display:flex;justify-content:space-between;align-items:baseline;padding:10px 16px 0}
+.shelf .top b{font-size:13px}
+.shelf .top span{font-size:11px;color:var(--muted);white-space:nowrap}.shelf .top b{white-space:nowrap}
+.pages{flex:1;display:flex;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+.pages::-webkit-scrollbar{display:none}
+.pg{flex:none;width:100%;scroll-snap-align:start;padding:6px 16px 0;display:flex;gap:9px;align-items:flex-end}
+.bk{flex:none;width:58px;height:80px;border-radius:4px 7px 7px 4px;padding:6px 5px;font-size:9.5px;font-weight:700;line-height:1.25;display:flex;align-items:flex-end;position:relative;box-shadow:inset 4px 0 0 #0002}
+.bk:hover{transform:translateY(-4px)}
+.bk.t{height:88px}
+.plank{height:7px;background:var(--char);margin:0 8px}
+.cab{height:26px;margin:0 8px;display:flex;gap:4px}
+.cab div{flex:1;position:relative}
+.cab div:nth-child(1){background:var(--mustard)}.cab div:nth-child(2){background:var(--cream)}.cab div:nth-child(3){background:var(--sage)}
+.cab div::after{content:"";position:absolute;right:10px;top:50%;width:18px;height:6px;border-radius:50%;background:var(--char);transform:translateY(-50%)}
+.dots{position:absolute;right:16px;top:34px;display:flex;gap:4px}
+.dots i{width:6px;height:6px;border-radius:50%;background:var(--concrete3)}
+.dots i.on{background:var(--char)}
+/* tabs */
+.tabs{position:absolute;left:0;right:0;bottom:0;height:72px;background:var(--paper);border-top:1px solid var(--line);display:flex;z-index:20}
+.tabs button{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10px;color:var(--muted);font-weight:500}
+.tabs button i{width:22px;height:22px;border-radius:7px;background:var(--concrete3)}
+.tabs button.on{color:var(--ink);font-weight:700}.tabs button.on i{background:var(--mustard)}
+.tabs .foot{display:none}
+.phone[data-mine=tab] .tabs .foot{display:flex}
+/* drawer */
+.scrim{position:absolute;inset:0;background:#0006;opacity:0;pointer-events:none;transition:.25s;z-index:50}
+.drawer{position:absolute;top:0;bottom:0;left:0;width:290px;background:var(--paper);transform:translateX(-100%);transition:transform .3s cubic-bezier(.2,.8,.2,1);z-index:60;padding:64px 20px;border-radius:0 28px 28px 0}
+.phone.dr .scrim{opacity:1;pointer-events:auto}.phone.dr .drawer{transform:none}
+.drawer h3{font-size:16px;margin-bottom:14px}
+.drawer li{list-style:none;padding:12px 4px;border-bottom:1px solid var(--line);font-size:14px;font-weight:500;display:flex;justify-content:space-between}
+.drawer li small{color:var(--muted);font-size:11px}
+/* book sheet (LIB-03 문구 시연) */
+.bsheet{position:absolute;left:0;right:0;bottom:0;background:var(--paper);border-radius:26px 26px 0 0;box-shadow:0 -8px 30px #0004;padding:12px 18px 26px;z-index:70;transform:translateY(105%);transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.bsheet.on{transform:none}
+.bsheet h3{font-size:16px}.bsheet .sub{font-size:12px;color:var(--muted);margin-bottom:12px}
+.row{display:flex;justify-content:space-between;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.row b{font-size:13px}.row small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+.badge{font-size:11px;font-weight:700;background:var(--cream);border:1px solid var(--line);border-radius:10px;padding:3px 9px}
+.live{font-size:12px;font-weight:700;border:1.5px solid var(--ink);border-radius:14px;padding:6px 11px;white-space:nowrap}
+.warn{font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5}
+/* toast */
+.toast{position:absolute;top:58px;left:50%;transform:translate(-50%,-30px);background:var(--char);color:var(--cream);font-size:13px;font-weight:700;padding:10px 18px;border-radius:20px;opacity:0;transition:.3s;z-index:80;white-space:nowrap}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+</style>
+</head>
+<body>
+
+<aside class="panel">
+  <h1>방문 페이지 시안</h1>
+  <p class="s">개발산출물/02 요구사항의 2026-11-11 결정(C-13~C-17)을 한 화면에서 확인하는 정적 시안입니다. 값·문구는 모두 임시입니다.</p>
+  <fieldset><legend>1. 피드-책장 사이 처리</legend>
+    <label><input type="radio" name="blur" value="C" checked> C: 얇은 블러 띠 + 그라데이션</label>
+    <label><input type="radio" name="blur" value="B"> B: 그라데이션 페이드만(블러 불가 기기)</label>
+    <div class="note">피드를 스크롤해 책장 위로 지나가게 해 보세요.</div></fieldset>
+  <fieldset><legend>2. 내 발자취 위치 (Q-44)</legend>
+    <label><input type="radio" name="mine" value="tab" checked> 하단 탭(6칸)</label>
+    <label><input type="radio" name="mine" value="side"> 사이드바(☰)</label></fieldset>
+  <fieldset><legend>3. 책장 페이지 순서·상태</legend>
+    <label><input type="radio" name="ord" value="read" checked> 읽은 책 → 인기 → 테마</label>
+    <label><input type="radio" name="ord" value="pop"> 인기 → 읽은 책 → 테마</label>
+    <label><input type="checkbox" id="emptyRead"> "읽은 책" 집계가 비어 있음(초기)</label>
+    <div class="note">비어 있으면 그 페이지를 숨기고 다른 페이지를 먼저 보입니다.</div></fieldset>
+  <button class="reset" id="reset">처음으로(오늘 첫 입장 상태로 되돌리기)</button>
+  <div class="note" style="margin-top:12px">시연 순서: 홈에서 핀 누르기 → 입장 전환 → 우측 상단 "다녀왔어요" → 책장 넘기기 → 책 누르기(대출 가능 문구·실시간 확인).</div>
+</aside>
+
+<main class="phone" id="phone" data-blur="C" data-mine="tab">
+  <div class="status"><span>9:41</span><span>●●● ▮</span></div>
+
+  <!-- 홈 -->
+  <section class="screen home" id="home">
+    <div class="map">
+      <i class="park" style="left:24px;top:110px;width:130px;height:110px"></i><small style="left:50px;top:152px">○○공원</small>
+      <i class="river" style="left:0;top:330px;width:390px;height:44px"></i><small style="left:300px;top:342px">○○천</small>
+      <i class="lm" style="left:250px;top:130px;width:100px;height:70px"></i><small style="left:278px;top:155px">○○역</small>
+      <i class="lm" style="left:40px;top:400px;width:90px;height:56px"></i><small style="left:70px;top:418px">시청</small>
+      <i class="road" style="left:0;top:246px;width:390px;height:18px"></i>
+      <i class="road" style="left:196px;top:0;width:18px;height:640px"></i>
+      <i class="road" style="left:0;top:470px;width:390px;height:12px"></i>
+      <i class="road" style="left:78px;top:270px;width:10px;height:380px"></i>
+      <i class="road" style="left:290px;top:370px;width:10px;height:280px"></i>
+      <span class="me" style="left:250px;top:205px"></span>
+      <button class="pin" data-lib="한빛 시립도서관" style="left:140px;top:230px"><b><span>책</span></b><em>한빛 시립도서관 · 320m</em></button>
+      <button class="pin" data-lib="달빛 작은도서관" style="left:300px;top:430px"><b><span>책</span></b><em>달빛 작은도서관 · 860m</em></button>
+      <button class="pin" data-lib="푸른 구립도서관" style="left:62px;top:500px"><b><span>책</span></b><em>푸른 구립도서관 · 1.4km</em></button>
+    </div>
+    <div class="search"><button class="menu" data-open-drawer>☰</button>현재 위치 기준 · 도서관 3곳</div>
+    <div class="hsheet"><div class="grab"></div><h3>우리 동네 이야기</h3><p>지역 인기글 · 내 최근 독서 기록 · 추천 서적</p>
+      <div class="mini"><div style="background:var(--peach)"></div><div style="background:var(--sage)"></div></div></div>
+  </section>
+
+  <!-- 방문 페이지 -->
+  <section class="screen visit" id="visit">
+    <div class="vhead">
+      <button class="back" id="back">‹ 동네</button>
+      <div class="arch">책</div>
+      <div><h2 id="libname">한빛 시립도서관</h2><p>320m · 오늘 09:00–18:00 운영</p></div>
+      <button class="menu" data-open-drawer>☰</button>
+    </div>
+    <div class="fbar"><span>이웃의 기록 · 방명록 · 모임</span>
+      <button class="stampbtn" id="stampbtn"><i></i><span id="stamptxt">다녀왔어요</span></button></div>
+    <div class="pop" id="pop"><p>오늘 첫 입장이에요. 방문 기록을 어떻게 남길까요?</p>
+      <button data-pub="1">공개로 남기기 (피드에 카드로 표시)</button>
+      <button data-pub="0">나만 보기</button></div>
+    <div class="feed" id="feed"></div>
+    <div class="blurstrip"></div>
+    <div class="shelf">
+      <div class="top"><b id="shelftitle"></b><span id="shelfhint"></span></div>
+      <div class="dots" id="dots"></div>
+      <div class="pages" id="pages"></div>
+      <div class="plank"></div>
+      <div class="cab"><div></div><div></div><div></div></div>
+    </div>
+  </section>
+
+  <nav class="tabs">
+    <button class="on"><i></i>홈</button><button><i></i>독서 기록</button><button><i></i>글쓰기</button><button><i></i>대출·반납</button><button><i></i>내 정보</button><button class="foot"><i></i>내 발자취</button>
+  </nav>
+
+  <div class="scrim" id="scrim"></div>
+  <aside class="drawer"><h3>내 메뉴</h3><ul><li>내 발자취 <small>방문한 도서관별 기록</small></li><li>방문 스탬프 <small>3개</small></li><li>독서 기록 <small>전체·통계</small></li><li>대출·반납 <small>D-3</small></li></ul></aside>
+
+  <div class="bsheet" id="bsheet">
+    <div class="grab"></div>
+    <h3 id="bt">책 제목</h3><div class="sub" id="bs">저자 · 한빛 시립도서관 소장 조회</div>
+    <div class="row"><div><b>한빛 시립도서관</b><small>어제 기준 · 소장 있음</small></div><span class="badge">어제 기준 · 대출 가능</span></div>
+    <div class="row"><div><b>실시간 확인</b><small>한빛 시립도서관 사이트에서 이 책 검색 결과 보기</small></div><button class="live">열기 ↗</button></div>
+    <div class="warn">※ 이 값은 도서관 정보나루의 전날 기준 자료입니다. 오늘 상태는 "실시간 확인"에서 도서관 사이트로 확인하세요. (외부 사이트로 이동합니다)</div>
+  </div>
+  <div class="toast" id="toast"></div>
+</main>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const phone=$('#phone');
+const feedData=[
+  {t:'post',tag:'게시물',bg:'var(--mustard)',h:150,title:'비 오는 날 읽기 좋은 단편집',meta:'♡ 48 · 책벌레',over:'"문장 하나가 하루를 바꾼다"'},
+  {t:'guest',tag:'방명록',text:'오늘 처음 와 봤어요. 창가 자리가 조용해서 좋네요 :)',meta:'새벽 · 2시간 전'},
+  {t:'post',tag:'게시물',bg:'var(--peach)',h:110,title:'창가 자리에서 쓴 문장',meta:'♡ 20 · 달빛'},
+  {t:'club',tag:'모임',title:'목요 저녁 독서모임',meta:'이번 달 책 · 불편한 편의점 · 7명',btn:'들어가기'},
+  {t:'post',tag:'게시물',bg:'var(--sage)',h:190,title:'동네 서점과 도서관 비교',meta:'♡ 17 · 한결'},
+  {t:'guest',tag:'방명록',text:'아이랑 그림책 코너 자주 와요. 사서님 추천 감사합니다.',meta:'하루 · 어제'},
+  {t:'post',tag:'게시물',bg:'var(--concrete3)',h:120,title:'이번 주 빌린 책',meta:'♡ 9 · 하루'},
+  {t:'club',tag:'모임',title:'어린이 그림책 모임',meta:'이번 달 책 · 구름빵 · 5명',btn:'들어가기'}
+];
+function card(c){
+  if(c.t==='post')return `<div class="card"><span class="tag">${c.tag}</span><div class="img" style="background:${c.bg};height:${c.h}px">${c.over||'IMG'}</div><div class="body"><h4>${c.title}</h4><p>${c.meta}</p></div></div>`;
+  if(c.t==='guest')return `<div class="card guest"><span class="tag">${c.tag}</span><h4>${c.text}</h4><p>${c.meta}</p></div>`;
+  if(c.t==='club')return `<div class="card club"><span class="tag">${c.tag}</span><h4>${c.title}</h4><p>${c.meta}</p><span class="btn">${c.btn}</span></div>`;
+  if(c.t==='stamp')return `<div class="card stampc"><span class="tag" style="color:#26262A">방문 기록</span><div class="ring">다녀옴</div><h4>오늘 한빛 시립도서관에 다녀왔어요</h4><p>나 · 방금</p></div>`;
+}
+let stampState=null; // null | 'pub' | 'priv'
+function renderFeed(){
+  const items=[...(stampState==='pub'?[{t:'stamp'}]:[]),...feedData];
+  $('#feed').innerHTML=items.map(card).join('');
+}
+const COLORS=['var(--mustard)','var(--peach)','var(--cream)','var(--sage)','var(--char)'];
+const SH={
+  read:{title:'요즘 사람들이 읽은 책',hint:'반납 처리 익명 집계',books:['아몬드','불편한 편의점','소년이 온다','채식주의자','달러구트']},
+  pop:{title:'인기 도서',hint:'정보나루 인기대출도서',books:['세이노의 가르침','트렌드 코리아','어른의 문해력','역행자','도둑맞은 집중력']},
+  theme:{title:'이번 주 테마 · 비 오는 날',hint:'운영자 추천',books:['우산 없이','비의 기억','빗소리','젖은 책방','구름 정원']}
+};
+function renderShelf(){
+  const ord=document.querySelector('input[name=ord]:checked').value;
+  let keys=ord==='read'?['read','pop','theme']:['pop','read','theme'];
+  if($('#emptyRead').checked)keys=keys.filter(k=>k!=='read');
+  $('#pages').innerHTML=keys.map((k,pi)=>`<div class="pg" data-k="${k}">${SH[k].books.map((b,i)=>`<button class="bk ${i%2?'t':''}" data-title="${b}" style="background:${COLORS[(i+pi)%5]};color:${(i+pi)%5===4?'var(--cream)':'var(--ink)'}">${b}</button>`).join('')}</div>`).join('');
+  $('#dots').innerHTML=keys.map((_,i)=>`<i class="${i?'':'on'}"></i>`).join('');
+  $('#pages').scrollLeft=0;
+  setShelfLabel(keys[0],keys);
+  $$('.bk').forEach(b=>b.onclick=()=>openBook(b.dataset.title));
+}
+function setShelfLabel(k){$('#shelftitle').textContent=SH[k].title;$('#shelfhint').textContent=SH[k].hint+' · 넘기기 ↔';}
+$('#pages').addEventListener('scroll',e=>{
+  const el=e.target,i=Math.round(el.scrollLeft/el.clientWidth);
+  const pgs=$$('.pg');if(!pgs[i])return;
+  $$('#dots i').forEach((d,j)=>d.classList.toggle('on',j===i));setShelfLabel(pgs[i].dataset.k);
+});
+function openBook(t){$('#bt').textContent=t;$('#bs').textContent='소장·대출 가능 조회 · 한빛 시립도서관';$('#bsheet').classList.add('on');}
+document.addEventListener('click',e=>{if(!e.target.closest('#bsheet')&&!e.target.closest('.bk'))$('#bsheet').classList.remove('on');
+  if(!e.target.closest('#pop')&&!e.target.closest('#stampbtn'))$('#pop').classList.remove('on');});
+$('.live').onclick=()=>toast('도서관 사이트로 이동합니다 (시안에서는 이동하지 않음)');
+function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('on');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('on'),1900);}
+function enter(name){
+  $('#libname').textContent=name;phone.classList.add('in');
+  setTimeout(()=>toast(name+'에 입장했어요'),260);
+  updateStamp();
+}
+function updateStamp(){
+  const b=$('#stampbtn');
+  if(stampState){b.classList.add('done');$('#stamptxt').textContent=stampState==='pub'?'✓ 오늘 다녀왔어요 · 공개':'✓ 오늘 다녀왔어요 · 나만';}
+  else{b.classList.remove('done');$('#stamptxt').textContent='다녀왔어요';}
+}
+$$('.pin').forEach(p=>p.onclick=()=>enter(p.dataset.lib));
+$('#back').onclick=()=>phone.classList.remove('in');
+$('#stampbtn').onclick=e=>{e.stopPropagation();if(!stampState)$('#pop').classList.toggle('on');};
+$$('#pop button').forEach(b=>b.onclick=()=>{stampState=b.dataset.pub==='1'?'pub':'priv';$('#pop').classList.remove('on');updateStamp();renderFeed();$('#feed').scrollTop=0;toast(stampState==='pub'?'방문 스탬프를 공개로 남겼어요':'방문 스탬프를 나만 보기로 남겼어요');});
+$$('[data-open-drawer]').forEach(b=>b.onclick=()=>phone.classList.add('dr'));
+$('#scrim').onclick=()=>phone.classList.remove('dr');
+$$('input[name=blur]').forEach(r=>r.onchange=()=>phone.dataset.blur=r.value);
+$$('input[name=mine]').forEach(r=>r.onchange=()=>phone.dataset.mine=r.value);
+$$('input[name=ord]').forEach(r=>r.onchange=renderShelf);
+$('#emptyRead').onchange=renderShelf;
+$('#reset').onclick=()=>{stampState=null;phone.classList.remove('in','dr');updateStamp();renderFeed();};
+renderFeed();renderShelf();
+if(location.hash==='#visit'){phone.classList.add('in');$('#feed').scrollTop=0;}
+if(location.hash==='#book'){phone.classList.add('in');setTimeout(()=>openBook('아몬드'),50);}
+if(location.hash==='#stamp'){phone.classList.add('in');$('#pop').classList.add('on');}
+</script>
+</body>
+</html>
