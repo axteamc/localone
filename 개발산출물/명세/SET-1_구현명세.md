@@ -116,6 +116,7 @@ DATABASE_URL=postgresql+psycopg://localone:localone@localhost:5433/localone_test
   - 스크린샷 비교는 이 Step에 넣지 않는다. 빌드가 되는지만 본다. 조작감·제스처는 CI로 볼 수 없어 D의 실기기 확인이 남는다.
   - **분리(2026-11-12 사용자 결정):** 파일 상한 때문에 이 job은 **SET-3b**로 분리하고 SET-3에는 넣지 않는다. 아래 확인 사항 중 Xcode 26.6(`macos-26` 기본)·공개 레포 무료는 확인됐고, SDK 58의 최소 Xcode와 빌드 소요 시간은 미확인이다([SET-3 결과 §1](../결과/SET-3_앱뼈대_CI.md)).
   - **SET-3 시작 때 확인할 것(미확인):** 공개 레포의 macOS 실행기 무료 한도, 빌드 소요 시간(너무 길면 `main` push와 네이티브 의존성 변경 PR로만 제한), Expo 시뮬레이터 빌드 명령과 Xcode 버전. 이 job 하나 때문에 SET-3이 파일 7개·약 600줄 상한을 넘으면 별도 Step으로 나눈다.
+  - **SET-3b 결과(2026-11-12):** SDK 58 최소 Xcode 26.4+ 확인, `macos-26`(Xcode 26.6)에서 `expo prebuild -p ios --clean` + `expo run:ios --device generic` 통과, 실측 13~23분. **실행 조건은 사용자 결정으로 바꿨다: PR에서는 돌지 않고 `main` push·수동 실행(`workflow_dispatch`)에서만 돈다(비차단, 깨지면 그 머지 커밋이 원인)**. 위의 "PR마다 자동으로 본다"·"`mobile/`이 바뀐 PR만 켠다"는 이것으로 대체한다([SET-3b 결과](../결과/SET-3b_iOS빌드점검.md)).
   - 웹 출력(`expo export --platform web`)은 이미 모든 PR에서 본다. 웹 화면의 자동 확인(Playwright 등)은 후보로만 두고 첫 기능 화면 Step에서 jest-expo와 함께 정한다.
 - **적용 시점**: SET-3 PR에서 `CI ok`가 한 번 통과하고 `main`에 들어간 **뒤** Hunseokc 계정으로 `gh api repos/axteamc/localone/rulesets --input 개발산출물/자료/ruleset_main.json`을 실행한다. 그전에 켜면 `CI ok`가 없어 모든 머지가 막힌다. 적용 뒤 문서 PR 하나로 `CI ok` 통과와 머지를 확인하고 결과 문서에 적는다.
 
