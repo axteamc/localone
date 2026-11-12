@@ -8,9 +8,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --concrete:#E6E1D9; --concrete2:#D5CEC3; --concrete3:#C4BCB0;
+  --concrete:#E1E1DE; --concrete2:#D0CEC8; --concrete3:#BFBCB5;
   --ink:#26262A; --muted:#7B766D; --line:#CFC8BC;
-  --mustard:#EEC96B; --cream:#F4EFE2; --peach:#F2C9A4; --paper:#FDFCF9; --char:#33333A; --sage:#B8BFB0; --on1:#26262A; --on2:#26262A; --on3:#26262A;
+  --mustard:#E9C970; --cream:#EFEFE7; --peach:#EDC9A9; --paper:#EFF1F1; --char:#2E333F; --sage:#B3BFB5; --on1:#26262A; --on2:#26262A; --on3:#26262A;
 }
 .phone[data-shape=modern]{--r-card:6px;--r-club:6px;--r-arch:3px;--r-pill:6px;--r-book:2px 4px 4px 2px}
 .phone[data-shape=arch]{--r-card:18px;--r-club:70px 70px 18px 18px;--r-arch:23px 23px 6px 6px;--r-pill:18px;--r-book:5px 9px 9px 5px}
@@ -80,7 +80,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .feed::-webkit-scrollbar{display:none}
 .card{break-inside:avoid;margin-bottom:10px;border-radius:var(--r-card,18px);overflow:hidden;background:var(--paper);position:relative}
 .card .tag{position:absolute;top:8px;left:8px;font-size:10px;font-weight:700;border-radius:var(--r-pill,9px);padding:2px 8px;background:#fffc;z-index:2}
-.card .img{display:grid;place-items:center;font-size:12px;color:#0007;padding:14px;text-align:center;font-weight:500}
+.card .img{display:grid;place-items:center;font-size:15px;line-height:1.35;color:#0007;padding:14px;text-align:center;font-weight:700}
 .card .body{padding:10px 12px 12px}
 .card h4{font-size:13px;line-height:1.35;font-weight:700}
 .card p{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.45}
@@ -152,13 +152,38 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 /* toast */
 .toast{position:absolute;top:58px;left:50%;transform:translate(-50%,-30px);background:var(--char);color:var(--cream);font-size:13px;font-weight:700;padding:10px 18px;border-radius:20px;opacity:0;transition:.3s;z-index:80;white-space:nowrap}
 .toast.on{opacity:1;transform:translate(-50%,0)}
+/* ---------- 취향 9:1 혼합 (data-taste=on) : 현재 결정 90 + DESIGN.md(취향) 10 ---------- */
+.phone[data-taste=on]{--ink:#1D1D1F;--paper:#EFF1F1}
+/* 형태: 컨트롤은 완전한 필, 라벨은 필이 아니라 직각 테두리, 목록 안 행동은 텍스트 링크 */
+.phone[data-taste=on] .back,.phone[data-taste=on] .stampbtn,.phone[data-taste=on] .live{border-radius:9999px}
+.phone[data-taste=on] .badge{border-radius:0;font-weight:500}
+.phone[data-taste=on] .card.club .btn{background:none;color:var(--ink);border-radius:0;padding:0;margin-top:10px;font-size:12px;font-weight:700}
+.phone[data-taste=on] .card.club .btn::after{content:" →"}
+/* 색: 포인트(파랑)는 링크 같은 작은 곳에만, 강조는 색이 아니라 굵기·명도로 */
+.phone[data-taste=on] .live{border-color:var(--ink)}
+.phone[data-taste=on] .toast{background:var(--char)}
+.bn{display:none}
+.phone[data-taste=on] .back{background:none;box-shadow:none;border-radius:0;padding:10px 8px 10px 0;color:var(--ink);line-height:0}
+.phone[data-taste=on] .bo{display:none}
+.phone[data-taste=on] .bn{display:block;filter:drop-shadow(0 1px 2px rgba(0,0,0,.28))}
+/* 태그 5안: 카드마다 하나씩 적용해 비교. 공통: 배경 알약을 없애고 흐릿하게 */
+.phone[data-taste=on] .card .tag{color:var(--on,var(--ink))!important;font-weight:500;letter-spacing:.03em}
+.phone[data-taste=on] .card .tag.k0{color:var(--ink)!important;font-weight:700;letter-spacing:0}
+.phone[data-taste=on] .card .tag.k1{background:none;padding:0;top:10px;left:11px;opacity:.7;border-radius:0}
+.phone[data-taste=on] .card .tag.k1::before{content:"";display:inline-block;width:5px;height:5px;border-radius:50%;background:currentColor;margin-right:5px;vertical-align:1px}
+.phone[data-taste=on] .card .tag.k2{background:color-mix(in srgb,var(--on,var(--ink)) 11%,transparent);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);opacity:.78;border-radius:9999px;padding:2px 9px}
+.phone[data-taste=on] .card .tag.k3{background:none;padding:0;top:10px;left:11px;opacity:.85;border-radius:0;text-shadow:0 1px 4px #0003}
+.phone[data-taste=on] .card .tag.k4{background:none;border:1px solid color-mix(in srgb,var(--on,var(--ink)) 30%,transparent);opacity:.75;border-radius:9999px;padding:1px 8px}
+.phone[data-taste=on] .card .tag.k5{background:color-mix(in srgb,var(--on,var(--ink)) 10%,transparent);opacity:.7;border-radius:50%;width:20px;height:20px;padding:0;display:grid;place-items:center;font-size:10px;left:auto;right:8px;transform:none}
+.phone[data-taste=on] .card.club .tag.k1,.phone[data-taste=on] .card.club .tag.k3{left:50%;transform:translateX(-50%)}
+.phone[data-taste=on] .card.club .tag.k5{left:auto;transform:none}
 </style>
 </head>
 <body>
 
 <aside class="panel">
   <h1>방문 페이지 시안</h1>
-  <p class="s">개발산출물/02 요구사항의 2026-11-11 결정(C-13~C-17)을 한 화면에서 확인하는 정적 시안입니다. 값·문구는 모두 임시입니다.</p>
+  <p class="s">DESIGN.md의 결정(취향 프로필 10% 반영 + 웜 온도 -20%)을 적용한 기준 시안입니다. 5번 체크를 끄면 취향 반영 전 형태로 돌아갑니다. 개발산출물/02 요구사항의 2026-11-11 결정(C-13~C-17)을 한 화면에서 확인하는 정적 시안입니다. 값·문구는 모두 임시입니다.</p>
   <fieldset><legend>1. 피드-책장 사이 처리</legend>
     <label><input type="radio" name="blur" value="C" checked> C: 얇은 블러 띠 + 그라데이션</label>
     <label><input type="radio" name="blur" value="B"> B: 그라데이션 페이드만(블러 불가 기기)</label>
@@ -179,11 +204,25 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
     <label><input type="checkbox" class="mod" value="새빛 도서관"> 새빛 = 모던</label>
     <label>룩 강제: <select id="lookSel" style="background:#3A3834;color:#EDE8DE;border:0;border-radius:6px;padding:2px 4px"></select></label>
     <div class="note" id="assign"></div></fieldset>
+  <fieldset><legend>5. 취향 반영 (9:1)</legend>
+    <label><input type="checkbox" id="taste" checked> 취향 10% 적용 (끄면 반영 전 형태)</label>
+    <div class="note">바뀌는 것: 글자색 #1D1D1F · 카드 흰색 한 단계 눌림 · 모임 카드 버튼(필→"들어가기 →" 텍스트 링크) · 컨트롤 완전 필. 게시물은 제목 없이 이미지 안 글자만. 안 바뀌는 것: 아치 곡률 카드, 룩 4종, 책장·블러 구조.</div></fieldset>
+  <fieldset><legend>6. 태그 표기 (흐릿하게)</legend>
+    <select id="tagSel" style="background:#3A3834;color:#EDE8DE;border:0;border-radius:6px;padding:3px 6px;width:100%">
+      <option value="mix">카드마다 다르게 (비교)</option>
+      <option value="1" selected>① 점 + 글자 (기본)</option><option value="2">② 유리 필 (블러·10% 틴트)</option>
+      <option value="3">③ 글자만 + 은은한 그림자</option><option value="4">④ 고스트 필 (옅은 테두리)</option><option value="5">⑤ 한 글자 동그라미 (우상단)</option></select>
+    <div class="note">기본은 ①이고 모임 카드만 원래 알약입니다. 비교 모드 순서: 피드 카드 1번부터 ①②③④⑤①②③④⑤. 방문 스탬프를 공개로 남기면 맨 앞에 카드가 하나 늘어 순서가 한 칸씩 밀립니다. 5번 취향 체크를 끄면 원래 알약입니다.</div></fieldset>
+  <fieldset><legend>명세 · 결정 기록</legend>
+    <div class="note" id="specTemp" style="margin:0 0 8px"></div>
+    <div class="note" style="margin:0 0 4px"><b style="color:#EDE8DE">웜 온도</b> — 채택: <b style="color:#EDE8DE">-20%</b>(warm·toffee에 적용) · 차선: 없음 · 탈락: 0%(기존, 너무 따뜻), -10%(차이가 작음), -30%(거의 무채색). 단계 = 모든 색의 R를 24×n 낮추고 B를 24×n 올림(0~255 제한). 모던(주황)은 제외, Oxford는 이미 차가워 적용하지 않음. 핀 가온·나래·다솜과 패널 4번 룩 강제로 후보를 다시 볼 수 있음.</div>
+    <div class="note" style="margin:0 0 4px"><b style="color:#EDE8DE">태그</b> — 채택: ① 점+글자, 모임만 알약 · 차선: 아직 안 받음 · 탈락: ② 유리 필, ③ 글자+그림자, ④ 고스트 필, ⑤ 한 글자 동그라미(패널 6번에서 다시 봄).</div>
+    <div class="note"><b style="color:#EDE8DE">뒤로가기</b> — 채택: 굵은 "‹"(선 3.6)+약한 그림자, 알약 없음 · 차선: 아직 안 받음 · 탈락: 파랑 링크, "‹ 동네" 알약(5번 체크를 끄면 다시 봄).</div></fieldset>
   <button class="reset" id="reset">처음으로(오늘 첫 입장 상태로 되돌리기)</button>
   <div class="note" style="margin-top:12px">시연 순서: 홈에서 핀 누르기 → 입장 전환 → 우측 상단 "다녀왔어요" → 책장 넘기기 → 책 누르기(대출 가능 문구·실시간 확인).</div>
 </aside>
 
-<main class="phone" id="phone" data-blur="C" data-mine="tab">
+<main class="phone" id="phone" data-blur="C" data-mine="tab" data-taste="on">
   <div class="status"><span>9:41</span><span>●●● ▮</span></div>
 
   <!-- 홈 -->
@@ -199,12 +238,15 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
       <i class="road" style="left:78px;top:270px;width:10px;height:380px"></i>
       <i class="road" style="left:290px;top:370px;width:10px;height:280px"></i>
       <span class="me" style="left:250px;top:205px"></span>
-      <button class="pin" data-lib="한빛 시립도서관" style="left:140px;top:230px"><b><span>책</span></b><em>한빛 시립도서관 · 320m</em></button>
+      <button class="pin" data-lib="한빛 시립도서관" style="left:140px;top:230px"><b><span>책</span></b><em>한빛 · 320m · 웜 -20% (채택)</em></button>
       <button class="pin" data-lib="달빛 작은도서관" style="left:300px;top:430px"><b><span>책</span></b><em>달빛 작은도서관 · 860m</em></button>
       <button class="pin" data-lib="새빛 도서관" style="left:312px;top:306px"><b><span>책</span></b><em>새빛 도서관 · 2.1km</em></button>
-      <button class="pin" data-lib="푸른 구립도서관" style="left:62px;top:500px"><b><span>책</span></b><em>푸른 구립도서관 · 1.4km</em></button>
+      <button class="pin" data-lib="가온 도서관" style="left:110px;top:372px"><b><span>책</span></b><em>가온 · 웜 -10% (후보)</em></button>
+      <button class="pin" data-lib="나래 도서관" style="left:190px;top:525px"><b><span>책</span></b><em>나래 · 웜 0% (기존)</em></button>
+      <button class="pin" data-lib="다솜 도서관" style="left:320px;top:222px"><b><span>책</span></b><em>다솜 · 웜 -30% (후보)</em></button>
+      <button class="pin" data-lib="푸른 구립도서관" style="left:62px;top:500px"><b><span>책</span></b><em>푸른 · 1.4km · toffee -20%</em></button>
     </div>
-    <div class="search"><button class="menu" data-open-drawer>☰</button>현재 위치 기준 · 도서관 4곳</div>
+    <div class="search"><button class="menu" data-open-drawer>☰</button>현재 위치 기준 · 도서관 7곳</div>
     <div class="hsheet"><div class="grab"></div><h3>우리 동네 이야기</h3><p>지역 인기글 · 내 최근 독서 기록 · 추천 서적</p>
       <div class="mini"><div style="background:var(--peach)"></div><div style="background:var(--sage)"></div></div></div>
   </section>
@@ -212,7 +254,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
   <!-- 방문 페이지 -->
   <section class="screen visit" id="visit">
     <div class="vhead">
-      <button class="back" id="back">‹ 동네</button>
+      <button class="back" id="back" aria-label="동네로"><span class="bo">‹ 동네</span><svg class="bn" viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4 7 12l8 8"/></svg></button>
       <div class="arch">책</div>
       <div><h2 id="libname">한빛 시립도서관</h2><p>320m · 오늘 09:00–18:00 운영</p></div>
       <button class="menu" data-open-drawer>☰</button>
@@ -254,24 +296,26 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
 const phone=$('#phone');
 const feedData=[
-  {t:'post',tag:'게시물',bg:'var(--mustard)',h:150,title:'비 오는 날 읽기 좋은 단편집',meta:'♡ 48 · 책벌레',over:'"문장 하나가 하루를 바꾼다"'},
+  {t:'post',tag:'게시물',bg:'var(--mustard)',h:210,noText:true,over:'"문장 하나가<br>하루를 바꾼다"'},
   {t:'guest',tag:'방명록',text:'오늘 처음 와 봤어요. 창가 자리가 조용해서 좋네요 :)',meta:'새벽 · 2시간 전'},
-  {t:'post',tag:'게시물',bg:'var(--peach)',h:110,title:'창가 자리에서 쓴 문장',meta:'♡ 20 · 달빛'},
+  {t:'post',tag:'게시물',bg:'var(--peach)',h:130,noText:true,over:'창가 자리에서<br>쓴 문장'},
   {t:'club',tag:'모임',title:'목요 저녁 독서모임',meta:'이번 달 책 · 불편한 편의점 · 7명',btn:'들어가기'},
-  {t:'post',tag:'게시물',bg:'var(--sage)',h:190,title:'동네 서점과 도서관 비교',meta:'♡ 17 · 한결'},
+  {t:'post',tag:'게시물',bg:'var(--sage)',h:250,noText:true,over:'동네 서점과<br>도서관 비교'},
   {t:'guest',tag:'방명록',text:'아이랑 그림책 코너 자주 와요. 사서님 추천 감사합니다.',meta:'하루 · 어제'},
-  {t:'post',tag:'게시물',bg:'var(--concrete3)',h:120,title:'이번 주 빌린 책',meta:'♡ 9 · 하루'},
+  {t:'post',tag:'게시물',bg:'var(--concrete3)',h:150,noText:true,over:'이번 주 빌린 책'},
   {t:'post',tag:'게시물',bg:'var(--sage)',h:230,noText:true},
-  {t:'post',tag:'게시물',bg:'var(--char)',h:140,noText:true,over:'"오늘도 한 줄"',light:true},
+  {t:'post',tag:'게시물',bg:'var(--char)',h:170,noText:true,over:'"오늘도 한 줄"',light:true},
   {t:'club',tag:'모임',title:'어린이 그림책 모임',meta:'이번 달 책 · 구름빵 · 5명',btn:'들어가기'}
 ];
 const ONC={'var(--mustard)':'var(--on1)','var(--peach)':'var(--on2)','var(--sage)':'var(--on3)','var(--char)':'var(--cream)','var(--concrete3)':'var(--ink)'};
 const ONB=['var(--on1)','var(--on2)','var(--ink)','var(--on3)','var(--cream)'];
-function card(c){
-  if(c.t==='post')return `<div class="card"><span class="tag">${c.tag}</span><div class="img" style="background:${c.bg};height:${c.h}px;color:${ONC[c.bg]||'var(--ink)'}">${c.over||'IMG'}</div>${c.noText?'':`<div class="body"><h4>${c.title}</h4><p>${c.meta}</p></div>`}</div>`;
-  if(c.t==='guest')return `<div class="card guest"><span class="tag">${c.tag}</span><h4>${c.text}</h4><p>${c.meta}</p></div>`;
-  if(c.t==='club')return `<div class="card club"><span class="tag">${c.tag}</span><h4>${c.title}</h4><p>${c.meta}</p><span class="btn">${c.btn}</span></div>`;
-  if(c.t==='stamp')return `<div class="card stampc"><span class="tag" style="color:#26262A">방문 기록</span><div class="ring">다녀옴</div><h4>오늘 한빛 시립도서관에 다녀왔어요</h4><p>나 · 방금</p></div>`;
+const SHORT={'게시물':'글','방명록':'방','모임':'모','방문 기록':'발'};
+const tg=(c,i)=>{const m=phone.dataset.tag||'1';const k=c.t==='club'?0:m==='mix'?i%5+1:+m;return `<span class="tag k${k}" title="${c.tag}">${k===5?SHORT[c.tag]:c.tag}</span>`;};
+function card(c,i){
+  if(c.t==='post')return `<div class="card" style="--on:${ONC[c.bg]||'var(--ink)'}">${tg(c,i)}<div class="img" style="background:${c.bg};height:${c.h}px;color:${ONC[c.bg]||'var(--ink)'}">${c.over||'IMG'}</div>${c.noText?'':`<div class="body"><h4>${c.title}</h4><p>${c.meta}</p></div>`}</div>`;
+  if(c.t==='guest')return `<div class="card guest">${tg(c,i)}<h4>${c.text}</h4><p>${c.meta}</p></div>`;
+  if(c.t==='club')return `<div class="card club">${tg(c,i)}<h4>${c.title}</h4><p>${c.meta}</p><span class="btn">${c.btn}</span></div>`;
+  if(c.t==='stamp')return `<div class="card stampc" style="--on:var(--cream)">${tg({tag:"방문 기록"},i)}<div class="ring">다녀옴</div><h4>오늘 한빛 시립도서관에 다녀왔어요</h4><p>나 · 방금</p></div>`;
 }
 let stampState=null; // null | 'pub' | 'priv'
 function renderFeed(){
@@ -312,20 +356,24 @@ const LOOKS=[ // id,이름,형태,채움1,채움2,채움3,배경,카드흰색,�
 ['WM','warm','arch','#EEC96B','#F2C9A4','#B8BFB0','#E6E1D9','#FDFCF9','#33333A','#F4EFE2','#D5CEC3','#C4BCB0'],
 ['TF','toffee','arch','#755139','#D9BE97','#B5A184','#EBE2D4','#FBF8F2','#3A2A20','#F5EFE6','#DCCFBD','#C9BBA6'],
 ['OX','Oxford','arch','#35557F','#D2B48C','#9DB0C9','#E3E5E8','#FCFCFD','#002147','#F3EFE7','#D1D5DB','#BCC2CC']];
+const cool=(h,n)=>{const k=24*n;return '#'+[1,3,5].map((i,j)=>{let v=parseInt(h.slice(i,i+2),16);v+=j===0?-k:j===2?k:0;return Math.max(0,Math.min(255,Math.round(v))).toString(16).padStart(2,'0');}).join('');};
+const WM=LOOKS[1],TF=LOOKS[2];
+[[0.1,'W10','웜 -10%'],[0.2,'W20','웜 -20%'],[0.3,'W30','웜 -30%']].forEach(([n,id,nm])=>LOOKS.push([id,nm,'arch',...WM.slice(3).map(c=>cool(c,n))]));
+LOOKS.push(['T20','toffee -20%','arch',...TF.slice(3).map(c=>cool(c,.2))]);
 const lum=h=>{const c=[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255).map(v=>v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4));return .2126*c[0]+.7152*c[1]+.0722*c[2];};
 const onOf=h=>{const L=lum(h);return (L+.05)/(lum('#1B1B1F')+.05)>=(1.05)/(L+.05)?'#1B1B1F':'#FFFFFF';};
-const STORED={'한빛 시립도서관':'WM','달빛 작은도서관':'WM','푸른 구립도서관':'TF','새빛 도서관':'OX'}; // 처음 배정한 룩을 저장해 둔 것
+const STORED={'한빛 시립도서관':'W20','달빛 작은도서관':'W20','푸른 구립도서관':'T20','새빛 도서관':'OX','가온 도서관':'W10','나래 도서관':'WM','다솜 도서관':'W30'}; // 처음 배정한 룩을 저장해 둔 것
 $('#lookSel').innerHTML='<option value="auto">자동 배정</option>'+LOOKS.map(l=>`<option value="${l[0]}">${l[0]} ${l[1]}</option>`).join('');
 function lookFor(name){
   const f=$('#lookSel').value;if(f!=='auto')return LOOKS.find(l=>l[0]===f);
   const modern=$$('.mod').some(c=>c.checked&&c.value===name);
-  return modern?LOOKS[0]:LOOKS.find(l=>l[0]===(STORED[name]||'WM'));}
-const LIBS=['한빛 시립도서관','달빛 작은도서관','푸른 구립도서관','새빛 도서관'];
+  return modern?LOOKS[0]:LOOKS.find(l=>l[0]===(STORED[name]||'W20'));}
+const LIBS=['한빛 시립도서관','달빛 작은도서관','푸른 구립도서관','새빛 도서관','가온 도서관','나래 도서관','다솜 도서관'];
 function showAssign(){$('#assign').innerHTML=LIBS.map(n=>{const l=lookFor(n);return n.slice(0,2)+' → '+l[0]+' '+l[1];}).join('<br>');}
 function applyLook(name){const l=lookFor(name),bg=l[6];phone.dataset.shape=l[2];const st=phone.style;
   st.setProperty('--concrete',bg);st.setProperty('--concrete2',l[10]);st.setProperty('--concrete3',l[11]);
   st.setProperty('--mustard',l[3]);st.setProperty('--peach',l[4]);st.setProperty('--sage',l[5]);
-  st.setProperty('--cream',l[9]);st.setProperty('--paper',l[7]);st.setProperty('--char',l[8]);st.setProperty('--muted',mix(bg,'#000000',.5));st.setProperty('--line',mix(bg,'#000000',.13));
+  st.setProperty('--cream',l[9]);st.setProperty('--paper',phone.dataset.taste==='on'?mix(l[7],bg,.4):l[7]);st.setProperty('--char',l[8]);st.setProperty('--muted',mix(bg,'#000000',.5));st.setProperty('--line',mix(bg,'#000000',.13));
   st.setProperty('--on1',onOf(l[3]));st.setProperty('--on2',onOf(l[4]));st.setProperty('--on3',onOf(l[5]));}
 function resetLook(){delete phone.dataset.shape;['--concrete','--concrete2','--concrete3','--mustard','--peach','--sage','--cream','--paper','--char','--muted','--line','--on1','--on2','--on3'].forEach(k=>phone.style.removeProperty(k));}
 function paintPins(){$$('.pin').forEach(p=>{const l=lookFor(p.dataset.lib);const b=p.querySelector('b');b.style.background=l[3];const y=[1,3,5].map(i=>parseInt(l[3].slice(i,i+2),16));b.querySelector('span').style.color=(y[0]*299+y[1]*587+y[2]*114)/1000<150?'#fff':'#26262A';});showAssign();}
@@ -350,8 +398,12 @@ $$('input[name=blur]').forEach(r=>r.onchange=()=>phone.dataset.blur=r.value);
 $$('input[name=mine]').forEach(r=>r.onchange=()=>phone.dataset.mine=r.value);
 $$('input[name=ord]').forEach(r=>r.onchange=renderShelf);
 $('#emptyRead').onchange=renderShelf;
+$('#tagSel').onchange=e=>{phone.dataset.tag=e.target.value;renderFeed();};
+$('#taste').onchange=e=>{phone.dataset.taste=e.target.checked?'on':'off';if(phone.classList.contains('in'))applyLook($('#libname').textContent);};
 $('#reset').onclick=()=>{stampState=null;phone.classList.remove('in','dr');updateStamp();renderFeed();};
 [...$$('.mod'),$('#lookSel')].forEach(r=>r.onchange=()=>{paintPins();if(phone.classList.contains('in'))applyLook($('#libname').textContent);});
+(function(){const rows=[['웜 0% (기존)',LOOKS[1]],...LOOKS.slice(4,7).map(l=>[l[1]+(l[0]==='W20'?' ★채택':''),l]),['toffee 0% (기존)',LOOKS[2]],['toffee -20% ★채택',LOOKS[7]]];
+$('#specTemp').innerHTML='<table style="border-collapse:collapse;width:100%;font-size:11px"><tr style="color:#A8A296"><td>단계</td><td>배경</td><td>선반</td><td>채움1</td><td>채움2</td><td>채움3</td></tr>'+rows.map(([n,l])=>`<tr><td>${n}</td>${[6,10,3,4,5].map(i=>`<td><span style="display:inline-block;width:10px;height:10px;background:${l[i]};border:1px solid #6665;vertical-align:-1px"></span> ${l[i].slice(1)}</td>`).join('')}</tr>`).join('')+'</table>';})();
 renderFeed();renderShelf();paintPins();
 {const m=location.hash.match(/^#look-(\w+)/);if(m){$('#lookSel').value=m[1];paintPins();enter('한빛 시립도서관');}}
 if(location.hash==='#vivid')enter('달빛 작은도서관');
