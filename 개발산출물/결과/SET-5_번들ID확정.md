@@ -38,8 +38,12 @@
 - App Store Connect·Play Console에서 해당 ID가 이미 다른 앱에 쓰이는지: 조회하지 않음(계정 필요, RELEASE 때).
 - 브라우저 웹 스모크 화면(`expo start --web` → `/api/v1/ready`) 확인은 D가 직접 한다([SET-4 결과 §5](SET-4_서버개발용CORS.md)).
 
-## 5. 이어서 할 일
+## 5. 머지·CI 확인 (2026-11-12)
 
-1. PR 리뷰·머지(D).
-2. 브라우저 웹 스모크 화면 확인(D).
-3. 스토어 제출 전(RELEASE): 도메인·스토어 ID 중복 확인과 변경 영향(prebuild·EAS 문서) 확인.
+- SET-4 PR #13 머지 `88fa944`의 main push 실행(run 43154458284): 전체 success(iOS 빌드 점검 포함).
+- PR #14: `CI ok` 통과(문서만 바뀌어 서버·앱·iOS job은 건너뜀, run 43159571317).
+
+## 6. 이어서 할 일
+
+1. 브라우저 웹 스모크 화면 확인(D).
+2. 스토어 제출 전(RELEASE): 도메인·스토어 ID 중복 확인과 변경 영향(prebuild·EAS 문서) 확인.
