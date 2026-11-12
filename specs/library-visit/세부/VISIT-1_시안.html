@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VISIT-1 지도 홈 시안</title>
+<style>
+/* 색·곡률은 디자인_기준.md 토큰 이름을 CSS 변수로 쓴다 (warm 룩) */
+:root{
+  --bg:#E6E1D9; --surface2:#D5CEC3; --surface3:#C4BCB0;
+  --fill1:#EEC96B; --fill2:#F2C9A4; --fill3:#B8BFB0;
+  --cream:#F4EFE2; --paper:#FDFCF9; --ink-strong:#33333A;
+  --text:#26262A; --text-sub:#7B766D; --line:#CFC8BC;
+  --r-card:18px; --r-pill:18px; --r-arch:23px 23px 6px 6px;
+}
+*{box-sizing:border-box;margin:0}
+body{font-family:'Noto Sans KR',system-ui,sans-serif;background:#2B2A28;color:var(--text);display:flex;gap:24px;flex-wrap:wrap;justify-content:center;padding:20px}
+.col{display:flex;flex-direction:column;gap:10px;align-items:center}
+.cap{color:#EEE;font-size:13px;max-width:390px;text-align:center}
+.phone{width:390px;height:844px;background:var(--bg);border-radius:32px;position:relative;overflow:hidden}
+.status{height:44px}
+.top{padding:6px 16px 10px;display:flex;justify-content:space-between;align-items:center}
+.top h1{font-size:18px}
+.base{font-size:12px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-pill);padding:6px 12px}
+.map{position:absolute;left:0;right:0;top:100px;height:600px;background:#E9E6DD;overflow:hidden}
+.road{position:absolute;background:#D9D3C7}
+.land{position:absolute;background:var(--fill3);opacity:.5;border-radius:12px;font-size:11px;padding:4px 8px;color:var(--text-sub)}
+.me{position:absolute;left:190px;top:330px;width:16px;height:16px;border-radius:50%;background:var(--ink-strong);box-shadow:0 0 0 8px rgba(51,51,58,.15)}
+.pin{position:absolute;border:0;background:none;text-align:left;cursor:pointer}
+.pin b{display:inline-flex;width:34px;height:40px;background:var(--fill1);border-radius:var(--r-arch);align-items:center;justify-content:center;font-size:12px}
+.pin em{display:block;font-style:normal;font-size:12px;background:var(--paper);border-radius:var(--r-pill);padding:3px 8px;margin-top:3px;white-space:nowrap}
+.sheet{position:absolute;left:0;right:0;bottom:72px;background:var(--surface2);padding:12px 16px;font-size:13px}
+.bar{position:absolute;left:0;right:0;bottom:0;height:72px;background:var(--paper);display:flex;justify-content:space-around;align-items:center;font-size:12px;color:var(--text-sub)}
+.card{background:var(--paper);border-radius:var(--r-card);padding:14px;margin:0 16px 10px}
+.card h3{font-size:15px}.card p{font-size:12px;color:var(--text-sub);margin-top:4px}
+.btn{display:inline-block;background:var(--ink-strong);color:#fff;border-radius:var(--r-pill);padding:8px 14px;font-size:13px;margin:6px 6px 0 0}
+.btn.sub{background:var(--paper);color:var(--text);border:1px solid var(--line)}
+.chips{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 10px}
+.chip{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-pill);padding:8px 14px;font-size:13px}
+.chip.on{background:var(--fill1)}
+.note{font-size:12px;color:var(--text-sub);padding:0 16px 10px}
+</style>
+</head>
+<body>
+
+<!-- 화면 A: 위치를 허락한 경우 -->
+<div class="col">
+<div class="phone">
+  <div class="status"></div>
+  <div class="top"><h1>동네한권</h1><span class="base">현재 위치 기준 ▾</span></div>
+  <div class="map">
+    <div class="road" style="left:0;top:280px;width:100%;height:14px"></div>
+    <div class="road" style="left:150px;top:0;width:14px;height:100%"></div>
+    <div class="land" style="left:30px;top:60px">○○공원</div>
+    <div class="land" style="left:240px;top:150px">△△시장</div>
+    <div class="me"></div>
+    <button class="pin" style="left:90px;top:200px"><b>책</b><em>한빛 시립도서관 · 320m</em></button>
+    <button class="pin" style="left:240px;top:380px"><b>책</b><em>달빛 작은도서관 · 860m</em></button>
+    <button class="pin" style="left:20px;top:440px"><b>책</b><em>푸른 구립도서관 · 1.4km</em></button>
+  </div>
+  <div class="sheet">핀을 누르면 그 도서관의 방문 페이지로 넘어가요. (다음 세부 VISIT-2)</div>
+  <div class="bar"><span>홈</span><span>독서 기록</span><span>글쓰기</span><span>대출</span><span>내 정보</span></div>
+</div>
+<div class="cap">A. 위치를 허락한 경우: 내 위치 중심으로 도서관 핀과 거리. 길 안내는 없음.</div>
+</div>
+
+<!-- 화면 B: 위치를 허락하지 않은 처음 -->
+<div class="col">
+<div class="phone">
+  <div class="status"></div>
+  <div class="top"><h1>동네한권</h1></div>
+  <div class="card" style="margin-top:20px">
+    <h3>어느 동네 도서관을 볼까요?</h3>
+    <p>위치를 허락하지 않아도 동네를 고르면 바로 볼 수 있어요. 한 번 고르면 다음부터 묻지 않아요.</p>
+  </div>
+  <div class="chips"><span class="chip on">○○구 △△동</span><span class="chip">○○구 □□동</span><span class="chip">다른 동네 찾기</span></div>
+  <div style="padding:0 16px"><span class="btn">이 동네로 시작</span><span class="btn sub">위치 허용하기</span></div>
+  <div class="note" style="margin-top:14px">정확한 위치나 집 주소는 저장하지 않아요.</div>
+  <div class="bar"><span>홈</span><span>독서 기록</span><span>글쓰기</span><span>대출</span><span>내 정보</span></div>
+</div>
+<div class="cap">B. 위치를 허락하지 않은 처음: 동네를 한 번 고른다. 이후엔 다시 묻지 않고, 동네 변경·위치 허용은 언제든 가능.</div>
+</div>
+
+<!-- 화면 C: 지도가 안 뜰 때 목록 -->
+<div class="col">
+<div class="phone">
+  <div class="status"></div>
+  <div class="top"><h1>동네한권</h1><span class="base">○○구 △△동 ▾</span></div>
+  <div class="note">지도를 불러오지 못해 목록으로 보여 드려요.</div>
+  <div class="card"><h3>한빛 시립도서관</h3><p>320m · 눌러서 방문 페이지로</p></div>
+  <div class="card"><h3>달빛 작은도서관</h3><p>860m · 눌러서 방문 페이지로</p></div>
+  <div class="card"><h3>푸른 구립도서관</h3><p>1.4km · 눌러서 방문 페이지로</p></div>
+  <div style="padding:0 16px"><span class="btn sub">지도 다시 불러오기</span></div>
+  <div class="bar"><span>홈</span><span>독서 기록</span><span>글쓰기</span><span>대출</span><span>내 정보</span></div>
+</div>
+<div class="cap">C. 지도가 안 뜰 때: 같은 여정을 도서관 목록으로 제공.</div>
+</div>
+
+</body>
+</html>
