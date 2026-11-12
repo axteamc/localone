@@ -7,12 +7,13 @@ from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from sqlalchemy import create_engine
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.common import error_response, now_kst
-from app.settings import Settings, get_settings
+from app.settings import CORS_ENVS, LOCAL_ORIGIN_REGEX, Settings, get_settings
 
 logger = logging.getLogger("localone")
 DB_TIMEOUT_SECONDS = 2
@@ -42,6 +43,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
     app.state.engine = engine
+
+    if settings.app_env in CORS_ENVS:
+        # 웹 스모크(브라우저)가 로컬 서버를 부를 수 있게 한다. 인증은 헤더(JWT)라 쿠키 자격 증명은 허용하지 않는다
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origin_regex=LOCAL_ORIGIN_REGEX,
+            allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+            allow_headers=["Authorization", "Content-Type"],
+        )
 
     def _ping() -> None:
         with engine.connect() as conn:
