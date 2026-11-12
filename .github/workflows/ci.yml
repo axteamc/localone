@@ -1,19 +1,21 @@
 name: CI
 
-# PR과 main push만 돈다. 문서만 바뀐 PR은 서버·앱 job을 건너뛴다(필수 체크가 '대기'로 남지 않게 paths-ignore는 쓰지 않는다).
+# PR과 main push만 돈다(수동 실행 가능). 문서만 바뀐 PR은 서버·앱 job을 건너뛴다(필수 체크가 '대기'로 남지 않게 paths-ignore는 쓰지 않는다).
 # main 보호 규칙의 필수 체크는 `CI ok` 하나뿐이다(개발산출물/명세/SET-1_구현명세.md §5-1).
 on:
   pull_request:
     branches: [main]
   push:
     branches: [main]
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+# PR은 새 push가 오면 이전 실행을 취소한다. main push·수동 실행은 커밋마다 따로 돌아 서로 취소하지 않는다(iOS 결과로 깨진 머지를 특정하려고).
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   changes:
@@ -21,7 +23,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       code: ${{ steps.detect.outputs.code }}
-      mobile: ${{ steps.detect.outputs.mobile }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -34,7 +35,6 @@ jobs:
           # main push는 항상 전부 돈다
           if [ "$EVENT" != "pull_request" ]; then
             echo "code=true" >> "$GITHUB_OUTPUT"
-            echo "mobile=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           files=$(git -c core.quotepath=off diff --name-only "$BASE_SHA" HEAD)
@@ -44,12 +44,6 @@ jobs:
             echo "code=true" >> "$GITHUB_OUTPUT"
           else
             echo "code=false" >> "$GITHUB_OUTPUT"
-          fi
-          # iOS 빌드 점검(실측 약 23분)은 네이티브에 영향을 주는 파일이 바뀐 PR만 켠다(화면 코드만 바뀐 PR은 건너뜀, 2026-11-12 사용자 결정)
-          if echo "$files" | grep -q -E '^(mobile/(package\.json|package-lock\.json|app\.json)$|\.github/workflows/ci\.yml$)'; then
-            echo "mobile=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "mobile=false" >> "$GITHUB_OUTPUT"
           fi
 
   server:
@@ -108,7 +102,8 @@ jobs:
   ios:
     name: iOS 빌드 점검
     needs: changes
-    if: needs.changes.outputs.mobile == 'true'
+    # 실측 13~23분이라 PR에서는 돌리지 않는다(PR 대기 0). main push·수동 실행에서만 돌고, 깨지면 그 머지 커밋이 원인이다(2026-11-12 사용자 결정).
+    if: github.event_name != 'pull_request'
     # macos-26 기본 Xcode 26.6(Expo SDK 58 최소 26.4). ios/는 커밋하지 않고 여기서만 만든다. 스크린샷 비교 없음.
     runs-on: macos-26
     timeout-minutes: 60
