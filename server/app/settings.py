@@ -9,6 +9,11 @@ from sqlalchemy.engine import make_url
 
 LOCAL_HOSTS = {"localhost", "127.0.0.1"}
 
+# 개발용 CORS: 로컬 출처만(Expo 웹 개발 서버 http://localhost:8081 등). 정규식은 전체 일치로 검사돼
+# http://localhost.evil.com 같은 출처는 통과하지 못한다. production에서는 CORS를 켜지 않는다.
+LOCAL_ORIGIN_REGEX = r"https?://(localhost|127\.0\.0\.1)(:\d+)?"
+CORS_ENVS = {"local", "test"}
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
