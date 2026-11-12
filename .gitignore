@@ -53,3 +53,11 @@ tmp/
 /CLAUDE.md
 /.claude/
 /개발산출물/완료/team_초안_20261110/
+
+# Expo 앱: 네이티브 폴더는 커밋하지 않는다(app.json 설정으로 생성)
+ios/
+android/
+.expo/
+expo-env.d.ts
+*.tsbuildinfo
+.pytest_cache/
