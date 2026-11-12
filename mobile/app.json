@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "동네한권",
+    "slug": "localone",
+    "version": "0.0.1",
+    "scheme": "localone",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "plugins": ["expo-router"],
+    "ios": {
+      "bundleIdentifier": "kr.localone.app"
+    },
+    "android": {
+      "package": "kr.localone.app"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    }
+  }
+}
