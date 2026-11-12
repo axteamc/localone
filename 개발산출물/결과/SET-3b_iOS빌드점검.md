@@ -39,7 +39,7 @@
 | `CI ok` | pass(iOS job을 기다린 뒤 집계) | 3초 |
 
 - 첫 실행은 감지 조건이 `mobile/`·`.github/workflows/` 전체였다. 소요 시간이 길어 사용자에게 물었다.
-- **실행 조건 결정(사용자, 2026-11-12):** 1순위 = **네이티브에 영향을 주는 파일이 바뀐 PR(`package.json`·`package-lock.json`·`app.json`·`ci.yml`) + main push**. 차선은 없음. 탈락: 지금대로(`mobile/` 전체 PR, 매번 약 23분), main push만(깨진 것을 머지 뒤에야 앎). 줄인 조건은 로컬 모의로 확인했다(`mobile/app/index.tsx`·`server/x.py` → false, 위 4개 파일 → true). 줄인 조건의 CI 실행 결과는 PR #12의 두 번째 실행에서 확인한다(`ci.yml`이 바뀌므로 iOS job이 다시 돈다).
+- **실행 조건 결정(사용자, 2026-11-12):** 1순위 = **네이티브에 영향을 주는 파일이 바뀐 PR(`package.json`·`package-lock.json`·`app.json`·`ci.yml`) + main push**. 차선은 없음. 탈락: 지금대로(`mobile/` 전체 PR, 매번 약 23분), main push만(깨진 것을 머지 뒤에야 앎). 줄인 조건은 로컬 모의로 확인했다(`mobile/app/index.tsx`·`server/x.py` → false, 위 4개 파일 → true). 줄인 조건으로 PR #12를 다시 돌린 결과(run 43145951384): 변경 감지·서버 시험(27초)·앱 점검(20초)·**iOS 빌드 점검(13분 30초)**·`CI ok` 모두 pass. 캐시가 없는데도 첫 실행(22분 33초)과 9분 차이가 나서, 실행기에 따라 **약 13~23분**으로 본다.
 
 ## 5. 명세와 다르게 한 것(이유)
 
@@ -56,5 +56,5 @@
 
 ## 7. 이어서 할 일
 
-1. PR #12의 두 번째 실행(줄인 조건) 통과 확인 → 머지 → `main` push에서 iOS job 통과 확인.
+1. PR #12 머지(D) → `main` push에서 iOS job 통과 확인. 이 PR은 `ci.yml`을 바꾸므로 push할 때마다 iOS job이 다시 돈다.
 2. 후속(이번 범위 아님): 서버 개발용 CORS(웹 스모크 확인용, 로컬 출처만), 번들 ID 확정(`kr.localone.app`은 임시).
