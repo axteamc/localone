@@ -22,7 +22,7 @@ body{font-family:'Noto Sans KR',system-ui,sans-serif;background:#2B2A28;color:va
 .top{padding:6px 16px 10px;display:flex;justify-content:space-between;align-items:center}
 .top h1{font-size:18px}
 .base{font-size:12px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-pill);padding:6px 12px}
-.map{position:absolute;left:0;right:0;top:100px;height:600px;background:#E9E6DD;overflow:hidden}
+.map{position:absolute;left:0;right:0;top:150px;height:550px;background:#E9E6DD;overflow:hidden}
 .road{position:absolute;background:#D9D3C7}
 .land{position:absolute;background:var(--fill3);opacity:.5;border-radius:12px;font-size:11px;padding:4px 8px;color:var(--text-sub)}
 .me{position:absolute;left:190px;top:330px;width:16px;height:16px;border-radius:50%;background:var(--ink-strong);box-shadow:0 0 0 8px rgba(51,51,58,.15)}
@@ -32,6 +32,7 @@ body{font-family:'Noto Sans KR',system-ui,sans-serif;background:#2B2A28;color:va
 .pin.closed b{background:var(--closed);color:#fff}
 .pin.closed em{color:var(--text-sub)}
 .pin .off{display:block;font-style:normal;font-size:11px;background:var(--closed);color:#fff;border-radius:var(--r-pill);padding:2px 8px;margin-bottom:3px;width:max-content}
+.search{margin:0 16px 8px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-pill);padding:10px 14px;font-size:13px;color:var(--text-sub);position:relative;z-index:2}
 .sheet{position:absolute;left:0;right:0;bottom:72px;background:var(--surface2);padding:12px 16px;font-size:13px}
 .bar{position:absolute;left:0;right:0;bottom:0;height:72px;background:var(--paper);display:flex;justify-content:space-around;align-items:center;font-size:12px;color:var(--text-sub)}
 .card{background:var(--paper);border-radius:var(--r-card);padding:14px;margin:0 16px 10px}
@@ -51,6 +52,7 @@ body{font-family:'Noto Sans KR',system-ui,sans-serif;background:#2B2A28;color:va
 <div class="phone">
   <div class="status"></div>
   <div class="top"><h1>동네한권</h1><span class="base">현재 위치 기준 ▾</span></div>
+  <div class="search">🔍 찾는 책이 있나요? (누르면 책 검색 화면으로)</div>
   <div class="map">
     <div class="road" style="left:0;top:280px;width:100%;height:14px"></div>
     <div class="road" style="left:150px;top:0;width:14px;height:100%"></div>
