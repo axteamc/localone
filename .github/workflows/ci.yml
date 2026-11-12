@@ -45,8 +45,8 @@ jobs:
           else
             echo "code=false" >> "$GITHUB_OUTPUT"
           fi
-          # iOS 빌드 점검은 mobile/ 또는 워크플로 파일이 바뀐 PR만 켠다(macOS 실행기가 느리다)
-          if echo "$files" | grep -q -E '^(mobile/|\.github/workflows/)'; then
+          # iOS 빌드 점검(실측 약 23분)은 네이티브에 영향을 주는 파일이 바뀐 PR만 켠다(화면 코드만 바뀐 PR은 건너뜀, 2026-11-12 사용자 결정)
+          if echo "$files" | grep -q -E '^(mobile/(package\.json|package-lock\.json|app\.json)$|\.github/workflows/ci\.yml$)'; then
             echo "mobile=true" >> "$GITHUB_OUTPUT"
           else
             echo "mobile=false" >> "$GITHUB_OUTPUT"
