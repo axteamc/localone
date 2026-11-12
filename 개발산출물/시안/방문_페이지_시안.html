@@ -215,7 +215,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
     <div class="note">기본은 ①이고 모임 카드만 원래 알약입니다. 비교 모드 순서: 피드 카드 1번부터 ①②③④⑤①②③④⑤. 방문 스탬프를 공개로 남기면 맨 앞에 카드가 하나 늘어 순서가 한 칸씩 밀립니다. 5번 취향 체크를 끄면 원래 알약입니다.</div></fieldset>
   <fieldset><legend>명세 · 결정 기록</legend>
     <div class="note" id="specTemp" style="margin:0 0 8px"></div>
-    <div class="note" style="margin:0 0 4px"><b style="color:#EDE8DE">웜 온도</b> — 채택: <b style="color:#EDE8DE">-20%</b>(warm·toffee에 적용) · 차선: 없음 · 탈락: 0%(기존, 너무 따뜻), -10%(차이가 작음), -30%(거의 무채색). 단계 = 모든 색의 R를 24×n 낮추고 B를 24×n 올림(0~255 제한). 모던(주황)은 제외, Oxford는 이미 차가워 적용하지 않음. 핀 가온·나래·다솜과 패널 4번 룩 강제로 후보를 다시 볼 수 있음.</div>
+    <div class="note" style="margin:0 0 4px"><b style="color:#EDE8DE">웜 온도</b> — 채택: <b style="color:#EDE8DE">warm -20%, toffee -30%</b> · 차선: 없음 · 탈락: 0%(기존, 너무 따뜻), -10%(차이가 작음), warm -30%(거의 무채색), toffee -20%(조금 더 따뜻함). toffee는 패널 4번 룩 강제로 -20%·0%도 볼 수 있음. 단계 = 모든 색의 R를 24×n 낮추고 B를 24×n 올림(0~255 제한). 모던(주황)은 제외, Oxford는 이미 차가워 적용하지 않음. 핀 가온·나래·다솜과 패널 4번 룩 강제로 후보를 다시 볼 수 있음.</div>
     <div class="note" style="margin:0 0 4px"><b style="color:#EDE8DE">태그</b> — 채택: ① 점+글자, 모임만 알약 · 차선: 아직 안 받음 · 탈락: ② 유리 필, ③ 글자+그림자, ④ 고스트 필, ⑤ 한 글자 동그라미(패널 6번에서 다시 봄).</div>
     <div class="note"><b style="color:#EDE8DE">뒤로가기</b> — 채택: 굵은 "‹"(선 3.6)+약한 그림자, 알약 없음 · 차선: 아직 안 받음 · 탈락: 파랑 링크, "‹ 동네" 알약(5번 체크를 끄면 다시 봄).</div></fieldset>
   <button class="reset" id="reset">처음으로(오늘 첫 입장 상태로 되돌리기)</button>
@@ -244,7 +244,7 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
       <button class="pin" data-lib="가온 도서관" style="left:110px;top:372px"><b><span>책</span></b><em>가온 · 웜 -10% (후보)</em></button>
       <button class="pin" data-lib="나래 도서관" style="left:190px;top:525px"><b><span>책</span></b><em>나래 · 웜 0% (기존)</em></button>
       <button class="pin" data-lib="다솜 도서관" style="left:320px;top:222px"><b><span>책</span></b><em>다솜 · 웜 -30% (후보)</em></button>
-      <button class="pin" data-lib="푸른 구립도서관" style="left:62px;top:500px"><b><span>책</span></b><em>푸른 · 1.4km · toffee -20%</em></button>
+      <button class="pin" data-lib="푸른 구립도서관" style="left:62px;top:500px"><b><span>책</span></b><em>푸른 · 1.4km · toffee -30%</em></button>
     </div>
     <div class="search"><button class="menu" data-open-drawer>☰</button>현재 위치 기준 · 도서관 7곳</div>
     <div class="hsheet"><div class="grab"></div><h3>우리 동네 이야기</h3><p>지역 인기글 · 내 최근 독서 기록 · 추천 서적</p>
@@ -360,9 +360,10 @@ const cool=(h,n)=>{const k=24*n;return '#'+[1,3,5].map((i,j)=>{let v=parseInt(h.
 const WM=LOOKS[1],TF=LOOKS[2];
 [[0.1,'W10','웜 -10%'],[0.2,'W20','웜 -20%'],[0.3,'W30','웜 -30%']].forEach(([n,id,nm])=>LOOKS.push([id,nm,'arch',...WM.slice(3).map(c=>cool(c,n))]));
 LOOKS.push(['T20','toffee -20%','arch',...TF.slice(3).map(c=>cool(c,.2))]);
+LOOKS.push(['T30','toffee -30%','arch',...TF.slice(3).map(c=>cool(c,.3))]);
 const lum=h=>{const c=[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255).map(v=>v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4));return .2126*c[0]+.7152*c[1]+.0722*c[2];};
 const onOf=h=>{const L=lum(h);return (L+.05)/(lum('#1B1B1F')+.05)>=(1.05)/(L+.05)?'#1B1B1F':'#FFFFFF';};
-const STORED={'한빛 시립도서관':'W20','달빛 작은도서관':'W20','푸른 구립도서관':'T20','새빛 도서관':'OX','가온 도서관':'W10','나래 도서관':'WM','다솜 도서관':'W30'}; // 처음 배정한 룩을 저장해 둔 것
+const STORED={'한빛 시립도서관':'W20','달빛 작은도서관':'W20','푸른 구립도서관':'T30','새빛 도서관':'OX','가온 도서관':'W10','나래 도서관':'WM','다솜 도서관':'W30'}; // 처음 배정한 룩을 저장해 둔 것
 $('#lookSel').innerHTML='<option value="auto">자동 배정</option>'+LOOKS.map(l=>`<option value="${l[0]}">${l[0]} ${l[1]}</option>`).join('');
 function lookFor(name){
   const f=$('#lookSel').value;if(f!=='auto')return LOOKS.find(l=>l[0]===f);
@@ -402,7 +403,7 @@ $('#tagSel').onchange=e=>{phone.dataset.tag=e.target.value;renderFeed();};
 $('#taste').onchange=e=>{phone.dataset.taste=e.target.checked?'on':'off';if(phone.classList.contains('in'))applyLook($('#libname').textContent);};
 $('#reset').onclick=()=>{stampState=null;phone.classList.remove('in','dr');updateStamp();renderFeed();};
 [...$$('.mod'),$('#lookSel')].forEach(r=>r.onchange=()=>{paintPins();if(phone.classList.contains('in'))applyLook($('#libname').textContent);});
-(function(){const rows=[['웜 0% (기존)',LOOKS[1]],...LOOKS.slice(4,7).map(l=>[l[1]+(l[0]==='W20'?' ★채택':''),l]),['toffee 0% (기존)',LOOKS[2]],['toffee -20% ★채택',LOOKS[7]]];
+(function(){const rows=[['웜 0% (기존)',LOOKS[1]],...LOOKS.slice(4,7).map(l=>[l[1]+(l[0]==='W20'?' ★채택':''),l]),['toffee 0% (기존)',LOOKS[2]],['toffee -20% (후보)',LOOKS[7]],['toffee -30% ★채택',LOOKS[8]]];
 $('#specTemp').innerHTML='<table style="border-collapse:collapse;width:100%;font-size:11px"><tr style="color:#A8A296"><td>단계</td><td>배경</td><td>선반</td><td>채움1</td><td>채움2</td><td>채움3</td></tr>'+rows.map(([n,l])=>`<tr><td>${n}</td>${[6,10,3,4,5].map(i=>`<td><span style="display:inline-block;width:10px;height:10px;background:${l[i]};border:1px solid #6665;vertical-align:-1px"></span> ${l[i].slice(1)}</td>`).join('')}</tr>`).join('')+'</table>';})();
 renderFeed();renderShelf();paintPins();
 {const m=location.hash.match(/^#look-(\w+)/);if(m){$('#lookSel').value=m[1];paintPins();enter('한빛 시립도서관');}}
