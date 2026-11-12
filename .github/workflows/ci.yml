@@ -1,0 +1,113 @@
+name: CI
+
+# PR과 main push만 돈다. 문서만 바뀐 PR은 서버·앱 job을 건너뛴다(필수 체크가 '대기'로 남지 않게 paths-ignore는 쓰지 않는다).
+# main 보호 규칙의 필수 체크는 `CI ok` 하나뿐이다(개발산출물/명세/SET-1_구현명세.md §5-1).
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    name: 변경 감지
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.detect.outputs.code }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: detect
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          # main push는 항상 전부 돈다
+          if [ "$EVENT" != "pull_request" ]; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files=$(git -c core.quotepath=off diff --name-only "$BASE_SHA" HEAD)
+          echo "바뀐 파일:"; echo "$files"
+          # *.md·docs/·개발산출물/ 밖의 파일이 하나라도 있으면 코드 변경으로 본다(specs/는 문서로 보지 않는다)
+          if echo "$files" | grep -v -E '(\.md$|^docs/|^개발산출물/)' | grep -q .; then
+            echo "code=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "code=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  server:
+    name: 서버 시험
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    services:
+      db:
+        image: postgres:17
+        env:
+          POSTGRES_USER: localone
+          POSTGRES_PASSWORD: localone
+          POSTGRES_DB: localone_test
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U localone -d localone_test"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      APP_ENV: test
+      DATABASE_URL: postgresql+psycopg://localone:localone@localhost:5433/localone_test
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          enable-cache: true
+          cache-dependency-glob: server/uv.lock
+      - run: uv sync --locked
+      - run: uv run pytest -W error
+
+  app:
+    name: 앱 점검
+    needs: changes
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: npx expo export --platform web
+
+  ci-ok:
+    name: CI ok
+    needs: [changes, server, app]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: 결과 집계(실패·취소가 하나라도 있으면 실패, 건너뜀은 통과)
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "결과: $RESULTS"
+          case " $RESULTS " in
+            *" failure "*|*" cancelled "*) echo "실패한 job이 있어요."; exit 1 ;;
+          esac
