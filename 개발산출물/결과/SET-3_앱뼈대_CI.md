@@ -15,7 +15,7 @@
 | iOS 시뮬레이터 빌드 명령 | `npx expo run:ios`(`ios/`가 없으면 `expo prebuild` 먼저). 완전 재생성은 `npx expo prebuild --clean`. Release는 `--configuration Release`(서명 없음) | docs.expo.dev 로컬 앱 개발 |
 | SDK 58의 **최소 Xcode** | **공식 문서에서 확인하지 못함**(환경 설정·SDK 58 변경 기록 모두 최소 버전 미기재, Xcode 27은 일부 기능에만 언급). SET-3b 시작 때 다시 확인 | 위 문서들 |
 | macOS 빌드 소요 시간 | **공식 수치 없음.** SET-3b에서 실측하고 길면 `main` push·네이티브 의존성 변경 PR로 제한 | — |
-| Actions 메이저(재확인) | `actions/checkout` **v7**(7.0.1), `actions/setup-node` **v7**(7.1.0), `astral-sh/setup-uv` **v10**(10.3.3). 참고: `actions/setup-python` v7, `actions/cache` v6, `dorny/paths-filter` v4(이번엔 안 씀) | 각 레포 releases API |
+| Actions 메이저(재확인) | `actions/checkout` **v7**(7.0.1), `actions/setup-node` **v7**(7.1.0), `astral-sh/setup-uv`는 메이저 태그(`v10`)가 없어 **`v10.3.3`으로 고정**(CI에서 `@v10`이 해석 실패해 확인). 참고: `actions/setup-python` v7, `actions/cache` v6, `dorny/paths-filter` v4(이번엔 안 씀) | 각 레포 releases API |
 
 ## 2. 만든 것
 
