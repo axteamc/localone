@@ -63,7 +63,7 @@
 | 4 | `mobile/tsconfig.json` | TypeScript 엄격 설정 | |
 | 5 | `mobile/app/_layout.tsx` | 앱 최상위 틀 | ✔ |
 | 6 | `mobile/app/index.tsx` | 스모크 화면: 서버 준비 상태 표시, 로딩·실패 상태 | ✔ |
-| 7 | `.github/workflows/ci.yml` | 서버(시험 DB 포함)와 앱 점검 | ✔ |
+| 7 | `.github/workflows/ci.yml` | 서버(시험 DB 포함)와 앱 점검, 문서만 바뀐 PR은 점검 건너뛰기, 마지막에 `CI ok` 집계 job(§5-1) | ✔ |
 | 8 | `.gitignore` | `ios/`·`android/`·`.env`·`node_modules`·`.venv` 제외 | |
 
 ## 4. 최소 사용자 여정과 계약
@@ -102,6 +102,14 @@ DATABASE_URL=postgresql+psycopg://localone:localone@localhost:5433/localone_test
 | 서버 실행 | `cd server && uv run uvicorn app.main:app --port 8000` | `curl localhost:8000/api/v1/ready`가 200 |
 | 앱 | `cd mobile && npm ci && npx tsc --noEmit && npx expo export --platform web` | 세 명령 모두 종료 코드 0 |
 | CI | PR마다 서버 시험과 앱 점검 실행 | 둘 다 통과해야 머지(액션 버전은 메이저까지만 적고 SET-3 시작 때 확인) |
+
+### 5-1. CI와 main 보호 규칙 (2026-11-12 보강, 사용자 확인)
+
+- **`CI ok` 집계 job**: `ci.yml` 마지막에 `name: CI ok` job을 둔다. `needs`에 서버·앱·변경 감지 job을 모두 걸고 `if: always()`로 돌려, 하나라도 `failure`·`cancelled`면 실패, 건너뛴 job만 있으면 통과시킨다. ruleset의 필수 체크는 이 이름 **하나뿐**이다(job 이름이 바뀌어도 규칙은 안 바뀐다).
+- **문서 PR 건너뛰기**: 워크플로 `paths-ignore`는 필수 체크를 '대기'로 남겨 머지를 막으므로 쓰지 않는다. `changes` job이 PR 변경 파일을 보고, 전부 `*.md`·`docs/`·`개발산출물/`이면 서버·앱 job을 건너뛴다(`CI ok`는 통과). `specs/`는 문서로 보지 않는다(시안 코드가 있을 수 있음). `main`에 push된 실행은 항상 전부 돈다.
+- **트리거**: `pull_request`와 `push`는 `main`만 대상으로 한다. `stage*` 같은 통합 브랜치는 쓰지 않는다(기능 단위 PR이 `main`으로 들어간다).
+- **ruleset**: [자료/ruleset_main.json](../자료/ruleset_main.json) — 기본 브랜치 삭제·force push 금지, PR 필수(승인 0명, 리뷰 대화 해결 필수, merge·squash만), 필수 체크 `CI ok`. 리포지토리 Admin 역할만 PR을 통해 우회한다.
+- **적용 시점**: SET-3 PR에서 `CI ok`가 한 번 통과하고 `main`에 들어간 **뒤** Hunseokc 계정으로 `gh api repos/axteamc/localone/rulesets --input 개발산출물/자료/ruleset_main.json`을 실행한다. 그전에 켜면 `CI ok`가 없어 모든 머지가 막힌다. 적용 뒤 문서 PR 하나로 `CI ok` 통과와 머지를 확인하고 결과 문서에 적는다.
 
 - 화면 자동 테스트(Q-27) 결정: SET-3에서는 만들지 않는다. **`jest-expo` + React Native Testing Library를 첫 기능 화면 Step(VISIT-1·LIB-1) 계약서에서 추가**한다(일반 지식 기준, 그때 Expo 문서로 확인). 스모크 화면은 `expo export` 성공과 수동 확인으로 본다.
 - 잡을 버그: DB 주소 잘못, 시간 초과 처리 누락, 오류 형식 불일치, 서울 날짜 계산(Windows `tzdata` 누락), 시험이 원격 DB에 붙는 사고.
