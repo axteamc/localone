@@ -51,3 +51,4 @@
 - `python -X utf8 -` 정적 검사: 수정 6파일 UTF-8·BOM 없음·LF, C1~C7/P1~P5 단일 절, 두 파트 머리말 SHA, 카드 HTML ID 중복 없음·3일 연속 선택지·누적 임시 문구 해소 모두 통과.
 - `git diff --check`(코드 레포), team 대상 파일 `git diff --check`: 통과. `git diff --exit-code -- specs server mobile`: diff 없음. 05·06도 수정하지 않았다.
 - 공통 팀 규칙의 유료 Claude 대화 시나리오(`tests/규칙_점검/run.py`)는 미실행: 이번에는 템플릿·프롬프트·스킬을 고치지 않았고, 문서 정적 검사만 수행했다.
+- 선언·인계 작성 뒤 최종 정적 검사: `git diff --name-only 1353eb4`의 이번 문서 범위·UTF-8/BOM 없음/LF, B1·C-58 표의 행 연결, 두 레포 SHA 참조 확인 통과. `git diff 1353eb4 --exit-code -- specs server mobile 개발산출물/05_ERD_및_DB설계서.md 개발산출물/06_기능_API_정의서.md`는 diff 없음. 마지막 status의 잔여 변경은 위에 적은 다른 작업뿐이며 이번 문서만 경로 지정 커밋한다. 코드 레포는 로컬 커밋까지만 수행한다.
