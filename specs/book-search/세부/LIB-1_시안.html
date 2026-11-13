@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>도서 탐색 LIB-1 시안</title>
+<!--
+  book-search · LIB-1(도서 검색·상세) 시안. 템플릿: ../team/templates/시안.html
+  지금 정할 요소 = 1. 검색 결과 목록의 모양 (후보 3개). 2·3은 1이 '확인'이 된 뒤 같은 모양으로 추가한다.
+  전부 가짜 값. 외부 연결 없음. 색·곡률은 개발산출물/디자인_기준.md 토큰(warm).
+-->
+<style>
+  :root {
+    --bg: #E1E1DE; --surface2: #D0CEC8; --surface3: #BFBCB5;
+    --fill1: #E9C970; --fill2: #EDC9A9; --fill3: #B3BFB5;
+    --cream: #EFEFE7; --paper: #EFF1F1; --ink-strong: #2E333F;
+    --ink-sub: #70706F;
+    --r-card: 18px; --r-pill: 18px; --r-cover: 5px 9px 9px 5px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: #1D1D1F; font-family: "Noto Sans KR", system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; line-height: 1.5; }
+  header.page { padding: 20px 16px 8px; max-width: 1200px; margin: 0 auto; }
+  header.page h1 { font-size: 20px; margin: 0 0 4px; }
+  .how { background: var(--cream); border-radius: var(--r-card); padding: 12px 16px; margin: 8px 0 0; }
+  main { max-width: 1200px; margin: 0 auto; padding: 0 16px 40px; }
+  section.element { margin-top: 24px; }
+  section.element > h2 { font-size: 17px; margin: 0 0 4px; }
+  .status { display: inline-block; font-size: 12px; padding: 2px 10px; border-radius: var(--r-pill); background: var(--surface2); margin-left: 6px; }
+  .cands { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 12px; }
+  .cand { background: var(--paper); border-radius: var(--r-card); padding: 14px; border: 3px solid transparent; }
+  .cand.recommended { border-color: var(--fill1); }
+  .cand.chosen { border-color: var(--ink-strong); }
+  .cand h3 { margin: 0 0 8px; font-size: 15px; }
+  .badge { font-size: 12px; padding: 1px 8px; border-radius: var(--r-pill); background: var(--fill1); margin-left: 6px; }
+  .badge.chosen { background: var(--ink-strong); color: var(--paper); }
+  .phone { background: var(--cream); border-radius: var(--r-card); padding: 10px; height: 560px; overflow-y: auto; position: relative; }
+  .searchbar { background: var(--paper); border-radius: var(--r-pill); padding: 8px 12px; border: 1px solid var(--surface3); width: 100%; font: inherit; }
+  .cnt { font-size: 12px; color: var(--ink-sub); margin: 8px 2px 4px; }
+
+  /* 책 조각들 */
+  .cover { background: var(--fill3); border-radius: var(--r-cover); display: flex; align-items: flex-end; padding: 6px; font-size: 11px; font-weight: 700; line-height: 1.25; color: var(--ink-strong); overflow: hidden; }
+  .cover.c2 { background: var(--fill2); } .cover.c1 { background: var(--fill1); } .cover.none { background: var(--surface3); color: #4d4d4b; }
+  .tt { font-weight: 700; font-size: 13px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .au { font-size: 12px; color: var(--ink-sub); }
+  .loan { font-size: 11.5px; margin-top: 3px; }
+  .loan i { font-style: normal; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 4px; background: #5b8a5b; }
+  .loan.out i { background: #b27a3d; } .loan.unk i { background: #9a9a98; }
+  .plan { font-size: 11.5px; margin-top: 3px; text-decoration: underline; color: var(--ink-strong); }
+
+  /* A: 2열 카드 */
+  .gridA { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 10px; margin-top: 6px; }
+  .gridA .cover { aspect-ratio: 3 / 4; width: 100%; }
+  /* B: 1열 목록 */
+  .listB .row { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--surface2); }
+  .listB .cover { width: 52px; height: 74px; flex: none; font-size: 9px; }
+  /* C: 1열 큰 카드 */
+  .listC .card { display: flex; gap: 12px; background: var(--paper); border-radius: var(--r-card); padding: 10px; margin-top: 10px; }
+  .listC .cover { width: 92px; height: 130px; flex: none; }
+  .listC .ds { font-size: 12px; color: #555; margin-top: 4px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  .more { text-align: center; font-size: 12.5px; color: var(--ink-sub); padding: 14px 0 6px; }
+  .more[hidden] { display: none; }
+
+  .note { font-size: 14px; margin-top: 10px; }
+  .note dt { font-weight: 700; margin-top: 6px; }
+  .note dd { margin: 0; }
+  .flow { background: var(--cream); border-radius: 12px; padding: 8px 10px; }
+  .state button, #exTabs button { font: inherit; border: 0; border-radius: var(--r-pill); padding: 4px 12px; background: var(--surface2); cursor: pointer; margin: 2px; }
+  .state button[aria-pressed="true"], #exTabs button[aria-pressed="true"] { background: var(--ink-strong); color: var(--paper); }
+  #spec, #except, #fullflow { background: var(--paper); border-radius: var(--r-card); padding: 14px 16px; margin-top: 28px; }
+  #spec table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  #spec th, #spec td { text-align: left; padding: 6px; border-bottom: 1px solid var(--surface2); vertical-align: top; }
+  .exphone { background: var(--cream); border-radius: var(--r-card); padding: 14px; max-width: 360px; margin-top: 8px; min-height: 120px; }
+  @media (max-width: 640px) { .cands { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>도서 탐색 · LIB-1 시안 — 검색 결과 목록의 모양</h1>
+  <p class="how">화면 3개를 비교해 보세요. 화면마다 아래에 <b>누르면 어떻게 이어지는지</b>를 적어 뒀고, 위 버튼으로 <b>아래까지 내렸을 때</b> 모습도 바꿔 볼 수 있어요. 각 화면 안은 직접 내려 볼 수 있어요. <b>추천</b> 표시가 있는 화면이 Claude의 추천이에요. 고르는 건 직접 해 주세요. (책·도서관 이름은 모두 가짜예요.)</p>
+</header>
+
+<main>
+  <!-- ===== 중심 요소 1 ===== -->
+  <section class="element" id="el-1" data-chosen="">
+    <h2>정할 것 1. 책 이름을 치고 검색했을 때, 결과 책들을 어떤 모양으로 보여 줄까<span class="status" data-status>결정 전</span></h2>
+    <div class="state">보기 바꾸기:
+      <button aria-pressed="true" data-more="0">처음 보이는 모습</button><button aria-pressed="false" data-more="1">아래까지 내렸을 때</button><button aria-pressed="false" data-more="2">끝까지 봤을 때</button>
+    </div>
+
+    <div class="cands">
+      <!-- 후보 A (추천) -->
+      <article class="cand recommended" data-id="A">
+        <h3>2열 표지 큰 카드 <span class="badge">추천</span></h3>
+        <div class="phone">
+          <input class="searchbar" value="해리" readonly>
+          <div class="cnt">"해리" 검색 결과</div>
+          <div class="gridA">
+            <div><div class="cover">해리포터와 마법사의 돌</div><div class="tt" style="margin-top:6px">해리포터와 마법사의 돌 1</div><div class="au">J.K. 롤링</div><div class="loan"><i></i>어제 기준 · 대출 가능</div><div class="plan">+ 빌릴 예정</div></div>
+            <div><div class="cover c2">해리포터와 비밀의 방</div><div class="tt" style="margin-top:6px">해리포터와 비밀의 방 2</div><div class="au">J.K. 롤링</div><div class="loan out"><i></i>어제 기준 · 대출 중</div><div class="plan">+ 빌릴 예정</div></div>
+            <div><div class="cover c1">해리 왕자 자서전</div><div class="tt" style="margin-top:6px">스페어</div><div class="au">해리 왕자</div><div class="loan unk"><i></i>알 수 없음</div><div class="plan">+ 빌릴 예정</div></div>
+            <div><div class="cover none">표지 없음<br>해리 쿼버트 사건의 진실</div><div class="tt" style="margin-top:6px">해리 쿼버트 사건의 진실</div><div class="au">조엘 디케르</div><div class="loan"><i></i>어제 기준 · 대출 가능</div><div class="plan">+ 빌릴 예정</div></div>
+            <div><div class="cover c2">해리의 모험</div><div class="tt" style="margin-top:6px">해리의 모험</div><div class="au">김해리</div><div class="loan out"><i></i>어제 기준 · 대출 중</div><div class="plan">+ 빌릴 예정</div></div>
+            <div><div class="cover">해리 이야기</div><div class="tt" style="margin-top:6px">해리 이야기</div><div class="au">박해리</div><div class="loan"><i></i>어제 기준 · 대출 가능</div><div class="plan">+ 빌릴 예정</div></div>
+          </div>
+          <div class="more" data-m="1" hidden>책을 더 불러오는 중이에요…</div>
+          <div class="more" data-m="2" hidden>여기까지예요</div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>책 표지가 크게 2열로 놓여요. 제목·저자·"어제 기준 · 대출 가능"은 표지 아래에 있어요. 한 화면에 6권쯤 보여요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">책 표지를 누름 → 그 책의 상세 화면이 열림(도서관 목록이 이어짐) → "+ 빌릴 예정"을 누르면 도서관을 고르는 작은 창이 뜸. 사용자는 표지를 훑어보다가 알아보는 책을 바로 누를 수 있어요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>표지로 책을 알아보기 쉬움, 보내 주신 두 번째 화면과 비슷함 / 한 줄에 글자가 적게 들어가 책 소개글은 못 보임</dd>
+          <dt>추천 이유</dt><dd>책을 찾는 사람은 제목보다 표지를 먼저 알아보는 경우가 많고, 보내 주신 두 번째 화면과 모양이 가까워서요.</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 B -->
+      <article class="cand" data-id="B">
+        <h3>1열 목록</h3>
+        <div class="phone">
+          <input class="searchbar" value="해리" readonly>
+          <div class="cnt">"해리" 검색 결과</div>
+          <div class="listB">
+            <div class="row"><div class="cover">해리포터</div><div><div class="tt">해리포터와 마법사의 돌 1</div><div class="au">J.K. 롤링 · 문학수첩 · 2019</div><div class="loan"><i></i>어제 기준 · 대출 가능</div><div class="plan">+ 빌릴 예정</div></div></div>
+            <div class="row"><div class="cover c2">비밀의 방</div><div><div class="tt">해리포터와 비밀의 방 2</div><div class="au">J.K. 롤링 · 문학수첩 · 2019</div><div class="loan out"><i></i>어제 기준 · 대출 중</div><div class="plan">+ 빌릴 예정</div></div></div>
+            <div class="row"><div class="cover c1">스페어</div><div><div class="tt">스페어</div><div class="au">해리 왕자 · 문학동네 · 2023</div><div class="loan unk"><i></i>알 수 없음</div><div class="plan">+ 빌릴 예정</div></div></div>
+            <div class="row"><div class="cover none">표지 없음</div><div><div class="tt">해리 쿼버트 사건의 진실</div><div class="au">조엘 디케르 · 영림카디널 · 2013</div><div class="loan"><i></i>어제 기준 · 대출 가능</div><div class="plan">+ 빌릴 예정</div></div></div>
+            <div class="row"><div class="cover c2">해리의 모험</div><div><div class="tt">해리의 모험</div><div class="au">김해리 · 가나출판 · 2020</div><div class="loan out"><i></i>어제 기준 · 대출 중</div><div class="plan">+ 빌릴 예정</div></div></div>
+            <div class="row"><div class="cover">해리 이야기</div><div><div class="tt">해리 이야기</div><div class="au">박해리 · 다산 · 2018</div><div class="loan"><i></i>어제 기준 · 대출 가능</div><div class="plan">+ 빌릴 예정</div></div></div>
+            <div class="row"><div class="cover c1">해리</div><div><div class="tt">해리와 도서관</div><div class="au">이도서 · 책마을 · 2021</div><div class="loan"><i></i>어제 기준 · 대출 가능</div><div class="plan">+ 빌릴 예정</div></div></div>
+          </div>
+          <div class="more" data-m="1" hidden>책을 더 불러오는 중이에요…</div>
+          <div class="more" data-m="2" hidden>여기까지예요</div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>책이 한 줄에 하나씩 위아래로 놓여요. 표지는 작고, 출판사·연도까지 보여요. 한 화면에 5~7권쯤 보여요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">책 줄을 누름 → 그 책의 상세 화면이 열림 → "+ 빌릴 예정"을 누르면 도서관을 고르는 작은 창이 뜸. 사용자는 같은 제목의 다른 판을 출판사·연도로 가려서 고를 수 있어요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>출판사·연도로 비슷한 책을 가려 봄, 도서관 앱에서 익숙한 모양 / 표지가 작아 눈에 덜 띔, 두 번째 화면과는 다름</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 C -->
+      <article class="cand" data-id="C">
+        <h3>1열 큰 카드</h3>
+        <div class="phone">
+          <input class="searchbar" value="해리" readonly>
+          <div class="cnt">"해리" 검색 결과</div>
+          <div class="listC">
+            <div class="card"><div class="cover">해리포터와 마법사의 돌</div><div><div class="tt">해리포터와 마법사의 돌 1</div><div class="au">J.K. 롤링</div><div class="ds">고아 소년 해리가 마법학교에 들어가 자신의 비밀을 알게 되는 이야기…</div><div class="loan"><i></i>어제 기준 · 대출 가능</div><div class="plan">+ 빌릴 예정</div></div></div>
+            <div class="card"><div class="cover c2">해리포터와 비밀의 방</div><div><div class="tt">해리포터와 비밀의 방 2</div><div class="au">J.K. 롤링</div><div class="ds">두 번째 해에 학교에서 이상한 일이 벌어지고 해리가 비밀의 방을 찾아…</div><div class="loan out"><i></i>어제 기준 · 대출 중</div><div class="plan">+ 빌릴 예정</div></div></div>
+            <div class="card"><div class="cover c1">스페어</div><div><div class="tt">스페어</div><div class="au">해리 왕자</div><div class="ds">왕실 안에서 자란 '둘째'의 시선으로 쓴 자서전…</div><div class="loan unk"><i></i>알 수 없음</div><div class="plan">+ 빌릴 예정</div></div></div>
+            <div class="card"><div class="cover none">표지 없음</div><div><div class="tt">해리 쿼버트 사건의 진실</div><div class="au">조엘 디케르</div><div class="ds">한 작가의 과거를 둘러싼 살인 사건의 진실을 쫓는…</div><div class="loan"><i></i>어제 기준 · 대출 가능</div><div class="plan">+ 빌릴 예정</div></div></div>
+          </div>
+          <div class="more" data-m="1" hidden>책을 더 불러오는 중이에요…</div>
+          <div class="more" data-m="2" hidden>여기까지예요</div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>책마다 큰 카드 하나씩, 표지가 크고 책 소개 두 줄이 같이 나와요. 한 화면에 3~4권쯤 보여요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">카드를 누름 → 그 책의 상세 화면이 열림 → "+ 빌릴 예정"을 누르면 도서관을 고르는 작은 창이 뜸. 사용자는 소개글을 읽고 맞는 책인지 눌러 보기 전에 알 수 있어요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>눌러 보기 전에 어떤 책인지 알 수 있음 / 한 화면에 보이는 책이 가장 적어 많이 내려야 함</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <!-- 중심 요소 2(책 상세 위쪽 모양), 3(추천어를 눌렀을 때 가는 곳)은 1이 '확인'이 된 뒤 같은 모양으로 추가한다 -->
+
+  <!-- ===== 잘 안 될 때 (예외, 1B 3단계) — 문구는 Claude 추천안, 아직 묻지 않음 ===== -->
+  <section id="except">
+    <h2>잘 안 될 때 보이는 화면 (아직 묻지 않아요, 문구는 추천안)</h2>
+    <div class="state" id="exTabs">
+      <button aria-pressed="true" data-ex="0">인터넷이 끊김</button><button aria-pressed="false" data-ex="1">결과가 하나도 없음</button><button aria-pressed="false" data-ex="2">두 번 빠르게 누름</button><button aria-pressed="false" data-ex="3">로그인 안 함</button><button aria-pressed="false" data-ex="4">인기 도서 못 불러옴</button>
+    </div>
+    <div class="exphone"><p data-exmsg></p></div>
+  </section>
+
+  <!-- ===== 처음부터 끝까지 (세부 명세서 2. 유저 플로우와 같게) ===== -->
+  <section id="fullflow">
+    <h2>처음부터 끝까지 이렇게 써요</h2>
+    <ol>
+      <li>사용자가 검색창을 누르면 동네한권이 키보드와 함께 검색 진입 화면을 연다.</li>
+      <li>(정할 것 1·2·3을 고르면 여기를 이어서 쓴다)</li>
+    </ol>
+  </section>
+
+  <!-- ===== 명세 패널 (세부 명세서 확인 목록·결정 기록과 같게) ===== -->
+  <section id="spec">
+    <h2>명세</h2>
+    <p>다시 비교하기: <select id="pick"><option value="">채택안 보기</option><option value="A">2열 표지 큰 카드</option><option value="B">1열 목록</option><option value="C">1열 큰 카드</option></select></p>
+    <table>
+      <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값</th></tr>
+      <tr><td>1. 검색 결과 목록의 모양</td><td>결정 전</td><td>— (추천: 2열 표지 큰 카드)</td><td>—</td><td>A 한 화면 6권쯤 · B 5~7권 · C 3~4권</td></tr>
+      <tr><td>2. 책 상세 위쪽 모양</td><td>결정 전</td><td>— (1이 끝난 뒤 연다)</td><td>—</td><td>—</td></tr>
+      <tr><td>3. 추천어를 눌렀을 때 가는 곳</td><td>결정 전</td><td>— (2가 끝난 뒤 연다)</td><td>—</td><td>—</td></tr>
+      <tr><td>검색 진입 화면 배치</td><td>기본값(Claude)</td><td>스크린샷대로: 최근 본 도서 알약 → 인기 도서 순위 2열 → 테마 도서 띠</td><td>묻지 않음(D가 정함)</td><td>알약 10글자 넘으면 "…", 옆으로 밀어 봄</td></tr>
+      <tr><td>결과 끝 모습</td><td>기본값(Claude)</td><td>내리면 "책을 더 불러오는 중이에요…", 마지막은 "여기까지예요"</td><td>묻지 않음</td><td>12.5px 보조색 가운데 정렬</td></tr>
+      <tr><td>표지가 없을 때</td><td>기본값(Claude)</td><td>회색 책 모양 + 제목 글자</td><td>묻지 않음</td><td>표지 곡률 5·9·9·5px</td></tr>
+      <tr><td>대출 표시 문구</td><td>기본값(Claude)</td><td>"어제 기준 · 대출 가능" / "어제 기준 · 대출 중" / "알 수 없음"</td><td>묻지 않음(디자인_기준 §5)</td><td>11.5px, 앞에 점</td></tr>
+    </table>
+  </section>
+</main>
+
+<script>
+  document.querySelectorAll('.element').forEach(function (el) {
+    // 아래까지 내렸을 때 / 끝까지 봤을 때 보기 바꾸기
+    el.querySelectorAll('[data-more]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var s = b.dataset.more;
+        el.querySelectorAll('[data-more]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        el.querySelectorAll('.more').forEach(function (m) { m.hidden = (m.dataset.m !== s); });
+        el.querySelectorAll('.phone').forEach(function (p) { if (s !== '0') p.scrollTop = p.scrollHeight; else p.scrollTop = 0; });
+      });
+    });
+    // 채택안 표시 (data-chosen 에 후보 id를 넣으면 기본 선택이 된다)
+    function mark(id) {
+      el.querySelectorAll('.cand').forEach(function (c) {
+        c.classList.toggle('chosen', c.dataset.id === id);
+        var old = c.querySelector('.badge.chosen'); if (old) old.remove();
+        if (c.dataset.id === id) { var s = document.createElement('span'); s.className = 'badge chosen'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+      });
+      el.querySelector('[data-status]').textContent = id ? '확인' : '결정 전';
+    }
+    mark(el.dataset.chosen);
+    document.getElementById('pick').addEventListener('change', function (e) { mark(e.target.value || el.dataset.chosen); });
+  });
+  // 예외 화면 전환
+  var ex = ['"지금은 책을 찾을 수 없어요. 잠시 후 다시 해 주세요." (다시 해 보기 버튼)',
+            '"\'해리해리\'는 찾지 못했어요. 글자를 바꿔서 다시 찾아보세요." (다시 찾기)',
+            '검색 버튼이나 책 카드를 두 번 빠르게 눌러도 결과 화면·책 상세는 한 번만 열림',
+            '로그인 안 해도 검색과 최근 본 도서는 쓸 수 있고(이 기기에만 저장), "+ 빌릴 예정"을 누르면 "로그인하면 빌릴 예정을 저장할 수 있어요" (로그인 버튼)',
+            '인기 도서 칸 자리에 "인기 도서를 불러오지 못했어요" (다시 해 보기 버튼). 최근 본 도서와 검색은 그대로 쓸 수 있음'];
+  function showEx(i) { document.querySelector('[data-exmsg]').textContent = ex[i]; }
+  showEx(0);
+  document.querySelectorAll('#exTabs button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#exTabs button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      showEx(+b.dataset.ex);
+    });
+  });
+</script>
+</body>
+</html>
