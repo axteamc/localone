@@ -1,0 +1,33 @@
+# 팀원 PR이 검토를 맡길 상태(Draft 아님)가 되면 디스코드로 바로 알린다.
+# D가 Claude에 말을 걸지 않아도 알 수 있게 하는 용도다(Claude 쪽은 team/tools/sync.sh의 [📥 검토할 PR]).
+# 설정: Settings → Secrets and variables → Actions → DISCORD_WEBHOOK_URL (디스코드 채널 → 연동 → 웹후크 URL)
+# 시크릿이 없으면 아무것도 보내지 않고 성공으로 끝난다.
+name: 검토 요청 알림
+
+on:
+  pull_request:
+    types: [opened, reopened, ready_for_review]
+
+permissions: {}
+
+jobs:
+  discord:
+    # Draft로 연 PR은 넘기기 전이므로 보내지 않는다. D(Hunseokc)가 직접 연 PR도 보내지 않는다.
+    if: github.event.pull_request.draft == false && github.event.pull_request.user.login != 'Hunseokc'
+    runs-on: ubuntu-latest
+    steps:
+      - name: 디스코드로 보내기
+        env:
+          WEBHOOK: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          NUM: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          WHO: ${{ github.event.pull_request.user.login }}
+          URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "DISCORD_WEBHOOK_URL 시크릿이 없어 건너뛴다"
+            exit 0
+          fi
+          msg=$(printf '📥 검토 요청: #%s %s (%s)\n%s' "$NUM" "$TITLE" "$WHO" "$URL")
+          jq -n --arg c "$msg" '{content: $c, allowed_mentions: {parse: []}}' \
+            | curl -fsS -H 'Content-Type: application/json' -d @- "$WEBHOOK"
