@@ -92,6 +92,16 @@
   .chips span { background: var(--ink-strong); color: var(--paper); border-radius: var(--r-pill); padding: 3px 9px; font-size: 11px; white-space: nowrap; }
   .hint { position: absolute; left: 10px; right: 10px; top: 56px; background: var(--paper); border-radius: 12px; padding: 6px 10px; font-size: 12px; z-index: 5; }
 
+  /* 정할 것 2: 목록 화면 */
+  .list2 { position: absolute; left: 0; right: 0; top: 0; bottom: 56px; padding: 10px; overflow: hidden; background: var(--cream); }
+  .regionsel { background: var(--paper); border: 1.5px solid var(--surface3); border-radius: var(--r-pill); padding: 6px 12px; margin-bottom: 8px; }
+  .regmenu { background: var(--paper); border-radius: 12px; padding: 8px 12px; margin: -4px 0 8px; box-shadow: 0 4px 10px rgba(0,0,0,.12); font-size: 12px; }
+  .regmenu .on { font-weight: 700; }
+  .lrow { background: var(--paper); border-radius: 12px; padding: 7px 10px; margin-bottom: 5px; display: flex; flex-direction: column; }
+  .lrow small { opacity: .7; }
+  .lrow.off small { opacity: 1; }
+  .lrow.on { outline: 2px solid var(--ink-strong); }
+  .mapfail { background: var(--surface2); border-radius: 12px; padding: 6px 10px; font-size: 12px; }
   /* 참고 화면 */
   .refrow { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
   .refrow .phone { height: 300px; max-width: 220px; margin: 0; }
@@ -253,7 +263,119 @@
     </div>
   </section>
 
-  <!-- 중심 요소 2, 3 은 1이 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
+  <!-- ===== 중심 요소 2 ===== -->
+  <section class="element" id="el-2" data-chosen="">
+    <h2>정할 것 2. 위치도 못 쓰고 지도도 안 뜰 때, 도서관 목록 화면을 어떻게 보여 줄까<span class="status" data-status>결정 전</span></h2>
+    <p style="font-size:14px;margin:4px 0 0">이런 때예요: 위치 허용을 안 했고, 인터넷이 약하거나 해서 <b>지도 그림까지 안 뜰 때</b>. 이때는 지도 대신 <b>시·군·구 단위 도서관 목록</b>을 보여 주기로 정해져 있어요. 내 위치를 모르니 거리는 못 보여 줘요. 처음 보여 줄 지역은 정해진 값(기본 도서관이 있으면 그 지역, 없으면 시범 지역)이에요.</p>
+    <div class="state">바꿔 보기:
+      <button aria-pressed="true" data-step="0">처음 열었을 때</button><button aria-pressed="false" data-step="1">지역을 바꿀 때</button><button aria-pressed="false" data-step="2">다른 지역을 고른 뒤</button>
+    </div>
+
+    <div class="cands">
+      <!-- 후보 A -->
+      <article class="cand" data-id="A">
+        <h3>A. 위에 지역 고르는 칸 + 목록</h3>
+        <div class="phone">
+          <div class="list2">
+            <div class="regionsel" data-s="0 2"><b data-s="0">제주시 ▾</b><b data-s="2">서귀포시 ▾</b></div>
+            <div class="regionsel" data-s="1"><b>제주시 ▴</b></div>
+            <div class="regmenu" data-s="1"><div>제주특별자치도</div><div class="on">· 제주시</div><div>· 서귀포시</div><div style="margin-top:6px">서울특별시 ›</div><div>부산광역시 ›</div></div>
+            <div data-s="0 1">
+              <div class="lrow"><b>한빛 시립도서관</b><small>제주시 이도동 · 오늘 9:00–18:00</small></div>
+              <div class="lrow"><b>연동 작은도서관</b><small>제주시 연동 · 오늘 10:00–17:00</small></div>
+              <div class="lrow off"><b>노을 구립도서관</b><small>제주시 노형동 · 휴관</small></div>
+              <div class="lrow"><b>달빛 작은도서관</b><small>제주시 아라동 · 오늘 9:00–18:00</small></div>
+            </div>
+            <div data-s="2">
+              <div class="lrow"><b>중문 도서관</b><small>서귀포시 중문동 · 오늘 9:00–18:00</small></div>
+              <div class="lrow"><b>바다 작은도서관</b><small>서귀포시 서홍동 · 오늘 10:00–17:00</small></div>
+            </div>
+          </div>
+          <div class="floatbtn">위치 허용하기</div>
+          <div class="tabbar"><span class="on">홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>맨 위에 "제주시 ▾" 칸 하나와 그 아래 도서관 목록이 있어요. 검색창은 없어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">목록이 바로 보임 → "제주시 ▾"를 누르면 시·도 / 시·군·구 목록이 펼쳐짐 → "서귀포시"를 누르면 그 지역 도서관 목록으로 바뀜 → 도서관을 누르면 방문 페이지로</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>목록 한 줄에 이름 · 동 · 오늘 운영시간(휴관이면 "휴관"). 한 화면에 7~8줄. 지역 칸은 시·도를 먼저 고르고 그 안의 시·군·구를 골라요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>화면이 단순하고 지역 바꾸기가 한눈에 보임 / 지도 홈과 생김새가 달라서 다른 앱처럼 느껴질 수 있고, 책 검색 입구가 없어져요</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 B -->
+      <article class="cand" data-id="B">
+        <h3>B. 지역부터 고르고 목록</h3>
+        <div class="phone">
+          <div class="list2">
+            <div data-s="0 1">
+              <p style="margin:4px 2px 8px"><b>어느 지역 도서관을 볼까요?</b></p>
+              <div data-s="0">
+                <div class="lrow"><b>제주시</b><small>도서관 12곳</small></div>
+                <div class="lrow"><b>서귀포시</b><small>도서관 7곳</small></div>
+                <div class="lrow" style="margin-top:8px"><b>다른 시·도 ›</b></div>
+              </div>
+              <div data-s="1">
+                <div class="lrow"><b>제주시</b><small>도서관 12곳</small></div>
+                <div class="lrow on"><b>서귀포시</b><small>도서관 7곳 · 누르는 중</small></div>
+              </div>
+            </div>
+            <div data-s="2">
+              <div class="regionsel"><b>‹ 서귀포시</b></div>
+              <div class="lrow"><b>중문 도서관</b><small>서귀포시 중문동 · 오늘 9:00–18:00</small></div>
+              <div class="lrow"><b>바다 작은도서관</b><small>서귀포시 서홍동 · 오늘 10:00–17:00</small></div>
+            </div>
+          </div>
+          <div class="floatbtn">위치 허용하기</div>
+          <div class="tabbar"><span class="on">홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>처음엔 도서관이 아니라 <b>지역 이름 목록</b>이 보여요. 지역을 눌러야 도서관 목록이 나와요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">"어느 지역 도서관을 볼까요?"와 시·군·구 목록 → "서귀포시"를 누름 → 서귀포시 도서관 목록 → "‹"로 지역 목록으로 돌아감 → 도서관을 누르면 방문 페이지로</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>지역 줄마다 도서관 수가 보여요. 도서관 목록 줄은 A와 같아요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>지역을 잘못 볼 일이 없음 / 도서관을 보려면 매번 한 번 더 눌러야 하고, 처음 화면에 도서관이 하나도 안 보여요</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 C (추천) -->
+      <article class="cand recommended" data-id="C">
+        <h3>C. 지도 홈 모양 그대로, 지도 자리에 목록 <span class="badge">추천</span></h3>
+        <div class="phone">
+          <div class="list2" style="top:52px">
+            <div class="mapfail">지도를 불러오지 못했어요 · <u>다시 해 보기</u></div>
+            <div data-s="0 1">
+              <p style="margin:6px 2px 4px;font-size:12px"><b>제주시</b> 도서관</p>
+              <div class="lrow"><b>한빛 시립도서관</b><small>제주시 이도동 · 오늘 9:00–18:00</small></div>
+              <div class="lrow"><b>연동 작은도서관</b><small>제주시 연동 · 오늘 10:00–17:00</small></div>
+              <div class="lrow off"><b>노을 구립도서관</b><small>제주시 노형동 · 휴관</small></div>
+            </div>
+            <div data-s="2">
+              <p style="margin:6px 2px 4px;font-size:12px"><b>서귀포시</b> 도서관</p>
+              <div class="lrow"><b>중문 도서관</b><small>서귀포시 중문동 · 오늘 9:00–18:00</small></div>
+              <div class="lrow"><b>바다 작은도서관</b><small>서귀포시 서홍동 · 오늘 10:00–17:00</small></div>
+            </div>
+          </div>
+          <div class="top"><div class="sbar"><span>책 제목·저자를 검색</span><button class="lib">도서관 찾기</button></div></div>
+          <div class="dim" data-s="1"></div>
+          <div class="drop" data-s="1">
+            <div class="field"><span>‹</span><span>서귀포▏</span></div>
+            <div class="row">서귀포시 <small>지역</small></div>
+            <div class="row">서귀포 중앙도서관 <small>서귀포시 서홍동</small></div>
+          </div>
+          <div class="floatbtn">위치 허용하기</div>
+          <div class="tabbar"><span class="on">홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>맨 위 검색창과 "도서관 찾기"는 지도 홈 그대로예요. 지도 자리에만 "지도를 불러오지 못했어요" 한 줄과 도서관 목록이 들어가요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">목록이 바로 보임 → 다른 지역은 "도서관 찾기"를 눌러 방금 고른 하얀 반쪽 창에서 찾음 → "서귀포시"를 누르면 목록이 서귀포시로 바뀜 → 도서관을 누르면 방문 페이지로. "다시 해 보기"로 지도가 뜨면 지도로 돌아감</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>목록 줄은 A와 같아요(이름 · 동 · 오늘 운영시간). 한 화면에 5~6줄(위에 검색창이 있어서 A보다 적음).</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>지도가 안 떠도 같은 앱·같은 버튼으로 쓸 수 있고, 책 검색 입구도 그대로 / 목록이 보이는 칸이 조금 좁고, 지역을 바꾸려면 글자를 쳐야 해요</dd>
+          <dt>추천 이유</dt><dd>방금 고르신 "도서관 찾기" 창을 그대로 써서 새로 익힐 게 없고, 지도가 다시 뜨면 같은 화면으로 자연스럽게 돌아가요. 반대로 글자 치기 싫고 지역을 눌러서만 고르고 싶은 사람에게는 A가 나아요.</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <!-- 중심 요소 3 은 2가 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
 
   <!-- ===== 잘 안 될 때 (예외 네 장면, 1B 3단계) — 중심 요소를 다 정한 뒤에 묻는다 ===== -->
   <section id="except">
@@ -277,6 +399,7 @@
       <li>사용자가 지역이나 도서관 이름을 치면 동네한권이 맞는 지역·도서관을 창 안 목록으로 보여 준다.</li>
       <li>사용자가 목록에서 하나를 누르면 동네한권이 창을 올리고 지도를 그곳으로 옮긴다(고른 도서관 핀은 테두리).</li>
       <li>사용자가 창 밖 흐린 지도를 누르면 동네한권이 창을 닫는다.</li>
+      <li>(위치도 못 쓰고 지도도 안 뜰 때: 정할 것 2를 고르면 여기를 이어서 쓴다)</li>
       <li>보는 위치가 바뀐 동안 동네한권이 지도 아래 가운데에 "현재 위치로" 버튼을 보여 주고, 사용자가 누르면 현재 위치로 돌아온다.</li>
     </ol>
   </section>
@@ -284,13 +407,13 @@
   <!-- ===== 명세 패널 (세부 명세서 확인 목록·결정 기록과 같게) ===== -->
   <section id="spec">
     <h2>명세</h2>
-    <p>다시 비교하기 (정할 것 1): <select id="pick"><option value="">채택안 보기</option><option value="A">A. 위에서 내려오는 반쪽 창</option><option value="A0">A. (처음 색: 진한색)</option><option value="A1">A. (두 번째 색: 초록빛 회색)</option><option value="B">B. 다른 색 전체 화면</option><option value="C">C. 지도 위에서 바로 찾기</option></select></p>
+    <p>다시 비교하기 (정할 것 1): <select class="pick" data-for="el-1"><option value="">채택안 보기</option><option value="A">A. 위에서 내려오는 반쪽 창</option><option value="A0">A. (처음 색: 진한색)</option><option value="A1">A. (두 번째 색: 초록빛 회색)</option><option value="B">B. 다른 색 전체 화면</option><option value="C">C. 지도 위에서 바로 찾기</option></select></p>
     <div class="tblwrap">
     <table>
       <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값 · 유저 플로우</th></tr>
-      <tr><td>1. "도서관 찾기"를 누르면 열리는 화면</td><td>확인 (불편한 점 받는 중)</td><td>채택 A. 위에서 내려오는 반쪽 창 / 차선 없음 / 탈락 B 다른 색 전체 화면(추천이었음), C 지도 위에서 바로 찾기("C는 그냥도 별로고 검색했을때 검색어가 덜나와서 완전 불편할거같아"). B 탈락 이유: "B는페이지 넘어가는게 불편하고"</td><td>"난 A위에서 내려오는게 좋다고 생각해 … 굳이 화면을 바꿔가며 해야할까?"</td><td>창 높이 화면의 58%, 바탕 paper(ink-strong → fill3 → paper. 사용자: "검색창 검정색은 좀 아닌거같아", "선 있어야하고 하얀색이여야 한다 생각"), 입력칸 paper + 테두리 1.5px surface3, 결과 줄 앞 핀 그림 없음("여기 핀버튼 없애줄래?"), 아래 지도 흐리게(검정 25%). 결과를 누르면 창이 올라가고 지도가 그곳으로(방문 페이지로 바로 가지 않음, 큰 틀 결정 13). 창 밖을 누르면 닫힘</td></tr>
+      <tr><td>1. "도서관 찾기"를 누르면 열리는 화면</td><td>확인</td><td>채택 A. 위에서 내려오는 반쪽 창 / 차선 없음 / 탈락 B 다른 색 전체 화면(추천이었음), C 지도 위에서 바로 찾기("C는 그냥도 별로고 검색했을때 검색어가 덜나와서 완전 불편할거같아"). B 탈락 이유: "B는페이지 넘어가는게 불편하고"</td><td>"난 A위에서 내려오는게 좋다고 생각해 … 굳이 화면을 바꿔가며 해야할까?" / 불편한 점: 없음(사용자) — "B나 C보던 덜 불편하면 된거 아닐까"</td><td>창 높이 화면의 58%, 바탕 paper(ink-strong → fill3 → paper. 사용자: "검색창 검정색은 좀 아닌거같아", "선 있어야하고 하얀색이여야 한다 생각"), 입력칸 paper + 테두리 1.5px surface3, 결과 줄 앞 핀 그림 없음("여기 핀버튼 없애줄래?"), 아래 지도 흐리게(검정 25%). 결과를 누르면 창이 올라가고 지도가 그곳으로(방문 페이지로 바로 가지 않음, 큰 틀 결정 13). 창 밖을 누르면 닫힘</td></tr>
       <tr><td>1-a. 반쪽 창 색·입력칸 선</td><td>확인</td><td>하얀 창(paper) + 입력칸 테두리 / 이전: 진한색, 초록빛 회색</td><td>"일단 여기서 선 있어야하고 하얀색이여야 한다 생각"(입력칸과 창 전체를 표시한 캡처)</td><td>창 paper, 입력칸 테두리 1.5px surface3. 순백은 디자인 기준상 쓰지 않아 paper(#EFF1F1)</td></tr>
-      <tr><td>2. 위치도 못 쓰고 지도도 안 뜰 때 보이는 도서관 목록</td><td>결정 전</td><td>— (1을 정한 뒤 시안)</td><td>—</td><td>시군구 도서관 목록(정해진 것)</td></tr>
+      <tr><td>2. 위치도 못 쓰고 지도도 안 뜰 때 보이는 도서관 목록<br>다시 비교하기: <select class="pick" data-for="el-2"><option value="">채택안 보기</option><option value="A">A. 지역 고르는 칸 + 목록</option><option value="B">B. 지역부터 고르고 목록</option><option value="C">C. 지도 홈 모양 그대로</option></select></td><td>결정 전</td><td>— (추천: C. 지도 홈 모양 그대로, 지도 자리에 목록)</td><td>—</td><td>시군구 도서관 목록(정해진 것). 목록 줄: 이름 · 동 · 오늘 운영시간/휴관(기본값(Claude)). 거리 없음(위치를 모름). 아래 가운데 "위치 허용하기" 유지. 도서관을 누르면 방문 페이지</td></tr>
       <tr><td>3. 가까운 곳에 도서관 핀이 많아 겹칠 때</td><td>결정 전</td><td>— (2를 정한 뒤 시안)</td><td>—</td><td>—</td></tr>
       <tr><td>지도 기준 위치</td><td>확인 (큰 틀 결정 1)</td><td>항상 현재 위치</td><td>"현재 위치로 해두면 설정할필요없이 바로바로 위치알수 있어서"</td><td>집·동네 저장 없음</td></tr>
       <tr><td>지도 바탕</td><td>확인 (큰 틀 결정 6)</td><td>큰 길 + 큰 장소 몇 개 + 지하철역</td><td>"이동할 때 지하철역에서 가까울 수 있어서, 이동할 때 편하라고"</td><td>도로 surface2, 역 알약 surface3</td></tr>
@@ -328,7 +451,8 @@
       el.querySelector('[data-status]').textContent = el.dataset.chosen ? '확인' : '결정 전';
     }
     mark(el.dataset.chosen);
-    document.getElementById('pick').addEventListener('change', function (e) { mark(e.target.value || el.dataset.chosen); });
+    var sel = document.querySelector('select.pick[data-for="' + el.id + '"]');
+    if (sel) sel.addEventListener('change', function (e) { mark(e.target.value || el.dataset.chosen); });
   });
   // 예외 화면 전환
   var ex = ['지도 자리에 "지금은 도서관을 불러올 수 없어요." + "다시 해 보기" 버튼. 지도 그림이 안 뜨면 시군구 도서관 목록으로 바뀜.',
