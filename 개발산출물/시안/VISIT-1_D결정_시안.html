@@ -317,7 +317,8 @@
       <div class="pick" style="margin:0 0 10px">어떤 방문인가요: <select id="dcase">
         <option value="first">이 도서관에 처음 들어옴</option>
         <option value="normal">평소(카드 없음)</option>
-        <option value="third">세 번째 방문(① 물어보는 카드가 대신 뜸)</option>
+        <option value="third">누적 세 번째 방문(연속 조건과 겹쳐도 ① 질문 우선)</option>
+        <option value="streak3">3일 연속(누적 세 번째 질문 대상이 아닐 때)</option>
         <option value="week">7일 연속</option>
         <option value="two">14일 연속</option>
         <option value="month">30일 연속</option>
@@ -329,8 +330,8 @@
       <table style="margin-bottom:12px">
         <tr><th>먼저 보는 순서</th><th>조건</th><th>카드 글자</th><th>상태</th></tr>
         <tr><td>1</td><td>이 도서관 첫 방문</td><td>처음으로 ○○도서관에 방문했어요!</td><td><span class="st">확인(D)</span></td></tr>
-        <tr><td>2</td><td>세 번째 방문이고 기본값을 아직 묻지 않았음</td><td>멘트 카드 대신 ①의 물어보는 카드("세 번째 방문이에요"). 연속 주기의 "3"은 이 카드가 대신함</td><td><span class="st">확인(D)</span> 누적 세 번째로 세는 것은 <span class="st">미확인(임시)</span></td></tr>
-        <tr><td>3</td><td>연속 방문이 7·14·30일째인 날, 그 뒤 100일마다</td><td>일주일 동안 매일 방문했어요! / 2주 동안 매일 방문했어요! / 한 달 동안 매일 방문했어요! / N일 연속으로 방문했어요!</td><td>주기·7일 문구 <span class="st">확인(D)</span> 나머지 문구 <span class="st">기본값(Claude)</span></td></tr>
+        <tr><td>2</td><td>누적 세 번째 방문이고 아직 묻지 않았으며 이미 기본값이 아님</td><td>멘트 카드 대신 ①의 물어보는 카드("세 번째 방문이에요"). 3일 연속 등 연속 조건과 겹치면 누적 질문이 우선</td><td><span class="st">확인(D)</span> 누적 세 번째 방문으로 확정(C-58)</td></tr>
+        <tr><td>3</td><td>연속 방문이 3·7·14·30일째인 날, 그 뒤 100일마다</td><td>3일 연속으로 방문했어요! / 일주일 동안 매일 방문했어요! / 2주 동안 매일 방문했어요! / 한 달 동안 매일 방문했어요! / N일 연속으로 방문했어요!</td><td>주기·7일 문구 <span class="st">확인(D)</span> 나머지 문구 <span class="st">기본값(Claude)</span></td></tr>
         <tr><td>4</td><td>30일 이상 만에 방문</td><td>오랜만이에요! N일 만에 방문했어요</td><td>오랜만 멘트 <span class="st">확인(D)</span> 30일·문구 <span class="st">기본값(Claude)</span></td></tr>
         <tr><td>—</td><td>그 밖의 방문</td><td>카드 없음. 탈락: "N번째 방문이에요"(D: "12번째 이런 무의미한건 필요 없어"), 주기 사이의 "N일 연속"</td><td><span class="st">확인(D)</span></td></tr>
         <tr><td>—</td><td>같은 날 다시 들어옴</td><td>세지 않고 카드도 뜨지 않음</td><td><span class="st">기본값(Claude)</span></td></tr>
@@ -359,7 +360,7 @@
     <tr><td>①-풀리는 조건</td><td>내 주변 반경 안에 기본 도서관이 없고 다른 도서관이 있으면 풀림. 위치를 못 쓰면 유지</td><td>풀지 않고 그 실행만 지도를 보여 줌</td><td>—</td><td>"다른 도서관이 있는 곳으로 가면 풀린다"(D)</td><td>반경 = 설정값 3 또는 5km</td><td>플로우 5·6</td><td><span class="st">확인(한 줄) · 세부는 기본값(Claude)</span></td></tr>
     <tr><td>② 책·도서관 검색 구분</td><td id="sp-s" data-adopted="후보 1: 검색창 안 오른쪽 &quot;도서관 찾기&quot; 버튼">후보 1: 검색창 안 오른쪽 "도서관 찾기" 버튼</td><td>없음(받지 않음)</td><td>후보 2 지도 위 "다른 지역 보기" 버튼: 지도가 지저분해지고 지도에 대한 설정처럼 느껴짐(D). 후보 3 검색 화면 안 책｜도서관 전환(이유는 받지 못함). A 결정 13(한 검색창에서 책과 지역을 함께 검색): 진입점이 구별되지 않음(D)</td><td>"검색창 밖 버튼은 지도가 지저분해지고, 지도에 대한 설정처럼 느껴질 수 있음. 반면 검색창 버튼은 검색창 안에 있기 때문에 "다른 검색"에 대한 진입이 확실하게 느껴진다"(D)</td><td>버튼 글자 "도서관 찾기", 검색창 안 오른쪽 끝. 책 검색 바탕 paper, 도서관 검색 바탕 ink-strong(#2E333F)·표지 없음·핀 목록</td><td>평소 검색창 = 책 / 버튼 = 도서관 검색 → 결과 → 지도 이동 → "현재 위치로"</td><td><span class="st">확인</span> 버튼 글자·크기는 <span class="st">기본값(Claude)</span></td></tr>
     <tr><td>핀 누르기 전환</td><td>오른쪽에서 밀려 들어옴 0.3초 + 배경 변화 + 방문 멘트 카드</td><td>—</td><td>문 열기 연출, 지도 위 시트(O-19·C-13)</td><td>—</td><td>300ms ease-out</td><td>핀 → 방문 페이지 → ‹ 또는 밀기 → 지도</td><td><span class="st">기본값(Claude)</span></td></tr>
-    <tr><td>방문 멘트 카드</td><td>방문 횟수에 따라 다른 한 줄을 작은 카드로(버튼 없음). 첫 방문·연속 주기(7·14·30일, 그 뒤 100일마다)·오랜만일 때만 뜸(D 확인 답 2026-11-13). 문구는 위 ③ 표</td><td>—</td><td>이름 아래 "입장했어요" 한 줄 1.5초(D가 고침)</td><td>"방문 횟수에 대한 값을 저장하고(시안 1에서 필요한 값이니) 첫 방문 도서관은 "처음으로 OO도서관에 방문했어요!", 자주 방문했다면 "일주일 동안 매일 방문했어요!" 같은 멘트 … 후보 2 카드 팝업 방식에서 차용하되 버튼 없이, 작게"(D)</td><td>카드 paper·곡률 18·그림자, 글자 13 한 줄, 하단 바 위 12, 0.3초 떠오름 → 2.5초 → 사라짐. 방문은 도서관마다 하루 한 번 셈, 기기 저장</td><td>핀 → 전환 끝 → 카드 → 저절로 사라짐. 세 번째 방문 날은 ① 카드가 대신 뜸</td><td><span class="st">확인</span>(바꾸기·문구 2개·모양) 나머지 문구·세는 법은 <span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>방문 멘트 카드</td><td>방문 횟수에 따라 다른 한 줄을 작은 카드로(버튼 없음). 첫 방문·연속 주기(3·7·14·30일, 그 뒤 100일마다)·오랜만일 때만 뜸(D 확인 답 2026-11-13). 문구는 위 ③ 표</td><td>—</td><td>이름 아래 "입장했어요" 한 줄 1.5초(D가 고침)</td><td>"방문 횟수에 대한 값을 저장하고(시안 1에서 필요한 값이니) 첫 방문 도서관은 "처음으로 OO도서관에 방문했어요!", 자주 방문했다면 "일주일 동안 매일 방문했어요!" 같은 멘트 … 후보 2 카드 팝업 방식에서 차용하되 버튼 없이, 작게"(D)</td><td>카드 paper·곡률 18·그림자, 글자 13 한 줄, 하단 바 위 12, 0.3초 떠오름 → 2.5초 → 사라짐. 방문은 도서관마다 하루 한 번 셈, 기기 저장</td><td>핀 → 전환 끝 → 카드 → 저절로 사라짐. 세 번째 방문 날은 ① 카드가 대신 뜸</td><td><span class="st">확인</span>(바꾸기·문구 2개·모양) 나머지 문구·세는 법은 <span class="st">기본값(Claude)</span></td></tr>
     <tr><td>머리 변화</td><td>올리면 "‹ 이름" 한 줄로 접힘</td><td>—</td><td>—</td><td>—</td><td>접힌 높이 약 36</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>지도 기준 위치(결정 1)</td><td>항상 현재 위치. 집·동네를 저장하지 않음</td><td>—</td><td>동네를 한 번 고르면 다시 안 묻기(D 2차 리뷰로 폐기)</td><td>"현재 위치로 해두면 설정할필요없이 바로바로 위치알수 있어서"(A)</td><td>—</td><td>—</td><td><span class="st">확인</span></td></tr>
     <tr><td>위치 허용 버튼(결정 12)</td><td>지도 아래 떠 있는 버튼</td><td>—</td><td>위쪽 띠 배너, 흐린 점, 작은 카드(A 시안)</td><td>"가장 깔끔해보여서"(A)</td><td>임시 시작 위치는 미확인(Q-17)</td><td>누르면 시스템 권한 창</td><td><span class="st">확인 · 시작 위치 미확인</span></td></tr>
@@ -390,7 +391,7 @@
     if(t.dataset.go){ var a=t.dataset.go.split('|'); document.getElementById('dn').textContent=a[0]; document.getElementById('ds').textContent=a[1];
       document.getElementById('dh').classList.remove('small'); document.getElementById('dv').classList.add('in');
       var k=document.getElementById('dcase').value, en=document.getElementById('de'), ask=document.getElementById('dask');
-      var msg={ first:'처음으로 '+a[0]+'에 방문했어요!', week:'일주일 동안 매일 방문했어요!', two:'2주 동안 매일 방문했어요!', month:'한 달 동안 매일 방문했어요!', hundred:'100일 연속으로 방문했어요!', long:'오랜만이에요! 45일 만에 방문했어요' }[k];
+      var msg={ first:'처음으로 '+a[0]+'에 방문했어요!', streak3:'3일 연속으로 방문했어요!', week:'일주일 동안 매일 방문했어요!', two:'2주 동안 매일 방문했어요!', month:'한 달 동안 매일 방문했어요!', hundred:'100일 연속으로 방문했어요!', long:'오랜만이에요! 45일 만에 방문했어요' }[k];
       clearTimeout(en._t1); clearTimeout(en._t2); en.classList.remove('on'); ask.classList.add('hide');
       if(k==='third'){ document.getElementById('daskn').textContent=a[0]; en._t1=setTimeout(function(){ ask.classList.remove('hide'); },300); }
       else if(msg){ en.textContent=msg; en._t1=setTimeout(function(){ en.classList.add('on'); },300); en._t2=setTimeout(function(){ en.classList.remove('on'); },2800); } }
