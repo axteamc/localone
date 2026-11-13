@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>들어올 때 문구 비교</title>
+<style>
+:root{--paper:#FBF6EA;--ink:#2B2620;--sub:#78736C;--fill:#EEC96B;--line:#E4DCC8;--card:#fff;--acc:#C9962B;--cream:#FFF9EA}
+*{box-sizing:border-box}
+body{margin:0;padding:20px 16px 60px;background:var(--paper);color:var(--ink);font:15px/1.5 -apple-system,"Malgun Gothic",sans-serif}
+h1{font-size:20px;margin:0 0 4px}
+.lead{color:var(--sub);margin:0 0 14px}
+.pick{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:16px;font-size:14px}
+.pick label{margin-right:12px;white-space:nowrap}
+.row{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.cand{flex:1 1 290px;max-width:370px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+.cand.rec{border:2px solid var(--acc)}
+.tag{display:inline-block;font-size:12px;background:var(--acc);color:#fff;border-radius:99px;padding:1px 9px;margin-left:6px}
+.tag.cur{background:#78736C}
+h2{font-size:16px;margin:0 0 6px}
+.phone{background:var(--cream);border:1px solid var(--line);border-radius:14px;height:230px;margin:10px 0;position:relative;overflow:hidden}
+.top{padding:10px 12px;font-weight:700;font-size:15px;border-bottom:1px solid var(--line)}
+.feed{display:flex;gap:6px;padding:8px 10px}
+.feed i{flex:1;height:70px;border-radius:8px;background:#EADFC2}
+.enter{position:absolute;left:0;right:0;bottom:0;text-align:center;padding:8px;font-size:13px;background:var(--ink);color:#fff;transform:translateY(100%)}
+.toast{position:absolute;left:50%;bottom:14px;transform:translate(-50%,20px);background:var(--ink);color:#fff;border-radius:99px;padding:7px 14px;font-size:13px;opacity:0;white-space:nowrap}
+.show{transition:all .3s}
+.on.enter{transform:translateY(0)}
+.on.toast{opacity:1;transform:translate(-50%,0)}
+.go{border:0;background:var(--fill);border-radius:99px;padding:6px 14px;font:inherit;cursor:pointer}
+ul{margin:6px 0;padding-left:18px;font-size:14px}
+.k{font-weight:700}
+.note{font-size:13px;color:var(--sub)}
+.flow{background:#F6F0DF;border-radius:10px;padding:8px 10px;font-size:14px;margin:8px 0}
+</style>
+</head>
+<body>
+<h1>방문 페이지에 들어올 때 무엇이 보일까?</h1>
+<p class="lead">먼저 오늘 상황을 고르고, 각 후보의 "들어가기"를 눌러 보세요. 같은 상황에서 후보마다 무엇이 보이는지 달라집니다.</p>
+
+<div class="pick" id="pick">
+  <b>오늘은</b>
+  <label><input type="radio" name="sit" value="first" checked> 처음 방문</label>
+  <label><input type="radio" name="sit" value="streak7"> 7일 연속 방문</label>
+  <label><input type="radio" name="sit" value="long"> 40일 만에 방문</label>
+  <label><input type="radio" name="sit" value="normal"> 평범한 날</label>
+</div>
+
+<div class="row">
+  <section class="cand">
+    <h2>후보 1 — 늘 "입장했어요" 한 줄 <span class="tag cur">원래 기획</span></h2>
+    <div class="phone"><div class="top">‹ ○○도서관</div><div class="feed"><i></i><i></i><i></i></div><div class="enter show" id="e1">입장했어요</div></div>
+    <button class="go" data-c="1">○○도서관 들어가기</button>
+    <div class="flow"><span class="k">누르면 이렇게 이어져요</span><br>핀 → 방문 페이지가 옆으로 밀려 들어옴 → 맨 아래에 "입장했어요"가 매번 떴다 사라짐</div>
+    <ul>
+      <li class="k">얻는 것: 단순, 들어왔다는 느낌이 매번 같음</li>
+      <li class="k">포기하는 것: 매번 같은 문구라 금방 무뎌짐. D가 이 문구를 바꾸라고 함</li>
+    </ul>
+  </section>
+
+  <section class="cand rec">
+    <h2>후보 2 — 방문 멘트 카드, 첫 방문·오랜만만 <span class="tag">추천</span></h2>
+    <div class="phone"><div class="top">‹ ○○도서관</div><div class="feed"><i></i><i></i><i></i></div><div class="toast show" id="e2"></div></div>
+    <button class="go" data-c="2">○○도서관 들어가기</button>
+    <div class="flow"><span class="k">누르면 이렇게 이어져요</span><br>핀 → 방문 페이지 → 첫 방문이거나 30일 이상 만일 때만 아래 가운데에 작은 카드가 떴다 사라짐(버튼 없음). 그 밖에는 아무것도 안 뜸</div>
+    <ul>
+      <li class="k">얻는 것: 연속 방문 기록을 따로 세지 않아 단순, 뜰 때만 뜨므로 귀찮지 않음</li>
+      <li class="k">포기하는 것: 자주 오는 사람에게 주는 "매일 방문했어요!" 칭찬이 없음(D는 넣기로 함)</li>
+      <li class="note">추천 이유: 말씀하신 "연속방문은 빼자"와 맞고, 방문 멘트 카드의 취지(D)는 첫 방문·오랜만으로 살림.</li>
+    </ul>
+  </section>
+
+  <section class="cand">
+    <h2>후보 3 — 방문 멘트 카드, 첫 방문·연속·오랜만 <span class="tag cur">D 결정</span></h2>
+    <div class="phone"><div class="top">‹ ○○도서관</div><div class="feed"><i></i><i></i><i></i></div><div class="toast show" id="e3"></div></div>
+    <button class="go" data-c="3">○○도서관 들어가기</button>
+    <div class="flow"><span class="k">누르면 이렇게 이어져요</span><br>핀 → 방문 페이지 → 첫 방문, 연속 7·14·30일째(그 뒤 100일마다), 30일 이상 만일 때 카드가 뜸. 그 밖에는 안 뜸</div>
+    <ul>
+      <li class="k">얻는 것: 자주 오는 사람에게 칭찬, 습관이 보임</li>
+      <li class="k">포기하는 것: 연속 일수를 기기에 세어 저장해야 해서 만들 것이 늘어남</li>
+    </ul>
+  </section>
+</div>
+
+<p class="note" style="margin-top:22px">상태: 결정 전. 고른 후보와 이유를 사용자가 직접 말해야 명세서에 적습니다.</p>
+
+<script>
+function sit(){return document.querySelector('input[name=sit]:checked').value}
+function msg(c){
+  var s=sit();
+  if(c==='1')return '입장했어요';
+  if(s==='first')return '처음으로 ○○도서관에 방문했어요!';
+  if(s==='long')return '오랜만이에요! 40일 만에 방문했어요';
+  if(s==='streak7'&&c==='3')return '일주일 동안 매일 방문했어요!';
+  return '';
+}
+document.querySelectorAll('.go').forEach(function(b){
+  b.addEventListener('click',function(){
+    var c=b.dataset.c,el=document.getElementById('e'+c),t=msg(c);
+    el.classList.remove('on');
+    if(c!=='1')el.textContent=t;
+    if(!t){return}
+    void el.offsetWidth;el.classList.add('on');
+    setTimeout(function(){el.classList.remove('on')},2500);
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>지도 홈 검색창 비교</title>
+<style>
+:root{--paper:#FBF6EA;--ink:#2B2620;--sub:#78736C;--fill:#EEC96B;--line:#E4DCC8;--card:#fff;--acc:#C9962B}
+*{box-sizing:border-box}
+body{margin:0;padding:20px 16px 60px;background:var(--paper);color:var(--ink);font:15px/1.5 -apple-system,"Malgun Gothic",sans-serif}
+h1{font-size:20px;margin:0 0 4px}
+.lead{color:var(--sub);margin:0 0 18px}
+.row{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.cand{flex:1 1 280px;max-width:360px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+.cand.rec{border:2px solid var(--acc)}
+.tag{display:inline-block;font-size:12px;background:var(--acc);color:#fff;border-radius:99px;padding:1px 9px;margin-left:6px}
+.tag.cur{background:#78736C}
+h2{font-size:16px;margin:0 0 6px}
+.phone{background:#EFE8D6;border-radius:14px;padding:12px;margin:10px 0;min-height:150px;position:relative}
+.bar{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);border-radius:99px;padding:8px 12px;font-size:14px;color:var(--sub)}
+.bar .ph{flex:1}
+.bar button{border:0;background:none;font:inherit;cursor:pointer;padding:2px 4px;color:var(--ink)}
+.bar .lib{background:var(--fill);border-radius:99px;padding:3px 10px;font-size:13px;color:var(--ink)}
+.mapbg{margin-top:10px;height:70px;border-radius:10px;background:repeating-linear-gradient(45deg,#E8E0CB,#E8E0CB 8px,#EFE8D6 8px,#EFE8D6 16px)}
+.state{margin-top:8px;font-size:13px;color:var(--acc);min-height:20px}
+ul{margin:6px 0;padding-left:18px;font-size:14px}
+.k{font-weight:700}
+.note{font-size:13px;color:var(--sub)}
+.flow{background:#F6F0DF;border-radius:10px;padding:8px 10px;font-size:14px;margin:8px 0}
+</style>
+</head>
+<body>
+<h1>지도 홈 검색창: 마이크를 넣을까?</h1>
+<p class="lead">세 화면의 검색창을 눌러 보세요. 위쪽 지도는 같고 검색창만 다릅니다.</p>
+
+<div class="row">
+  <section class="cand">
+    <h2>후보 1 — 마이크만 <span class="tag cur">지금 내 시안</span></h2>
+    <div class="phone">
+      <div class="bar"><span class="ph">책 제목·저자를 검색</span><button data-s="s1" data-m="mic" aria-label="마이크">🎤</button></div>
+      <div class="mapbg"></div>
+      <div class="state" id="s1"></div>
+    </div>
+    <div class="flow"><span class="k">누르면 이렇게 이어져요</span><br>검색창 → C의 책 검색 화면 / 🎤 → "듣고 있어요", 말한 글자가 검색창에 들어가 책 검색 결과로</div>
+    <ul>
+      <li>검색창이 비어 보이고 단순합니다</li>
+      <li class="k">얻는 것: 손이 바쁠 때 말로 검색, 레퍼런스(카카오맵·네이버 지도·T맵)와 같은 느낌</li>
+      <li class="k">포기하는 것: 책 검색과 도서관 검색을 가르는 자리가 없음(D 결정 13과 충돌), D가 M1 동결이라 제외한 기능</li>
+    </ul>
+  </section>
+
+  <section class="cand rec">
+    <h2>후보 2 — "도서관 찾기" 버튼만 <span class="tag">추천</span> <span class="tag cur">D 결정</span></h2>
+    <div class="phone">
+      <div class="bar"><span class="ph">책 제목·저자를 검색</span><button class="lib" data-s="s2" data-m="lib">도서관 찾기</button></div>
+      <div class="mapbg"></div>
+      <div class="state" id="s2"></div>
+    </div>
+    <div class="flow"><span class="k">누르면 이렇게 이어져요</span><br>검색창 → 책 검색 화면 / "도서관 찾기" → 책 검색과 확연히 다른 도서관 검색 화면(지역·도서관 이름)</div>
+    <ul>
+      <li>책 검색과 도서관 검색의 입구가 한눈에 구분됩니다</li>
+      <li class="k">얻는 것: 입구가 헷갈리지 않음, M1 범위 안(마이크는 제안으로 보관)</li>
+      <li class="k">포기하는 것: 음성 검색(나중에 제안이 채택되면 오른쪽에 추가 가능)</li>
+      <li class="note">추천 이유: 지도 홈에서 제일 먼저 눈에 띄는 입구라 D가 정한 구분이 필요하고, 마이크는 M1 밖이라 뺀 채로도 나중에 붙일 수 있음.</li>
+    </ul>
+  </section>
+
+  <section class="cand">
+    <h2>후보 3 — 둘 다</h2>
+    <div class="phone">
+      <div class="bar"><span class="ph">책 제목·저자</span><button data-s="s3" data-m="mic" aria-label="마이크">🎤</button><button class="lib" data-s="s3" data-m="lib">도서관 찾기</button></div>
+      <div class="mapbg"></div>
+      <div class="state" id="s3"></div>
+    </div>
+    <div class="flow"><span class="k">누르면 이렇게 이어져요</span><br>검색창 → 책 검색 / 🎤 → 음성으로 책 검색 / "도서관 찾기" → 도서관 검색</div>
+    <ul>
+      <li>검색창 안이 빽빽해져 글자 들어갈 자리가 줄어듭니다</li>
+      <li class="k">얻는 것: 음성 검색과 도서관 구분 둘 다</li>
+      <li class="k">포기하는 것: 검색창이 복잡해짐, M1 동결 밖 기능이 들어옴(D에게 제안 필요)</li>
+    </ul>
+  </section>
+</div>
+
+<p class="note" style="margin-top:22px">상태: 결정 전. 고른 후보와 이유를 사용자가 직접 말해야 명세서에 적습니다.</p>
+
+<script>
+document.querySelectorAll('.bar button').forEach(function(b){
+  b.addEventListener('click',function(){
+    var el=document.getElementById(b.dataset.s);
+    el.textContent=b.dataset.m==='mic'?'🎤 듣고 있어요… (말한 글자가 검색창에 들어가요)':'도서관 검색 화면으로 이동 (지역·도서관 이름, 책 검색과 다른 모양)';
+  });
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>보는 위치 바꾸기 비교</title>
+<style>
+:root{--paper:#FBF6EA;--ink:#2B2620;--sub:#78736C;--fill:#EEC96B;--line:#E4DCC8;--card:#fff;--acc:#C9962B}
+*{box-sizing:border-box}
+body{margin:0;padding:20px 16px 60px;background:var(--paper);color:var(--ink);font:15px/1.5 -apple-system,"Malgun Gothic",sans-serif}
+h1{font-size:20px;margin:0 0 4px}
+.lead{color:var(--sub);margin:0 0 18px}
+.row{display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start}
+.cand{flex:1 1 290px;max-width:370px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px}
+.cand.rec{border:2px solid var(--acc)}
+.tag{display:inline-block;font-size:12px;background:var(--acc);color:#fff;border-radius:99px;padding:1px 9px;margin-left:6px}
+.tag.cur{background:#78736C}
+h2{font-size:16px;margin:0 0 6px}
+.phone{background:#EFE8D6;border-radius:14px;padding:12px;margin:10px 0;min-height:230px;position:relative;overflow:hidden}
+.bar{display:flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--line);border-radius:99px;padding:8px 12px;font-size:14px;color:var(--sub);cursor:pointer}
+.bar .ph{flex:1}
+.lib{background:var(--fill);border:0;border-radius:99px;padding:3px 10px;font:inherit;font-size:13px;color:var(--ink);cursor:pointer}
+.head{font-size:13px;margin:8px 2px 0;color:var(--ink);font-weight:700}
+.map{margin-top:6px;height:100px;border-radius:10px;background:repeating-linear-gradient(45deg,#E8E0CB,#E8E0CB 8px,#EFE8D6 8px,#EFE8D6 16px);position:relative}
+.pin{position:absolute;font-size:11px;background:#fff;border-radius:8px;padding:1px 6px;border:1px solid var(--line)}
+.again{position:absolute;left:50%;bottom:8px;transform:translateX(-50%);background:#fff;border:1px solid var(--line);border-radius:99px;font-size:12px;padding:3px 10px;cursor:pointer}
+.cur-btn{position:absolute;left:8px;bottom:8px;background:var(--ink);color:#fff;border:0;border-radius:99px;font-size:12px;padding:3px 10px;cursor:pointer}
+.panel{background:#fff;border:1px solid var(--line);border-radius:10px;margin-top:6px;font-size:14px}
+.panel div{padding:7px 12px;border-bottom:1px solid var(--line);cursor:pointer}
+.panel div:last-child{border:0}
+.state{margin-top:8px;font-size:13px;color:var(--acc);min-height:20px}
+ul{margin:6px 0;padding-left:18px;font-size:14px}
+.k{font-weight:700}
+.note{font-size:13px;color:var(--sub)}
+.flow{background:#F6F0DF;border-radius:10px;padding:8px 10px;font-size:14px;margin:8px 0}
+.hide{display:none}
+.libscreen{background:#fff;border-radius:10px;padding:10px;margin-top:6px;border:2px dashed var(--acc);font-size:14px}
+</style>
+</head>
+<body>
+<h1>다른 지역 도서관을 미리 보려면?</h1>
+<p class="lead">세 화면 모두 지도를 끌어 "이 지역에서 다시 찾기"를 누르는 방법은 같습니다. 다른 점은 <b>검색창으로 지역을 찾는 길</b>과 <b>돌아오는 길</b>입니다. 눌러 보세요.</p>
+
+<div class="row">
+  <!-- 후보 1 -->
+  <section class="cand">
+    <h2>후보 1 — 한 검색창에서 책·지역 같이 <span class="tag cur">이전 내 안</span></h2>
+    <div class="phone" id="p1">
+      <div class="bar" data-act="open1"><span class="ph">책·지역 검색 (예: 제주시 연동)</span></div>
+      <div class="panel hide" id="d1"><div data-act="go1">제주시 연동 (지역)</div><div data-act="go1">제주시 노형동 (지역)</div><div>"제주" 책 검색</div></div>
+      <div class="head" id="h1">현재 위치 기준 ▾</div>
+      <div class="map"><span class="pin" style="left:20px;top:20px">A도서관</span><span class="pin" style="left:120px;top:50px">B도서관</span><button class="again">이 지역에서 다시 찾기</button></div>
+    </div>
+    <div class="flow"><span class="k">누르면 이렇게 이어져요</span><br>검색창에 글자를 치면 책과 지역이 한 목록에 섞여 나옴 → 지역을 누르면 지도가 그 지역으로 → 돌아오려면 머리 "다른 지역 보는 중 ▾"을 누름</div>
+    <ul>
+      <li class="k">얻는 것: 검색창이 하나, 화면이 단순</li>
+      <li class="k">포기하는 것: 책 검색인지 지역 검색인지 구분이 안 되어 헷갈림(D가 탈락시킨 이유), "도서관 찾기" 버튼과 맞지 않음</li>
+    </ul>
+  </section>
+
+  <!-- 후보 2 -->
+  <section class="cand rec">
+    <h2>후보 2 — "도서관 찾기" 버튼으로 구분 + "현재 위치로" 버튼 <span class="tag">추천</span> <span class="tag cur">D 결정</span></h2>
+    <div class="phone" id="p2">
+      <div class="bar"><span class="ph">책 제목·저자를 검색</span><button class="lib" data-act="open2">도서관 찾기</button></div>
+      <div class="libscreen hide" id="l2">
+        <b>도서관 찾기</b> (책 검색과 다른 모양)<br>
+        <div class="panel"><div data-act="go2">제주시 연동</div><div data-act="go2">제주시 노형동</div><div data-act="go2">서귀포시 중문동</div></div>
+      </div>
+      <div class="head" id="h2">현재 위치 기준 ▾</div>
+      <div class="map"><span class="pin" style="left:20px;top:20px">A도서관</span><span class="pin" style="left:120px;top:50px">B도서관</span><button class="again">이 지역에서 다시 찾기</button><button class="cur-btn hide" id="c2" data-act="back2">현재 위치로</button></div>
+    </div>
+    <div class="flow"><span class="k">누르면 이렇게 이어져요</span><br>"도서관 찾기" → 도서관 검색 화면(지역·도서관 이름만) → 지역을 누르면 지도가 그 지역으로, 지도 아래 왼쪽에 "현재 위치로" 버튼 → 누르면 돌아옴</div>
+    <ul>
+      <li class="k">얻는 것: 책 검색과 지역 검색이 섞이지 않음, 돌아오는 버튼이 눈에 보임</li>
+      <li class="k">포기하는 것: 지도 위에 버튼이 하나 더 생김(지저분해질 수 있음), 지역을 찾으려면 버튼을 한 번 더 누름</li>
+      <li class="note">추천 이유: 방금 고르신 검색창 후보 2("도서관 찾기" 버튼)와 이어지고, 돌아오는 길이 한눈에 보임.</li>
+    </ul>
+  </section>
+
+  <!-- 후보 3 -->
+  <section class="cand">
+    <h2>후보 3 — "도서관 찾기"로 구분, "현재 위치로" 버튼 없이 머리에서 돌아옴</h2>
+    <div class="phone" id="p3">
+      <div class="bar"><span class="ph">책 제목·저자를 검색</span><button class="lib" data-act="open3">도서관 찾기</button></div>
+      <div class="libscreen hide" id="l3">
+        <b>도서관 찾기</b> (책 검색과 다른 모양)<br>
+        <div class="panel"><div data-act="go3">제주시 연동</div><div data-act="go3">제주시 노형동</div><div data-act="go3">서귀포시 중문동</div></div>
+      </div>
+      <div class="head" id="h3" data-act="back3" style="cursor:pointer">현재 위치 기준 ▾</div>
+      <div class="map"><span class="pin" style="left:20px;top:20px">A도서관</span><span class="pin" style="left:120px;top:50px">B도서관</span><button class="again">이 지역에서 다시 찾기</button></div>
+    </div>
+    <div class="flow"><span class="k">누르면 이렇게 이어져요</span><br>"도서관 찾기" → 도서관 검색 화면 → 지역을 누르면 지도 이동, 머리가 "다른 지역 보는 중 ▾"로 바뀜 → 머리를 누르면 현재 위치로 돌아옴(지도 위 버튼 없음)</div>
+    <ul>
+      <li class="k">얻는 것: 지도가 깔끔함(이전에 말씀하신 "현재 위치로 돌아가기는 넣지 말자"와 가까움)</li>
+      <li class="k">포기하는 것: 돌아오는 길이 머리를 눌러야 해서 눈에 덜 띔, 앱을 다시 켜도 현재 위치로 돌아옴</li>
+    </ul>
+  </section>
+</div>
+
+<p class="note" style="margin-top:22px">상태: 결정 전. 고른 후보와 이유를 사용자가 직접 말해야 명세서에 적습니다.</p>
+
+<script>
+function $(i){return document.getElementById(i)}
+document.addEventListener('click',function(e){
+  var a=e.target.closest('[data-act]');if(!a)return;
+  var t=a.dataset.act;
+  if(t==='open1'){$('d1').classList.toggle('hide')}
+  if(t==='go1'){$('d1').classList.add('hide');$('h1').textContent='다른 지역 보는 중 ▾ (제주시)'}
+  if(t==='open2'){$('l2').classList.toggle('hide')}
+  if(t==='go2'){$('l2').classList.add('hide');$('h2').textContent='다른 지역 보는 중 (제주시)';$('c2').classList.remove('hide')}
+  if(t==='back2'){$('h2').textContent='현재 위치 기준 ▾';$('c2').classList.add('hide')}
+  if(t==='open3'){$('l3').classList.toggle('hide')}
+  if(t==='go3'){$('l3').classList.add('hide');$('h3').textContent='다른 지역 보는 중 ▾ (제주시) — 누르면 현재 위치로'}
+  if(t==='back3'){$('h3').textContent='현재 위치 기준 ▾'}
+});
+</script>
+</body>
+</html>
