@@ -12,7 +12,8 @@ from sqlalchemy import text
 from sqlalchemy import create_engine
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.common import error_response, now_kst
+from app.auth import JwksClient, build_jwks_client
+from app.common import ApiError, error_response, now_kst
 from app.settings import CORS_ENVS, LOCAL_ORIGIN_REGEX, Settings, get_settings
 
 logger = logging.getLogger("localone")
@@ -24,7 +25,9 @@ HTTP_ERRORS = {
 }
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(
+    settings: Settings | None = None, jwks_client: JwksClient | None = None
+) -> FastAPI:
     settings = settings or get_settings()
     # psycopg 비동기는 Windows의 uvicorn 기본 루프(Proactor)에서 동작하지 않아,
     # 동기 엔진을 스레드에서 쓴다. 엔진은 만들기만 하고 시작 때 DB에 연결하지 않는다(DB가 없어도 서버는 시작)
@@ -43,6 +46,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
     app.state.engine = engine
+
+    # ── [auth-D] ──
+    app.state.jwks_client = jwks_client if jwks_client is not None else build_jwks_client(settings)
+
+    @app.exception_handler(ApiError)
+    async def _api_error(request: Request, exc: ApiError):
+        return error_response(exc.status_code, exc.code, exc.message, exc.detail)
+    # ── [/auth-D] ──
 
     if settings.app_env in CORS_ENVS:
         # 웹 스모크(브라우저)가 로컬 서버를 부를 수 있게 한다. 인증은 헤더(JWT)라 쿠키 자격 증명은 허용하지 않는다

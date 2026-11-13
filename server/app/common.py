@@ -8,6 +8,13 @@ from fastapi.responses import JSONResponse
 KST = ZoneInfo("Asia/Seoul")
 
 
+class ApiError(Exception):
+    def __init__(self, status_code: int, code: str, message: str, detail: str = ""):
+        super().__init__(message)
+        self.status_code, self.code = status_code, code
+        self.message, self.detail = message, detail
+
+
 def error_response(status_code: int, code: str, message: str, detail: str = "") -> JSONResponse:
     """모든 API 오류는 이 형식 하나만 쓴다(PROJECT.md §3-5)."""
     return JSONResponse(
