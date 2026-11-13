@@ -66,9 +66,13 @@
   .tabbar span.on { font-weight: 700; }
 
   /* 후보 A: 위에서 내려오는 반쪽 창 */
-  .drop { position: absolute; left: 0; right: 0; top: 0; height: 58%; background: var(--ink-strong); color: var(--paper); border-radius: 0 0 var(--r-card) var(--r-card); padding: 12px; z-index: 6; box-shadow: 0 6px 16px rgba(0,0,0,.25); }
-  .drop .field { background: rgba(255,255,255,.12); border-radius: var(--r-pill); padding: 6px 12px; display: flex; gap: 6px; }
-  .drop .row { padding: 7px 4px; border-bottom: 1px solid rgba(255,255,255,.15); }
+  .drop { position: absolute; left: 0; right: 0; top: 0; height: 58%; background: var(--fill3); color: var(--ink-strong); border-radius: 0 0 var(--r-card) var(--r-card); padding: 12px; z-index: 6; box-shadow: 0 6px 16px rgba(0,0,0,.25); }
+  .drop .field { background: var(--paper); border-radius: var(--r-pill); padding: 6px 12px; display: flex; gap: 6px; }
+  .drop .row { padding: 7px 4px; border-bottom: 1px solid rgba(46,51,63,.15); }
+  /* 처음 시안의 색(진한색). 사용자: "검색창 검정색은 좀 아닌거같아" → 다시 보기용으로만 남김 */
+  .drop.dark { background: var(--ink-strong); color: var(--paper); }
+  .drop.dark .field { background: rgba(255,255,255,.12); }
+  .drop.dark .row { border-bottom-color: rgba(255,255,255,.15); }
   .drop small, .full small, .inmap small { opacity: .7; }
   .dim { position: absolute; inset: 0; background: rgba(0,0,0,.25); z-index: 5; }
 
@@ -137,7 +141,7 @@
   </section>
 
   <!-- ===== 중심 요소 1 ===== -->
-  <section class="element" id="el-1" data-chosen="">
+  <section class="element" id="el-1" data-chosen="A">
     <h2>정할 것 1. "도서관 찾기"를 누르면 어떤 화면이 열릴까<span class="status" data-status>결정 전</span></h2>
     <div class="state">바꿔 보기:
       <button aria-pressed="true" data-step="0">누른 직후</button><button aria-pressed="false" data-step="1">"연동" 치는 중</button><button aria-pressed="false" data-step="2">결과를 누른 뒤</button>
@@ -172,10 +176,10 @@
           <div class="tabbar"><span class="on">홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
         </div>
         <dl class="note">
-          <dt>무엇이 다른가</dt><dd>진한 색 창이 위에서 반쯤 내려오고, 아래로 지도가 흐리게 보여요. 결과는 지역·도서관이 한 목록에 섞여 있어요.</dd>
-          <dt>누르면 이렇게 이어져요</dt><dd class="flow">"도서관 찾기" 누름 → 진한 창이 위에서 내려옴(지도는 흐리게 남음) → "연동" 치면 맞는 지역·도서관 3~4개 → 하나를 누르면 창이 올라가고 지도가 그곳으로 옮겨감 → 지도 아래 "현재 위치로"로 돌아옴</dd>
+          <dt>무엇이 다른가</dt><dd>초록빛 회색 창이 위에서 반쯤 내려오고, 아래로 지도가 흐리게 보여요. 결과는 지역·도서관이 한 목록에 섞여 있어요. (처음엔 진한색이었는데 고르면서 바꿨어요. 아래 명세의 선택 상자로 처음 색도 볼 수 있어요.)</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">"도서관 찾기" 누름 → 초록빛 회색 창이 위에서 내려옴(지도는 흐리게 남음) → "연동" 치면 맞는 지역·도서관 3~4개 → 하나를 누르면 창이 올라가고 지도가 그곳으로 옮겨감 → 지도 아래 "현재 위치로"로 돌아옴</dd>
           <dt>화면을 열어야 보이는 것</dt><dd>결과는 한 번에 3~4줄만 보여요(창이 반쪽이라서). 창 밖 흐린 지도를 누르면 창이 닫혀요.</dd>
-          <dt>얻는 것 / 포기하는 것</dt><dd>지도를 떠나지 않은 느낌, 진한 색이라 책 검색과 다름 / 결과가 많으면 창 안에서 내려야 하고, 지역과 도서관이 섞여 보여요</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>지도를 떠나지 않은 느낌, 크림색 책 검색과 색이 다름 / 결과가 많으면 창 안에서 내려야 하고, 지역과 도서관이 섞여 보여요</dd>
         </dl>
       </article>
 
@@ -266,7 +270,10 @@
       <li>사용자가 핀을 누르면 동네한권이 그 도서관 방문 페이지로 화면을 바꾼다(다음 세부 VISIT-2).</li>
       <li>사용자가 맨 위 검색창을 누르면 동네한권이 책 검색 화면을 연다(다른 팀원 몫).</li>
       <li>사용자가 지도를 끌어 옮기면 동네한권이 "이 지역에서 다시 찾기" 버튼을 보여 주고, 누르면 그 지역 도서관 핀을 다시 보여 준다.</li>
-      <li>사용자가 "도서관 찾기"를 누르면 동네한권이 도서관 찾기 화면을 연다. (정할 것 1을 고르면 여기를 이어서 쓴다)</li>
+      <li>사용자가 "도서관 찾기"를 누르면 동네한권이 지도 위로 초록빛 회색 창을 반쯤 내려 보이고, 아래 지도는 흐리게 남긴다.</li>
+      <li>사용자가 지역이나 도서관 이름을 치면 동네한권이 맞는 지역·도서관을 창 안 목록으로 보여 준다.</li>
+      <li>사용자가 목록에서 하나를 누르면 동네한권이 창을 올리고 지도를 그곳으로 옮긴다(고른 도서관 핀은 테두리).</li>
+      <li>사용자가 창 밖 흐린 지도를 누르면 동네한권이 창을 닫는다.</li>
       <li>보는 위치가 바뀐 동안 동네한권이 지도 아래 가운데에 "현재 위치로" 버튼을 보여 주고, 사용자가 누르면 현재 위치로 돌아온다.</li>
     </ol>
   </section>
@@ -274,11 +281,12 @@
   <!-- ===== 명세 패널 (세부 명세서 확인 목록·결정 기록과 같게) ===== -->
   <section id="spec">
     <h2>명세</h2>
-    <p>다시 비교하기 (정할 것 1): <select id="pick"><option value="">채택안 보기</option><option value="A">A. 위에서 내려오는 반쪽 창</option><option value="B">B. 다른 색 전체 화면</option><option value="C">C. 지도 위에서 바로 찾기</option></select></p>
+    <p>다시 비교하기 (정할 것 1): <select id="pick"><option value="">채택안 보기</option><option value="A">A. 위에서 내려오는 반쪽 창</option><option value="A0">A. (처음 색: 진한색)</option><option value="B">B. 다른 색 전체 화면</option><option value="C">C. 지도 위에서 바로 찾기</option></select></p>
     <div class="tblwrap">
     <table>
       <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값 · 유저 플로우</th></tr>
-      <tr><td>1. "도서관 찾기"를 누르면 열리는 화면</td><td>결정 전</td><td>— (추천: B. 다른 색 전체 화면)</td><td>—</td><td>결과를 누르면 지도가 그곳으로 옮겨감(방문 페이지로 바로 가지 않음, 큰 틀 결정 13)</td></tr>
+      <tr><td>1. "도서관 찾기"를 누르면 열리는 화면</td><td>확인 (불편한 점 받는 중)</td><td>채택 A. 위에서 내려오는 반쪽 창 / 차선 없음 / 탈락 B 다른 색 전체 화면(추천이었음), C 지도 위에서 바로 찾기("C가 제일 별로")</td><td>"난 A위에서 내려오는게 좋다고 생각해 … 굳이 화면을 바꿔가며 해야할까?"</td><td>창 높이 화면의 58%, 바탕 fill3(처음 ink-strong에서 바꿈: "검색창 검정색은 좀 아닌거같아"), 입력칸 paper, 아래 지도 흐리게(검정 25%). 결과를 누르면 창이 올라가고 지도가 그곳으로(방문 페이지로 바로 가지 않음, 큰 틀 결정 13). 창 밖을 누르면 닫힘</td></tr>
+      <tr><td>1-a. 반쪽 창 색</td><td>기본값(Claude)</td><td>fill3(초록빛 회색)</td><td>"검색창 검정색은 좀 아닌거같아"에 맞춰 Claude가 고름</td><td>책 검색(cream)과 구분되면서 진하지 않은 토큰</td></tr>
       <tr><td>2. 위치도 못 쓰고 지도도 안 뜰 때 보이는 도서관 목록</td><td>결정 전</td><td>— (1을 정한 뒤 시안)</td><td>—</td><td>시군구 도서관 목록(정해진 것)</td></tr>
       <tr><td>3. 가까운 곳에 도서관 핀이 많아 겹칠 때</td><td>결정 전</td><td>— (2를 정한 뒤 시안)</td><td>—</td><td>—</td></tr>
       <tr><td>지도 기준 위치</td><td>확인 (큰 틀 결정 1)</td><td>항상 현재 위치</td><td>"현재 위치로 해두면 설정할필요없이 바로바로 위치알수 있어서"</td><td>집·동네 저장 없음</td></tr>
@@ -308,6 +316,8 @@
     // 채택안 표시 (data-chosen 에 후보 id를 넣으면 기본 선택이 된다)
     function mark(id) {
       el.querySelectorAll('.cand').forEach(function (c) {
+        var dk = c.querySelector('.drop'); if (dk) dk.classList.toggle('dark', id === 'A0');
+        if (id === 'A0') id = 'A';
         c.classList.toggle('chosen', c.dataset.id === id);
         var old = c.querySelector('.badge.chosen'); if (old) old.remove();
         if (c.dataset.id === id) { var s = document.createElement('span'); s.className = 'badge chosen'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
