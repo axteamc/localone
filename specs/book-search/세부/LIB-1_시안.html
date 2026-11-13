@@ -71,6 +71,9 @@
   .rank b { display: inline-block; width: 18px; color: var(--ink-strong); }
   .theme { background: var(--fill2); border-radius: 12px; padding: 10px 12px; font-size: 12.5px; margin-top: 12px; }
   .kbd { background: var(--surface2); border-radius: 12px; height: 120px; margin-top: 12px; display: flex; align-items: center; justify-content: center; color: var(--ink-sub); font-size: 12px; }
+  .cntrow { display: flex; justify-content: space-between; align-items: center; gap: 6px; }
+  .viewbtn { flex: none; font: inherit; font-size: 12px; border: 1px solid var(--surface3); background: var(--paper); border-radius: var(--r-pill); padding: 2px 10px; cursor: pointer; }
+  .listB[hidden], .gridA[hidden] { display: none; }
   .more { text-align: center; font-size: 12.5px; color: var(--ink-sub); padding: 14px 0 6px; }
   .more[hidden] { display: none; }
 
@@ -95,7 +98,7 @@
 
 <main>
   <!-- ===== 중심 요소 1 ===== -->
-  <section class="element" id="el-1" data-chosen="">
+  <section class="element" id="el-1" data-chosen="A">
     <h2>정할 것 1. 책 이름을 치고 검색했을 때, 결과 책들을 어떤 모양으로 보여 줄까<span class="status" data-status>결정 전</span></h2>
     <div class="state">보기 바꾸기:
       <button aria-pressed="true" data-more="0">처음 보이는 모습</button><button aria-pressed="false" data-more="1">아래까지 내렸을 때</button><button aria-pressed="false" data-more="2">끝까지 봤을 때</button>
@@ -107,7 +110,7 @@
         <h3>2열 표지 큰 카드 <span class="badge">추천</span></h3>
         <div class="phone">
           <input class="searchbar" value="해리" readonly>
-          <div class="cityall">○ 현재 도시 내 모든 도서관 검색 <small>(자리만 · 모양은 다음 단계)</small></div><div class="cnt">"해리" 검색 결과 · 내 주변 3km 도서관 기준</div>
+          <div class="cityall">○ 현재 도시 내 모든 도서관 검색 <small>(자리만 · 모양은 다음 단계)</small></div><div class="cnt cntrow"><span>"해리" 검색 결과 · 내 주변 3km 도서관 기준</span><button class="viewbtn" type="button" aria-label="보기 바꾸기">☰ 목록으로</button></div>
           <div class="gridA">
             <div><div class="cover">해리포터와 마법사의 돌</div><div class="tt" style="margin-top:6px">해리포터와 마법사의 돌 1</div><div class="au">J.K. 롤링</div><div class="loan"><i></i>어제 기준 · 대출 가능</div><div class="plan">+ 빌릴 예정</div></div>
             <div><div class="cover c2">해리포터와 비밀의 방</div><div class="tt" style="margin-top:6px">해리포터와 비밀의 방 2</div><div class="au">J.K. 롤링</div><div class="loan out"><i></i>어제 기준 · 대출 중</div><div class="plan">+ 빌릴 예정</div></div>
@@ -116,10 +119,20 @@
             <div><div class="cover c2">해리의 모험</div><div class="tt" style="margin-top:6px">해리의 모험</div><div class="au">김해리</div><div class="loan out"><i></i>어제 기준 · 대출 중</div><div class="plan">+ 빌릴 예정</div></div>
             <div><div class="cover">해리 이야기</div><div class="tt" style="margin-top:6px">해리 이야기</div><div class="au">박해리</div><div class="loan"><i></i>어제 기준 · 대출 가능</div><div class="plan">+ 빌릴 예정</div></div>
           </div>
+          <div class="listB alt" hidden>
+            <div class="row"><div class="cover">해리포터</div><div><div class="tt">해리포터와 마법사의 돌 1</div><div class="au">J.K. 롤링 · 문학수첩 · 2019</div><div class="loan"><i></i>어제 기준 · 대출 가능</div><div class="plan">+ 빌릴 예정</div></div></div>
+            <div class="row"><div class="cover c2">비밀의 방</div><div><div class="tt">해리포터와 비밀의 방 2</div><div class="au">J.K. 롤링 · 문학수첩 · 2019</div><div class="loan out"><i></i>어제 기준 · 대출 중</div><div class="plan">+ 빌릴 예정</div></div></div>
+            <div class="row"><div class="cover c1">스페어</div><div><div class="tt">스페어</div><div class="au">해리 왕자 · 문학동네 · 2023</div><div class="loan unk"><i></i>알 수 없음</div><div class="plan">+ 빌릴 예정</div></div></div>
+            <div class="row"><div class="cover none">표지 없음</div><div><div class="tt">해리 쿼버트 사건의 진실</div><div class="au">조엘 디케르 · 영림카디널 · 2013</div><div class="loan"><i></i>어제 기준 · 대출 가능</div><div class="plan">+ 빌릴 예정</div></div></div>
+            <div class="row"><div class="cover c2">해리의 모험</div><div><div class="tt">해리의 모험</div><div class="au">김해리 · 가나출판 · 2020</div><div class="loan out"><i></i>어제 기준 · 대출 중</div><div class="plan">+ 빌릴 예정</div></div></div>
+            <div class="row"><div class="cover">해리 이야기</div><div><div class="tt">해리 이야기</div><div class="au">박해리 · 다산 · 2018</div><div class="loan"><i></i>어제 기준 · 대출 가능</div><div class="plan">+ 빌릴 예정</div></div></div>
+            <div class="row"><div class="cover c1">해리</div><div><div class="tt">해리와 도서관</div><div class="au">이도서 · 책마을 · 2021</div><div class="loan"><i></i>어제 기준 · 대출 가능</div><div class="plan">+ 빌릴 예정</div></div></div>
+          </div>
           <div class="more" data-m="1" hidden>책을 더 불러오는 중이에요…</div>
           <div class="more" data-m="2" hidden>여기까지예요</div>
         </div>
         <dl class="note">
+          <dt>고른 뒤 더한 것 (사용자 요청)</dt><dd>오른쪽 위 "☰ 목록으로"를 누르면 같은 결과가 1열 목록 모양으로 바뀌어요. 다시 누르면("▦ 표지로") 2열로 돌아와요.</dd>
           <dt>무엇이 다른가</dt><dd>책 표지가 크게 2열로 놓여요. 제목·저자·"어제 기준 · 대출 가능"은 표지 아래에 있어요. 한 화면에 6권쯤 보여요.</dd>
           <dt>누르면 이렇게 이어져요</dt><dd class="flow">책 표지를 누름 → 그 책의 상세 화면이 열림(도서관 목록이 이어짐) → "+ 빌릴 예정"을 누르면 도서관을 고르는 작은 창이 뜸. 사용자는 표지를 훑어보다가 알아보는 책을 바로 누를 수 있어요.</dd>
           <dt>얻는 것 / 포기하는 것</dt><dd>표지로 책을 알아보기 쉬움, 보내 주신 두 번째 화면과 비슷함 / 한 줄에 글자가 적게 들어가 책 소개글은 못 보임</dd>
@@ -219,10 +232,10 @@
   <!-- ===== 명세 패널 (세부 명세서 확인 목록·결정 기록과 같게) ===== -->
   <section id="spec">
     <h2>명세</h2>
-    <p>다시 비교하기: <select id="pick"><option value="">채택안 보기</option><option value="A">2열 표지 큰 카드</option><option value="B">1열 목록</option><option value="C">1열 큰 카드</option></select></p>
+    <p>다시 비교하기: <select id="pick"><option value="">채택안 보기 (2열 표지 큰 카드)</option><option value="A">2열 표지 큰 카드</option><option value="B">1열 목록</option><option value="C">1열 큰 카드</option></select></p>
     <table>
       <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값</th></tr>
-      <tr><td>1. 검색 결과 목록의 모양</td><td>결정 전</td><td>— (추천: 2열 표지 큰 카드)</td><td>—</td><td>A 한 화면 6권쯤 · B 5~7권 · C 3~4권</td></tr>
+      <tr><td>1. 검색 결과 목록의 모양</td><td>확인 (불편한 점 받는 중)</td><td>채택: 2열 표지 큰 카드(기본) + 오른쪽 위 버튼으로 1열 목록 전환 / 차선: 1열 목록(버튼으로 볼 수 있음) / 탈락: 1열 큰 카드</td><td>"첫번째 화면은 시력이 안좋으신분들이나 어른들이 보기 편하시게 좋게 고른거고 두번째는 뭐 젊은 사람들이 그런식으로 보는걸 좋아하는분들이 잇으니 골랏어"</td><td>기본 2열 한 화면 6권쯤 · 목록 5~7권. 버튼 글자 "☰ 목록으로"/"▦ 표지로" 12px 알약은 기본값(Claude)</td></tr>
       <tr><td>2. 책 상세 위쪽 모양</td><td>결정 전</td><td>— (1이 끝난 뒤 연다)</td><td>—</td><td>—</td></tr>
       <tr><td>3. 추천어를 눌렀을 때 가는 곳</td><td>결정 전</td><td>— (2가 끝난 뒤 연다)</td><td>—</td><td>—</td></tr>
       <tr><td>검색 진입 화면 기준</td><td>기본값(Claude)</td><td>항상 전국 기준 ("전국 인기 도서 · 최근 한 달"). 도서관별 추천은 넣지 않음</td><td>묻지 않음(이미 정해짐: 방문 페이지에 검색창 없음)</td><td>칸 제목 옆 13px 보조색 "최근 한 달"</td></tr>
@@ -257,6 +270,14 @@
     }
     mark(el.dataset.chosen);
     document.getElementById('pick').addEventListener('change', function (e) { mark(e.target.value || el.dataset.chosen); });
+  });
+  // 결과 모양 바꾸기 버튼 (채택안 A 안)
+  document.querySelectorAll('.viewbtn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var ph = b.closest('.phone'), g = ph.querySelector('.gridA'), l = ph.querySelector('.listB.alt');
+      var toList = !g.hidden; g.hidden = toList; l.hidden = !toList;
+      b.textContent = toList ? '▦ 표지로' : '☰ 목록으로';
+    });
   });
   // 예외 화면 전환
   var ex = ['"지금은 책을 찾을 수 없어요. 잠시 후 다시 해 주세요." (다시 해 보기 버튼)',
