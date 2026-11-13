@@ -2,297 +2,471 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>VISIT-1 지도 홈 시안</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VISIT-1 시안</title>
+<!--
+  VISIT-1 데포르메 지도 홈 — 세부 시안 (../team/prompts/1_기획.md 1B 2단계 시안 사이클).
+  큰 틀 때 만든 화면(지도 홈·위치 허용·방문 페이지 등)은 VISIT-1_큰틀_시안.html 에 그대로 남겨 두었다.
+  - 지금 정할 중심 요소 하나 = <section class="element"> 하나. 후보 화면 3개.
+  - 채택 후: data-chosen 에 채택 후보 id. 후보는 지우지 않는다.
+  - 색·곡률은 디자인_기준.md 토큰(warm)만 쓴다. 외부 연결 없음. 값은 모두 가짜.
+-->
 <style>
-/* 색·곡률은 디자인_기준.md 토큰 이름을 CSS 변수로 쓴다 (warm 룩) */
-:root{
-  --bg:#E6E1D9; --surface2:#D5CEC3; --surface3:#C4BCB0;
-  --fill1:#EEC96B; --fill2:#F2C9A4; --fill3:#B8BFB0;
-  --cream:#F4EFE2; --paper:#FDFCF9; --ink-strong:#33333A;
-  --text:#26262A; --text-sub:#7B766D; --line:#CFC8BC;
-  --closed:#78736C; --r-card:18px; --r-pill:18px; --r-arch:23px 23px 6px 6px;
-}
-*{box-sizing:border-box;margin:0}
-body{font-family:'Noto Sans KR',system-ui,sans-serif;background:#2B2A28;color:var(--text);display:flex;gap:24px;flex-wrap:wrap;justify-content:center;padding:20px}
-.col{display:flex;flex-direction:column;gap:10px;align-items:center}
-.cap{color:#EEE;font-size:13px;max-width:390px;text-align:center}
-.phone{width:390px;height:844px;background:var(--bg);border-radius:32px;position:relative;overflow:hidden}
-.status{height:44px}
-.top{padding:6px 16px 10px;display:flex;justify-content:space-between;align-items:center}
-.top h1{font-size:18px}
-.base{font-size:12px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-pill);padding:6px 12px}
-.map{position:absolute;left:0;right:0;top:150px;height:550px;background:#E9E6DD;overflow:hidden}
-.road{position:absolute;background:#D9D3C7}
-.land{position:absolute;background:var(--fill3);opacity:.5;border-radius:12px;font-size:11px;padding:4px 8px;color:var(--text-sub)}
-.me{position:absolute;left:190px;top:330px;width:16px;height:16px;border-radius:50%;background:var(--ink-strong);box-shadow:0 0 0 8px rgba(51,51,58,.15)}
-.pin{position:absolute;border:0;background:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;transform:translateX(-50%)}
-.pin b{display:inline-flex;width:34px;height:40px;background:var(--fill1);border-radius:var(--r-arch);align-items:center;justify-content:center;font-size:12px}
-.pin em{display:block;font-style:normal;font-size:12px;line-height:1.35;text-align:center;background:var(--paper);border-radius:var(--r-pill);padding:3px 10px;margin-top:3px;white-space:nowrap}
-.pin em small{display:block;font-size:11px;color:var(--text-sub)}
-.pin.closed b{background:var(--closed);color:#fff}
-.pin.closed em{color:var(--text-sub)}
-.pin .off{display:block;font-style:normal;font-size:11px;background:var(--closed);color:#fff;border-radius:var(--r-pill);padding:2px 8px;margin-bottom:3px;width:max-content}
-.search{margin:0 16px 8px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-pill);padding:4px 6px 4px 14px;font-size:13px;color:var(--text-sub);position:relative;z-index:2;display:flex;align-items:center;gap:8px}
-.search input{flex:1;min-width:0;border:0;outline:0;background:none;font:inherit;color:var(--text);padding:6px 0}
-.search input::placeholder{color:var(--text-sub)}
-.mic{flex:none;width:32px;height:32px;border:0;border-radius:50%;background:none;color:var(--ink-strong);display:flex;align-items:center;justify-content:center;cursor:pointer}
-.mic.on{background:var(--fill1);animation:pulse 1s infinite}
-@keyframes pulse{50%{box-shadow:0 0 0 6px rgba(238,201,107,.35)}}
-.m2slot{position:absolute;left:16px;right:16px;bottom:78px;border:2px dashed var(--line);border-radius:var(--r-card);padding:10px;font-size:12px;color:var(--text-sub);text-align:center}
-.sheet{position:absolute;left:0;right:0;bottom:72px;background:var(--surface2);padding:12px 16px;font-size:13px}
-.bar{position:absolute;left:0;right:0;bottom:0;height:72px;background:var(--paper);display:flex;justify-content:space-around;align-items:center;font-size:12px;color:var(--text-sub)}
-.card{background:var(--paper);border-radius:var(--r-card);padding:14px;margin:0 16px 10px}
-.card h3{font-size:15px}.card p{font-size:12px;color:var(--text-sub);margin-top:4px}
-.btn{display:inline-block;background:var(--ink-strong);color:#fff;border-radius:var(--r-pill);padding:8px 14px;font-size:13px;margin:6px 6px 0 0}
-.btn.sub{background:var(--paper);color:var(--text);border:1px solid var(--line)}
-.chips{display:flex;gap:8px;flex-wrap:wrap;padding:0 16px 10px}
-.chip{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-pill);padding:8px 14px;font-size:13px}
-.chip.on{background:var(--fill1)}
-.note{font-size:12px;color:var(--text-sub);padding:0 16px 10px}
-.cand{display:none}.cand.show{display:block}
-.ban-top{position:absolute;left:0;right:0;top:0;background:var(--fill1);padding:10px 14px;font-size:12px;color:var(--text)}
-.ban-top .btn{margin:6px 0 0;display:inline-block}
-.ban-pill{position:absolute;left:0;right:0;bottom:16px;text-align:center}
-.ban-dot{position:absolute;left:50%;top:320px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;background:var(--paper);border:1px solid var(--line);border-radius:var(--r-pill);padding:6px 12px;font-size:12px;white-space:nowrap}
-.ban-dot i{width:12px;height:12px;border-radius:50%;background:var(--closed);opacity:.5}
-.ban-card{position:absolute;left:16px;right:16px;top:16px;background:var(--paper);border-radius:var(--r-card);padding:14px}
-.ban-card h3{font-size:14px}.ban-card p{font-size:12px;color:var(--text-sub);margin:4px 0 6px}
-.pick{display:flex;flex-direction:column;gap:6px;text-align:left;margin:10px 0;font-size:13px}
-.spec{background:#3A3936;border-radius:10px;padding:8px 10px;font-size:12px;color:#DDD;text-align:left}
-.base.moved{background:var(--fill1)}
-.back-chip{position:absolute;left:16px;right:16px;bottom:62px;background:var(--ink-strong);color:#fff;border-radius:var(--r-pill);padding:8px 12px;font-size:12px;text-align:center}
-.rsheet{position:absolute;left:16px;right:16px;top:12px;background:var(--paper);border-radius:var(--r-card);padding:10px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
-.rbox{border:1px solid var(--line);border-radius:var(--r-pill);padding:8px 12px;font-size:12px;color:var(--text-sub);margin-bottom:6px}
-.rlist{display:none}.rsheet.open .rlist{display:block}.rbox{cursor:pointer}.rsheet.open .rbox{border-color:var(--ink-strong);color:var(--text)}
-.ritem{padding:8px 6px;font-size:13px;border-top:1px solid var(--line)}.ritem.cur{font-weight:700}
-.dd{display:none;position:absolute;left:0;right:0;top:calc(100% + 4px);background:var(--paper);border-radius:var(--r-card);box-shadow:0 2px 10px rgba(0,0,0,.2);padding:6px 10px;z-index:5;text-align:left}
-.dd.show{display:block}.dd h4{font-size:11px;color:var(--text-sub);margin:6px 0 2px}.dd .ritem{border-top:0;padding:6px 4px}
-.land.station{background:var(--surface3);opacity:.8;border-radius:50px;color:var(--ink-strong)}
-.star{border:0;background:none;padding:0 2px;line-height:1;cursor:pointer;vertical-align:-1px}
-.star svg{fill:#fff;stroke:var(--ink-strong);stroke-width:1.6;transition:fill .15s}
-.star.on svg{fill:#F3DC80}
-.e-toast{display:none;position:absolute;left:50%;bottom:84px;transform:translateX(-50%);background:var(--ink-strong);color:#fff;border-radius:var(--r-pill);padding:8px 14px;font-size:12px;white-space:nowrap;z-index:5}
-.e-toast.show{display:block}
-#E .top{position:relative}
-.mbtn{position:absolute;right:16px;top:100%;margin-top:-2px;border:0;background:none;font-size:20px;line-height:1;cursor:pointer;color:var(--ink-strong)}
-.mmenu{display:none;position:absolute;right:12px;top:calc(100% + 30px);background:#fff;border:1px solid var(--line,#E4DCC8);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.12);z-index:6;font-size:13px;overflow:hidden}
-.mmenu.open{display:block}
-.mmenu div{padding:10px 14px;cursor:pointer;white-space:nowrap}
-.mmenu div+div{border-top:1px solid #eee}
-.eC{display:none}.eC.show{display:block}
-.e-btn{position:absolute;right:16px;top:100px}
-.e-ask{position:absolute;left:16px;right:16px;bottom:84px;background:var(--paper);border-radius:var(--r-card);padding:12px;font-size:12px;box-shadow:0 2px 10px rgba(0,0,0,.15)}
-.e-ban{margin:0 16px 8px;background:var(--fill1);border-radius:var(--r-pill);padding:6px 12px;font-size:12px}
-.pick b{background:var(--fill1);color:var(--text);border-radius:8px;padding:0 6px;font-size:11px}
+  :root {
+    /* 개발산출물/디자인_기준.md 토큰 (warm, M1 기본) */
+    --bg: #E1E1DE; --surface2: #D0CEC8; --surface3: #BFBCB5;
+    --fill1: #E9C970; --fill2: #EDC9A9; --fill3: #B3BFB5;
+    --cream: #EFEFE7; --paper: #EFF1F1; --ink-strong: #2E333F;
+    --r-card: 18px; --r-pill: 18px; --r-arch: 23px 23px 6px 6px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink-strong); font-family: system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; line-height: 1.5; }
+  header.page { padding: 20px 16px 8px; max-width: 1200px; margin: 0 auto; }
+  header.page h1 { font-size: 20px; margin: 0 0 4px; }
+  .how { background: var(--cream); border-radius: var(--r-card); padding: 12px 16px; margin: 8px 0 0; }
+  main { max-width: 1200px; margin: 0 auto; padding: 0 16px 40px; }
+  section.element { margin-top: 24px; }
+  section.element > h2 { font-size: 17px; margin: 0 0 4px; }
+  .status { display: inline-block; font-size: 12px; padding: 2px 10px; border-radius: var(--r-pill); background: var(--surface2); margin-left: 6px; }
+  .cands { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 12px; }
+  .cand { background: var(--paper); border-radius: var(--r-card); padding: 14px; border: 3px solid transparent; }
+  .cand.recommended { border-color: var(--fill1); }
+  .cand.chosen { border-color: var(--ink-strong); }
+  .cand h3 { margin: 0 0 8px; font-size: 15px; }
+  .badge { font-size: 12px; padding: 1px 8px; border-radius: var(--r-pill); background: var(--fill1); margin-left: 6px; }
+  .badge.chosen { background: var(--ink-strong); color: var(--paper); }
+  .note { font-size: 14px; margin-top: 10px; }
+  .note dt { font-weight: 700; margin-top: 6px; }
+  .note dd { margin: 0; }
+  .flow { background: var(--cream); border-radius: 12px; padding: 8px 10px; }
+  .state button, #exTabs button { font: inherit; font-size: 14px; border: 0; border-radius: var(--r-pill); padding: 4px 12px; background: var(--surface2); cursor: pointer; margin: 2px; }
+  .state button[aria-pressed="true"], #exTabs button[aria-pressed="true"] { background: var(--ink-strong); color: var(--paper); }
+  #spec, #except, #fullflow, #ref { background: var(--paper); border-radius: var(--r-card); padding: 14px 16px; margin-top: 28px; }
+  #spec table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  #spec th, #spec td { text-align: left; padding: 6px; border-bottom: 1px solid var(--surface2); vertical-align: top; }
+  .tblwrap { overflow-x: auto; }
+
+  /* ---- 휴대폰 화면 ---- */
+  .phone { position: relative; width: 100%; max-width: 300px; height: 540px; margin: 0 auto; background: var(--cream); border-radius: 26px; overflow: hidden; border: 6px solid var(--ink-strong); font-size: 13px; }
+  .top { position: absolute; left: 0; right: 0; top: 0; padding: 10px 10px 6px; z-index: 5; }
+  .sbar { display: flex; align-items: center; gap: 6px; background: var(--paper); border-radius: var(--r-pill); padding: 6px 6px 6px 12px; box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+  .sbar span { flex: 1; color: #6b6b66; }
+  .sbar .lib { border: 0; font: inherit; font-size: 12px; background: var(--fill1); border-radius: var(--r-pill); padding: 4px 10px; }
+  .map { position: absolute; left: 0; right: 0; top: 0; bottom: 56px; background: var(--bg); overflow: hidden; }
+  .road { position: absolute; background: var(--surface2); }
+  .land { position: absolute; font-size: 11px; color: #6b6b66; }
+  .station { background: var(--surface3); border-radius: var(--r-pill); padding: 1px 8px; color: var(--ink-strong); }
+  .pin { position: absolute; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
+  .pin b { width: 26px; height: 30px; background: var(--fill1); border-radius: var(--r-arch); display: block; }
+  .pin em { font-style: normal; font-size: 11px; background: var(--paper); border-radius: var(--r-pill); padding: 1px 8px; margin-top: 2px; white-space: nowrap; text-align: center; line-height: 1.3; }
+  .pin.hl b { outline: 3px solid var(--ink-strong); }
+  .me { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: var(--ink-strong); border: 3px solid var(--paper); }
+  .floatbtn { position: absolute; left: 50%; transform: translateX(-50%); bottom: 70px; background: var(--ink-strong); color: var(--paper); border-radius: 9999px; padding: 6px 14px; font-size: 12px; white-space: nowrap; z-index: 4; }
+  .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 56px; background: var(--paper); display: flex; justify-content: space-around; align-items: center; font-size: 11px; border-top: 1px solid var(--surface2); }
+  .tabbar span.on { font-weight: 700; }
+
+  /* 후보 A: 위에서 내려오는 반쪽 창 */
+  .drop { position: absolute; left: 0; right: 0; top: 0; height: 58%; background: var(--paper); color: var(--ink-strong); border-radius: 0 0 var(--r-card) var(--r-card); padding: 12px; z-index: 6; box-shadow: 0 6px 16px rgba(0,0,0,.25); }
+  .drop .field { background: var(--paper); border: 1.5px solid var(--surface3); border-radius: var(--r-pill); padding: 6px 12px; display: flex; gap: 6px; }
+  /* 두 번째 시안의 색(초록빛 회색). 사용자가 "하얀색이여야" → 다시 보기용으로만 남김 */
+  .drop.green { background: var(--fill3); }
+  .drop.green .field { border-color: transparent; }
+  .drop .row { padding: 7px 4px; border-bottom: 1px solid rgba(46,51,63,.15); }
+  /* 처음 시안의 색(진한색). 사용자: "검색창 검정색은 좀 아닌거같아" → 다시 보기용으로만 남김 */
+  .drop.dark { background: var(--ink-strong); color: var(--paper); }
+  .drop.dark .field { background: rgba(255,255,255,.12); border-color: transparent; }
+  .drop.dark .row { border-bottom-color: rgba(255,255,255,.15); }
+  .drop small, .full small, .inmap small { opacity: .7; }
+  .dim { position: absolute; inset: 0; background: rgba(0,0,0,.25); z-index: 5; }
+
+  /* 후보 B: 전체 화면, 다른 바탕색 */
+  .full { position: absolute; inset: 0; background: var(--fill3); z-index: 6; padding: 12px; }
+  .full .hd { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; margin-bottom: 8px; }
+  .full .field { background: var(--paper); border-radius: var(--r-pill); padding: 6px 12px; display: flex; gap: 6px; }
+  .full h4 { margin: 12px 0 4px; font-size: 12px; }
+  .full .row { background: var(--paper); border-radius: 12px; padding: 7px 10px; margin-bottom: 5px; }
+
+  /* 후보 C: 지도 위에서 바로 */
+  .inmap .sbar { outline: 3px solid var(--fill1); }
+  .chips { display: flex; gap: 5px; margin-top: 6px; overflow: hidden; }
+  .chips span { background: var(--ink-strong); color: var(--paper); border-radius: var(--r-pill); padding: 3px 9px; font-size: 11px; white-space: nowrap; }
+  .hint { position: absolute; left: 10px; right: 10px; top: 56px; background: var(--paper); border-radius: 12px; padding: 6px 10px; font-size: 12px; z-index: 5; }
+
+  /* 정할 것 2: 목록 화면 */
+  .list2 { position: absolute; left: 0; right: 0; top: 0; bottom: 56px; padding: 10px; overflow: hidden; background: var(--cream); }
+  .regionsel { background: var(--paper); border: 1.5px solid var(--surface3); border-radius: var(--r-pill); padding: 6px 12px; margin-bottom: 8px; }
+  .regmenu { background: var(--paper); border-radius: 12px; padding: 8px 12px; margin: -4px 0 8px; box-shadow: 0 4px 10px rgba(0,0,0,.12); font-size: 12px; }
+  .regmenu .on { font-weight: 700; }
+  .lrow { background: var(--paper); border-radius: 12px; padding: 7px 10px; margin-bottom: 5px; display: flex; flex-direction: column; }
+  .lrow small { opacity: .7; }
+  .lrow.off small { opacity: 1; }
+  .lrow.on { outline: 2px solid var(--ink-strong); }
+  .mapfail { background: var(--surface2); border-radius: 12px; padding: 6px 10px; font-size: 12px; }
+  /* 참고 화면 */
+  .refrow { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+  .refrow .phone { height: 300px; max-width: 220px; margin: 0; }
+  .bookscreen { position: absolute; inset: 0; background: var(--cream); padding: 10px; }
+  .bookscreen .field { background: var(--paper); border-radius: var(--r-pill); padding: 6px 12px; border: 1px solid var(--surface3); }
+  .books { display: flex; gap: 5px; margin-top: 4px; }
+  .book { width: 34px; height: 48px; border-radius: 5px 9px 9px 5px; background: var(--fill2); }
+  [hidden] { display: none !important; }
 </style>
 </head>
 <body>
+<header class="page">
+  <h1>도서관 방문 · VISIT-1 시안 — 데포르메 지도 홈</h1>
+  <p class="how">지금 정할 것은 <b>하나</b>예요. 화면 3개를 비교해 보세요. 화면 위 버튼으로 <b>글자를 칠 때</b>와 <b>결과를 눌렀을 때</b> 모습도 바꿔 볼 수 있어요. 화면마다 아래에 <b>누르면 어떻게 이어지는지</b>를 적어 뒀어요. <b>추천</b> 표시가 있는 화면이 Claude의 추천이에요. 고르는 건 직접 해 주세요.</p>
+</header>
 
-<!-- 화면 A: 위치를 허락한 경우 -->
-<div class="col">
-<div class="phone">
-  <div class="status"></div>
-  <div class="top"><h1>동네한권</h1><span class="base">현재 위치 기준 ▾</span></div>
-  <div class="search">
-    <input id="q" type="text" placeholder="찾는 책이 있나요?" aria-label="책 검색">
-    <button class="mic" id="mic" type="button" aria-label="음성으로 검색">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg>
-    </button>
-  </div>
-  <div class="map">
-    <div class="road" style="left:0;top:280px;width:100%;height:14px"></div>
-    <div class="road" style="left:150px;top:0;width:14px;height:100%"></div>
-    <div class="land" style="left:30px;top:60px">○○공원</div>
-    <div class="land" style="left:240px;top:150px">△△시장</div>
-    <div class="land station" style="left:200px;top:236px">🚇 ○○역</div>
-    <div class="me"></div>
-    <button class="pin" style="left:107px;top:200px"><b>책</b><em>한빛 시립도서관<small>320m</small></em></button>
-    <button class="pin closed" style="left:257px;top:360px"><i class="off">휴관</i><b>책</b><em>달빛 작은도서관<small>860m</small></em></button>
-    <button class="pin" style="left:72px;top:440px"><b>책</b><em>푸른 구립도서관<small>1.4km</small></em></button>
-  </div>
-  <div class="m2slot">M2: "우리 동네 이야기"가 여기 들어와요 (이번엔 만들지 않음)</div>
-  <div class="bar"><span>홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
-</div>
-<div class="cap">A. 위치를 허락한 경우: 내 위치 중심으로 도서관 핀과 거리. 오늘 쉬는 도서관은 핀이 어두운 회색이고 위쪽에 "휴관"이 뜬다. 길 안내는 없음. 핀을 누르면 카드 없이 바로 그 도서관의 방문 페이지로 넘어간다(다음 세부 VISIT-2). 지도 아래 점선 칸은 M2에 "우리 동네 이야기"가 붙을 자리 표시다.</div>
-</div>
+<main>
+  <!-- 참고: 이미 정한 것 -->
+  <section id="ref">
+    <h2 style="font-size:16px;margin:0 0 6px">이미 정해진 것 (참고만)</h2>
+    <div class="refrow">
+      <div>
+        <div class="phone">
+          <div class="map" style="bottom:56px">
+            <div class="road" style="left:0;top:170px;width:100%;height:10px"></div>
+            <div class="road" style="left:90px;top:0;width:10px;height:100%"></div>
+            <span class="land station" style="left:110px;top:150px">○○역</span>
+            <span class="me" style="left:100px;top:120px"></span>
+            <span class="pin" style="left:60px;top:80px"><b></b><em>한빛 시립도서관<br>350m</em></span>
+            <span class="pin" style="left:160px;top:190px"><b></b><em>달빛 작은도서관<br>1.2km</em></span>
+          </div>
+          <div class="top"><div class="sbar"><span>책 제목·저자를 검색</span><button class="lib">도서관 찾기</button></div></div>
+          <div class="tabbar"><span class="on">홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+        </div>
+        <p style="font-size:13px;max-width:220px">지도 홈: 늘 현재 위치 주변, 핀에는 이름·거리, 맨 위 검색창(책 검색) 오른쪽에 "도서관 찾기".</p>
+      </div>
+      <div>
+        <div class="phone">
+          <div class="bookscreen">
+            <div class="field">‹ &nbsp;책 제목·저자를 검색</div>
+            <p style="margin:10px 0 2px;font-size:12px"><b>추천 도서</b></p>
+            <div class="books"><span class="book"></span><span class="book"></span><span class="book"></span><span class="book"></span></div>
+            <p style="margin:10px 0 2px;font-size:12px"><b>최근 본 도서</b></p>
+            <div class="books"><span class="book"></span><span class="book"></span></div>
+          </div>
+        </div>
+        <p style="font-size:13px;max-width:220px">검색창을 누르면 열리는 <b>책 검색</b> 화면(다른 팀원 몫). 도서관 찾기 화면은 이것과 <b>확연히 달라 보여야</b> 해요.</p>
+      </div>
+    </div>
+  </section>
 
-<!-- 화면 B: 위치를 쓸 수 없을 때 (후보 4개 비교, 동네 고르기는 폐기) -->
-<div class="col" id="B">
-<div class="phone">
-  <div class="status"></div>
-  <div class="top"><h1>동네한권</h1><span class="base">지금 보는 위치 ▾</span></div>
-  <div class="search"><input type="text" placeholder="찾는 책이 있나요?" aria-label="책 검색"><button class="mic" type="button" aria-label="음성으로 검색"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></button></div>
-  <div class="map">
-    <div class="road" style="left:0;top:280px;width:100%;height:14px"></div>
-    <div class="road" style="left:150px;top:0;width:14px;height:100%"></div>
-    <div class="land" style="left:30px;top:60px">○○공원</div>
-    <div class="land" style="left:240px;top:150px">△△시장</div>
-    <div class="land station" style="left:200px;top:236px">🚇 ○○역</div>
-    <button class="pin" style="left:107px;top:200px"><b>책</b><em>한빛 시립도서관</em></button>
-    <button class="pin" style="left:72px;top:440px"><b>책</b><em>푸른 구립도서관</em></button>
-    <!-- 후보별 배너 -->
-    <div class="cand c1"><div class="ban-top">위치를 허용하면 내 주변 도서관을 볼 수 있어요 <span class="btn">위치 허용하기</span></div></div>
-    <div class="cand c2 show"><div class="ban-pill"><span class="btn"><svg width="18" height="20" viewBox="0 0 24 28" fill="currentColor" style="vertical-align:-4px;margin-right:4px" aria-hidden="true"><path fill-rule="evenodd" d="M12 0C6.5 0 3 4 3 8.6c0 5 5.5 11 9 15.4 3.5-4.4 9-10.4 9-15.4C21 4 17.5 0 12 0zm0 5.2a3.4 3.4 0 1 1 0 6.8 3.4 3.4 0 0 1 0-6.8z"/><ellipse cx="12" cy="24.2" rx="10.5" ry="2.6" fill="none" stroke="currentColor" stroke-width="1.3"/></svg>위치 허용하기</span></div></div>
-    <div class="cand c3"><div class="ban-dot"><i></i><span>현재 위치를 알 수 없어요 · 탭해서 허용</span></div></div>
-    <div class="cand c4"><div class="ban-card"><h3>위치를 허용해 주세요</h3><p>지금은 임시 위치(예: 서울시청) 주변을 보여 드려요.</p><span class="btn">위치 허용하기</span> <span class="btn sub">나중에</span></div></div>
-  </div>
-  <div class="bar"><span>홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
-</div>
-<div class="cap">B. 위치를 쓸 수 없을 때: 거리는 현재 위치를 모르니 보여 주지 않고(이름만), 동네를 묻지 않고 임시 시작 위치에 지도를 열고, 위치 허용을 안내한다. 안내 방식 후보를 아래 상자로 비교한다(후보는 결정 뒤에도 지우지 않는다).
-  <div class="pick">
-    <label><input type="radio" name="bc" value="c1"> 후보 1. 지도 위쪽 띠 배너</label>
-    <label><input type="radio" name="bc" value="c2" checked> 후보 2. 지도 아래 떠 있는 버튼 ✔ 채택</label>
-    <label><input type="radio" name="bc" value="c3"> 후보 3. 내 위치 자리 흐린 점 + 한 줄</label>
-    <label><input type="radio" name="bc" value="c4"> 후보 4. 지도 위 작은 카드</label>
-  </div>
-  <div class="spec">명세: 안내 방식은 후보 2 채택(사용자 선택, 이유는 받는 중). 아직 미정: 임시 시작 위치(어디로 둘지)와 배너 문구는 아직 미정. 이동 중이면 "현재 위치가 아님" 표시와 "현재 위치로 돌아가기"도 함께 정해야 함.</div>
-</div>
-</div>
+  <!-- ===== 중심 요소 1 ===== -->
+  <section class="element" id="el-1" data-chosen="A">
+    <h2>정할 것 1. "도서관 찾기"를 누르면 어떤 화면이 열릴까<span class="status" data-status>결정 전</span></h2>
+    <div class="state">바꿔 보기:
+      <button aria-pressed="true" data-step="0">누른 직후</button><button aria-pressed="false" data-step="1">"연동" 치는 중</button><button aria-pressed="false" data-step="2">결과를 누른 뒤</button>
+    </div>
 
-<!-- 화면 C: 지도가 안 뜰 때 목록 -->
-<div class="col">
-<div class="phone">
-  <div class="status"></div>
-  <div class="top"><h1>동네한권</h1><span class="base">현재 위치 기준 ▾</span></div>
-  <div class="note">지도를 불러오지 못해 목록으로 보여 드려요.</div>
-  <div class="card"><h3>한빛 시립도서관</h3><p>320m · 눌러서 방문 페이지로</p></div>
-  <div class="card"><h3>달빛 작은도서관</h3><p>860m · 눌러서 방문 페이지로</p></div>
-  <div class="card"><h3>푸른 구립도서관</h3><p>1.4km · 눌러서 방문 페이지로</p></div>
-  <div style="padding:0 16px"><span class="btn sub">지도 다시 불러오기</span></div>
-  <div class="bar"><span>홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
-</div>
-<div class="cap">C. 지도가 안 뜰 때(위치를 허용한 상태): 같은 여정을 도서관 목록으로 제공. 거리는 현재 위치를 알 때만 보인다. 위치를 허용하지 않았는데 지도도 안 뜨는 경우는 아직 정하지 않음(다음에 할 것).</div>
-</div>
+    <div class="cands">
+      <!-- 후보 A -->
+      <article class="cand" data-id="A">
+        <h3>A. 위에서 내려오는 반쪽 창</h3>
+        <div class="phone">
+          <div class="map">
+            <div class="road" style="left:0;top:300px;width:100%;height:12px"></div>
+            <div class="road" style="left:130px;top:0;width:12px;height:100%"></div>
+            <span class="land station" style="left:150px;top:280px">○○역</span>
+            <span class="me" data-s="0 1" style="left:140px;top:250px"></span>
+            <span class="pin" data-s="0 1" style="left:70px;top:340px"><b></b><em>한빛 시립도서관<br>350m</em></span>
+            <span class="pin hl" data-s="2" style="left:150px;top:200px"><b></b><em>연동 작은도서관<br>32km</em></span>
+            <span class="pin" data-s="2" style="left:70px;top:330px"><b></b><em>노을 구립도서관<br>33km</em></span>
+          </div>
+          <div class="top" data-s="2"><div class="sbar"><span>책 제목·저자를 검색</span><button class="lib">도서관 찾기</button></div></div>
+          <div class="dim" data-s="0 1"></div>
+          <div class="drop" data-s="0 1">
+            <div class="field"><span>‹</span><span data-s="0">지역이나 도서관 이름</span><span data-s="1">연동▏</span></div>
+            <p data-s="0" style="font-size:12px;opacity:.75;margin:12px 4px">지역 이름(동·구·시)이나 도서관 이름을 쳐 보세요.</p>
+            <div data-s="1">
+              <div class="row">제주시 연동 <small>지역</small></div>
+              <div class="row">연동 작은도서관 <small>제주시 연동</small></div>
+              <div class="row">연동 어린이도서관 <small>제주시 연동</small></div>
+            </div>
+          </div>
+          <div class="floatbtn" data-s="2">현재 위치로</div>
+          <div class="tabbar"><span class="on">홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>하얀 창이 위에서 반쯤 내려오고, 입력칸에는 테두리 선이 있어요. 아래로 지도가 흐리게 보여요. 결과는 지역·도서관이 한 목록에 섞여 있어요. (진한색 → 초록빛 회색 → 하얀색으로 바꿨어요. 아래 명세의 선택 상자로 앞의 색도 볼 수 있어요.)</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">"도서관 찾기" 누름 → 하얀 창이 위에서 내려옴(지도는 흐리게 남음) → "연동" 치면 맞는 지역·도서관 3~4개 → 하나를 누르면 창이 올라가고 지도가 그곳으로 옮겨감 → 지도 아래 "현재 위치로"로 돌아옴</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>결과는 한 번에 3~4줄만 보여요(창이 반쪽이라서). 창 밖 흐린 지도를 누르면 창이 닫혀요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>지도를 떠나지 않은 느낌, 크림색 책 검색과 색이 다름 / 결과가 많으면 창 안에서 내려야 하고, 지역과 도서관이 섞여 보여요</dd>
+        </dl>
+      </article>
 
+      <!-- 후보 B (추천) -->
+      <article class="cand recommended" data-id="B">
+        <h3>B. 다른 색 전체 화면 <span class="badge">추천</span></h3>
+        <div class="phone">
+          <div class="map">
+            <div class="road" style="left:0;top:300px;width:100%;height:12px"></div>
+            <div class="road" style="left:130px;top:0;width:12px;height:100%"></div>
+            <span class="pin hl" data-s="2" style="left:150px;top:200px"><b></b><em>연동 작은도서관<br>32km</em></span>
+            <span class="pin" data-s="2" style="left:70px;top:330px"><b></b><em>노을 구립도서관<br>33km</em></span>
+          </div>
+          <div class="top" data-s="2"><div class="sbar"><span>책 제목·저자를 검색</span><button class="lib">도서관 찾기</button></div></div>
+          <div class="full" data-s="0 1">
+            <div class="hd"><span>‹</span><span>도서관 찾기</span></div>
+            <div class="field"><span>📍</span><span data-s="0" style="color:#6b6b66">지역이나 도서관 이름</span><span data-s="1">연동▏</span></div>
+            <p data-s="0" style="font-size:12px;margin:14px 2px">지역 이름(동·구·시)이나 도서관 이름을 쳐 보세요.<br>고르면 지도가 그곳으로 옮겨가요.</p>
+            <div data-s="1">
+              <h4>지역</h4>
+              <div class="row">제주시 연동 <small>· 도서관 4곳</small></div>
+              <h4>도서관</h4>
+              <div class="row">연동 작은도서관 <small>· 제주시 연동</small></div>
+              <div class="row">연동 어린이도서관 <small>· 제주시 연동</small></div>
+            </div>
+          </div>
+          <div class="floatbtn" data-s="2">현재 위치로</div>
+          <div class="tabbar" data-s="2"><span class="on">홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>화면 전체가 초록빛 회색으로 바뀌고 맨 위에 "도서관 찾기" 제목이 있어요. 결과가 "지역"과 "도서관" 두 묶음으로 나뉘어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">"도서관 찾기" 누름 → 화면이 초록빛 "도서관 찾기" 화면으로 바뀜 → "연동" 치면 지역 묶음·도서관 묶음 → 하나를 누르면 지도로 돌아오고 그곳으로 옮겨감(고른 도서관 핀은 테두리) → 지도 아래 "현재 위치로"로 돌아옴</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>지역 줄에 그 지역 도서관 수가 보여요. 결과를 한 화면에 7~8줄 볼 수 있어요. 이 화면 동안 아래 탭 줄은 숨어요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>책 검색과 가장 분명히 달라 헷갈리지 않음, 결과가 많아도 고르기 쉬움 / 고르기 전에는 지도가 안 보여서 어디쯤인지 고른 뒤에 알아요</dd>
+          <dt>추천 이유</dt><dd>책 검색(크림색)과 색·제목이 둘 다 달라 "다른 검색에 들어왔다"가 바로 보이고, 지역과 도서관이 나뉘어 있어 잘못 누를 일이 적어요. 반대로 지도를 보면서 고르고 싶은 사람에게는 A나 C가 더 나아요.</dd>
+        </dl>
+      </article>
 
-<!-- 화면 D: 보는 위치 바꾸기(임시) 후보 4개. 저장하지 않고 앱을 다시 켜면 현재 위치로 돌아옴 -->
-<div class="col" id="D">
-<div class="phone">
-  <div class="status"></div>
-  <div class="top"><h1>동네한권</h1><span class="base moved">다른 지역 보는 중 ▾</span></div>
-  <div class="search"><input id="dq" type="text" placeholder="찾는 책이나 지역이 있나요?" aria-label="책 또는 지역 검색" autocomplete="off"><button class="mic" type="button" aria-label="음성으로 검색"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v4"/></svg></button><div class="dd" id="ddq"></div></div>
-  <div class="map">
-    <div class="road" style="left:0;top:280px;width:100%;height:14px"></div>
-    <div class="road" style="left:150px;top:0;width:14px;height:100%"></div>
-    <div class="land" style="left:30px;top:60px">□□공원</div>
-    <div class="land" style="left:240px;top:150px">◇◇역</div>
-    <button class="pin" style="left:107px;top:200px"><b>책</b><em>새봄 도서관</em></button>
-    <button class="pin" style="left:257px;top:380px"><b>책</b><em>누리 도서관</em></button>
-    <div class="back-chip">지금 보는 곳은 현재 위치가 아니에요 · <u>현재 위치로</u></div>
-    <div class="cand d1"><div class="ban-pill" style="top:46px;bottom:auto"><span class="btn sub">이 지역에서 다시 찾기</span></div></div>
-    <div class="cand d2"><div class="ban-pill"><span class="btn">이 지역에서 다시 찾기</span></div></div>
-    <div class="cand d3"><div class="rsheet" id="d3sheet"><div class="rbox" id="d3box" role="button" tabindex="0">지역 이름을 검색해요 (눌러 보세요)</div><div class="rlist"><div class="ritem">제주시 연동</div><div class="ritem">제주시 노형동</div><div class="ritem">서귀포시 중문동</div></div></div></div>
-    <div class="cand d4 show"></div><div class="ban-pill"><span class="btn">이 지역에서 다시 찾기</span></div></div>
-  </div>
-  <div class="bar"><span>홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
-</div>
-<div class="cap">D. 보는 위치 바꾸기(임시): 지도를 끌어 다른 지역을 보거나 지역 이름을 검색해 이동한다. 이동 중에는 "현재 위치가 아님" 표시와 돌아가는 방법이 보인다. 어디에도 저장하지 않고 앱을 다시 켜면 현재 위치로 돌아온다. 후보를 골라 비교한다(내가 만든 후보, 확정 아님).
-  <div class="pick">
-    <label><input type="radio" name="dc" value="d1"> 후보 1. 지도를 끌면 위쪽에 "이 지역에서 다시 찾기"</label>
-    <label><input type="radio" name="dc" value="d2"> 후보 2. 지도를 끌면 아래에 떠 있는 "이 지역에서 다시 찾기"</label>
-    <label><input type="radio" name="dc" value="d3"> 후보 3. 지역 이름 검색</label>
-    <label><input type="radio" name="dc" value="d4" checked> 후보 4. 지도 끌기 + 맨 위 검색창에서 지역 검색(별도 지역 검색창 없음) ✔ 채택</label>
-  </div>
-  <div class="spec">명세: 다른 지역 보는 중일 때는 맨 위 검색창에서 책 이름뿐 아니라 지역 이름도 검색된다(사용자 요청, 위 검색창에 "연동"·"노형" 등을 입력해 보세요). 후보 4 채택(사용자 선택). 별도의 지역 이름 검색창은 두지 않는다(맨 위 검색창 하나로 책·지역). 입력하기 전에는 추천 검색어를 펼치지 않는다. 후보 3·4의 지역 검색은 책 검색 입구(결정 11)와 구분되어야 함(문구·모양). 이동 중 표시와 "현재 위치로" 돌아가기는 모든 후보에 공통으로 넣음.</div>
-</div>
-</div>
+      <!-- 후보 C -->
+      <article class="cand" data-id="C">
+        <h3>C. 지도 위에서 바로 찾기</h3>
+        <div class="phone inmap">
+          <div class="map">
+            <div class="road" style="left:0;top:300px;width:100%;height:12px"></div>
+            <div class="road" style="left:130px;top:0;width:12px;height:100%"></div>
+            <span class="land station" data-s="0" style="left:150px;top:280px">○○역</span>
+            <span class="me" data-s="0" style="left:140px;top:250px"></span>
+            <span class="pin" data-s="0" style="left:70px;top:340px"><b></b><em>한빛 시립도서관<br>350m</em></span>
+            <span class="pin hl" data-s="1 2" style="left:150px;top:220px"><b></b><em>연동 작은도서관<br>32km</em></span>
+            <span class="pin" data-s="1 2" style="left:80px;top:320px"><b></b><em>연동 어린이도서관<br>33km</em></span>
+          </div>
+          <div class="top">
+            <div class="sbar" data-s="0 1"><span>‹ &nbsp;<span data-s="0">지역이나 도서관 이름</span><span data-s="1">연동▏</span></span></div>
+            <div class="sbar" data-s="2" style="outline:0"><span>책 제목·저자를 검색</span><button class="lib">도서관 찾기</button></div>
+            <div class="chips" data-s="1"><span>제주시 연동</span><span>연동 작은도서관</span><span>연동 어린이…</span></div>
+          </div>
+          <div class="hint" data-s="0" style="top:58px">지역이나 도서관 이름을 치면 지도가 바로 옮겨가요.</div>
+          <div class="floatbtn" data-s="2">현재 위치로</div>
+          <div class="tabbar"><span class="on">홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>화면이 바뀌지 않아요. 맨 위 검색창이 노란 테두리의 "도서관 찾기 칸"으로 바뀌고, 글자를 치는 동안 지도가 바로 움직여요. 결과는 검색창 아래 작은 알약 줄로만 보여요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">"도서관 찾기" 누름 → 검색창이 노란 테두리 칸으로 바뀜 → "연동" 치면 지도가 그쪽으로 옮겨가고 맞는 핀만 남음, 아래에 알약 줄 → 알약을 누르면 검색창이 원래대로 → 지도 아래 "현재 위치로"로 돌아옴</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>알약 줄은 한 줄이라 2~3개만 보이고 옆으로 밀어야 나머지가 보여요. 글자를 칠 때마다 지도가 움직여요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>화면 바뀜 없이 바로 지도에서 확인 / 책 검색과 같은 자리라 덜 달라 보이고, 결과를 나란히 비교하기 어려워요</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
 
+  <!-- ===== 중심 요소 2 ===== -->
+  <section class="element" id="el-2" data-chosen="C">
+    <h2>정할 것 2. 위치도 못 쓰고 지도도 안 뜰 때, 도서관 목록 화면을 어떻게 보여 줄까<span class="status" data-status>결정 전</span></h2>
+    <p style="font-size:14px;margin:4px 0 0">이런 때예요: 위치 허용을 안 했고, 인터넷이 약하거나 해서 <b>지도 그림까지 안 뜰 때</b>. 이때는 지도 대신 <b>시·군·구 단위 도서관 목록</b>을 보여 주기로 정해져 있어요. 내 위치를 모르니 거리는 못 보여 줘요. 처음 보여 줄 지역은 정해진 값(기본 도서관이 있으면 그 지역, 없으면 시범 지역)이에요.</p>
+    <div class="state">바꿔 보기:
+      <button aria-pressed="true" data-step="0">처음 열었을 때</button><button aria-pressed="false" data-step="1">지역을 바꿀 때</button><button aria-pressed="false" data-step="2">다른 지역을 고른 뒤</button>
+    </div>
 
-<!-- 화면 E: 도서관 기본값 — "설정 방법" 후보 3개 (도서관이 하나뿐인 지역에서 지도를 건너뛰고 방문 페이지를 바로 띄움) -->
-<div class="col" id="E">
-<div class="phone">
-  <div class="status"></div>
-  <div class="top"><h1 id="e-title">한빛 시립도서관 <button class="star" id="e-star" type="button" aria-label="기본 도서관으로 설정" style="display:none"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3 6.1 20.6l1.3-6.6L2.5 9.4l6.6-.8z" stroke-linejoin="round"/></svg></button></h1><span class="base">320m · 오늘 09:00~18:00</span><button class="mbtn" id="e-more" type="button" aria-label="더보기" style="display:none">⋯</button><div class="mmenu" id="e-menu"><div id="e-set">앱을 켜면 여기부터 열기</div><div>도서관 홈페이지</div></div></div>
-  <div class="e-ban" id="e-ban" style="display:none">기본 도서관이에요 · <u>해제</u></div>
-  <div class="note">방문 페이지 (이웃 피드가 여기 나와요)</div>
-  <div class="card"><h3>이웃 게시물</h3><p>피드 자리 (가짜 값)</p></div>
-  <div class="card"><h3>이웃 게시물</h3><p>피드 자리 (가짜 값)</p></div>
-  <div class="eC e1"></div><div class="eC e4 show"></div>
-  <div class="e-toast" id="e-toast">기본 도서관으로 설정됩니다</div>
-  <div class="eC e2"><div class="e-ask">여기가 자주 가는 도서관이면 기본으로 할까요?<br><span class="btn">기본으로</span><span class="btn sub">괜찮아요</span></div></div>
-  <div class="eC e3"><div class="e-ask">같은 도서관을 3번 열면 다음부터 자동으로 바로 열려요. (지금 2번째)</div></div>
-  <div class="bar"><span>홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
-</div>
-<div class="cap">E. 도서관 기본값 — 설정 방법. 도서관이 하나뿐인 지역처럼 다른 도서관을 누를 일이 없을 때, 다른 도서관이 있는 위치로 이동하기 전까지 지도를 건너뛰고 이 방문 페이지를 바로 띄운다. 후보 3개의 모양은 내가 만든 것이고 확정이 아니다.
-  <div class="pick">
-    <label><input type="radio" name="ec" value="e4" checked> 후보 4. 머리 오른쪽 ⋯ 메뉴 안에서 켜고 끔 (사용자 채택, 세 번째 방문 카드는 쓰지 않음) ✔</label>
-    <label><input type="radio" name="ec" value="e1"> 후보 1. 도서관 이름 옆 안이 하얀 별을 누르면 연한 노랑으로 채워지며 설정 (이전 사용자 선택, 폐기)</label>
-    <label><input type="radio" name="ec" value="e2"> 후보 2. 처음 들어오면 한 번 물어봄</label>
-    <label><input type="radio" name="ec" value="e3"> 후보 3. 같은 도서관을 3번 열면 자동</label>
-  </div>
-  <button class="btn" id="e-next" type="button">다음에 앱을 켰을 때 보기</button>
-  <div class="spec" id="e-spec"></div>
-</div>
-</div>
+    <div class="cands">
+      <!-- 후보 A -->
+      <article class="cand" data-id="A">
+        <h3>A. 위에 지역 고르는 칸 + 목록</h3>
+        <div class="phone">
+          <div class="list2">
+            <div class="regionsel" data-s="0 2"><b data-s="0">제주시 ▾</b><b data-s="2">서귀포시 ▾</b></div>
+            <div class="regionsel" data-s="1"><b>제주시 ▴</b></div>
+            <div class="regmenu" data-s="1"><div>제주특별자치도</div><div class="on">· 제주시</div><div>· 서귀포시</div><div style="margin-top:6px">서울특별시 ›</div><div>부산광역시 ›</div></div>
+            <div data-s="0 1">
+              <div class="lrow"><b>한빛 시립도서관</b><small>제주시 이도동 · 오늘 9:00–18:00</small></div>
+              <div class="lrow"><b>연동 작은도서관</b><small>제주시 연동 · 오늘 10:00–17:00</small></div>
+              <div class="lrow off"><b>노을 구립도서관</b><small>제주시 노형동 · 휴관</small></div>
+              <div class="lrow"><b>달빛 작은도서관</b><small>제주시 아라동 · 오늘 9:00–18:00</small></div>
+            </div>
+            <div data-s="2">
+              <div class="lrow"><b>중문 도서관</b><small>서귀포시 중문동 · 오늘 9:00–18:00</small></div>
+              <div class="lrow"><b>바다 작은도서관</b><small>서귀포시 서홍동 · 오늘 10:00–17:00</small></div>
+            </div>
+          </div>
+          <div class="floatbtn">위치 허용하기</div>
+          <div class="tabbar"><span class="on">홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>맨 위에 "제주시 ▾" 칸 하나와 그 아래 도서관 목록이 있어요. 검색창은 없어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">목록이 바로 보임 → "제주시 ▾"를 누르면 시·도 / 시·군·구 목록이 펼쳐짐 → "서귀포시"를 누르면 그 지역 도서관 목록으로 바뀜 → 도서관을 누르면 방문 페이지로</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>목록 한 줄에 이름 · 동 · 오늘 운영시간(휴관이면 "휴관"). 한 화면에 7~8줄. 지역 칸은 시·도를 먼저 고르고 그 안의 시·군·구를 골라요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>화면이 단순하고 지역 바꾸기가 한눈에 보임 / 지도 홈과 생김새가 달라서 다른 앱처럼 느껴질 수 있고, 책 검색 입구가 없어져요</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 B -->
+      <article class="cand" data-id="B">
+        <h3>B. 지역부터 고르고 목록</h3>
+        <div class="phone">
+          <div class="list2">
+            <div data-s="0 1">
+              <p style="margin:4px 2px 8px"><b>어느 지역 도서관을 볼까요?</b></p>
+              <div data-s="0">
+                <div class="lrow"><b>제주시</b><small>도서관 12곳</small></div>
+                <div class="lrow"><b>서귀포시</b><small>도서관 7곳</small></div>
+                <div class="lrow" style="margin-top:8px"><b>다른 시·도 ›</b></div>
+              </div>
+              <div data-s="1">
+                <div class="lrow"><b>제주시</b><small>도서관 12곳</small></div>
+                <div class="lrow on"><b>서귀포시</b><small>도서관 7곳 · 누르는 중</small></div>
+              </div>
+            </div>
+            <div data-s="2">
+              <div class="regionsel"><b>‹ 서귀포시</b></div>
+              <div class="lrow"><b>중문 도서관</b><small>서귀포시 중문동 · 오늘 9:00–18:00</small></div>
+              <div class="lrow"><b>바다 작은도서관</b><small>서귀포시 서홍동 · 오늘 10:00–17:00</small></div>
+            </div>
+          </div>
+          <div class="floatbtn">위치 허용하기</div>
+          <div class="tabbar"><span class="on">홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>처음엔 도서관이 아니라 <b>지역 이름 목록</b>이 보여요. 지역을 눌러야 도서관 목록이 나와요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">"어느 지역 도서관을 볼까요?"와 시·군·구 목록 → "서귀포시"를 누름 → 서귀포시 도서관 목록 → "‹"로 지역 목록으로 돌아감 → 도서관을 누르면 방문 페이지로</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>지역 줄마다 도서관 수가 보여요. 도서관 목록 줄은 A와 같아요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>지역을 잘못 볼 일이 없음 / 도서관을 보려면 매번 한 번 더 눌러야 하고, 처음 화면에 도서관이 하나도 안 보여요</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 C (추천) -->
+      <article class="cand recommended" data-id="C">
+        <h3>C. 지도 홈 모양 그대로, 지도 자리에 목록 <span class="badge">추천</span></h3>
+        <div class="phone">
+          <div class="list2" style="top:52px">
+            <div class="mapfail">지도를 불러오지 못했어요 · <u>다시 해 보기</u></div>
+            <div data-s="0 1">
+              <p style="margin:6px 2px 4px;font-size:12px"><b>제주시</b> 도서관</p>
+              <div class="lrow"><b>한빛 시립도서관</b><small>제주시 이도동 · 오늘 9:00–18:00</small></div>
+              <div class="lrow"><b>연동 작은도서관</b><small>제주시 연동 · 오늘 10:00–17:00</small></div>
+              <div class="lrow off"><b>노을 구립도서관</b><small>제주시 노형동 · 휴관</small></div>
+            </div>
+            <div data-s="2">
+              <p style="margin:6px 2px 4px;font-size:12px"><b>서귀포시</b> 도서관</p>
+              <div class="lrow"><b>중문 도서관</b><small>서귀포시 중문동 · 오늘 9:00–18:00</small></div>
+              <div class="lrow"><b>바다 작은도서관</b><small>서귀포시 서홍동 · 오늘 10:00–17:00</small></div>
+            </div>
+          </div>
+          <div class="top"><div class="sbar"><span>책 제목·저자를 검색</span><button class="lib">도서관 찾기</button></div></div>
+          <div class="dim" data-s="1"></div>
+          <div class="drop" data-s="1">
+            <div class="field"><span>‹</span><span>서귀포▏</span></div>
+            <div class="row">서귀포시 <small>지역</small></div>
+            <div class="row">서귀포 중앙도서관 <small>서귀포시 서홍동</small></div>
+          </div>
+          <div class="floatbtn">위치 허용하기</div>
+          <div class="tabbar"><span class="on">홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>맨 위 검색창과 "도서관 찾기"는 지도 홈 그대로예요. 지도 자리에만 "지도를 불러오지 못했어요" 한 줄과 도서관 목록이 들어가요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">목록이 바로 보임 → 다른 지역은 "도서관 찾기"를 눌러 방금 고른 하얀 반쪽 창에서 찾음 → "서귀포시"를 누르면 목록이 서귀포시로 바뀜 → 도서관을 누르면 방문 페이지로. "다시 해 보기"로 지도가 뜨면 지도로 돌아감</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>목록 줄은 A와 같아요(이름 · 동 · 오늘 운영시간). 한 화면에 5~6줄(위에 검색창이 있어서 A보다 적음).</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>지도가 안 떠도 같은 앱·같은 버튼으로 쓸 수 있고, 책 검색 입구도 그대로 / 목록이 보이는 칸이 조금 좁고, 지역을 바꾸려면 글자를 쳐야 해요</dd>
+          <dt>추천 이유</dt><dd>방금 고르신 "도서관 찾기" 창을 그대로 써서 새로 익힐 게 없고, 지도가 다시 뜨면 같은 화면으로 자연스럽게 돌아가요. 반대로 글자 치기 싫고 지역을 눌러서만 고르고 싶은 사람에게는 A가 나아요.</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <!-- 중심 요소 3 은 2가 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
+
+  <!-- ===== 잘 안 될 때 (예외 네 장면, 1B 3단계) — 중심 요소를 다 정한 뒤에 묻는다 ===== -->
+  <section id="except">
+    <h2>잘 안 될 때 보이는 화면 <span class="status">아직 묻지 않음</span></h2>
+    <p style="font-size:14px">정할 것을 다 고른 뒤에 같이 볼 거예요. 문구는 Claude가 먼저 넣어 둔 것이에요.</p>
+    <div id="exTabs">
+      <button aria-pressed="true" data-ex="0">인터넷이 끊김</button><button aria-pressed="false" data-ex="1">하나도 없음</button><button aria-pressed="false" data-ex="2">두 번 빠르게 누름</button><button aria-pressed="false" data-ex="3">로그인 안 함</button>
+    </div>
+    <p data-exmsg style="background:var(--cream);border-radius:12px;padding:10px;max-width:420px"></p>
+  </section>
+
+  <!-- ===== 처음부터 끝까지 (세부 명세서 2. 유저 플로우와 같게) ===== -->
+  <section id="fullflow">
+    <h2>처음부터 끝까지 이렇게 써요</h2>
+    <ol>
+      <li>사용자가 앱을 켜면 동네한권이 현재 위치 주변의 지도와 도서관 핀(이름·거리)을 보여 준다.</li>
+      <li>사용자가 핀을 누르면 동네한권이 그 도서관 방문 페이지로 화면을 바꾼다(다음 세부 VISIT-2).</li>
+      <li>사용자가 맨 위 검색창을 누르면 동네한권이 책 검색 화면을 연다(다른 팀원 몫).</li>
+      <li>사용자가 지도를 끌어 옮기면 동네한권이 "이 지역에서 다시 찾기" 버튼을 보여 주고, 누르면 그 지역 도서관 핀을 다시 보여 준다.</li>
+      <li>사용자가 "도서관 찾기"를 누르면 동네한권이 지도 위로 하얀 창을 반쯤 내려 보이고, 아래 지도는 흐리게 남긴다.</li>
+      <li>사용자가 지역이나 도서관 이름을 치면 동네한권이 맞는 지역·도서관을 창 안 목록으로 보여 준다.</li>
+      <li>사용자가 목록에서 하나를 누르면 동네한권이 창을 올리고 지도를 그곳으로 옮긴다(고른 도서관 핀은 테두리).</li>
+      <li>사용자가 창 밖 흐린 지도를 누르면 동네한권이 창을 닫는다.</li>
+      <li>위치도 못 쓰고 지도 그림도 안 뜨면 동네한권이 맨 위 검색창과 "도서관 찾기"는 그대로 두고, 지도 자리에 "지도를 불러오지 못했어요 · 다시 해 보기" 한 줄과 시작 지역(시·군·구)의 도서관 목록(이름 · 동 · 오늘 운영시간)을 보여 준다.</li>
+      <li>사용자가 "도서관 찾기" 창에서 다른 지역을 누르면 동네한권이 목록을 그 지역 도서관으로 바꾼다.</li>
+      <li>사용자가 목록의 도서관을 누르면 동네한권이 그 도서관 방문 페이지로 화면을 바꾼다. 사용자가 "다시 해 보기"를 눌러 지도가 뜨면 동네한권이 지도 홈으로 돌아간다.</li>
+      <li>보는 위치가 바뀐 동안 동네한권이 지도 아래 가운데에 "현재 위치로" 버튼을 보여 주고, 사용자가 누르면 현재 위치로 돌아온다.</li>
+    </ol>
+  </section>
+
+  <!-- ===== 명세 패널 (세부 명세서 확인 목록·결정 기록과 같게) ===== -->
+  <section id="spec">
+    <h2>명세</h2>
+    <p>다시 비교하기 (정할 것 1): <select class="pick" data-for="el-1"><option value="">채택안 보기</option><option value="A">A. 위에서 내려오는 반쪽 창</option><option value="A0">A. (처음 색: 진한색)</option><option value="A1">A. (두 번째 색: 초록빛 회색)</option><option value="B">B. 다른 색 전체 화면</option><option value="C">C. 지도 위에서 바로 찾기</option></select></p>
+    <div class="tblwrap">
+    <table>
+      <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값 · 유저 플로우</th></tr>
+      <tr><td>1. "도서관 찾기"를 누르면 열리는 화면</td><td>확인</td><td>채택 A. 위에서 내려오는 반쪽 창 / 차선 없음 / 탈락 B 다른 색 전체 화면(추천이었음), C 지도 위에서 바로 찾기("C는 그냥도 별로고 검색했을때 검색어가 덜나와서 완전 불편할거같아"). B 탈락 이유: "B는페이지 넘어가는게 불편하고"</td><td>"난 A위에서 내려오는게 좋다고 생각해 … 굳이 화면을 바꿔가며 해야할까?" / 불편한 점: 없음(사용자) — "B나 C보던 덜 불편하면 된거 아닐까"</td><td>창 높이 화면의 58%, 바탕 paper(ink-strong → fill3 → paper. 사용자: "검색창 검정색은 좀 아닌거같아", "선 있어야하고 하얀색이여야 한다 생각"), 입력칸 paper + 테두리 1.5px surface3, 결과 줄 앞 핀 그림 없음("여기 핀버튼 없애줄래?"), 아래 지도 흐리게(검정 25%). 결과를 누르면 창이 올라가고 지도가 그곳으로(방문 페이지로 바로 가지 않음, 큰 틀 결정 13). 창 밖을 누르면 닫힘</td></tr>
+      <tr><td>1-a. 반쪽 창 색·입력칸 선</td><td>확인</td><td>하얀 창(paper) + 입력칸 테두리 / 이전: 진한색, 초록빛 회색</td><td>"일단 여기서 선 있어야하고 하얀색이여야 한다 생각"(입력칸과 창 전체를 표시한 캡처)</td><td>창 paper, 입력칸 테두리 1.5px surface3. 순백은 디자인 기준상 쓰지 않아 paper(#EFF1F1)</td></tr>
+      <tr><td>2. 위치도 못 쓰고 지도도 안 뜰 때 보이는 도서관 목록<br>다시 비교하기: <select class="pick" data-for="el-2"><option value="">채택안 보기</option><option value="A">A. 지역 고르는 칸 + 목록</option><option value="B">B. 지역부터 고르고 목록</option><option value="C">C. 지도 홈 모양 그대로</option></select></td><td>확인 (불편한 점 받는 중)</td><td>채택 C. 지도 홈 모양 그대로, 지도 자리에 목록(추천이었음) / 차선 없음 / 탈락 A 지역 고르는 칸 + 목록, B 지역부터 고르고 목록</td><td>"C가 좀전 화면과 비슷하고 장점만 남은느낌이라"</td><td>시군구 도서관 목록(정해진 것). 목록 줄: 이름 · 동 · 오늘 운영시간/휴관(기본값(Claude)). 거리 없음(위치를 모름). 아래 가운데 "위치 허용하기" 유지. 도서관을 누르면 방문 페이지</td></tr>
+      <tr><td>3. 가까운 곳에 도서관 핀이 많아 겹칠 때</td><td>결정 전</td><td>— (2를 정한 뒤 시안)</td><td>—</td><td>—</td></tr>
+      <tr><td>지도 기준 위치</td><td>확인 (큰 틀 결정 1)</td><td>항상 현재 위치</td><td>"현재 위치로 해두면 설정할필요없이 바로바로 위치알수 있어서"</td><td>집·동네 저장 없음</td></tr>
+      <tr><td>지도 바탕</td><td>확인 (큰 틀 결정 6)</td><td>큰 길 + 큰 장소 몇 개 + 지하철역</td><td>"이동할 때 지하철역에서 가까울 수 있어서, 이동할 때 편하라고"</td><td>도로 surface2, 역 알약 surface3</td></tr>
+      <tr><td>핀에 보이는 것</td><td>확인 (큰 틀 결정 9)</td><td>이름 + 거리, 핀 아래 가운데</td><td>"가운데에 두는게 더 보기좋아서"</td><td>핀 fill1, 아치 곡률 23·23·6·6px, 이름표 paper</td></tr>
+      <tr><td>휴관 핀</td><td>기본값(Claude)</td><td>회색 핀 + "휴관", 휴관인지 모르면 평소 핀</td><td>묻지 않음</td><td>회색은 토큰 추가 필요(검토 메모)</td></tr>
+      <tr><td>책 검색 입구</td><td>확인 (큰 틀 결정 11)</td><td>맨 위 검색창 + 오른쪽 "도서관 찾기"</td><td>"후보2로 하자 너무 복잡해지고 기능구현 만들기 어려워지는거 보다 나을거같아"</td><td>문구 "책 제목·저자를 검색"은 기본값(Claude)</td></tr>
+      <tr><td>위치를 쓸 수 없을 때</td><td>확인 (큰 틀 결정 12)</td><td>임시 시작 위치 + 지도 아래 가운데 "위치 허용하기"</td><td>"가장 깔끔해보여서"</td><td>임시 시작 위치는 정해진 값(기본 도서관 주변, 없으면 파일럿 지역 중심)</td></tr>
+      <tr><td>보는 위치 바꾸기</td><td>확인 (큰 틀 결정 13)</td><td>끌어 옮기기 + "이 지역에서 다시 찾기" + "도서관 찾기" + "현재 위치로"</td><td>"책 검색과 지역,도서관 검색 나눠놓아서 검색할때 좋아보임"</td><td>"현재 위치로"는 지도 아래 가운데(위치 허용하기와 같은 자리, 둘이 함께 뜨지 않음)</td></tr>
+      <tr><td>"다른 지역 보는 중" 표시</td><td>기본값(Claude)</td><td>두지 않음</td><td>큰 틀 결정 13 이유의 "다른지역보는중 넣을필요도 없어지고"</td><td>"현재 위치로" 버튼이 대신함</td></tr>
+      <tr><td>도서관 찾기 전 추천 검색어</td><td>기본값(Claude)</td><td>펼치지 않고 안내 한 줄만</td><td>큰 틀 때 사용자가 요청한 것</td><td>—</td></tr>
+      <tr><td>하단 탭</td><td>정해진 것</td><td>홈 / 독서 기록 / 대출·반납 / 내 정보</td><td>—</td><td>높이 56(시안)</td></tr>
+    </table>
+    </div>
+  </section>
+</main>
 
 <script>
-/* 음성 검색: 브라우저 음성인식(Web Speech API, 크롬·사파리). 실제 앱 구현 방식은 세부 명세에서 정함 */
-(function(){
-  var mic=document.getElementById('mic'), q=document.getElementById('q');
-  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  var rec=null, listening=false;
-  mic.addEventListener('click',function(){
-    if(!SR){ q.placeholder='이 브라우저는 음성인식을 지원하지 않아요 (크롬에서 열어 주세요)'; return; }
-    if(listening){ rec.stop(); return; }
-    rec=new SR(); rec.lang='ko-KR'; rec.interimResults=true; rec.maxAlternatives=1;
-    rec.onstart=function(){ listening=true; mic.classList.add('on'); q.placeholder='듣고 있어요…'; };
-    rec.onresult=function(e){
-      var t=''; for(var i=0;i<e.results.length;i++) t+=e.results[i][0].transcript;
-      q.value=t;
-    };
-    rec.onerror=function(e){
-      q.placeholder = e.error==='not-allowed' ? '마이크 권한을 허용해 주세요' : '잘 못 들었어요. 다시 눌러 주세요';
-    };
-    rec.onend=function(){ listening=false; mic.classList.remove('on'); if(!q.value) q.placeholder='찾는 책이 있나요?'; };
-    rec.start();
+  // 상태 바꿔 보기: data-s="0 1" 은 그 단계에서만 보인다
+  document.querySelectorAll('.element').forEach(function (el) {
+    function show(step) {
+      el.querySelectorAll('[data-s]').forEach(function (x) { x.hidden = x.dataset.s.split(' ').indexOf(String(step)) < 0; });
+      el.querySelectorAll('[data-step]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.step === String(step)); });
+    }
+    el.querySelectorAll('[data-step]').forEach(function (b) { b.addEventListener('click', function () { show(+b.dataset.step); }); });
+    show(0);
+    // 채택안 표시 (data-chosen 에 후보 id를 넣으면 기본 선택이 된다)
+    function mark(id) {
+      el.querySelectorAll('.cand').forEach(function (c) {
+        var dk = c.querySelector('.drop'); if (dk) { dk.classList.toggle('dark', id === 'A0'); dk.classList.toggle('green', id === 'A1'); }
+        if (id === 'A0' || id === 'A1') id = 'A';
+        c.classList.toggle('chosen', c.dataset.id === id);
+        var old = c.querySelector('.badge.chosen'); if (old) old.remove();
+        if (c.dataset.id === id) { var s = document.createElement('span'); s.className = 'badge chosen'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+      });
+      el.querySelector('[data-status]').textContent = el.dataset.chosen ? '확인' : '결정 전';
+    }
+    mark(el.dataset.chosen);
+    var sel = document.querySelector('select.pick[data-for="' + el.id + '"]');
+    if (sel) sel.addEventListener('change', function (e) { mark(e.target.value || el.dataset.chosen); });
   });
-})();
-</script>
-<script>
-var d3=document.getElementById('d3sheet');document.getElementById('d3box').addEventListener('click',function(){d3.classList.toggle('open')});
-document.querySelectorAll('input[name=dc]').forEach(function(r){r.addEventListener('change',function(){document.querySelectorAll('#D .cand').forEach(function(e){e.classList.remove('show')});document.querySelector('#D .'+r.value).classList.add('show');});});
-document.querySelectorAll('input[name=bc]').forEach(function(r){r.addEventListener('change',function(){
-  document.querySelectorAll('#B .cand').forEach(function(e){e.classList.remove('show')});
-  document.querySelector('#B .'+r.value).classList.add('show');});});
-(function(){
-  var q=document.getElementById('dq'), dd=document.getElementById('ddq');
-  var regions=['제주시 연동','제주시 노형동','제주시 이도동','서귀포시 중문동','서귀포시 서귀동'];
-  q.addEventListener('input',function(){
-    var v=q.value.trim();
-    if(!v){dd.classList.remove('show');return;}
-    var hit=regions.filter(function(r){return r.indexOf(v)>-1});
-    var h='';
-    if(hit.length){h+='<h4>지역으로 이동</h4>'+hit.map(function(r){return '<div class="ritem">'+r+'</div>'}).join('');}
-    h+='<h4>책 검색</h4><div class="ritem">"'+v.replace(/</g,'&lt;')+'" 책 찾기</div>';
-    dd.innerHTML=h; dd.classList.add('show');
-  });
-})();
-(function(){
-  var info={
-    e1:{flow:'도서관 이름 옆 별(안이 하얗게 비어 있음)을 누르면 → 아래에 작은 알림 "기본 도서관으로 설정됩니다"가 잠깐 떠요, 별 안이 연한 노랑으로 채워져요 → 다음에 앱을 켜면 지도 없이 이 페이지가 바로 열려요. 다른 도서관이 있는 위치로 가면 지도가 다시 보여요. (별을 다시 누르면 해제: 기본값(Claude))',see:'별이 이름 바로 오른쪽에 있어요. 누르면 별 안이 연한 노랑으로 채워지고 화면 아래에 알림이 2초쯤 떠요. 위쪽 띠로 "기본 도서관"을 따로 표시하지 않아요.',gain:'얻는 것: 내가 직접 정해서 갑자기 지도가 사라지지 않아요.',lose:'포기하는 것: 별 모양이 작아서 못 보고 지나갈 수 있어요.',why:'추천 이유: 사용자가 직접 정해서 예상 밖으로 바뀌지 않아요.'},
-    e2:{flow:'방문 페이지에 들어오면 → 아래에 "기본으로 할까요?"가 떠요 → "기본으로"를 누르면 다음부터 바로 열려요, "괜찮아요"면 다시 묻지 않아요.',see:'묻는 카드가 화면 아래에 뜨고 피드를 가려요. 한 번만 떠요.',gain:'얻는 것: 설정 버튼을 못 찾을 일이 없어요.',lose:'포기하는 것: 들어올 때마다 묻는 것처럼 느껴질 수 있어요.',why:''},
-    e3:{flow:'같은 도서관 방문 페이지를 3번 열면 → 다음부터 지도 없이 바로 열려요 → 상단 띠의 "해제"로 되돌릴 수 있어요.',see:'3번째에 알림 없이 바뀌어요. 바뀐 뒤 상단 띠로만 알려요.',gain:'얻는 것: 아무것도 안 눌러도 편해져요.',lose:'포기하는 것: 갑자기 지도가 사라져 당황할 수 있어요.',why:''}
-  };
-  info.e4={flow:'방문 페이지 머리 오른쪽 ⋯를 누르면 → 메뉴가 열려요 → "앱을 켜면 여기부터 열기"를 누르면 한 줄 안내(2초)가 떠요 → 다음에 앱을 켜면 지도 없이 이 페이지가 바로 열려요. 끄려면 같은 자리가 "바로 열기 끄기"로 바뀌어 있어요. 질문 카드는 뜨지 않아요.',see:'⋯는 머리 오른쪽 끝에 있어요. 메뉴 항목은 "앱을 켜면 여기부터 열기"(켜지면 "바로 열기 끄기")와 "도서관 홈페이지" 두 개예요. 누르면 화면 아래에 안내가 2초쯤 떠요.',gain:'얻는 것: 알림이 자주 뜨지 않고, 잘못 눌러 설정되는 일이 없어요. 메뉴는 어차피 필요해서 설정까지 가는 문제도 풀려요.',lose:'포기하는 것: 메뉴를 열어 보기 전에는 기능이 있는지 모를 수 있어요(처음 접속 튜토리얼은 제안으로 보관).',why:'채택 이유(사용자): "다른도서관도 자주 방문하게되면 물어보는 알람뜰텐데 그것도 한두번이지 다른어플에서 나는 귀찮았거든"'};
-  var cur='e4', after=false;
-  function render(){
-    document.querySelectorAll('#E .eC').forEach(function(e){e.classList.remove('show')});
-    if(!after) document.querySelector('#E .'+cur).classList.add('show');
-    document.getElementById('e-ban').style.display=(after&&cur!=='e1')?'block':'none';
-    var st=document.getElementById('e-star'); st.style.display=(cur==='e1')?'inline':'none'; st.classList.toggle('on',after&&cur==='e1'); document.getElementById('e-toast').classList.remove('show');
-    document.getElementById('e-more').style.display=(cur==='e4')?'block':'none'; document.getElementById('e-menu').classList.remove('open'); document.getElementById('e-set').textContent=(after&&cur==='e4')?'바로 열기 끄기':'앱을 켜면 여기부터 열기';
-    document.getElementById('e-next').textContent=after?'처음 방문으로 돌아가기':'다음에 앱을 켰을 때 보기';
-    var i=info[cur];
-    document.getElementById('e-spec').innerHTML='<b>누르면 이렇게 이어져요</b><br>'+i.flow+'<br><br><b>봐야 아는 내용</b><br>'+i.see+'<br><br>'+i.gain+'<br>'+i.lose+(i.why?'<br>'+i.why:'');
+  // 예외 화면 전환
+  var ex = ['지도 자리에 "지금은 도서관을 불러올 수 없어요." + "다시 해 보기" 버튼. 지도 그림이 안 뜨면 시군구 도서관 목록으로 바뀜.',
+            '반경 안에 도서관이 하나도 없을 때: 지도 아래에 "가까운 곳에서 도서관을 찾지 못했어요." + "더 넓게 찾기" 버튼.',
+            '"이 지역에서 다시 찾기"를 두 번 빠르게 눌러도 한 번만 찾고, 앞의 늦은 답이 지금 지도를 덮지 않음.',
+            '지도 홈은 로그인 없이 볼 수 있어요. 남의 기록을 보여 주는 곳이 없어서 막는 화면이 없음.'];
+  function exShow(i) {
+    document.querySelectorAll('#exTabs button').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.ex === String(i)); });
+    document.querySelector('[data-exmsg]').textContent = ex[i];
   }
-  document.querySelectorAll('input[name=ec]').forEach(function(r){r.addEventListener('change',function(){cur=r.value;after=false;render();});});
-  document.getElementById('e-star').addEventListener('click',function(){var t=document.getElementById('e-toast');var on=!this.classList.contains('on');this.classList.toggle('on',on);t.textContent=on?'기본 도서관으로 설정됩니다':'기본 도서관이 해제됩니다';t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2000);});
-  document.getElementById('e-more').addEventListener('click',function(){document.getElementById('e-menu').classList.toggle('open')});
-  document.getElementById('e-set').addEventListener('click',function(){var t=document.getElementById('e-toast');var on=this.textContent.indexOf('끄기')<0;this.textContent=on?'바로 열기 끄기':'앱을 켜면 여기부터 열기';document.getElementById('e-menu').classList.remove('open');t.textContent=on?'다음부터 이 도서관을 먼저 열어요':'바로 열기를 껐어요';t.classList.add('show');setTimeout(function(){t.classList.remove('show')},2000);});
-  document.getElementById('e-next').addEventListener('click',function(){after=!after;render();});
-  render();
-})();
+  document.querySelectorAll('#exTabs button').forEach(function (b) { b.addEventListener('click', function () { exShow(+b.dataset.ex); }); });
+  exShow(0);
 </script>
 </body>
 </html>
