@@ -177,4 +177,21 @@ describe("apiFetch (AUTH-1-P5)", () => {
     );
     expect(fetchMock.mock.calls[1]?.[1]?.method).toBe("POST");
   });
+
+  test("apiFetch_refuses_foreign_absolute_url_without_sending_token (DEF-017)", async () => {
+    for (const url of [
+      "https://evil.example/collect",
+      "http://localhost:8000.evil.example/api/v1/me",
+      "javascript:alert(1)",
+    ]) {
+      await expect(apiFetch(url)).rejects.toThrow("API 서버 경로만");
+    }
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(mockedGetSession).not.toHaveBeenCalled();
+
+    fetchMock.mockResolvedValueOnce(makeJsonResponse(200, { ok: true }));
+    const res = await apiFetch("http://localhost:8000/api/v1/me");
+    expect(res.status).toBe(200);
+    expect(fetchMock.mock.calls[0]?.[0]).toBe("http://localhost:8000/api/v1/me");
+  });
 });

@@ -4,7 +4,12 @@ export const API_URL =
   process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000";
 
 function resolveUrl(path: string): string {
-  if (/^https?:\/\//i.test(path)) return path;
+  // DEF-017: 토큰을 붙이므로 API 서버 밖의 절대 주소는 받지 않는다(제3자에게 access token 유출 방지)
+  if (/^[a-z][a-z0-9+.-]*:/i.test(path)) {
+    const apiBase = API_URL.replace(/\/+$/, "");
+    if (path === apiBase || path.startsWith(`${apiBase}/`)) return path;
+    throw new Error("apiFetch는 API 서버 경로만 받아요.");
+  }
   const normalized = path.startsWith("/") ? path : `/${path}`;
   return `${API_URL}${normalized}`;
 }
