@@ -55,6 +55,13 @@ export function AuthProvider({
   const [userId, setUserId] = useState<string | null>(null);
   const mountedRef = useRef(true);
   const generationRef = useRef(0);
+  const statusRef = useRef<AuthStatus>("loading");
+  const userIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    statusRef.current = status;
+    userIdRef.current = userId;
+  }, [status, userId]);
 
   const syncWithServer = useCallback(
     async (
@@ -138,7 +145,18 @@ export function AuthProvider({
     })();
 
     const { data: authSub } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      (event, session) => {
+        // DEF-018: 같은 사용자의 토큰 갱신·정보 변경은 서버 등록을 다시 하지 않는다.
+        // 다시 하면 갱신 때마다 POST가 나가고, 그 요청이 일시적으로 실패하면 세션이
+        // 살아 있는데도 signedOut으로 바뀐다.
+        if (
+          (event === "TOKEN_REFRESHED" || event === "USER_UPDATED") &&
+          statusRef.current === "signedIn" &&
+          session?.user?.id != null &&
+          session.user.id === userIdRef.current
+        ) {
+          return;
+        }
         const eventGen = ++generationRef.current;
         if (!session?.access_token) {
           if (mountedRef.current) {

@@ -170,4 +170,49 @@ describe("AuthProvider registration gate (AUTH-1-P5)", () => {
     expect(view3.getByTestId("probe").props.children).toBe("signedOut:none");
     await view3.unmount();
   });
+
+  test("token_refresh_keeps_signed_in_without_reregistering (DEF-018)", async () => {
+    const uid = "00000000-0000-4000-8000-00000000000a";
+    let emit: ((event: string, session: unknown) => void) | undefined;
+    mockedOnAuthStateChange.mockImplementation(((cb: (e: string, s: unknown) => void) => {
+      emit = cb;
+      return { data: { subscription: { unsubscribe: unsubscribeMock } } };
+    }) as never);
+    mockedGetSession.mockResolvedValueOnce({
+      data: { session: { access_token: "tok-1", user: { id: uid } } as never },
+      error: null,
+    });
+    mockedRawRegisterSession.mockResolvedValueOnce(
+      makeJsonResponse(200, { user_id: uid, status: "active", is_new: false })
+    );
+
+    const screen = await render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("probe").props.children).toBe(`signedIn:${uid}`)
+    );
+    expect(mockedRawRegisterSession).toHaveBeenCalledTimes(1);
+
+    // 갱신 직후 서버가 일시적으로 실패하더라도(등록을 다시 부르면 503) 로그인 상태 유지
+    mockedRawRegisterSession.mockResolvedValue(
+      makeJsonResponse(503, { error: { code: "DB_UNAVAILABLE", message: "x", detail: "" } })
+    );
+    await act(async () => {
+      emit?.("TOKEN_REFRESHED", { access_token: "tok-2", user: { id: uid } });
+    });
+    expect(mockedRawRegisterSession).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("probe").props.children).toBe(`signedIn:${uid}`);
+
+    // 다른 사용자로 바뀐 세션은 다시 등록을 거친다(실패하면 signedOut)
+    await act(async () => {
+      emit?.("SIGNED_IN", { access_token: "tok-b", user: { id: "other" } });
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId("probe").props.children).toBe("signedOut:none")
+    );
+    expect(mockedRawRegisterSession).toHaveBeenCalledTimes(2);
+  });
 });
