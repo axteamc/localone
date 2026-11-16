@@ -313,7 +313,14 @@
 
   <section id="except">
     <h2>잘 안 될 때 보이는 화면</h2>
-    <p>정할 것 1~3을 다 정한 뒤에 여기에 모아서 함께 봐요.</p>
+    <p style="margin:0">정한 화면(인기 도서 한 줄 → 소식, 평소 반쯤) 그대로에서 잘 안 될 때 모습이에요. 문구는 Claude가 먼저 넣어 둔 거예요. 버튼을 하나씩 눌러 보세요.</p>
+    <div class="state" id="exTabs">
+      <button aria-pressed="true" data-ex="net">인터넷이 끊김</button><button aria-pressed="false" data-ex="none">하나도 없음</button><button aria-pressed="false" data-ex="tap">빠르게 두 번 누름</button><button aria-pressed="false" data-ex="login">로그인 안 함</button><button aria-pressed="false" data-ex="loc">위치를 못 씀</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:8px;align-items:start">
+      <div class="phone" data-clone id="exPhone"></div>
+      <dl class="note" style="margin:0"><dt>이 화면에서 일어나는 일</dt><dd class="flow" id="exNote"></dd></dl>
+    </div>
   </section>
 
   <section id="fullflow">
@@ -338,7 +345,7 @@
       <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값 · 유저 플로우</th></tr>
       <tr><td>1. 창에 무엇을 넣고 순서</td><td>확인</td><td>채택: B(인기 도서 한 줄 → 자주 가는 도서관 소식) / 차선: 없음 / 탈락: A, C</td><td>"한꺼번에 볼수있어서 복잡하지않고 편해보여" · 탈락 이유: "A는 동네 인기도서 전부 보려면 힘들고 C는 약간 복잡해서" · 불편한 점: 없음(사용자: "B는 그런점 없어보여 볼수있는건 다 볼수있어보여")</td><td>인기 도서 한 줄 4~5권 보임(최대 10권), 아래 게시물 2열. 게시물 → B의 게시물 상세, 책 → C의 책 상세(한 줄 연결만)</td></tr>
       <tr><td>2. 창 높이·올리는 동작<br>다시 비교하기: <select data-pick="el-2"><option value="">채택안 보기</option><option value="A">A. 지도 크게</option><option value="B">B. 반쯤, 세 군데 멈춤</option><option value="C">C. 반쯤 고정</option></select></td><td>확인</td><td>채택: B(반쯤, 세 군데 멈춤) / 차선: 없음 / 탈락: A, C</td><td>"지도만 보고싶을때 그걸 원하면 내릴수 있다는게 편하고 좋은거같아 다시 올릴수있다는것도 장점이니까" · 탈락 이유: "오히려 A는 허전하고 C는 불편할거같아" · 불편한 점: 없음(사용자: "난 선택해서 볼수도있고 가끔 추천도서보고 책읽고싶어질거란 생각도 들어서 없다고 생각해")</td><td>B: 평소 지도 아래 절반, 올리면 검색창 바로 아래, 내리면 제목 한 줄. 정할 것 1 화면은 "평소" 높이로 그림</td></tr>
-      <tr><td>3. 방문한 도서관이 없을 때<br>다시 비교하기: <select data-pick="el-3"><option value="">채택안 보기</option><option value="A">A. 안내 글만</option><option value="B">B. 가까운 도서관 소식</option><option value="C">C. 소식 칸 숨김</option></select></td><td>확인</td><td>채택: B(가까운 도서관 소식으로 대신) / 차선: 없음 / 탈락: A, C</td><td>"B가 가장 마을 커뮤니티에 잘맞는거같고 아직 가보지 않았어도 주변 도서관 소식보고 호기심 생길수 있다고 생각해" · 탈락 이유: "A는 자주가는 도서관만떠서 동네소식 볼수없다는게 아쉽고 C는 뭔가 허전해" · 불편한 점: (받는 중)</td><td>B: 가까운 순 최대 3곳, 제목 "가까운 도서관 소식"</td></tr>
+      <tr><td>3. 방문한 도서관이 없을 때<br>다시 비교하기: <select data-pick="el-3"><option value="">채택안 보기</option><option value="A">A. 안내 글만</option><option value="B">B. 가까운 도서관 소식</option><option value="C">C. 소식 칸 숨김</option></select></td><td>확인</td><td>채택: B(가까운 도서관 소식으로 대신) / 차선: 없음 / 탈락: A, C</td><td>"B가 가장 마을 커뮤니티에 잘맞는거같고 아직 가보지 않았어도 주변 도서관 소식보고 호기심 생길수 있다고 생각해" · 탈락 이유: "A는 자주가는 도서관만떠서 동네소식 볼수없다는게 아쉽고 C는 뭔가 허전해" · 불편한 점: 없음(사용자: "불편한거보다 동네소식보인다며 구경도 해보고 평가도보고 좋을거같아")</td><td>B: 가까운 순 최대 3곳, 제목 "가까운 도서관 소식"</td></tr>
       <tr><td>단골은 있는데 게시물 없음</td><td>기본값(Claude)</td><td>이름 알약은 그대로, 그 자리에 "○○에는 아직 게시물이 없어요"</td><td>묻지 않음</td><td>가짜 게시물을 만들지 않음</td></tr>
       <tr><td>게시물 카드 모양</td><td>정해짐</td><td>B가 정한 모양: 이미지만, 2열, 곡률 18px</td><td>—</td><td>디자인_기준.md §3·§4</td></tr>
       <tr><td>단골 도서관 고르기</td><td>기본값(Claude)</td><td>많이 간 순 이름 알약 최대 3개, 첫째가 켜짐</td><td>묻지 않음</td><td>방문 기록은 기기에만(도서관마다 하루 한 번)</td></tr>
@@ -375,6 +382,33 @@
       });
     });
   });
+  // 잘 안 될 때 화면
+  (function () {
+    var ph = document.getElementById('exPhone'), sc = ph.querySelector('.scroll'), base = sc.innerHTML;
+    var bx = function (t) { return '<div ' + box + '>' + t + '</div>'; };
+    var retry = ' <u style="cursor:pointer">다시 해 보기</u>';
+    var books = sc.querySelector('.row').outerHTML;
+    var V = {
+      net: { html: '<div class="sec">이 동네 인기 도서</div>' + bx('인기 도서를 불러오지 못했어요.' + retry) + '<div class="sec">자주 가는 도서관 소식</div>' + bx('소식을 불러오지 못했어요.' + retry),
+             note: '인터넷이 끊기거나 동네한권이 답을 못 받으면, 칸마다 "불러오지 못했어요 · 다시 해 보기"가 보여요. 한쪽만 안 되면 그쪽만 이렇게 보이고 다른 쪽은 그대로예요. 지도는 지도 홈에서 정한 대로예요.' },
+      none: { html: '<div class="sec">이 동네 인기 도서</div>' + bx('이 동네 인기 도서를 아직 모으지 못했어요.') + '<div class="sec">가까운 도서관 소식 <small>자주 가는 곳이 생기면 바뀌어요</small></div><div class="chips"><span class="chip on">한빛 시립 320m</span><span class="chip">달빛 작은 860m</span></div>' + bx('가까운 도서관에도 아직 게시물이 없어요.'),
+             note: '방문한 도서관도 없고 가까운 도서관에도 게시물이 없으면 "아직 게시물이 없어요"만 보여요. 가짜 게시물은 만들지 않아요. 인기 도서가 없을 때도 안내 한 줄만 보여요.' },
+      tap: { html: base,
+             note: '도서관 이름 알약을 빠르게 여러 번 누르거나 다른 이름을 연달아 누르면, 마지막에 누른 도서관의 게시물만 보여요. 먼저 누른 쪽의 늦은 답이 나중에 와서 화면을 덮지 않아요. 게시물·책을 두 번 눌러도 상세 화면은 한 번만 열려요.' },
+      login: { html: base,
+             note: '로그인을 안 해도 똑같이 보여요. 게시물은 모두에게 공개된 것만 보이고, 방문 기록은 이 기기에만 있어서 로그인과 관계없어요. 다른 사람의 방문 기록은 볼 수 없어요.' },
+      loc: { html: '<div class="sec">이 동네 인기 도서</div>' + books + '<div class="sec">가까운 도서관 소식 <small>지금 보는 지역 기준</small></div><div class="chips"><span class="chip on">한빛 시립 · 중앙동</span><span class="chip">달빛 작은 · 서문동</span></div>' + feedHTML,
+             note: '위치를 쓸 수 없으면 지도가 임시 시작 위치에 열려요(지도 홈에서 정한 것). 이때 "가까운 도서관"은 지금 지도에서 보고 있는 지역 기준이고, 거리 대신 동 이름이 붙어요.' }
+    };
+    function show(k) { sc.innerHTML = V[k].html; document.getElementById('exNote').textContent = V[k].note; }
+    show('net');
+    document.querySelectorAll('#exTabs button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.querySelectorAll('#exTabs button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        show(b.dataset.ex);
+      });
+    });
+  })();
   document.querySelectorAll('#el-2 .cand').forEach(function (c) {
     var st = c.querySelector('.state'), hs = st.dataset.heights.split(','), sh = c.querySelector('.sheet');
     sh.style.top = hs[0] + 'px';
