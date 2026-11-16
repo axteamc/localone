@@ -77,6 +77,12 @@
   .fab { position: absolute; right: 14px; bottom: 18px; width: 48px; height: 48px; border-radius: var(--r-full); background: var(--fill1); font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px var(--shadow-fab); z-index: 3; }
   .toastcard { position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%); background: var(--paper); border-radius: var(--r-card); padding: 8px 14px; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 14px var(--shadow-float); z-index: 4; }
   .closed { font-weight: 700; color: var(--text); }
+  /* ---- 요소 2: 피드를 올렸을 때 ---- */
+  .phone .feed { transition: margin .2s; }
+  .mini-hd { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--cream); box-shadow: 0 2px 6px var(--shadow-soft); position: relative; z-index: 2; font-size: 15px; }
+  .mini-hd b { flex: 1; }
+  .back.sm { font-size: 22px; }
+  .hd.over { position: relative; z-index: 2; background: var(--cream); box-shadow: 0 2px 6px var(--shadow-soft); }
 </style>
 </head>
 <body>
@@ -160,7 +166,68 @@
     </div>
   </section>
 
-  <!-- 중심 요소 2(피드를 올렸을 때 머리), 3(게시물이 하나도 없을 때)은 1이 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
+  <!-- ===== 중심 요소 2: 피드를 올렸을 때 머리 ===== -->
+  <section class="element" id="el-2" data-chosen="">
+    <h2>정할 것 2. 피드를 위로 올리며 구경할 때 머리가 어떻게 바뀔까<span class="status" data-status>결정 전</span></h2>
+    <p style="font-size:14px;margin:0">머리 모양은 정할 것 1에서 고른 "왼쪽 정렬 두 줄"이에요. 이번엔 <b>피드를 내려 볼 때 머리가 어떻게 되는지</b>만 정해요.</p>
+    <div class="state">바꿔 보기:
+      <button aria-pressed="true" data-sc="0">맨 위</button><button aria-pressed="false" data-sc="1">피드를 많이 내림</button><button aria-pressed="false" data-sc="2">내리다가 살짝 위로</button>
+    </div>
+
+    <div class="cands">
+      <!-- 후보 A (추천) -->
+      <article class="cand recommended" data-id="A">
+        <h3>A. "‹ 이름" 한 줄로 접힘 <span class="badge">추천</span></h3>
+        <div class="phone" data-mode="fold">
+          <div class="hd hA" data-full><span class="back">‹</span><div class="name">가온도서관</div><div class="info"><span class="sub">320m · 오늘 09:00–18:00</span><span class="more">⋯</span></div></div>
+          <div class="mini-hd" data-mini hidden><span class="back sm">‹</span><b>가온도서관</b><span class="more">⋯</span></div>
+          <div class="feed" data-feedbox2></div>
+          <div class="fab">+</div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>피드를 내리면 거리·운영시간 줄이 접히고, 맨 위에 "‹ 가온도서관 ⋯" 한 줄만 붙어 있어요. 맨 위로 돌아오면 다시 두 줄로 펼쳐져요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">피드를 내려 구경함 → 머리가 한 줄로 작아짐 → 어디서든 위의 "‹"를 눌러 바로 지도로, ⋯로 메뉴 → 맨 위로 올리면 운영시간이 다시 보임.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>"피드를 많이 내림"과 "내리다가 살짝 위로" 모두 한 줄 머리가 그대로 있어요. 한 줄 높이 약 40(앱 52).</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>어느 도서관인지와 돌아가는 버튼이 늘 보임 / 운영시간을 다시 보려면 맨 위로 올라가야 함</dd>
+          <dt>추천 이유</dt><dd>피드를 오래 구경해도 "지금 어느 도서관인지"와 "‹"가 남아 있어 길을 잃지 않아서요. 피드를 한 장이라도 더 보는 게 중요하면 B가 나아요.</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 B -->
+      <article class="cand" data-id="B">
+        <h3>B. 내리면 사라지고, 살짝 올리면 다시 나옴</h3>
+        <div class="phone" data-mode="hide">
+          <div class="hd hA" data-full><span class="back">‹</span><div class="name">가온도서관</div><div class="info"><span class="sub">320m · 오늘 09:00–18:00</span><span class="more">⋯</span></div></div>
+          <div class="feed" data-feedbox2></div>
+          <div class="fab">+</div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>피드를 내리면 머리가 통째로 위로 사라져 화면 전체가 피드가 돼요. 내리다가 손가락을 살짝 위로 올리면 두 줄 머리가 다시 내려와요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">피드를 내려 구경함 → 머리가 사라져 피드만 보임 → 돌아가고 싶으면 살짝 위로 올려 머리를 꺼낸 뒤 "‹", 또는 화면 왼쪽 끝에서 밀기.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>"피드를 많이 내림"에서 머리가 없어요. "내리다가 살짝 위로"에서 두 줄 머리 전체(운영시간 포함)가 다시 보여요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>피드가 가장 넓게 보임 / 구경 중에는 어느 도서관인지와 "‹"가 안 보여서 한 번 더 움직여야 함</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 C -->
+      <article class="cand" data-id="C">
+        <h3>C. 바뀌지 않고 두 줄 그대로</h3>
+        <div class="phone" data-mode="stay">
+          <div class="hd hA" data-full><span class="back">‹</span><div class="name">가온도서관</div><div class="info"><span class="sub">320m · 오늘 09:00–18:00</span><span class="more">⋯</span></div></div>
+          <div class="feed" data-feedbox2></div>
+          <div class="fab">+</div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>피드를 얼마나 내려도 두 줄 머리(이름·거리·운영시간·⋯)가 맨 위에 그대로 붙어 있어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">피드를 내려 구경함 → 머리는 그대로 → 운영시간을 언제든 보고 "‹"로 바로 지도로.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>어느 버튼을 눌러도 머리가 똑같아요. 피드가 보이는 칸이 셋 중 가장 좁아요(머리 약 86 늘 차지).</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>모든 정보가 늘 보이고 움직임이 없어 단순함 / 피드 보는 칸이 가장 좁음</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <!-- 중심 요소 3(게시물이 하나도 없을 때)은 2가 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
 
   <section id="except">
     <h2>마지막으로 함께 볼 화면 — 기다릴 때나 잘 안 될 때 <span class="status">아직 묻지 않음</span></h2>
@@ -178,11 +245,12 @@
 
   <section id="spec">
     <h2>명세</h2>
-    <p>정할 것 1 다시 비교하기: <select data-pick="el-1"><option value="">채택안 보기</option><option value="A">A. 왼쪽 정렬 두 줄</option><option value="B">B. 가운데 큰 간판</option><option value="C">C. 한 줄 이름 + 정보 알약</option></select></p>
+    <p>정할 것 1 다시 비교하기: <select data-pick="el-1"><option value="">채택안 보기</option><option value="A">A. 왼쪽 정렬 두 줄</option><option value="B">B. 가운데 큰 간판</option><option value="C">C. 한 줄 이름 + 정보 알약</option></select>
+    · 정할 것 2 다시 비교하기: <select data-pick="el-2"><option value="">채택안 보기</option><option value="A">A. 한 줄로 접힘</option><option value="B">B. 사라졌다 다시 나옴</option><option value="C">C. 두 줄 그대로</option></select></p>
     <table>
       <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값 · 유저 플로우</th></tr>
-      <tr><td>1. 머리 배치</td><td>확인 (불편한 점 받는 중)</td><td>채택 A 왼쪽 정렬 두 줄 / 차선 없음 / 탈락 B 가운데 큰 간판, C 한 줄 이름 + 정보 알약</td><td>"a가 좋아요. 깔끔하고 피드가 많이 보여서요."</td><td>A: 이름 20px 굵게(앱 26), 정보 12px `--text-sub`, 머리 높이 약 86</td></tr>
-      <tr><td>2. 피드를 올렸을 때 머리</td><td>결정 전</td><td>— (기본값: 접혀서 "‹ 이름" 한 줄)</td><td>—</td><td>1 확인 뒤 시안</td></tr>
+      <tr><td>1. 머리 배치</td><td>확인</td><td>채택 A 왼쪽 정렬 두 줄 / 차선 없음 / 탈락 B 가운데 큰 간판, C 한 줄 이름 + 정보 알약</td><td>"a가 좋아요. 깔끔하고 피드가 많이 보여서요." · 불편한 점: 없음(사용자)</td><td>A: 이름 20px 굵게(앱 26), 정보 12px `--text-sub`, 머리 높이 약 86</td></tr>
+      <tr><td>2. 피드를 올렸을 때 머리</td><td>결정 전</td><td>— (추천: A "‹ 이름" 한 줄로 접힘)</td><td>—</td><td>A: 한 줄 높이 약 40(앱 52), 맨 위로 오면 다시 펼침</td></tr>
       <tr><td>3. 게시물이 하나도 없을 때</td><td>결정 전</td><td>—</td><td>—</td><td>2 확인 뒤 시안. 가짜 게시물 금지, "아직 게시물이 없어요" 같은 안내</td></tr>
       <tr><td>들어오는 전환</td><td>기본값(Claude) · 정해짐</td><td>오른쪽에서 왼쪽으로 0.3초 밀림 + 배경 지도색 → `cream`</td><td>묻지 않음</td><td>문이 열리는 연출 없음</td></tr>
       <tr><td>돌아가기</td><td>정해짐</td><td>왼쪽 위 굵은 "‹" + 왼쪽 끝 밀기</td><td>—</td><td>누르면 지도 홈으로</td></tr>
@@ -214,6 +282,24 @@
     document.querySelectorAll('[data-toast]').forEach(function (x) { x.hidden = !d.toast; });
   }
   show('normal');
+  document.querySelectorAll('[data-feedbox2]').forEach(function (f) { f.innerHTML = feedHTML + feedHTML; });
+  function scroll(el, sc) {
+    el.querySelectorAll('.phone[data-mode]').forEach(function (p) {
+      var mode = p.dataset.mode, full = p.querySelector('[data-full]'), mini = p.querySelector('[data-mini]'), feed = p.querySelector('[data-feedbox2]');
+      feed.style.marginTop = sc === 0 ? '0' : '-260px';
+      full.classList.toggle('over', sc > 0);
+      if (mode === 'fold') { full.hidden = sc > 0; mini.hidden = sc === 0; }
+      if (mode === 'hide') { full.hidden = sc === 1; }
+      if (mode === 'stay') { full.hidden = false; }
+    });
+  }
+  var el2 = document.getElementById('el-2');
+  el2.querySelectorAll('[data-sc]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      el2.querySelectorAll('[data-sc]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      scroll(el2, +b.dataset.sc);
+    });
+  });
   document.querySelectorAll('.element').forEach(function (el) {
     el.querySelectorAll('[data-v]').forEach(function (b) {
       b.addEventListener('click', function () {
