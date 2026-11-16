@@ -2,7 +2,7 @@
 
 - **작성일:** 2026-11-16
 - **담당:** D (시니어)
-- **관련 진행 파일:** [진행_선계약_기반이식.md](../진행_선계약_기반이식.md)
+- **관련 진행 파일:** [진행_선계약_기반이식.md](../완료/진행_선계약_기반이식.md)
 - **대조 원본:**
   - `../libtalk`: `계획/AI_작업_기록.md`, `계획/하네스_엔지니어링_규칙.md`, `개발산출물/05_ERD_및_DB설계서.md`, `개발산출물/06_기능_API_정의서.md`, `server/app/**`, `server/migrations/**`, `server/tests/**`, `mobile/src/**`, `mobile/app/**`
   - `libproject`(`localone`): `개발산출물/05_ERD_및_DB설계서.md`, `개발산출물/06_기능_API_정의서.md`, `../team/기능_배정.md`, `계획/하네스_엔지니어링_규칙.md`
@@ -114,3 +114,22 @@ Step 3에서 발행할 3개 기능 계약서(`library-visit.md`, `book-search.md
 | **B 소유 테이블 (`local-feed.md`)** | `posts` (`LOCAL-1`), `post_reactions`·`post_bookmarks` (`LOCAL-2`) (3개) | B의 `LOCAL-1`·`LOCAL-2` 서버 파트에서 머지 순번으로 생성(계약서 §3.4에 `0002_m1_core.py`의 정확한 컬럼·제약·인덱스·RLS DDL 명시) |
 | **C 소유 테이블 (`book-search.md`, `loan-assistant.md`)** | `loan_plans` (`LIB-3`), `loans`·`library_return_stats` (`LOAN-1`·`LOAN-2`) (3개) | C의 `LIB-3`·`LOAN-1` 서버 파트에서 머지 순번으로 생성(계약서 §3.4에 `0002_m1_core.py`의 정확한 컬럼·제약·부분 UNIQUE·RLS DDL 명시) |
 | **A 소유 테이블 (`library-visit.md`)** | 없음 (서버 테이블 0개) | `libraries`(#10·#11), `books/recommendations`(#9), `libraries/{id}/posts`(#26) 읽기 및 기기 저장소(`defaultLibrary`, `visitHistory`)만 사용 |
+
+---
+
+## 3. 리뷰 정정 (2026-11-16, Step 3 착수 전 D 리뷰)
+
+Step 3 착수 전에 이 문서의 인용을 `libproject` `main` `3b51c69`·`libtalk` `6944ce1` 실제 파일과 다시 대조했다. 설계를 뒤집는 결함은 없고, 아래 7건은 사실·근거 오기다. 위 본문은 고치지 않고 이 절이 우선한다. D 결정(2026-11-16, 사용자 답)은 **R3·결정 2~4**에 적었다.
+
+| # | 위치(이 문서) | 적힌 것 | 실제 (`file:line`) | 정정 | 등급 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| R1 | §2.1 `server/app/auth.py` 행 | `get_optional_user(request) -> CurrentUser \| None`을 이식 대상으로 적음 | `../libtalk/server/app/auth.py`에 정의 없음(`lock_active_user`:132, `ensure_user_profile_if_absent`:158, `session_is_alive`:176만 있음) | **새로 짤 것.** 계약 `core.md` SRV-0-P1에서 정의 | S2 |
+| R2 | §2.2 `mobile/src/lib/policy.ts` 행 | `DEFAULT_START_COORDS`·`STORAGE_KEYS`를 기존 심볼처럼 적음 | `../libtalk/mobile/src/lib/policy.ts:1-4`에는 `RECENT_BOOK_LIMIT`·`BOOK_REQUEST_TIMEOUT_MS`만 있음. 최근 본 도서 키는 `../libtalk/mobile/src/features/book-search/recentBooks.ts:5` | **새로 짤 것.** 시작 좌표(종로구)는 Q-17 `대기`(`개발산출물/모호점_해소_기록.md:69`)라 `미확인(임시)` | S2 |
+| R3 | §1.2 도서관 라우터 행, §2.3 | `libraries.py`를 "D 기반에서 함께 제공"으로 적어 H-GIT-05(라우터 = C)·`libtalk` `59e4464`(`Owner: C`)와 엇갈림 | `06_기능_API_정의서.md:43` "조회 엔진 … D가 만들고 C·A·B가 쓴다" | **D 결정(2026-11-16): #7~#15 엔진·라우터 모두 D.** `core.md` LIB-0-P1~P3. H-GIT-05의 C 소유 문구는 Step 4에서 하네스 규칙과 함께 고친다 | S2 |
+| R4 | §2.1 `policy.py` 행 | 수치 근거를 "02 §9"로 적음 | localone 02에는 §9 표가 없다(02 목차 `## 0`~`## 8`). 05는 네이버 앱 상한을 `미확인(임시)` Q-41로 둠(`05_ERD_및_DB설계서.md` §3.1 `provider_daily_usage` 아래 줄) | 정보나루 21,000만 `확정`, 나머지(네이버 17,500·동시 8·요청당 40·응답 2MB·검색어 100자·추천 20권)는 `기본값(Claude)`. LIB-0-P1이 05 §11에 행을 먼저 더하고 구현(H-DOC-04) | S2 |
+| R5 | §2.2 `RECENT_BOOK_LIMIT = 20` | 단일 값으로 적음 | 02 LIB-01·`기능_배정.md` C절 "계정별 20권" ↔ 05 §6 "기기(최대 10개) `미확인(임시)`" | `[기준 충돌]`로 기록하고 위쪽(02)을 따라 20. 05 §6 한 줄은 LIB-1 세부 명세 승인 때 맞춘다 | S3 |
+| R6 | §2.2 `AuthProvider.tsx` 행 | `useAuth()`에 `signOut`·`withdrawAccount`, `registerSignOutCleanup`이 있는 것처럼 현재형 | localone `mobile/src/auth/AuthProvider.tsx:253` `useAuth`에 없음, `registerSignOutCleanup` 정의 없음(AUTH-2 미구현) | **미구현(AUTH-2).** 계약서에서는 `TODO(연결): D(AUTH-2)`로만 쓴다(H-DOC-03) | S3 |
+| R7 | §0 ① RLS 근거 | `server/migrations/versions/0001_users.py:32` | 실제 `:41` (`op.execute("ALTER TABLE users ENABLE ROW LEVEL SECURITY")`) | 줄 번호 정정 | S3 |
+
+- 같은 리뷰에서 정한 D 결정(사용자 답, 2026-11-16): ② #7~#15는 엔진·라우터 모두 D(R3) ③ 도서관 이름 검색은 06 #10에 `?q=`를 더한다(06 먼저 고침, [C-63](../스펙_변경_이력.md)) ④ 하단 탭 틀은 D가 만들고 M1은 홈·대출·반납·내 정보 3개, 독서 기록 탭은 READ(M2) 착수 때 2번째 자리에 끼운다.
+- 이 정정을 반영한 계약은 [STEP3_선행계약서_발행.md](STEP3_선행계약서_발행.md)에 있다.
