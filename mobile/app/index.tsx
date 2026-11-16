@@ -1,7 +1,9 @@
+import { useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { useAuth } from "../src/auth/AuthProvider";
 
-// 개발 스모크 화면: GET /api/v1/ready 결과를 보여 준다.
+// 개발 스모크 화면: GET /api/v1/ready 결과와 로그인 상태 줄을 보여 준다.
 // 주소는 EXPO_PUBLIC_API_URL로 바꾼다(Android 에뮬레이터는 http://10.0.2.2:8000).
 const API_URL = process.env.EXPO_PUBLIC_API_URL ?? "http://localhost:8000";
 const TIMEOUT_MS = 5000;
@@ -33,6 +35,8 @@ async function fetchReady(): Promise<State> {
 }
 
 export default function Index() {
+  const router = useRouter();
+  const { status } = useAuth();
   const [state, setState] = useState<State>({ kind: "loading" });
 
   const load = useCallback(async () => {
@@ -43,6 +47,8 @@ export default function Index() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const authLabel = status === "signedIn" ? "로그인함" : "로그인 안 함";
 
   return (
     <View style={styles.container}>
@@ -61,6 +67,16 @@ export default function Index() {
           </Pressable>
         </>
       )}
+      <View style={styles.authSection}>
+        <Text style={styles.authStatus}>{authLabel}</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push("/login")}
+          style={styles.button}
+        >
+          <Text style={styles.buttonText}>로그인</Text>
+        </Pressable>
+      </View>
     </View>
   );
 }
@@ -69,6 +85,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
   title: { fontSize: 18, fontWeight: "600", textAlign: "center" },
   sub: { fontSize: 14, color: "#666" },
+  authSection: { marginTop: 16, alignItems: "center", gap: 8 },
+  authStatus: { fontSize: 16, fontWeight: "600" },
   button: { paddingVertical: 12, paddingHorizontal: 20, borderRadius: 8, backgroundColor: "#222" },
   buttonText: { color: "#fff", fontSize: 16 },
 });
