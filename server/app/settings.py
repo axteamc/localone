@@ -23,6 +23,7 @@ class Settings(BaseSettings):
 
     app_env: Literal["local", "test", "production"]
     database_url: str
+    supabase_url: str = ""
 
     @model_validator(mode="after")
     def _check_database_url(self) -> "Settings":
@@ -33,6 +34,8 @@ class Settings(BaseSettings):
         if self.app_env == "test" and host not in LOCAL_HOSTS:
             # 시험이 원격·운영 DB에 붙는 사고를 막는다(PROJECT.md §3-8)
             raise ValueError("APP_ENV=test에서는 localhost·127.0.0.1 DB만 쓸 수 있어요")
+        if self.app_env == "production" and not self.supabase_url:
+            raise ValueError("production에서는 SUPABASE_URL이 필요해요")
         return self
 
 

@@ -52,6 +52,9 @@ tmp/
 # 팀 규칙(private 레포 axteamc/team에서 setup-team.sh가 만든다) — 올리지 않는다
 /CLAUDE.md
 /.claude/
+/AGENTS.md
+/GEMINI.md
+/AI간_협업_구조.md
 /개발산출물/완료/team_초안_20261110/
 
 # Expo 앱: 네이티브 폴더는 커밋하지 않는다(app.json 설정으로 생성)
