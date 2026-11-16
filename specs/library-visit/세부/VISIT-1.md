@@ -138,6 +138,8 @@
 - [Claude가 정함] VISIT 마무리 상태 화면 기본값 — 불러오는 중("도서관을 찾는 중…" 알약), 도서관 찾기 결과 없음 문구, 다시 찾기 연타 시 버튼 흐림, 창 닫기(창 밖·뒤로 가기·‹) — 이 문서 8절, 시안 `#except`
 - [구현 중 변경] 홈 탭 파일 `mobile/app/(tabs)/index.tsx` 미생성 — APP-0-P2(홈 탭 스텁) 머지 전이라 계약 C7대로 `HomeScreen.tsx`만 만들고 시험으로 확인. APP-0-P2 머지 뒤 한 줄 연결 — contracts/library-visit.md C7
 - [Claude가 정함] 목록 모드 시군구 — 첫 주변 조회가 끝나기 전에 지도가 실패하면 조회가 끝난 뒤 그 결과로 시군구를 고른다(V8 규칙 유지) — mobile/src/features/library-visit/useHomeLibraries.ts
+- [Claude가 정함] 묶음 누름 확대 — 처음 level 5, 누를 때마다 2단계 가깝게(최소 1). 계약 V4는 "확대해 핀이 나뉜다"까지만 정함 — mobile/src/features/library-visit/LibraryMap.tsx
+- [처리 못 함] P2 실제 지도 화면 확인 — APP-0-P3(KakaoMap) 머지 전이라 가짜 지도(바로 실패 → 목록)로만 실행. 핀은 시험으로만 확인, 주니어에게 핀 화면을 보여 주지 못함 — 계약 VISIT-1-P2 머리말 5칸
 - [Claude가 정함] 중심 요소에서 뺀 것 — 핀을 누른 뒤 전환·도서관 기본값·방문 멘트 카드(VISIT-2 범위), 임시 시작 위치(D 값) — D 결정 1.1
 
 ## 다음에 할 것
@@ -152,11 +154,11 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 (대기/진행/검토요청/완료) | 구현 근거 (`파일:줄`) 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| VISIT-1-P1 홈 틀·위치·도서관 목록 | `feat/library-visit-VISIT-1` | (첫 push 뒤 기입) | 완료 | `mobile/src/features/library-visit/useHomeLibraries.ts`(시작·V7·목록 모드·러너), `HomeScreen.tsx`(검색창·알약·예외 #1·#2·위치 허용하기), `LibraryList.tsx`(V8 줄), `format.ts` / `__tests__/home-list.test.tsx` 14개 통과, mobile 전체 28개 통과, tsc 통과 | `TODO(연결): D` APP-0-P1·P2·P3·LIB-0-P1(`__fakes__/publicApi.ts`), `TODO(연결): D(AUTH-2)` 반경, `TODO(연결): D theme` 색, `TODO(연결): B` 방문 페이지 |
-| VISIT-1-P2 지도·핀·묶음 | `feat/library-visit-VISIT-1` | 같음 | 진행 | - | - |
+| VISIT-1-P1 홈 틀·위치·도서관 목록 | `feat/library-visit-VISIT-1` | #93 | 완료 | `mobile/src/features/library-visit/useHomeLibraries.ts`(시작·V7·목록 모드·러너), `HomeScreen.tsx`(검색창·알약·예외 #1·#2·위치 허용하기), `LibraryList.tsx`(V8 줄), `format.ts` / `__tests__/home-list.test.tsx` 14개 통과, mobile 전체 28개 통과, tsc 통과 | `TODO(연결): D` APP-0-P1·P2·P3·LIB-0-P1(`__fakes__/publicApi.ts`), `TODO(연결): D(AUTH-2)` 반경, `TODO(연결): D theme` 색, `TODO(연결): B` 방문 페이지 |
+| VISIT-1-P2 지도·핀·묶음 | `feat/library-visit-VISIT-1` | #93 | 완료 | `mobile/src/features/library-visit/LibraryMap.tsx`(`toMarkers` V3, `cluster`·`onClusterPress` V4, `onLibraryPress` V5), `HomeScreen.tsx`(LibraryMap 사용) / `__tests__/home-map.test.tsx` 7개 통과, mobile 전체 35개 통과, tsc 통과 | `TODO(연결): D APP-0-P3` 실제 지도(머지 뒤 웹·Android 실제 지도 확인) |
 | VISIT-1-P3 보는 위치 바꾸기·도서관 찾기 창 | `feat/library-visit-VISIT-1` | 같음 | 대기 | - | - |
 
-- **다음 세션 이어하기 메모**: (구현, 2026-11-16) P1 완료·커밋. 다음은 P2(지도·핀·묶음). 홈 탭 파일 `mobile/app/(tabs)/index.tsx`는 APP-0-P2 머지 전이라 아직 만들지 않음(계약 C7). 웹 확인은 커밋하지 않는 임시 `mobile/app/preview-home.tsx`로 함.
+- **다음 세션 이어하기 메모**: (구현, 2026-11-16) P1·P2 완료·커밋. 다음은 P3(보는 위치 바꾸기·도서관 찾기 창). 홈 탭 파일 `mobile/app/(tabs)/index.tsx`는 APP-0-P2 머지 전이라 아직 만들지 않음(계약 C7). 웹 확인은 커밋하지 않는 임시 `mobile/app/preview-home.tsx`로 함.
 - (이전 메모) VISIT-1 기획 끝(중심 결정 1·2·3 확인, 마무리 화면 검토 완료 — 변경 요청 없음). PR #51 검토 대기. VISIT-2는 B로 옮김(C-61, 이슈 #74). 다음 A 작업은 VISIT-1b 홈 하단 창(브랜치 `spec/library-visit-VISIT-1b`).
 
 ### VISIT 마무리 화면 검토 순서 (기준: PR #51 검토 코멘트 · 이슈 #62)

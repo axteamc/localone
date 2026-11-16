@@ -1,11 +1,10 @@
-// 지도 홈 (계약서 library-visit.md VISIT-1). P1: 홈 틀·위치·도서관 목록. 핀 모양·묶음은 P2, 보는 위치 바꾸기·찾기 창은 P3.
+// 지도 홈 (계약서 library-visit.md VISIT-1). P1: 홈 틀·위치·도서관 목록. P2: 지도·핀·묶음(LibraryMap). 보는 위치 바꾸기·찾기 창은 P3.
 // TODO(연결): D theme — 색은 core `theme.colors`가 머지된 뒤 넣는다(바탕 bg, 검색창 paper, 알약·버튼 fill1, 글자 text·inkMuted)
 import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { KakaoMap, type LibrarySummary, type MapMarker } from "./__fakes__/publicApi"; // TODO(연결): D APP-0-P3
-import { formatDistance } from "./format";
 import { LibraryList } from "./LibraryList";
+import { LibraryMap } from "./LibraryMap";
 import { useHomeLibraries } from "./useHomeLibraries";
 
 const TEXT = {
@@ -19,22 +18,6 @@ const TEXT = {
   empty: "가까운 곳에서 도서관을 찾지 못했어요.",
   widen: "더 넓게 찾기",
 };
-
-function toMarkers(libs: LibrarySummary[]): MapMarker[] {
-  const out: MapMarker[] = [];
-  for (const l of libs) {
-    if (l.latitude == null || l.longitude == null) continue;
-    out.push({
-      id: l.id,
-      lat: l.latitude,
-      lng: l.longitude,
-      title: l.name,
-      subtitle: l.distance_m != null ? formatDistance(l.distance_m) : null,
-      tone: l.today.is_closed === true ? "closed" : "normal",
-    });
-  }
-  return out;
-}
 
 export function HomeScreen() {
   const router = useRouter();
@@ -96,12 +79,12 @@ export function HomeScreen() {
       <View style={styles.body}>
         {home.mode === "map" ? (
           <>
-            <KakaoMap
+            <LibraryMap
               key={mapKey}
               center={home.center}
-              markers={toMarkers(home.libraries)}
+              libraries={home.libraries}
               selectedId={home.selectedId}
-              onMarkerPress={openLibrary}
+              onLibraryPress={openLibrary}
               onError={home.onMapError}
             />
             {message ? <View style={styles.overlayCenter}>{message}</View> : null}
