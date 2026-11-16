@@ -266,7 +266,50 @@
     </div>
   </section>
 
-  <!-- 중심 요소 3(아무것도 없을 때)은 2가 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
+  <!-- ===== 중심 요소 3 ===== -->
+  <section class="element" id="el-3" data-chosen="">
+    <h2>정할 것 3. 아직 방문한 도서관이 없을 때, 소식 자리에 무엇을 보여 줄까<span class="status" data-status>결정 전</span></h2>
+    <p style="margin:0">처음 앱을 켠 사람은 방문한 도서관이 없어서 "자주 가는 도서관"이 비어 있어요. 화면마다 위 버튼으로 상황을 바꿔 보세요. 인기 도서 한 줄과 창 높이는 정한 그대로예요.<br>
+    <small>로그인을 안 해도 같은 모습이에요. 게시물은 모두에게 공개된 것만, 방문 기록은 이 기기에만 남아요.</small></p>
+    <div class="cands">
+      <article class="cand" data-id="A">
+        <h3>A. 안내 글만</h3>
+        <div class="state" data-empty><button aria-pressed="true" data-s="none">방문한 도서관 없음</button><button aria-pressed="false" data-s="noposts">단골은 있는데 게시물 없음</button><button aria-pressed="false" data-s="normal">평소</button></div>
+        <div class="phone" data-clone></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>소식 자리에 "도서관에 가면 여기에 소식이 모여요" 안내와 "지도에서 도서관 골라 보기" 글자 버튼만 있어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">처음 켬 → 인기 도서 한 줄 + 안내 글 → "지도에서 도서관 골라 보기"를 누르면 창이 내려가고 지도가 보임 → 핀을 눌러 도서관에 들어가면 다음부터 그 도서관 소식이 여기 나옴.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>안내 글 아래는 비어 있어서 창이 짧아 보여요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>무엇을 하면 채워지는지 분명함 / 첫날엔 이웃 게시물을 하나도 못 봄</dd>
+        </dl>
+      </article>
+      <article class="cand recommended" data-id="B">
+        <h3>B. 가까운 도서관 소식으로 대신 <span class="badge">추천</span></h3>
+        <div class="state" data-empty><button aria-pressed="true" data-s="none">방문한 도서관 없음</button><button aria-pressed="false" data-s="noposts">단골은 있는데 게시물 없음</button><button aria-pressed="false" data-s="normal">평소</button></div>
+        <div class="phone" data-clone></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>방문한 곳이 없으면 칸 제목이 "가까운 도서관 소식"으로 바뀌고, 지금 위치에서 가까운 도서관(최대 3곳)의 게시물을 보여 줘요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">처음 켬 → 인기 도서 한 줄 + 가까운 도서관 게시물 → 게시물을 누르면 게시물 상세(다른 담당 화면)로 → 도서관에 방문하기 시작하면 제목이 "자주 가는 도서관 소식"으로 바뀌고 단골 도서관 게시물로 바뀜.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>제목 옆에 작은 글 "자주 가는 곳이 생기면 바뀌어요". 이름 알약에 거리가 붙어요(가까운 순).</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>첫날에도 이웃 이야기를 볼 수 있음 / 내가 가 본 곳이 아닌데 보여서 "왜 이 도서관?" 할 수 있음</dd>
+          <dt>추천 이유</dt><dd>창이 처음부터 비어 보이지 않고, 이웃 게시물이 뭔지 바로 알 수 있어서요. 반대로, 내가 간 곳만 보이는 게 중요하면 A가 더 나아요.</dd>
+        </dl>
+      </article>
+      <article class="cand" data-id="C">
+        <h3>C. 소식 칸을 숨김</h3>
+        <div class="state" data-empty><button aria-pressed="true" data-s="none">방문한 도서관 없음</button><button aria-pressed="false" data-s="noposts">단골은 있는데 게시물 없음</button><button aria-pressed="false" data-s="normal">평소</button></div>
+        <div class="phone" data-clone></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>방문한 곳이 없으면 소식 칸이 아예 없고 인기 도서 한 줄만 보여요. 처음 방문하면 그때 칸이 생겨요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">처음 켬 → 창에 인기 도서 한 줄만 → 도서관에 방문하면 다음에 켤 때 "자주 가는 도서관 소식" 칸이 새로 생김.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>창을 올려도 인기 도서 한 줄 아래가 비어 있어요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>빈 칸이나 안내 글이 없어 깔끔함 / 이런 칸이 있다는 걸 처음엔 모름</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <!-- 3이 '확인'이 되면 잘 안 될 때 화면(예외)을 아래에 모은다 -->
 
   <section id="except">
     <h2>잘 안 될 때 보이는 화면</h2>
@@ -293,8 +336,9 @@
     <div class="wrap"><table>
       <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값 · 유저 플로우</th></tr>
       <tr><td>1. 창에 무엇을 넣고 순서</td><td>확인</td><td>채택: B(인기 도서 한 줄 → 자주 가는 도서관 소식) / 차선: 없음 / 탈락: A, C</td><td>"한꺼번에 볼수있어서 복잡하지않고 편해보여" · 탈락 이유: "A는 동네 인기도서 전부 보려면 힘들고 C는 약간 복잡해서" · 불편한 점: 없음(사용자: "B는 그런점 없어보여 볼수있는건 다 볼수있어보여")</td><td>인기 도서 한 줄 4~5권 보임(최대 10권), 아래 게시물 2열. 게시물 → B의 게시물 상세, 책 → C의 책 상세(한 줄 연결만)</td></tr>
-      <tr><td>2. 창 높이·올리는 동작<br>다시 비교하기: <select data-pick="el-2"><option value="">채택안 보기</option><option value="A">A. 지도 크게</option><option value="B">B. 반쯤, 세 군데 멈춤</option><option value="C">C. 반쯤 고정</option></select></td><td>확인</td><td>채택: B(반쯤, 세 군데 멈춤) / 차선: 없음 / 탈락: A, C</td><td>"지도만 보고싶을때 그걸 원하면 내릴수 있다는게 편하고 좋은거같아 다시 올릴수있다는것도 장점이니까" · 탈락 이유: "오히려 A는 허전하고 C는 불편할거같아" · 불편한 점: (받는 중)</td><td>B: 평소 지도 아래 절반, 올리면 검색창 바로 아래, 내리면 제목 한 줄. 정할 것 1 화면은 "평소" 높이로 그림</td></tr>
-      <tr><td>3. 아무것도 없을 때</td><td>결정 전</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>2. 창 높이·올리는 동작<br>다시 비교하기: <select data-pick="el-2"><option value="">채택안 보기</option><option value="A">A. 지도 크게</option><option value="B">B. 반쯤, 세 군데 멈춤</option><option value="C">C. 반쯤 고정</option></select></td><td>확인</td><td>채택: B(반쯤, 세 군데 멈춤) / 차선: 없음 / 탈락: A, C</td><td>"지도만 보고싶을때 그걸 원하면 내릴수 있다는게 편하고 좋은거같아 다시 올릴수있다는것도 장점이니까" · 탈락 이유: "오히려 A는 허전하고 C는 불편할거같아" · 불편한 점: 없음(사용자: "난 선택해서 볼수도있고 가끔 추천도서보고 책읽고싶어질거란 생각도 들어서 없다고 생각해")</td><td>B: 평소 지도 아래 절반, 올리면 검색창 바로 아래, 내리면 제목 한 줄. 정할 것 1 화면은 "평소" 높이로 그림</td></tr>
+      <tr><td>3. 방문한 도서관이 없을 때<br>다시 비교하기: <select data-pick="el-3"><option value="">채택안 보기</option><option value="A">A. 안내 글만</option><option value="B">B. 가까운 도서관 소식</option><option value="C">C. 소식 칸 숨김</option></select></td><td>결정 전</td><td>— (추천: B)</td><td>—</td><td>B: 가까운 순 최대 3곳, 제목 "가까운 도서관 소식"</td></tr>
+      <tr><td>단골은 있는데 게시물 없음</td><td>기본값(Claude)</td><td>이름 알약은 그대로, 그 자리에 "○○에는 아직 게시물이 없어요"</td><td>묻지 않음</td><td>가짜 게시물을 만들지 않음</td></tr>
       <tr><td>게시물 카드 모양</td><td>정해짐</td><td>B가 정한 모양: 이미지만, 2열, 곡률 18px</td><td>—</td><td>디자인_기준.md §3·§4</td></tr>
       <tr><td>단골 도서관 고르기</td><td>기본값(Claude)</td><td>많이 간 순 이름 알약 최대 3개, 첫째가 켜짐</td><td>묻지 않음</td><td>방문 기록은 기기에만(도서관마다 하루 한 번)</td></tr>
       <tr><td>인기 도서 범위·개수</td><td>기본값(Claude)</td><td>"이 동네" 많이 빌린 순, 최대 10권</td><td>묻지 않음</td><td>집계 기준은 Q-31. 대출 가능 표시 아님</td></tr>
@@ -307,6 +351,29 @@
   // 정할 것 2: 정할 것 1 채택 화면(B)을 복사해 높이만 바꿔 보기
   var src = document.querySelector('#el-1 .cand[data-id="B"] .phone');
   document.querySelectorAll('.phone[data-clone]').forEach(function (ph) { ph.innerHTML = src.innerHTML; });
+  // 정할 것 3: 소식 자리를 상황별로 바꿔 보기
+  var box = 'style="background:var(--cream);border-radius:12px;padding:12px;font-size:11px;text-align:center"';
+  var feedHTML = src.querySelector('.feed').outerHTML;
+  var empty = {
+    A: '<div class="sec">자주 가는 도서관 소식</div><div ' + box + '>도서관에 방문하면 여기에 그 도서관 소식이 모여요.<br><u data-go="map" style="cursor:pointer">지도에서 도서관 골라 보기 ↓</u></div>',
+    B: '<div class="sec">가까운 도서관 소식 <small>자주 가는 곳이 생기면 바뀌어요</small></div><div class="chips"><span class="chip on">한빛 시립 320m</span><span class="chip">달빛 작은 860m</span></div>' + feedHTML,
+    C: ''
+  };
+  var normal = '<div class="sec">자주 가는 도서관 소식</div><div class="chips"><span class="chip on">한빛 시립</span><span class="chip">달빛 작은</span></div>';
+  var noposts = normal + '<div ' + box + '>한빛 시립에는 아직 게시물이 없어요.</div>';
+  document.querySelectorAll('#el-3 .cand').forEach(function (c) {
+    var sc = c.querySelector('.scroll'), secs = sc.querySelectorAll('.sec');
+    [secs[1], sc.querySelector('.chips'), sc.querySelector('.feed')].forEach(function (n) { n.remove(); });
+    var news = document.createElement('div'); sc.appendChild(news);
+    function show(k) { news.innerHTML = k === 'none' ? empty[c.dataset.id] : k === 'noposts' ? noposts : normal + feedHTML; }
+    show('none');
+    c.querySelectorAll('[data-empty] button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        c.querySelectorAll('[data-empty] button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        show(b.dataset.s);
+      });
+    });
+  });
   document.querySelectorAll('#el-2 .cand').forEach(function (c) {
     var st = c.querySelector('.state'), hs = st.dataset.heights.split(','), sh = c.querySelector('.sheet');
     sh.style.top = hs[0] + 'px';
@@ -320,11 +387,11 @@
   // 카드·책을 누르면 어디로 넘어가는지 안내(다른 담당 화면은 그리지 않음)
   document.querySelectorAll('.phone').forEach(function (ph) {
     var t = ph.querySelector('.toast'), timer;
-    ph.querySelectorAll('[data-go]').forEach(function (x) {
-      x.addEventListener('click', function () {
-        t.textContent = x.dataset.go === 'post' ? '→ 이 게시물의 상세 화면으로 넘어가요 (다른 담당 화면)' : '→ 이 책의 상세 화면으로 넘어가요 (다른 담당 화면)';
-        t.classList.add('show'); clearTimeout(timer); timer = setTimeout(function () { t.classList.remove('show'); }, 1800);
-      });
+    ph.addEventListener('click', function (e) {
+      var x = e.target.closest('[data-go]'); if (!x) return;
+      var m = { post: '→ 이 게시물의 상세 화면으로 넘어가요 (다른 담당 화면)', book: '→ 이 책의 상세 화면으로 넘어가요 (다른 담당 화면)', map: '→ 창이 아래로 내려가고 지도가 크게 보여요' };
+      t.textContent = m[x.dataset.go];
+      t.classList.add('show'); clearTimeout(timer); timer = setTimeout(function () { t.classList.remove('show'); }, 1800);
     });
     var tabs = ph.querySelector('[data-tabs]');
     if (tabs) tabs.querySelectorAll('button').forEach(function (b) {
