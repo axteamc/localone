@@ -1,0 +1,455 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VISIT-1b 시안</title>
+<!--
+  VISIT-1b 홈 하단 창 시안 (../team/templates/시안.html 복사, prompts/1_기획.md 1B 2단계 시안 사이클).
+  - 그리는 범위: 홈 화면(지도 + 홈 하단 창)만. 방문 페이지·게시물 상세(B)·책 상세(C)는 그리지 않는다(team CLAUDE.md 8절 9항).
+  - 게시물 카드는 B가 정한 모양 그대로: 제목·작성자 줄 없이 이미지만(글자는 이미지 안), 2열, 카드 곡률 18px(디자인_기준.md §3·§4).
+  - 색·곡률은 디자인_기준.md 토큰(warm, M1 기본). 값은 모두 가짜 값.
+-->
+<style>
+  :root {
+    /* 개발산출물/디자인_기준.md 토큰 (warm, M1 기본) */
+    --bg: #E1E1DE; --surface2: #D0CEC8; --surface3: #BFBCB5;
+    --fill1: #E9C970; --fill2: #EDC9A9; --fill3: #B3BFB5;
+    --cream: #EFEFE7; --paper: #EFF1F1; --ink-strong: #2E333F;
+    --text: #1D1D1F; --sub: #71716F; /* 보조 글자 = bg 50% 어둡게 */
+    --line: #C4C4C1; /* 구분선 = bg 13% 어둡게 */
+    --r-card: 18px; --r-pill: 18px; --r-book: 5px 9px 9px 5px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; line-height: 1.5; }
+  header.page { padding: 20px 16px 8px; max-width: 1240px; margin: 0 auto; }
+  header.page h1 { font-size: 20px; margin: 0 0 4px; }
+  .how { background: var(--cream); border-radius: var(--r-card); padding: 12px 16px; margin: 8px 0 0; }
+  main { max-width: 1240px; margin: 0 auto; padding: 0 16px 40px; }
+  section.element { margin-top: 24px; }
+  section.element > h2 { font-size: 17px; margin: 0 0 4px; }
+  .status { display: inline-block; font-size: 12px; padding: 2px 10px; border-radius: var(--r-pill); background: var(--surface2); margin-left: 6px; }
+  .cands { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 12px; }
+  .cand { background: var(--paper); border-radius: var(--r-card); padding: 14px; border: 3px solid transparent; }
+  .cand.recommended { border-color: var(--fill1); }
+  .cand.chosen { border-color: var(--ink-strong); }
+  .cand h3 { margin: 0 0 8px; font-size: 15px; }
+  .badge { font-size: 12px; padding: 1px 8px; border-radius: var(--r-pill); background: var(--fill1); margin-left: 6px; }
+  .badge.chosen { background: var(--ink-strong); color: var(--paper); }
+
+  /* 휴대폰 화면 */
+  .phone { position: relative; width: 100%; max-width: 300px; height: 600px; margin: 0 auto; background: var(--cream); border-radius: 28px; overflow: hidden; border: 6px solid var(--ink-strong); }
+  .map { position: absolute; inset: 0 0 auto 0; height: 300px; background: var(--bg); overflow: hidden; }
+  .map .road { position: absolute; background: var(--paper); }
+  .map .r1 { left: 0; right: 0; top: 140px; height: 12px; }
+  .map .r2 { top: 0; bottom: 0; left: 110px; width: 10px; }
+  .map .stn { position: absolute; left: 124px; top: 156px; font-size: 9px; color: var(--sub); }
+  .pin { position: absolute; display: flex; flex-direction: column; align-items: center; font-size: 9px; }
+  .pin i { width: 16px; height: 16px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); background: var(--fill1); border: 2px solid var(--ink-strong); display: block; }
+  .pin span { margin-top: 3px; background: var(--paper); padding: 0 4px; border-radius: 6px; white-space: nowrap; }
+  .search { position: absolute; left: 8px; right: 8px; top: 8px; display: flex; gap: 4px; z-index: 2; }
+  .search .q { flex: 1; background: var(--paper); border-radius: var(--r-pill); padding: 6px 10px; font-size: 11px; color: var(--sub); border: 1px solid var(--surface3); }
+  .search .lib { background: var(--paper); border-radius: var(--r-pill); padding: 6px 8px; font-size: 10px; border: 1px solid var(--surface3); white-space: nowrap; }
+  .sheet { position: absolute; left: 0; right: 0; top: 250px; bottom: 52px; transition: top .3s; z-index: 3; background: var(--paper); border-radius: 18px 18px 0 0; box-shadow: 0 -4px 14px rgba(0,0,0,.12); display: flex; flex-direction: column; }
+  .grab { width: 36px; height: 4px; border-radius: 4px; background: var(--surface3); margin: 7px auto 4px; flex: none; }
+  .scroll { overflow-y: auto; padding: 0 10px 12px; flex: 1; }
+  .bar { position: absolute; left: 0; right: 0; bottom: 0; height: 52px; background: var(--paper); border-top: 1px solid var(--line); display: flex; justify-content: space-around; align-items: center; font-size: 10px; color: var(--sub); }
+  .bar b { color: var(--text); }
+  .sec { font-size: 12px; font-weight: 700; margin: 10px 0 6px; display: flex; justify-content: space-between; align-items: baseline; }
+  .sec small { font-weight: 400; color: var(--sub); font-size: 10px; }
+  .chips { display: flex; gap: 4px; margin-bottom: 6px; }
+  .chip { font-size: 10px; padding: 2px 8px; border-radius: var(--r-pill); background: var(--surface2); }
+  .chip.on { background: var(--ink-strong); color: var(--paper); }
+
+  /* 게시물 카드: B가 정한 모양(이미지만, 2열 메이슨리) */
+  .feed { columns: 2; column-gap: 6px; }
+  .post { break-inside: avoid; margin-bottom: 6px; border-radius: var(--r-card); display: flex; align-items: flex-end; padding: 8px; font-size: 10px; font-weight: 700; cursor: pointer; }
+  .p1 { height: 110px; background: var(--fill2); }
+  .p2 { height: 80px; background: var(--fill3); }
+  .p3 { height: 130px; background: var(--surface3); }
+  .p4 { height: 90px; background: var(--fill1); }
+  .p5 { height: 100px; background: var(--fill3); }
+  .p6 { height: 120px; background: var(--fill2); }
+
+  /* 인기 도서 */
+  .row { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+  .bk { flex: none; width: 58px; font-size: 9px; cursor: pointer; }
+  .bk .cv { width: 58px; height: 82px; border-radius: var(--r-book); background: var(--fill3); position: relative; }
+  .bk:nth-child(2n) .cv { background: var(--fill2); }
+  .bk:nth-child(3n) .cv { background: var(--surface3); }
+  .bk .n { position: absolute; left: 4px; top: 2px; font-size: 12px; font-weight: 700; }
+  .bk p { margin: 3px 0 0; line-height: 1.25; }
+  .tabs { display: flex; gap: 4px; margin: 4px 0 8px; }
+  .tabs button, .state button { font: inherit; border: 0; border-radius: var(--r-pill); padding: 4px 12px; background: var(--surface2); cursor: pointer; margin: 2px; }
+  .tabs button { font-size: 11px; padding: 4px 10px; }
+  .tabs button[aria-pressed="true"], .state button[aria-pressed="true"] { background: var(--ink-strong); color: var(--paper); }
+  .toast { position: absolute; left: 10px; right: 10px; bottom: 60px; background: var(--ink-strong); color: var(--paper); font-size: 11px; padding: 8px 10px; border-radius: 12px; display: none; z-index: 5; }
+  .toast.show { display: block; }
+
+  .note { font-size: 14px; margin-top: 10px; }
+  .note dt { font-weight: 700; margin-top: 6px; }
+  .note dd { margin: 0; }
+  .flow { background: var(--cream); border-radius: 12px; padding: 8px 10px; }
+  #spec, #except, #fullflow { background: var(--paper); border-radius: var(--r-card); padding: 14px 16px; margin-top: 28px; }
+  #spec table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  #spec th, #spec td { text-align: left; padding: 6px; border-bottom: 1px solid var(--surface2); vertical-align: top; }
+  #spec .wrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>VISIT-1b 홈 하단 창 시안 — 창에 무엇을 넣고 어떤 순서로 둘까</h1>
+  <p class="how">지도 아래 하얀 창(홈 하단 창)을 비교해 보세요. 화면 3개는 <b>창 안에 무엇이 어떤 순서로 있는지</b>만 달라요. 창 안을 <b>손가락(마우스 휠)으로 내려 보면</b> 아래 내용도 보여요. 카드나 책을 누르면 어디로 넘어가는지 아래에 떠요. <b>추천</b> 표시가 있는 화면이 Claude의 추천이에요. 고르는 건 직접 해 주세요.<br>
+  창이 얼마나 올라오는지, 아무것도 없을 때 모습은 <b>다음에</b> 따로 정해요. 지금은 반쯤 올라온 모습으로 같게 그렸어요.</p>
+</header>
+
+<main>
+  <!-- ===== 중심 요소 1 ===== -->
+  <section class="element" id="el-1" data-chosen="B">
+    <h2>정할 것 1. 창에 무엇을 넣고 어떤 순서로 둘까<span class="status" data-status>결정 전</span></h2>
+    <div class="cands">
+
+      <!-- 후보 A: 도서관 소식 먼저 -->
+      <article class="cand" data-id="A">
+        <h3>A. 자주 가는 도서관 소식이 먼저</h3>
+        <div class="phone">
+          <div class="map"><div class="road r1"></div><div class="road r2"></div><span class="stn">● 시청역</span>
+            <div class="pin" style="left:50px;top:80px"><i></i><span>한빛 시립 · 320m</span></div>
+            <div class="pin" style="left:170px;top:190px"><i></i><span>달빛 작은 · 860m</span></div></div>
+          <div class="search"><div class="q">책 이름을 검색해 보세요</div><div class="lib">도서관 찾기</div></div>
+          <div class="sheet"><div class="grab"></div><div class="scroll">
+            <div class="sec">자주 가는 도서관 소식</div>
+            <div class="chips"><span class="chip on">한빛 시립</span><span class="chip">달빛 작은</span></div>
+            <div class="feed">
+              <div class="post p1" data-go="post">“이 문장에 밑줄”</div><div class="post p2" data-go="post">오늘 빌린 책</div>
+              <div class="post p3" data-go="post">창가 자리 추천</div><div class="post p4" data-go="post">3권째 완독</div>
+              <div class="post p5" data-go="post">작가 사인본!</div><div class="post p6" data-go="post">아이랑 그림책</div>
+            </div>
+            <div class="sec">이 동네 인기 도서 <small>많이 빌린 순</small></div>
+            <div class="row">
+              <div class="bk" data-go="book"><div class="cv"><span class="n">1</span></div><p>소년이 온다</p></div>
+              <div class="bk" data-go="book"><div class="cv"><span class="n">2</span></div><p>불편한 편의점</p></div>
+              <div class="bk" data-go="book"><div class="cv"><span class="n">3</span></div><p>세이노의 가르침</p></div>
+              <div class="bk" data-go="book"><div class="cv"><span class="n">4</span></div><p>도둑맞은 집중력</p></div>
+            </div>
+          </div></div>
+          <div class="bar"><b>홈</b><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+          <div class="toast"></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>창을 올리면 내가 자주 가는 도서관의 게시물이 바로 보여요. 인기 도서는 게시물을 다 내린 맨 아래에 있어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">지도 홈을 켬 → 창에 단골 도서관 게시물이 보임 → 게시물을 누르면 게시물 상세(다른 담당 화면)로 → 인기 도서를 보려면 게시물을 끝까지 내려야 함 → 책을 누르면 책 상세(다른 담당 화면)로.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>창 위에 단골 도서관 이름 알약(많이 간 순, 최대 3개). 누르면 그 도서관 게시물로 바뀜. 게시물은 2열로 6개 보이고 그 아래에 인기 도서 한 줄.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>동네 이웃 이야기가 제일 먼저 눈에 띔 / 게시물이 많으면 인기 도서까지 한참 내려야 함</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 B (추천): 인기 도서 한 줄 먼저 -->
+      <article class="cand recommended" data-id="B">
+        <h3>B. 인기 도서 한 줄 → 그 아래 도서관 소식 <span class="badge">추천</span></h3>
+        <div class="phone">
+          <div class="map"><div class="road r1"></div><div class="road r2"></div><span class="stn">● 시청역</span>
+            <div class="pin" style="left:50px;top:80px"><i></i><span>한빛 시립 · 320m</span></div>
+            <div class="pin" style="left:170px;top:190px"><i></i><span>달빛 작은 · 860m</span></div></div>
+          <div class="search"><div class="q">책 이름을 검색해 보세요</div><div class="lib">도서관 찾기</div></div>
+          <div class="sheet"><div class="grab"></div><div class="scroll">
+            <div class="sec">이 동네 인기 도서 <small>많이 빌린 순 · 옆으로 넘겨요</small></div>
+            <div class="row">
+              <div class="bk" data-go="book"><div class="cv"><span class="n">1</span></div><p>소년이 온다</p></div>
+              <div class="bk" data-go="book"><div class="cv"><span class="n">2</span></div><p>불편한 편의점</p></div>
+              <div class="bk" data-go="book"><div class="cv"><span class="n">3</span></div><p>세이노의 가르침</p></div>
+              <div class="bk" data-go="book"><div class="cv"><span class="n">4</span></div><p>도둑맞은 집중력</p></div>
+              <div class="bk" data-go="book"><div class="cv"><span class="n">5</span></div><p>아몬드</p></div>
+            </div>
+            <div class="sec">자주 가는 도서관 소식</div>
+            <div class="chips"><span class="chip on">한빛 시립</span><span class="chip">달빛 작은</span></div>
+            <div class="feed">
+              <div class="post p1" data-go="post">“이 문장에 밑줄”</div><div class="post p2" data-go="post">오늘 빌린 책</div>
+              <div class="post p3" data-go="post">창가 자리 추천</div><div class="post p4" data-go="post">3권째 완독</div>
+              <div class="post p5" data-go="post">작가 사인본!</div><div class="post p6" data-go="post">아이랑 그림책</div>
+            </div>
+          </div></div>
+          <div class="bar"><b>홈</b><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+          <div class="toast"></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>창 맨 위에 인기 도서가 옆으로 넘기는 한 줄로 있고, 바로 아래부터 단골 도서관 게시물이 계속 이어져요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">지도 홈을 켬 → 창을 조금만 올려도 인기 도서 한 줄이 보임 → 책을 누르면 책 상세(다른 담당 화면)로 → 더 올리고 내리면 단골 도서관 게시물이 계속 나옴 → 게시물을 누르면 게시물 상세(다른 담당 화면)로.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>인기 도서는 한 줄에 4~5권, 옆으로 넘기면 10권까지. 그 아래 단골 도서관 이름 알약(최대 3개)과 게시물 2열.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>둘 다 한 번에 보이고, 게시물이 많아도 인기 도서가 묻히지 않음 / 이웃 게시물은 인기 도서 한 줄 아래로 밀림</dd>
+          <dt>추천 이유</dt><dd>게시물은 내릴수록 계속 나오니 아래에 둬야 다른 내용이 묻히지 않아서요. 반대로, 이웃 이야기 보러 앱을 켜는 사람이 많다면 A가 더 나아요.</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 C: 탭으로 바꾸기 -->
+      <article class="cand" data-id="C">
+        <h3>C. 탭으로 하나씩</h3>
+        <div class="phone">
+          <div class="map"><div class="road r1"></div><div class="road r2"></div><span class="stn">● 시청역</span>
+            <div class="pin" style="left:50px;top:80px"><i></i><span>한빛 시립 · 320m</span></div>
+            <div class="pin" style="left:170px;top:190px"><i></i><span>달빛 작은 · 860m</span></div></div>
+          <div class="search"><div class="q">책 이름을 검색해 보세요</div><div class="lib">도서관 찾기</div></div>
+          <div class="sheet"><div class="grab"></div><div class="scroll">
+            <div class="tabs" data-tabs><button aria-pressed="true" data-t="feed">도서관 소식</button><button aria-pressed="false" data-t="books">인기 도서</button></div>
+            <div data-pane="feed">
+              <div class="chips"><span class="chip on">한빛 시립</span><span class="chip">달빛 작은</span></div>
+              <div class="feed">
+                <div class="post p1" data-go="post">“이 문장에 밑줄”</div><div class="post p2" data-go="post">오늘 빌린 책</div>
+                <div class="post p3" data-go="post">창가 자리 추천</div><div class="post p4" data-go="post">3권째 완독</div>
+                <div class="post p5" data-go="post">작가 사인본!</div><div class="post p6" data-go="post">아이랑 그림책</div>
+              </div>
+            </div>
+            <div data-pane="books" hidden>
+              <div class="sec"><span></span><small>이 동네 · 많이 빌린 순</small></div>
+              <div class="feed" style="columns:3">
+                <div class="bk" data-go="book" style="margin-bottom:8px"><div class="cv"><span class="n">1</span></div><p>소년이 온다</p></div>
+                <div class="bk" data-go="book" style="margin-bottom:8px"><div class="cv"><span class="n">2</span></div><p>불편한 편의점</p></div>
+                <div class="bk" data-go="book" style="margin-bottom:8px"><div class="cv"><span class="n">3</span></div><p>세이노의 가르침</p></div>
+                <div class="bk" data-go="book" style="margin-bottom:8px"><div class="cv"><span class="n">4</span></div><p>도둑맞은 집중력</p></div>
+                <div class="bk" data-go="book" style="margin-bottom:8px"><div class="cv"><span class="n">5</span></div><p>아몬드</p></div>
+                <div class="bk" data-go="book" style="margin-bottom:8px"><div class="cv"><span class="n">6</span></div><p>작별하지 않는다</p></div>
+              </div>
+            </div>
+          </div></div>
+          <div class="bar"><b>홈</b><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+          <div class="toast"></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>창 맨 위 탭 두 개 중 하나만 보여요. 처음엔 "도서관 소식"이 열려 있고, 인기 도서는 탭을 눌러야 보여요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">지도 홈을 켬 → 창에 도서관 소식 탭이 열려 있음 → "인기 도서" 탭을 누르면 창 안이 책 목록으로 바뀜 → 책을 누르면 책 상세, 게시물을 누르면 게시물 상세(둘 다 다른 담당 화면)로.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>위 "인기 도서" 탭을 눌러 보세요. 인기 도서가 3열 표지로 한 화면 가득(최대 10권) 보여요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>한 가지에 집중해서 넓게 봄 / 다른 쪽은 탭을 한 번 더 눌러야 있다는 걸 앎</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===== 중심 요소 2 ===== -->
+  <section class="element" id="el-2" data-chosen="B">
+    <h2>정할 것 2. 창이 평소에 얼마나 보이고, 올리면 어디까지 올라올까<span class="status" data-status>결정 전</span></h2>
+    <p style="margin:0">창 안의 내용은 정할 것 1에서 고른 모양(인기 도서 한 줄 → 자주 가는 도서관 소식) 그대로예요. 화면마다 위의 버튼을 눌러 <b>창을 올리고 내려</b> 보세요.</p>
+    <div class="cands">
+      <article class="cand" data-id="A">
+        <h3>A. 지도 크게, 창은 아래에 조금만</h3>
+        <div class="state" data-heights="508,0,508" data-labels="평소,끝까지 올림,—"><button aria-pressed="true" data-h="0">평소</button><button aria-pressed="false" data-h="1">위로 올림</button></div>
+        <div class="phone" data-clone></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>평소엔 지도가 화면 대부분이고, 창은 손잡이와 "이 동네 인기 도서" 제목 한 줄만 보여요. 올리면 화면 꼭대기까지 덮어요(멈추는 곳 2곳).</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">앱을 켬 → 지도가 크게 보이고 아래에 제목 한 줄 → 창을 올리면 화면 전체가 창이 되어 인기 도서·게시물이 보임(지도·검색창은 가려짐) → 내리면 다시 지도.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>평소엔 책 표지가 하나도 안 보여요. 올리면 맨 위 검색창도 가려져요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>지도를 넓게 봄 / 인기 도서·게시물은 올려야만 보임</dd>
+        </dl>
+      </article>
+      <article class="cand recommended" data-id="B">
+        <h3>B. 반쯤 보이고, 세 군데에서 멈춤 <span class="badge">추천</span></h3>
+        <div class="state" data-heights="250,44,508"><button aria-pressed="true" data-h="0">평소</button><button aria-pressed="false" data-h="1">위로 올림</button><button aria-pressed="false" data-h="2">아래로 내림</button></div>
+        <div class="phone" data-clone></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>평소엔 지도와 창이 반반이고 인기 도서 한 줄이 보여요. 올리면 맨 위 검색창 바로 아래까지, 내리면 손잡이만 남아요(멈추는 곳 3곳).</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">앱을 켬 → 지도 반, 인기 도서 한 줄이 바로 보임 → 창을 올리면 검색창은 남고 게시물이 넓게 보임 → 창을 끝까지 내리면 지도가 거의 전체로 보임.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>올렸을 때도 맨 위 검색창은 그대로 있어요. 내렸을 때는 제목 한 줄만 남아요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>켜자마자 지도와 인기 도서가 같이 보이고, 필요에 따라 넓힐 수 있음 / 평소 지도가 절반이라 멀리 있는 핀은 안 보일 수 있음</dd>
+          <dt>추천 이유</dt><dd>정할 것 1에서 "한꺼번에 보이는 것"을 고르셨으니, 켜자마자 둘 다 보이는 높이가 맞아서요. 반대로, 지도로 도서관 고르는 일이 훨씬 많다면 A가 더 나아요.</dd>
+        </dl>
+      </article>
+      <article class="cand" data-id="C">
+        <h3>C. 반쯤에 고정, 창 안에서만 내려 보기</h3>
+        <div class="state" data-heights="250"><button aria-pressed="true" data-h="0">평소(움직이지 않음)</button></div>
+        <div class="phone" data-clone></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>창이 늘 지도 아래 절반에 있어요. 끌어 올리거나 내리지 않고, 창 안을 손가락으로 내려서 더 봐요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">앱을 켬 → 지도 반, 인기 도서 한 줄 → 창 안을 내리면 게시물이 이어짐 → 지도는 늘 위 절반에 그대로.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>창 안을 내려 보세요. 게시물이 좁은 칸 안에서만 움직여요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>움직임이 하나라 헷갈리지 않음 / 게시물을 넓게 볼 수 없고, 지도도 넓게 볼 수 없음</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===== 중심 요소 3 ===== -->
+  <section class="element" id="el-3" data-chosen="B">
+    <h2>정할 것 3. 아직 방문한 도서관이 없을 때, 소식 자리에 무엇을 보여 줄까<span class="status" data-status>결정 전</span></h2>
+    <p style="margin:0">처음 앱을 켠 사람은 방문한 도서관이 없어서 "자주 가는 도서관"이 비어 있어요. 화면마다 위 버튼으로 상황을 바꿔 보세요. 인기 도서 한 줄과 창 높이는 정한 그대로예요.<br>
+    <small>로그인을 안 해도 같은 모습이에요. 게시물은 모두에게 공개된 것만, 방문 기록은 이 기기에만 남아요.</small></p>
+    <div class="cands">
+      <article class="cand" data-id="A">
+        <h3>A. 안내 글만</h3>
+        <div class="state" data-empty><button aria-pressed="true" data-s="none">방문한 도서관 없음</button><button aria-pressed="false" data-s="noposts">단골은 있는데 게시물 없음</button><button aria-pressed="false" data-s="normal">평소</button></div>
+        <div class="phone" data-clone></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>소식 자리에 "도서관에 가면 여기에 소식이 모여요" 안내와 "지도에서 도서관 골라 보기" 글자 버튼만 있어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">처음 켬 → 인기 도서 한 줄 + 안내 글 → "지도에서 도서관 골라 보기"를 누르면 창이 내려가고 지도가 보임 → 핀을 눌러 도서관에 들어가면 다음부터 그 도서관 소식이 여기 나옴.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>안내 글 아래는 비어 있어서 창이 짧아 보여요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>무엇을 하면 채워지는지 분명함 / 첫날엔 이웃 게시물을 하나도 못 봄</dd>
+        </dl>
+      </article>
+      <article class="cand recommended" data-id="B">
+        <h3>B. 가까운 도서관 소식으로 대신 <span class="badge">추천</span></h3>
+        <div class="state" data-empty><button aria-pressed="true" data-s="none">방문한 도서관 없음</button><button aria-pressed="false" data-s="noposts">단골은 있는데 게시물 없음</button><button aria-pressed="false" data-s="normal">평소</button></div>
+        <div class="phone" data-clone></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>방문한 곳이 없으면 칸 제목이 "가까운 도서관 소식"으로 바뀌고, 지금 위치에서 가까운 도서관(최대 3곳)의 게시물을 보여 줘요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">처음 켬 → 인기 도서 한 줄 + 가까운 도서관 게시물 → 게시물을 누르면 게시물 상세(다른 담당 화면)로 → 도서관에 방문하기 시작하면 제목이 "자주 가는 도서관 소식"으로 바뀌고 단골 도서관 게시물로 바뀜.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>제목 옆에 작은 글 "자주 가는 곳이 생기면 바뀌어요". 이름 알약에 거리가 붙어요(가까운 순).</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>첫날에도 이웃 이야기를 볼 수 있음 / 내가 가 본 곳이 아닌데 보여서 "왜 이 도서관?" 할 수 있음</dd>
+          <dt>추천 이유</dt><dd>창이 처음부터 비어 보이지 않고, 이웃 게시물이 뭔지 바로 알 수 있어서요. 반대로, 내가 간 곳만 보이는 게 중요하면 A가 더 나아요.</dd>
+        </dl>
+      </article>
+      <article class="cand" data-id="C">
+        <h3>C. 소식 칸을 숨김</h3>
+        <div class="state" data-empty><button aria-pressed="true" data-s="none">방문한 도서관 없음</button><button aria-pressed="false" data-s="noposts">단골은 있는데 게시물 없음</button><button aria-pressed="false" data-s="normal">평소</button></div>
+        <div class="phone" data-clone></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>방문한 곳이 없으면 소식 칸이 아예 없고 인기 도서 한 줄만 보여요. 처음 방문하면 그때 칸이 생겨요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">처음 켬 → 창에 인기 도서 한 줄만 → 도서관에 방문하면 다음에 켤 때 "자주 가는 도서관 소식" 칸이 새로 생김.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>창을 올려도 인기 도서 한 줄 아래가 비어 있어요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>빈 칸이나 안내 글이 없어 깔끔함 / 이런 칸이 있다는 걸 처음엔 모름</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <!-- 3이 '확인'이 되면 잘 안 될 때 화면(예외)을 아래에 모은다 -->
+
+  <section id="except">
+    <h2>잘 안 될 때 보이는 화면</h2>
+    <p style="margin:0">정한 화면(인기 도서 한 줄 → 소식, 평소 반쯤) 그대로에서 잘 안 될 때 모습이에요. 문구는 Claude가 먼저 넣어 둔 거예요. 버튼을 하나씩 눌러 보세요.</p>
+    <div class="state" id="exTabs">
+      <button aria-pressed="true" data-ex="net">인터넷이 끊김</button><button aria-pressed="false" data-ex="none">하나도 없음</button><button aria-pressed="false" data-ex="tap">빠르게 두 번 누름</button><button aria-pressed="false" data-ex="login">로그인 안 함</button><button aria-pressed="false" data-ex="loc">위치를 못 씀</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:8px;align-items:start">
+      <div class="phone" data-clone id="exPhone"></div>
+      <dl class="note" style="margin:0"><dt>이 화면에서 일어나는 일</dt><dd class="flow" id="exNote"></dd></dl>
+    </div>
+  </section>
+
+  <section id="fullflow">
+    <h2>처음부터 끝까지 이렇게 써요</h2>
+    <ol>
+      <li>사용자가 앱을 켜면 동네한권이 지도 홈과 그 아래 홈 하단 창을 보여 준다.</li>
+      <li>동네한권이 창 맨 위에 이 동네 인기 도서를 옆으로 넘기는 한 줄로 보여 준다.</li>
+      <li>사용자가 책을 누르면 그 책의 상세 화면(다른 담당 화면)으로 넘어간다.</li>
+      <li>그 아래에 자주 간 도서관 이름(최대 3개)과 첫째 도서관의 게시물이 2열로 이어진다. 이름을 누르면 그 도서관 게시물로 바뀐다.</li>
+      <li>사용자가 게시물을 누르면 그 게시물의 상세 화면(다른 담당 화면)으로 넘어간다.</li>
+      <li>평소엔 지도와 창이 반반이다. 사용자가 창을 올리면 맨 위 검색창 바로 아래까지 올라와 게시물이 넓게 보인다.</li>
+      <li>사용자가 창을 끝까지 내리면 제목 한 줄만 남고 지도가 거의 전체로 보인다. 다시 올리면 반반으로 돌아온다.</li>
+      <li>아직 방문한 도서관이 없으면 소식 칸 제목이 "가까운 도서관 소식"이 되고, 가까운 도서관(최대 3곳) 게시물이 보인다. 도서관에 방문하기 시작하면 "자주 가는 도서관 소식"으로 바뀐다.</li>
+      <li>단골 도서관에 게시물이 없으면 그 자리에 "○○에는 아직 게시물이 없어요"가 보인다.</li>
+    </ol>
+  </section>
+
+  <section id="spec">
+    <h2>명세</h2>
+    <p>다시 비교하기: <select data-pick="el-1"><option value="">채택안 보기</option><option value="A">A. 도서관 소식 먼저</option><option value="B">B. 인기 도서 한 줄 → 도서관 소식</option><option value="C">C. 탭으로 하나씩</option></select></p>
+    <div class="wrap"><table>
+      <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값 · 유저 플로우</th></tr>
+      <tr><td>1. 창에 무엇을 넣고 순서</td><td>확인</td><td>채택: B(인기 도서 한 줄 → 자주 가는 도서관 소식) / 차선: 없음 / 탈락: A, C</td><td>"한꺼번에 볼수있어서 복잡하지않고 편해보여" · 탈락 이유: "A는 동네 인기도서 전부 보려면 힘들고 C는 약간 복잡해서" · 불편한 점: 없음(사용자: "B는 그런점 없어보여 볼수있는건 다 볼수있어보여")</td><td>인기 도서 한 줄 4~5권 보임(최대 10권), 아래 게시물 2열. 게시물 → B의 게시물 상세, 책 → C의 책 상세(한 줄 연결만)</td></tr>
+      <tr><td>2. 창 높이·올리는 동작<br>다시 비교하기: <select data-pick="el-2"><option value="">채택안 보기</option><option value="A">A. 지도 크게</option><option value="B">B. 반쯤, 세 군데 멈춤</option><option value="C">C. 반쯤 고정</option></select></td><td>확인</td><td>채택: B(반쯤, 세 군데 멈춤) / 차선: 없음 / 탈락: A, C</td><td>"지도만 보고싶을때 그걸 원하면 내릴수 있다는게 편하고 좋은거같아 다시 올릴수있다는것도 장점이니까" · 탈락 이유: "오히려 A는 허전하고 C는 불편할거같아" · 불편한 점: 없음(사용자: "난 선택해서 볼수도있고 가끔 추천도서보고 책읽고싶어질거란 생각도 들어서 없다고 생각해")</td><td>B: 평소 지도 아래 절반, 올리면 검색창 바로 아래, 내리면 제목 한 줄. 정할 것 1 화면은 "평소" 높이로 그림</td></tr>
+      <tr><td>3. 방문한 도서관이 없을 때<br>다시 비교하기: <select data-pick="el-3"><option value="">채택안 보기</option><option value="A">A. 안내 글만</option><option value="B">B. 가까운 도서관 소식</option><option value="C">C. 소식 칸 숨김</option></select></td><td>확인</td><td>채택: B(가까운 도서관 소식으로 대신) / 차선: 없음 / 탈락: A, C</td><td>"B가 가장 마을 커뮤니티에 잘맞는거같고 아직 가보지 않았어도 주변 도서관 소식보고 호기심 생길수 있다고 생각해" · 탈락 이유: "A는 자주가는 도서관만떠서 동네소식 볼수없다는게 아쉽고 C는 뭔가 허전해" · 불편한 점: 없음(사용자: "불편한거보다 동네소식보인다며 구경도 해보고 평가도보고 좋을거같아")</td><td>B: 가까운 순 최대 3곳, 제목 "가까운 도서관 소식"</td></tr>
+      <tr><td>단골은 있는데 게시물 없음</td><td>기본값(Claude)</td><td>이름 알약은 그대로, 그 자리에 "○○에는 아직 게시물이 없어요"</td><td>묻지 않음</td><td>가짜 게시물을 만들지 않음</td></tr>
+      <tr><td>게시물 카드 모양</td><td>정해짐</td><td>B가 정한 모양: 이미지만, 2열, 곡률 18px</td><td>—</td><td>디자인_기준.md §3·§4</td></tr>
+      <tr><td>단골 도서관 고르기</td><td>기본값(Claude)</td><td>많이 간 순 이름 알약 최대 3개, 첫째가 켜짐</td><td>묻지 않음</td><td>방문 기록은 기기에만(도서관마다 하루 한 번)</td></tr>
+      <tr><td>인기 도서 범위·개수</td><td>기본값(Claude)</td><td>"이 동네" 많이 빌린 순, 최대 10권</td><td>묻지 않음</td><td>집계 기준은 Q-31. 대출 가능 표시 아님</td></tr>
+      <tr><td>칸 제목 글자</td><td>기본값(Claude)</td><td>"자주 가는 도서관 소식" / "이 동네 인기 도서"</td><td>묻지 않음</td><td>12px 굵게</td></tr>
+    </table></div>
+  </section>
+</main>
+
+<script>
+  // 정할 것 2: 정할 것 1 채택 화면(B)을 복사해 높이만 바꿔 보기
+  var src = document.querySelector('#el-1 .cand[data-id="B"] .phone');
+  document.querySelectorAll('.phone[data-clone]').forEach(function (ph) { ph.innerHTML = src.innerHTML; });
+  // 정할 것 3: 소식 자리를 상황별로 바꿔 보기
+  var box = 'style="background:var(--cream);border-radius:12px;padding:12px;font-size:11px;text-align:center"';
+  var feedHTML = src.querySelector('.feed').outerHTML;
+  var empty = {
+    A: '<div class="sec">자주 가는 도서관 소식</div><div ' + box + '>도서관에 방문하면 여기에 그 도서관 소식이 모여요.<br><u data-go="map" style="cursor:pointer">지도에서 도서관 골라 보기 ↓</u></div>',
+    B: '<div class="sec">가까운 도서관 소식 <small>자주 가는 곳이 생기면 바뀌어요</small></div><div class="chips"><span class="chip on">한빛 시립 320m</span><span class="chip">달빛 작은 860m</span></div>' + feedHTML,
+    C: ''
+  };
+  var normal = '<div class="sec">자주 가는 도서관 소식</div><div class="chips"><span class="chip on">한빛 시립</span><span class="chip">달빛 작은</span></div>';
+  var noposts = normal + '<div ' + box + '>한빛 시립에는 아직 게시물이 없어요.</div>';
+  document.querySelectorAll('#el-3 .cand').forEach(function (c) {
+    var sc = c.querySelector('.scroll'), secs = sc.querySelectorAll('.sec');
+    [secs[1], sc.querySelector('.chips'), sc.querySelector('.feed')].forEach(function (n) { n.remove(); });
+    var news = document.createElement('div'); sc.appendChild(news);
+    function show(k) { news.innerHTML = k === 'none' ? empty[c.dataset.id] : k === 'noposts' ? noposts : normal + feedHTML; }
+    show('none');
+    c.querySelectorAll('[data-empty] button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        c.querySelectorAll('[data-empty] button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        show(b.dataset.s);
+      });
+    });
+  });
+  // 잘 안 될 때 화면
+  (function () {
+    var ph = document.getElementById('exPhone'), sc = ph.querySelector('.scroll'), base = sc.innerHTML;
+    var bx = function (t) { return '<div ' + box + '>' + t + '</div>'; };
+    var retry = ' <u style="cursor:pointer;white-space:nowrap"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-0.15em;margin-right:3px"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>새로고침</u>';
+    var books = sc.querySelector('.row').outerHTML;
+    var V = {
+      net: { html: '<div class="sec">이 동네 인기 도서</div>' + bx('인기 도서를 불러오지 못했어요.' + retry) + '<div class="sec">자주 가는 도서관 소식</div>' + bx('소식을 불러오지 못했어요.' + retry),
+             note: '인터넷이 끊기거나 동네한권이 답을 못 받으면, 칸마다 "불러오지 못했어요 · ↻ 새로고침"이 보여요. 한쪽만 안 되면 그쪽만 이렇게 보이고 다른 쪽은 그대로예요. 지도는 지도 홈에서 정한 대로예요.' },
+      none: { html: '<div class="sec">이 동네 인기 도서</div>' + bx('이 동네 인기 도서를 아직 모으지 못했어요.') + '<div class="sec">가까운 도서관 소식 <small>자주 가는 곳이 생기면 바뀌어요</small></div><div class="chips"><span class="chip on">한빛 시립 320m</span><span class="chip">달빛 작은 860m</span></div>' + bx('가까운 도서관에도 아직 게시물이 없어요.'),
+             note: '방문한 도서관도 없고 가까운 도서관에도 게시물이 없으면 "아직 게시물이 없어요"만 보여요. 가짜 게시물은 만들지 않아요. 인기 도서가 없을 때도 안내 한 줄만 보여요.' },
+      tap: { html: base,
+             note: '도서관 이름 알약을 빠르게 여러 번 누르거나 다른 이름을 연달아 누르면, 마지막에 누른 도서관의 게시물만 보여요. 먼저 누른 쪽의 늦은 답이 나중에 와서 화면을 덮지 않아요. 게시물·책을 두 번 눌러도 상세 화면은 한 번만 열려요.' },
+      login: { html: base,
+             note: '로그인을 안 해도 똑같이 보여요. 게시물은 모두에게 공개된 것만 보이고, 방문 기록은 이 기기에만 있어서 로그인과 관계없어요. 다른 사람의 방문 기록은 볼 수 없어요.' },
+      loc: { html: '<div class="sec">이 동네 인기 도서</div>' + books + '<div class="sec">가까운 도서관 소식 <small>지금 보는 지역 기준</small></div><div class="chips"><span class="chip on">한빛 시립 · 중앙동</span><span class="chip">달빛 작은 · 서문동</span></div>' + feedHTML,
+             note: '위치를 쓸 수 없으면 지도가 임시 시작 위치에 열려요(지도 홈에서 정한 것). 이때 "가까운 도서관"은 지금 지도에서 보고 있는 지역 기준이고, 거리 대신 동 이름이 붙어요.' }
+    };
+    function show(k) { sc.innerHTML = V[k].html; document.getElementById('exNote').textContent = V[k].note; }
+    show('net');
+    document.querySelectorAll('#exTabs button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.querySelectorAll('#exTabs button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        show(b.dataset.ex);
+      });
+    });
+  })();
+  document.querySelectorAll('#el-2 .cand').forEach(function (c) {
+    var st = c.querySelector('.state'), hs = st.dataset.heights.split(','), sh = c.querySelector('.sheet');
+    sh.style.top = hs[0] + 'px';
+    st.querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        st.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        sh.style.top = hs[+b.dataset.h] + 'px';
+      });
+    });
+  });
+  // 카드·책을 누르면 어디로 넘어가는지 안내(다른 담당 화면은 그리지 않음)
+  document.querySelectorAll('.phone').forEach(function (ph) {
+    var t = ph.querySelector('.toast'), timer;
+    ph.addEventListener('click', function (e) {
+      var x = e.target.closest('[data-go]'); if (!x) return;
+      var m = { post: '→ 이 게시물의 상세 화면으로 넘어가요 (다른 담당 화면)', book: '→ 이 책의 상세 화면으로 넘어가요 (다른 담당 화면)', map: '→ 창이 아래로 내려가고 지도가 크게 보여요' };
+      t.textContent = m[x.dataset.go];
+      t.classList.add('show'); clearTimeout(timer); timer = setTimeout(function () { t.classList.remove('show'); }, 1800);
+    });
+    var tabs = ph.querySelector('[data-tabs]');
+    if (tabs) tabs.querySelectorAll('button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        tabs.querySelectorAll('button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        ph.querySelectorAll('[data-pane]').forEach(function (p) { p.hidden = p.dataset.pane !== b.dataset.t; });
+      });
+    });
+  });
+  // 채택안 표시 (data-chosen 에 후보 id를 넣으면 기본 선택이 된다)
+  document.querySelectorAll('.element').forEach(function (el) {
+    function mark(id) {
+      el.querySelectorAll('.cand').forEach(function (c) {
+        c.classList.toggle('chosen', c.dataset.id === id);
+        var old = c.querySelector('.badge.chosen'); if (old) old.remove();
+        if (c.dataset.id === id) { var s = document.createElement('span'); s.className = 'badge chosen'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+      });
+      el.querySelector('[data-status]').textContent = el.dataset.chosen ? '확인' : '결정 전';
+    }
+    mark(el.dataset.chosen);
+    var sel = document.querySelector('[data-pick="' + el.id + '"]');
+    if (sel) sel.addEventListener('change', function (e) { mark(e.target.value || el.dataset.chosen); });
+  });
+</script>
+</body>
+</html>
