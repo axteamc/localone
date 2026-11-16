@@ -18,7 +18,7 @@
     --text: #1D1D1F; --text-sub: #71716F;
     --r-card: 18px; --r-pill: 18px; --r-full: 9999px; --r-arch-top: 70px;
     /* 임시 토큰(의미별, 지금 값 그대로 — 디자인_기준.md에 없는 것. 색 최종 조정 때 공통 정의로 옮긴다, PROJECT §3-14) */
-    --shadow-soft: rgba(0,0,0,.15); --shadow-float: rgba(0,0,0,.18); --shadow-fab: rgba(0,0,0,.22);
+    --shadow-soft: rgba(0,0,0,.15); --shadow-float: rgba(0,0,0,.18); --shadow-fab: rgba(0,0,0,.22); --scrim: rgba(0,0,0,.28);
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
@@ -83,6 +83,14 @@
   .mini-hd b { flex: 1; }
   .back.sm { font-size: 22px; }
   .hd.over { position: relative; z-index: 2; background: var(--cream); box-shadow: 0 2px 6px var(--shadow-soft); }
+  /* ---- 요소 3: 빈 피드 ---- */
+  .empty { position: absolute; left: 20px; right: 20px; top: 200px; display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; font-size: 14px; }
+  .empty.top { top: 100px; }
+  .tlink { font-weight: 700; margin-top: 8px; }
+  .arch { width: 40px; height: 52px; background: var(--fill3); border-radius: 23px 23px 6px 6px; margin-bottom: 6px; }
+  .dim2 { position: absolute; inset: 0; background: var(--scrim); z-index: 4; }
+  .bsheet2 { position: absolute; left: 0; right: 0; bottom: 0; background: var(--paper); border-radius: 18px 18px 0 0; padding: 16px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 13px; z-index: 5; }
+  .btn2 { background: var(--ink-strong); color: var(--paper); border-radius: var(--r-full); padding: 5px 16px; font-weight: 700; margin-top: 6px; }
 </style>
 </head>
 <body>
@@ -227,7 +235,73 @@
     </div>
   </section>
 
-  <!-- 중심 요소 3(게시물이 하나도 없을 때)은 2가 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
+  <!-- ===== 중심 요소 3: 게시물이 하나도 없을 때 ===== -->
+  <section class="element" id="el-3" data-chosen="">
+    <h2>정할 것 3. 게시물이 하나도 없는 도서관에 들어오면 무엇을 보여 줄까<span class="status" data-status>결정 전</span></h2>
+    <p style="font-size:14px;margin:0">가짜 게시물로 채우지 않는 것은 이미 정해져 있어요. 오른쪽 아래 "+"도 그대로 있어요. 이번엔 <b>빈 피드 자리에 무엇을 놓을지</b>만 정해요.</p>
+    <div class="state">바꿔 보기:
+      <button aria-pressed="true" data-lg="1">로그인 한 사람</button><button aria-pressed="false" data-lg="0">로그인 안 한 사람이 버튼을 누르면</button>
+    </div>
+
+    <div class="cands">
+      <!-- 후보 A (추천) -->
+      <article class="cand recommended" data-id="A">
+        <h3>A. 안내 + "첫 글 올리기" <span class="badge">추천</span></h3>
+        <div class="phone">
+          <div class="hd hA"><span class="back">‹</span><div class="name">다솜 작은도서관</div><div class="info"><span class="sub">1.2km · 오늘 10:00–17:00</span><span class="more">⋯</span></div></div>
+          <div class="empty"><b>아직 게시물이 없어요</b><span class="sub">이 도서관의 첫 글을 올려 보세요</span><span class="tlink">첫 글 올리기 →</span></div>
+          <div class="fab">+</div>
+          <div class="dim2" data-nologin hidden></div>
+          <div class="bsheet2" data-nologin hidden><b>로그인하면 글을 올릴 수 있어요</b><span class="sub">구경은 로그인 없이도 할 수 있어요.</span><span class="btn2">로그인하기</span><span class="sub">닫기</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>피드 자리 가운데에 "아직 게시물이 없어요"와 "이 도서관의 첫 글을 올려 보세요", 그 아래 굵은 글자 "첫 글 올리기 →"가 있어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">빈 도서관에 들어옴 → 안내를 읽음 → "첫 글 올리기 →"(또는 "+")를 누름 → 글쓰기 화면이 아래에서 올라옴. 로그인 안 한 사람은 "로그인하면 글을 올릴 수 있어요" 창이 떠요.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>"로그인 안 한 사람이 버튼을 누르면"을 눌러 보세요. 글쓰기 버튼 때 정한 것과 같은 작은 창이 떠요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>빈 화면이 "내가 첫 글을 쓸 수 있는 곳"으로 보임 / 글을 쓸 생각이 없는 사람에겐 할 일이 없음</dd>
+          <dt>추천 이유</dt><dd>파일럿 초기엔 대부분 도서관이 비어 있어서, 빈 곳을 "첫 글 자리"로 보여 줘야 글이 쌓이기 시작해서요. 구경하러 온 사람이 더 많으면 C가 나아요.</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 B -->
+      <article class="cand" data-id="B">
+        <h3>B. 안내 한 줄만 조용히</h3>
+        <div class="phone">
+          <div class="hd hA"><span class="back">‹</span><div class="name">다솜 작은도서관</div><div class="info"><span class="sub">1.2km · 오늘 10:00–17:00</span><span class="more">⋯</span></div></div>
+          <div class="empty top"><span class="sub">아직 게시물이 없어요</span></div>
+          <div class="fab">+</div>
+          <div class="dim2" data-nologin hidden></div>
+          <div class="bsheet2" data-nologin hidden><b>로그인하면 글을 올릴 수 있어요</b><span class="sub">구경은 로그인 없이도 할 수 있어요.</span><span class="btn2">로그인하기</span><span class="sub">닫기</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>머리 바로 아래에 흐린 글자 "아직 게시물이 없어요" 한 줄만 있고, 나머지는 비어 있어요. 버튼은 오른쪽 아래 "+"뿐이에요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">빈 도서관에 들어옴 → 한 줄을 읽음 → 쓰고 싶으면 "+", 아니면 "‹"로 지도.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>화면 대부분이 빈 크림색이에요. 로그인 안 한 사람이 "+"를 누르면 같은 작은 창이 떠요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>가장 깔끔하고 아무것도 권하지 않음 / 화면이 텅 비어 보여 "고장 났나?" 싶을 수 있음</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 C -->
+      <article class="cand" data-id="C">
+        <h3>C. 안내 + "다른 도서관 둘러보기"</h3>
+        <div class="phone">
+          <div class="hd hA"><span class="back">‹</span><div class="name">다솜 작은도서관</div><div class="info"><span class="sub">1.2km · 오늘 10:00–17:00</span><span class="more">⋯</span></div></div>
+          <div class="empty"><span class="arch"></span><b>아직 게시물이 없어요</b><span class="sub">근처 다른 도서관의 이야기를 먼저 볼까요?</span><span class="tlink">다른 도서관 둘러보기 →</span></div>
+          <div class="fab">+</div>
+          <div class="dim2" data-nologin hidden></div>
+          <div class="bsheet2" data-nologin hidden><b>로그인하면 글을 올릴 수 있어요</b><span class="sub">구경은 로그인 없이도 할 수 있어요.</span><span class="btn2">로그인하기</span><span class="sub">닫기</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>가운데에 작은 아치 그림, "아직 게시물이 없어요", "근처 다른 도서관의 이야기를 먼저 볼까요?", 그 아래 굵은 글자 "다른 도서관 둘러보기 →"가 있어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">빈 도서관에 들어옴 → "다른 도서관 둘러보기 →"를 누름 → 지도 홈으로 돌아가 다른 핀을 고름. 쓰고 싶으면 "+".</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>"다른 도서관 둘러보기 →"는 "‹"와 같은 곳(지도 홈)으로 가요. 로그인 안 한 사람이 "+"를 누르면 같은 작은 창이 떠요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>구경하러 온 사람이 막히지 않고 다른 곳으로 이어짐 / 이 도서관에 첫 글을 쓰자는 말이 없어 글이 덜 쌓일 수 있음</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+
 
   <section id="except">
     <h2>마지막으로 함께 볼 화면 — 기다릴 때나 잘 안 될 때 <span class="status">아직 묻지 않음</span></h2>
@@ -248,12 +322,13 @@
   <section id="spec">
     <h2>명세</h2>
     <p>정할 것 1 다시 비교하기: <select data-pick="el-1"><option value="">채택안 보기</option><option value="A">A. 왼쪽 정렬 두 줄</option><option value="B">B. 가운데 큰 간판</option><option value="C">C. 한 줄 이름 + 정보 알약</option></select>
-    · 정할 것 2 다시 비교하기: <select data-pick="el-2"><option value="">채택안 보기</option><option value="A">A. 한 줄로 접힘</option><option value="B">B. 사라졌다 다시 나옴</option><option value="C">C. 두 줄 그대로</option></select></p>
+    · 정할 것 2 다시 비교하기: <select data-pick="el-2"><option value="">채택안 보기</option><option value="A">A. 한 줄로 접힘</option><option value="B">B. 사라졌다 다시 나옴</option><option value="C">C. 두 줄 그대로</option></select>
+    · 정할 것 3 다시 비교하기: <select data-pick="el-3"><option value="">채택안 보기</option><option value="A">A. 안내 + 첫 글 올리기</option><option value="B">B. 안내 한 줄만</option><option value="C">C. 안내 + 다른 도서관 둘러보기</option></select></p>
     <table>
       <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값 · 유저 플로우</th></tr>
       <tr><td>1. 머리 배치</td><td>확인</td><td>채택 A 왼쪽 정렬 두 줄 / 차선 없음 / 탈락 B 가운데 큰 간판, C 한 줄 이름 + 정보 알약</td><td>"a가 좋아요. 깔끔하고 피드가 많이 보여서요." · 불편한 점: 없음(사용자)</td><td>A: 이름 20px 굵게(앱 26), 정보 12px `--text-sub`, 머리 높이 약 86</td></tr>
-      <tr><td>2. 피드를 올렸을 때 머리</td><td>확인 (불편한 점 받는 중)</td><td>채택 A "‹ 이름" 한 줄로 접힘 / 차선 없음 / 탈락 B 사라졌다 다시 나옴, C 두 줄 그대로</td><td>"a가 좋아요. 어느 도서관인지 계속 보여서요"</td><td>A: 한 줄 높이 약 40(앱 52), 맨 위로 오면 다시 펼침</td></tr>
-      <tr><td>3. 게시물이 하나도 없을 때</td><td>결정 전</td><td>—</td><td>—</td><td>2 확인 뒤 시안. 가짜 게시물 금지, "아직 게시물이 없어요" 같은 안내</td></tr>
+      <tr><td>2. 피드를 올렸을 때 머리</td><td>확인</td><td>채택 A "‹ 이름" 한 줄로 접힘 / 차선 없음 / 탈락 B 사라졌다 다시 나옴, C 두 줄 그대로</td><td>"a가 좋아요. 어느 도서관인지 계속 보여서요" · 불편한 점: 없음(사용자)</td><td>A: 한 줄 높이 약 40(앱 52), 맨 위로 오면 다시 펼침</td></tr>
+      <tr><td>3. 게시물이 하나도 없을 때</td><td>결정 전</td><td>— (추천: A 안내 + "첫 글 올리기")</td><td>—</td><td>가짜 게시물 금지. A: 피드 자리 가운데 안내 2줄 + 굵은 글자 링크</td></tr>
       <tr><td>들어오는 전환</td><td>기본값(Claude) · 정해짐</td><td>오른쪽에서 왼쪽으로 0.3초 밀림 + 배경 지도색 → `cream`</td><td>묻지 않음</td><td>문이 열리는 연출 없음</td></tr>
       <tr><td>돌아가기</td><td>정해짐</td><td>왼쪽 위 굵은 "‹" + 왼쪽 끝 밀기</td><td>—</td><td>누르면 지도 홈으로</td></tr>
       <tr><td>⋯ 메뉴</td><td>정해짐 · 문구 기본값(Claude)</td><td>정보 줄 오른쪽 · "앱을 켜면 여기부터 열기" ↔ "바로 열기 끄기" / "도서관 홈페이지"</td><td>—</td><td>누르면 한 줄 안내 2초</td></tr>
@@ -300,6 +375,13 @@
     b.addEventListener('click', function () {
       el2.querySelectorAll('[data-sc]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
       scroll(el2, +b.dataset.sc);
+    });
+  });
+  var el3 = document.getElementById('el-3');
+  el3.querySelectorAll('[data-lg]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      el3.querySelectorAll('[data-lg]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      el3.querySelectorAll('[data-nologin]').forEach(function (x) { x.hidden = b.dataset.lg === '1'; });
     });
   });
   document.querySelectorAll('.element').forEach(function (el) {
