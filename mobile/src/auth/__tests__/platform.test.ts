@@ -71,10 +71,13 @@ function makeFakeClient() {
 
 describe("platform OAuth adapter lifecycle (AUTH-1-P4)", () => {
   const originalOS = Platform.OS;
+  const originalAppleFlag = process.env.EXPO_PUBLIC_APPLE_SIGNIN_ENABLED;
 
   beforeEach(() => {
     jest.clearAllMocks();
     Object.defineProperty(Platform, "OS", { value: "ios", configurable: true });
+    // 아래 lifecycle 시험은 계정이 생겨 값을 켠 상태를 본다
+    process.env.EXPO_PUBLIC_APPLE_SIGNIN_ENABLED = "true";
   });
 
   afterAll(() => {
@@ -82,6 +85,38 @@ describe("platform OAuth adapter lifecycle (AUTH-1-P4)", () => {
       value: originalOS,
       configurable: true,
     });
+    if (originalAppleFlag === undefined) {
+      delete process.env.EXPO_PUBLIC_APPLE_SIGNIN_ENABLED;
+    } else {
+      process.env.EXPO_PUBLIC_APPLE_SIGNIN_ENABLED = originalAppleFlag;
+    }
+  });
+
+  test("apple_disabled_by_setting_on_ios", async () => {
+    const client = makeFakeClient();
+    mockedAppleIsAvailable.mockResolvedValue(true);
+
+    // 값 없음(기본)·"false"·오타는 모두 꺼짐: iOS여도 버튼 없음, Apple을 부르지 않음
+    for (const value of [undefined, "", "false", "TRUE", "1"]) {
+      if (value === undefined) {
+        delete process.env.EXPO_PUBLIC_APPLE_SIGNIN_ENABLED;
+      } else {
+        process.env.EXPO_PUBLIC_APPLE_SIGNIN_ENABLED = value;
+      }
+      expect(await isAppleSignInAvailable()).toBe(false);
+      expect(await startAppleSignIn(client)).toEqual({
+        ok: false,
+        reason: "failed",
+      });
+    }
+    expect(mockedAppleIsAvailable).not.toHaveBeenCalled();
+    expect(mockedAppleSignIn).not.toHaveBeenCalled();
+    expect(client.auth.signInWithIdToken).not.toHaveBeenCalled();
+
+    // 값만 켜면 iOS에서 다시 기기 확인 결과를 따른다
+    process.env.EXPO_PUBLIC_APPLE_SIGNIN_ENABLED = "true";
+    expect(await isAppleSignInAvailable()).toBe(true);
+    expect(mockedAppleIsAvailable).toHaveBeenCalledTimes(1);
   });
 
   test("oauth_adapter_lifecycle", async () => {
