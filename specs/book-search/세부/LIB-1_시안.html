@@ -209,7 +209,7 @@
 
 
   <!-- ===== 중심 요소 3 ===== -->
-  <section class="element" id="el-3" data-chosen="" data-pick="pick3">
+  <section class="element" id="el-3" data-chosen="C" data-pick="pick3">
     <h2>정할 것 3. 검색창에 글자를 치면 뜨는 추천어, 누르면 어디로 갈까<span class="status" data-status>결정 전</span></h2>
     <div class="state">보기 바꾸기:
       <button aria-pressed="true" data-typed="0">글자 치기 전</button><button aria-pressed="false" data-typed="1">"해리"까지 쳤을 때</button>
@@ -259,7 +259,7 @@
         </dl>
       </article>
     </div>
-    <p>다시 비교하기: <select id="pick3"><option value="">채택안 보기</option><option value="A">검색어만</option><option value="B">책만</option><option value="C">책 2권 + 검색어</option></select></p>
+    <p>다시 비교하기: <select id="pick3"><option value="">채택안 보기 (책 2권 + 검색어 섞기)</option><option value="A">검색어만</option><option value="B">책만</option><option value="C">책 2권 + 검색어</option></select></p>
   </section>
   <!-- ===== 중심 요소 2 ===== -->
   <section class="element" id="el-2" data-chosen="A" data-pick="pick2">
@@ -361,7 +361,7 @@
     <h2>처음부터 끝까지 이렇게 써요</h2>
     <ol>
       <li>사용자가 검색창을 누르면 동네한권이 키보드와 함께 검색 진입 화면을 연다.</li>
-      <li>(정할 것 1·2·3을 고르면 여기를 이어서 쓴다)</li>
+      <li>사용자가 책 이름을 치면 동네한권이 책 2권과 검색어 3개를 함께 띄운다. 책을 누르면 바로 책 화면, 검색어를 누르면 결과 목록으로 간다.</li><li>결과 목록은 표지 큰 2열이 기본이고, 오른쪽 위 "☰ 목록으로"를 누르면 1열 목록으로 바뀐다.</li><li>사용자가 책을 누르면 동네한권이 책 정보 한 줄과 그 아래 가까운 도서관 목록을 바로 보여 준다.</li>
     </ol>
   </section>
 
@@ -373,7 +373,7 @@
       <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값</th></tr>
       <tr><td>1. 검색 결과 목록의 모양</td><td>확인</td><td>채택: 2열 표지 큰 카드(기본) + 오른쪽 위 버튼으로 1열 목록 전환 / 차선: 1열 목록(버튼으로 볼 수 있음) / 탈락: 1열 큰 카드</td><td>"첫번째 화면은 시력이 안좋으신분들이나 어른들이 보기 편하시게 좋게 고른거고 두번째는 뭐 젊은 사람들이 그런식으로 보는걸 좋아하는분들이 잇으니 골랏어"</td><td>기본 2열 한 화면 6권쯤 · 목록 5~7권. 버튼 글자 "☰ 목록으로"/"▦ 표지로" 12px 알약은 기본값(Claude)</td></tr>
       <tr><td>2. 책 상세 위쪽 모양</td><td>확인</td><td>채택: 책 정보 한 줄 + 도서관 목록 바로 / 차선: 없음 / 탈락: 큰 표지 + 책 소개 먼저, 작은 머리 + 탭</td><td>"책정보 와 같이 도서관 목록이 바로 나오잖아 그러니 보는입장에서는 더 편하고 좋을거같습니다"</td><td>A 첫눈에 도서관 3곳 · B 0곳(내려야 보임) · C 4곳</td></tr>
-      <tr><td>3. 추천어를 눌렀을 때 가는 곳</td><td>결정 전</td><td>— (추천: 책 2권 + 검색어 섞기)</td><td>—</td><td>A 검색어 5개 · B 책 4권 · C 책 2권 + 검색어 3개</td></tr>
+      <tr><td>3. 추천어를 눌렀을 때 가는 곳</td><td>확인 (불편한 점 받는 중)</td><td>채택: 책 2권 + 검색어 섞기 / 차선: 없음 / 탈락: 검색어만, 책만</td><td>"책 2권 + 검색어 섞기 좋은거같아 이유는 검색어 같이 뜨는거보니까 저게 더 좋아보여" / "이 앱를 사용하는사람들이 책과 도서관 찾을때"</td><td>A 검색어 5개 · B 책 4권 · C 책 2권 + 검색어 3개</td></tr>
       <tr><td>검색 진입 화면 기준</td><td>기본값(Claude)</td><td>항상 전국 기준 ("전국 인기 도서 · 최근 한 달"). 도서관별 추천은 넣지 않음</td><td>묻지 않음(이미 정해짐: 방문 페이지에 검색창 없음)</td><td>칸 제목 옆 13px 보조색 "최근 한 달"</td></tr>
       <tr><td>"현재 도시 내 모든 도서관 검색" 자리</td><td>기본값(Claude)</td><td>검색창 바로 아래 (큰 틀에서 정함). 모양은 다음 단계</td><td>묻지 않음</td><td>결과 위 "내 주변 3km 도서관 기준" 12px</td></tr>
       <tr><td>검색 진입 화면 배치</td><td>기본값(Claude)</td><td>스크린샷대로: 최근 본 도서 알약 → 인기 도서 순위 2열 → 테마 도서 띠</td><td>묻지 않음(D가 정함)</td><td>알약 10글자 넘으면 "…", 옆으로 밀어 봄</td></tr>
