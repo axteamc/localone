@@ -101,6 +101,21 @@
   .hop { flex: 0 0 64px; font-size: 10px; color: var(--text-sub); text-align: center; }
   .hop::after { content: " →"; font-weight: 700; color: var(--text); }
   [hidden] { display: none !important; }
+  /* ---- 요소 3: 글자 자리 ---- */
+  .txtwrap { text-align: center; }
+  .canvas { position: relative; width: 220px; height: 290px; margin: 0 auto; border-radius: 14px; overflow: hidden; transition: all .2s; }
+  .canvas.photo { background: linear-gradient(160deg, #8E9A90, #5E6A63 55%, #3F4642); }
+  .canvas.small { width: 130px; height: 172px; }
+  .canvas.small .ovl { font-size: 9px; }
+  .ovl { position: absolute; left: 8%; right: 8%; color: #fff; font-weight: 700; font-size: 15px; text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,.35); transition: top .2s; }
+  .ovl.top { top: 10%; } .ovl.mid { top: 45%; } .ovl.bot { top: auto; bottom: 0; }
+  .ovl.band { left: 0; right: 0; padding: 10px 8%; background: linear-gradient(0deg, rgba(0,0,0,.45), rgba(0,0,0,0)); }
+  .ovl.free { left: 30%; right: auto; cursor: grab; white-space: nowrap; }
+  .seg { margin-top: 8px; }
+  .seg button { font: inherit; font-size: 13px; border: 0; padding: 4px 14px; background: var(--surface2); cursor: pointer; }
+  .seg button:first-child { border-radius: var(--r-full) 0 0 var(--r-full); } .seg button:last-child { border-radius: 0 var(--r-full) var(--r-full) 0; }
+  .seg button[aria-pressed="true"] { background: var(--ink-strong); color: var(--paper); }
+  .tiny2 { font-size: 12px; color: var(--text-sub); margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -308,7 +323,65 @@
     </div>
   </section>
 
-  <!-- 중심 요소 3(글자 자리), 4(철회)는 2가 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
+  <!-- ===== 중심 요소 3: 사진·표지 위 글자 자리 ===== -->
+  <section class="element" id="el-3" data-chosen="">
+    <h2>정할 것 3. 사진·책 표지 위에 얹은 글자를 어디에 둘까<span class="status" data-status>결정 전</span></h2>
+    <p style="font-size:14px;margin:0">단색 배경은 글자를 가운데에 두는 걸로 이미 정해져 있어요. 이번엔 <b>사진·책 표지 위</b>의 글자만 정해요. 글자 크기와 색(이미지에 맞춰 흰색/어두운색)은 정해져 있어요.</p>
+    <div class="state">바꿔 보기:
+      <button aria-pressed="true" data-where="edit">글쓰기 화면</button><button aria-pressed="false" data-where="feed">피드 카드로 보면</button>
+    </div>
+
+    <div class="cands">
+      <!-- 후보 A (추천) -->
+      <article class="cand recommended" data-id="A">
+        <h3>A. 위·가운데·아래 세 자리 중 고르기 <span class="badge">추천</span></h3>
+        <div class="txtwrap">
+          <div class="canvas photo" data-canvas><span class="ovl mid" data-ovl>"그 밤은 길었다"</span></div>
+          <div class="seg" data-edit><button data-pos="top">위</button><button data-pos="mid" aria-pressed="true">가운데</button><button data-pos="bot">아래</button></div>
+          <div class="tiny2" data-edit>처음엔 가운데. 버튼을 눌러 보세요</div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>글자는 처음에 가운데에 놓여요. 이미지 아래의 버튼 세 개(위·가운데·아래)로 자리를 바꿔요. 그 밖의 자리로는 못 옮겨요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">사진·표지를 고름 → 글자를 침 → 가운데에 놓임 → 사진의 얼굴·표지 제목과 겹치면 "위"나 "아래"를 한 번 누름 → 다음 단계로.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>버튼을 눌러 보세요. 글자가 세 자리로만 옮겨 가요. "피드 카드로 보면"을 누르면 카드가 작아져도 글자가 같은 자리에 있어요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>누르기 한 번으로 끝나고 피드 카드가 가지런해 보임 / 딱 원하는 자리(왼쪽 구석 등)에는 못 둠</dd>
+          <dt>추천 이유</dt><dd>손가락이 서툰 사람도 한 번에 정할 수 있고, 피드에서 카드들이 깔끔하게 맞춰져 보여서요. 사진마다 자리를 세밀하게 맞추고 싶은 사람이 많다면 B가 나아요.</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 B -->
+      <article class="cand" data-id="B">
+        <h3>B. 손가락으로 끌어서 아무 데나</h3>
+        <div class="txtwrap">
+          <div class="canvas photo" data-canvas data-drag><span class="ovl free" data-ovl style="left:30%;top:42%">"그 밤은 길었다"</span></div>
+          <div class="tiny2" data-edit>글자를 마우스로 끌어 보세요</div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>버튼이 없어요. 글자를 손가락으로 눌러 끌면 이미지 안 어디든 옮겨져요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">사진·표지를 고름 → 글자를 침 → 가운데에 놓임 → 글자를 끌어서 원하는 곳에 놓음 → 다음 단계로.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>글자를 끌어 보세요. 구석에도 놓을 수 있어요. 대신 "피드 카드로 보면"에서 카드마다 글자 자리가 제각각이에요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>사진에 꼭 맞는 자리에 둠 / 손으로 맞추느라 시간이 들고, 피드가 덜 가지런해 보임</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 C -->
+      <article class="cand" data-id="C">
+        <h3>C. 늘 아래(자막처럼)</h3>
+        <div class="txtwrap">
+          <div class="canvas photo" data-canvas><span class="ovl bot band" data-ovl>"그 밤은 길었다"</span></div>
+          <div class="tiny2" data-edit>자리를 고르는 버튼이 없어요</div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>글자는 항상 이미지 맨 아래에, 옅은 어두운 띠 위에 놓여요. 고르는 버튼이 없어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">사진·표지를 고름 → 글자를 침 → 자동으로 아래에 놓임 → 바로 다음 단계로.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>"피드 카드로 보면"을 누르면 모든 사진·표지 카드의 글자가 아래 띠에 같은 모양으로 있어요. 표지의 아래쪽(저자 이름 등)은 가려져요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>고를 게 없어 가장 빠르고, 사진 가운데가 늘 보임 / 표지 아래쪽이 가려지고, 자리를 바꿀 수 없음</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <!-- 중심 요소 4(철회)는 3이 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
 
   <!-- ===== 잘 안 될 때 (예외, 1B 3단계 — 중심 요소를 다 정한 뒤 묻는다) ===== -->
   <section id="except">
@@ -333,12 +406,13 @@
   <section id="spec">
     <h2>명세</h2>
     <p>정할 것 1 다시 비교하기: <select data-pick="el-1"><option value="">채택안 보기</option><option value="A">A. 떠 있는 둥근 "+"</option><option value="B">B. 머리 오른쪽 연필</option><option value="C">C. 피드 첫 칸 카드</option></select>
-    · 정할 것 2 다시 비교하기: <select data-pick="el-2"><option value="">채택안 보기</option><option value="A">A. 누르자마자 책 찾기</option><option value="B">B. 빈 표지 틀로 먼저</option><option value="C">C. 표지 고르기 화면 한 번 더</option></select></p>
+    · 정할 것 2 다시 비교하기: <select data-pick="el-2"><option value="">채택안 보기</option><option value="A">A. 누르자마자 책 찾기</option><option value="B">B. 빈 표지 틀로 먼저</option><option value="C">C. 표지 고르기 화면 한 번 더</option></select>
+    · 정할 것 3 다시 비교하기: <select data-pick="el-3"><option value="">채택안 보기</option><option value="A">A. 세 자리 중 고르기</option><option value="B">B. 끌어서 아무 데나</option><option value="C">C. 늘 아래</option></select></p>
     <table>
       <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값 · 유저 플로우</th></tr>
       <tr><td>1. 글쓰기 버튼 모양·자리</td><td>확인</td><td>채택 A 오른쪽 아래 떠 있는 둥근 "+" / 차선 없음 / 탈락 B 머리 오른쪽 연필, C 피드 첫 칸 카드</td><td>"오른쪽 아래 + 버튼이요" · "가장 직관적이고 깔끔해요" · 불편한 점: 없음(사용자)</td><td>A: 지름 48(앱 64), `fill1` 채움, 완전한 원, 오른쪽 16·아래 24 / 누르면 글쓰기 화면이 아래에서 올라옴</td></tr>
-      <tr><td>2. '책 표지'를 고를 때 이어지는 순서</td><td>확인 (불편한 점 받는 중)</td><td>채택 A 누르자마자 책 찾기 / 차선 없음 / 탈락 B 빈 표지 틀로 먼저, C 표지 고르기 화면 한 번 더</td><td>"A가 마음에 드네요. 심플하기도 하고, 마지막에 다시 찾을 일이 없어서요."</td><td>표지가 없으면 제목·저자 표지 + 사진·단색으로 바꾸기(AC-COVER)</td></tr>
-      <tr><td>3. 사진·표지 위 글자 자리</td><td>결정 전</td><td>— (임시: 가운데, 위·가운데·아래 중 고름)</td><td>—</td><td>2 확인 뒤 시안</td></tr>
+      <tr><td>2. '책 표지'를 고를 때 이어지는 순서</td><td>확인</td><td>채택 A 누르자마자 책 찾기 / 차선 없음 / 탈락 B 빈 표지 틀로 먼저, C 표지 고르기 화면 한 번 더</td><td>"A가 마음에 드네요. 심플하기도 하고, 마지막에 다시 찾을 일이 없어서요." · 불편한 점: 없음(사용자)</td><td>표지가 없으면 제목·저자 표지 + 사진·단색으로 바꾸기(AC-COVER)</td></tr>
+      <tr><td>3. 사진·표지 위 글자 자리</td><td>결정 전</td><td>— (추천: A 위·가운데·아래 세 자리, 처음은 가운데)</td><td>—</td><td>A: 위 10% · 가운데 45% · 아래 끝 / 15px 굵게, 자동 대비(정해짐)</td></tr>
       <tr><td>4. 철회하는 자리와 되돌리기</td><td>결정 전</td><td>—</td><td>—</td><td>3 확인 뒤 시안</td></tr>
       <tr><td>쓰는 순서</td><td>확인(큰 틀)</td><td>사진·표지·단색 → 글자 → 감상 → 책·도서관</td><td>"직관적으로 보기 좋아서요"</td><td>—</td></tr>
       <tr><td>단색 배경 글자</td><td>확인(큰 틀)</td><td>가운데</td><td>"눈에 더 잘 들어와요"</td><td>15px 굵게, 자동 대비</td></tr>
@@ -386,6 +460,31 @@
       el.querySelector('[data-status]').textContent = id ? '확인' : '결정 전';
     }
     mark(el.dataset.chosen);
+    el.querySelectorAll('[data-where]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var feed = b.dataset.where === 'feed';
+        el.querySelectorAll('[data-where]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        el.querySelectorAll('[data-canvas]').forEach(function (c) { c.classList.toggle('small', feed); });
+        el.querySelectorAll('[data-edit]').forEach(function (x) { x.hidden = feed; });
+      });
+    });
+    el.querySelectorAll('[data-pos]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var cand = b.closest('.cand'); var o = cand.querySelector('[data-ovl]');
+        cand.querySelectorAll('[data-pos]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        o.classList.remove('top', 'mid', 'bot'); o.classList.add(b.dataset.pos);
+      });
+    });
+    el.querySelectorAll('[data-drag]').forEach(function (c) {
+      var o = c.querySelector('[data-ovl]'); var on = false;
+      o.addEventListener('pointerdown', function (e) { on = true; o.setPointerCapture(e.pointerId); });
+      o.addEventListener('pointerup', function () { on = false; });
+      o.addEventListener('pointermove', function (e) {
+        if (!on) return; var r = c.getBoundingClientRect();
+        o.style.left = Math.max(0, Math.min(80, (e.clientX - r.left) / r.width * 100 - 15)) + '%';
+        o.style.top = Math.max(0, Math.min(92, (e.clientY - r.top) / r.height * 100 - 4)) + '%';
+      });
+    });
     var pk = document.querySelector('[data-pick="' + el.id + '"]');
     if (pk) pk.addEventListener('change', function (e) { mark(e.target.value || el.dataset.chosen); });
     el.querySelectorAll('[data-cover]').forEach(function (b) {
