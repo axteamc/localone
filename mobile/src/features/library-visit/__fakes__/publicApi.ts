@@ -144,6 +144,23 @@ export async function getDefaultLibrary(): Promise<number | null> {
   return null;
 }
 
+// ── lib/regions (core APP-0 C2, K20 / 지역 표 가짜는 library-visit.md C7) ─────
+export type Region = { code: string; sido: string; sigungu: string; label: string };
+
+export const REGIONS: readonly Region[] = [
+  { code: "11010", sido: "서울", sigungu: "종로구", label: "서울 종로구" },
+  { code: "11030", sido: "서울", sigungu: "용산구", label: "서울 용산구" },
+];
+
+/** label·sigungu 부분 일치, 앞에서 일치가 먼저, 기본 10개 */
+export function searchRegions(q: string, limit = 10): Region[] {
+  const t = q.trim();
+  if (!t) return [];
+  const hits = REGIONS.filter((r) => r.label.includes(t) || r.sigungu.includes(t));
+  const front = (r: Region) => (r.sigungu.startsWith(t) || r.label.startsWith(t) ? 0 : 1);
+  return [...hits].sort((a, b) => front(a) - front(b)).slice(0, limit);
+}
+
 // ── lib/policy (core APP-0 C2, K18) ───────────────────────────────────
 export const NEARBY_DEFAULT_RADIUS_KM = 3;
 export const DEFAULT_START = { lat: 37.5665, lng: 126.978, dtlRegion: "11020", label: "서울 중구" } as const;

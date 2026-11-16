@@ -115,7 +115,7 @@ describe("VISIT-1-P1 home list", () => {
   test("allow location reloads at current position", async () => {
     m.locate.mockResolvedValueOnce({ ok: false, reason: "denied" });
     await render(<HomeScreen />);
-    fireEvent.press(await screen.findByText("위치 허용하기"));
+    await fireEvent.press(await screen.findByText("위치 허용하기"));
     await waitFor(() =>
       expect(m.fetchLibrariesNearby).toHaveBeenLastCalledWith(37.5815, 126.9831, 3, expect.anything())
     );
@@ -149,7 +149,7 @@ describe("VISIT-1-P1 home list", () => {
   test("list row press opens visit page", async () => {
     mockMapFails = true;
     await render(<HomeScreen />);
-    fireEvent.press(await screen.findByText("정독도서관 · 화동 · 09:00~22:00"));
+    await fireEvent.press(await screen.findByText("정독도서관 · 화동 · 09:00~22:00"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/libraries/[libraryId]", params: { libraryId: "101" } });
   });
 
@@ -158,7 +158,7 @@ describe("VISIT-1-P1 home list", () => {
     await render(<HomeScreen />);
     await screen.findByText("정독도서관 · 화동 · 09:00~22:00");
     mockMapFails = false;
-    fireEvent.press(screen.getByText("↻ 새로고침"));
+    await fireEvent.press(screen.getByText("↻ 새로고침"));
     expect(await screen.findByTestId("kakao-map")).toBeTruthy();
     expect(screen.queryByText("지도를 불러오지 못했어요")).toBeNull();
   });
@@ -166,12 +166,12 @@ describe("VISIT-1-P1 home list", () => {
   test("search bar opens book search", async () => {
     await render(<HomeScreen />);
     await screen.findByText("정독도서관");
-    fireEvent.press(screen.getByTestId("home-search-bar"));
+    await fireEvent.press(screen.getByTestId("home-search-bar"));
     expect(mockPush).toHaveBeenCalledWith("/search");
     expect(mockPush).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("지역이나 도서관 이름을 적어 주세요")).toBeNull();
     // 오른쪽 "도서관 찾기"는 터치 영역이 따로라 책 검색으로 가지 않는다
-    fireEvent.press(screen.getByTestId("home-find-library"));
+    await fireEvent.press(screen.getByTestId("home-find-library"));
     expect(mockPush).toHaveBeenCalledTimes(1);
   });
 
@@ -182,7 +182,7 @@ describe("VISIT-1-P1 home list", () => {
     await render(<HomeScreen />);
     expect(await screen.findByText("지금은 도서관을 불러올 수 없어요.")).toBeTruthy();
     expect(screen.queryByText("Network request failed")).toBeNull();
-    fireEvent.press(screen.getByText("↻ 새로고침"));
+    await fireEvent.press(screen.getByText("↻ 새로고침"));
     expect(await screen.findByText("정독도서관")).toBeTruthy();
     expect(m.fetchLibrariesNearby).toHaveBeenCalledTimes(2);
     expect(screen.queryByText("지금은 도서관을 불러올 수 없어요.")).toBeNull();
@@ -192,7 +192,7 @@ describe("VISIT-1-P1 home list", () => {
     m.fetchLibrariesNearby.mockImplementation(async (_a, _b, r) => nearby([], r ?? 3));
     await render(<HomeScreen />);
     expect(await screen.findByText("가까운 곳에서 도서관을 찾지 못했어요.")).toBeTruthy();
-    fireEvent.press(screen.getByText("더 넓게 찾기"));
+    await fireEvent.press(screen.getByText("더 넓게 찾기"));
     await waitFor(() =>
       expect(m.fetchLibrariesNearby).toHaveBeenLastCalledWith(37.5815, 126.9831, 5, expect.anything())
     );
