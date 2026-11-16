@@ -106,7 +106,7 @@
 <body>
 <header class="page">
   <h1>도서 탐색 · LIB-1 시안</h1>
-  <p class="how"><b>지금 보는 것: 2. 책을 눌렀을 때 맨 위 모양 — 고르신 화면에 "채택" 표시</b> (정할 것 1은 아래에 있어요.) 화면 3개를 비교해 보세요. 화면마다 아래에 <b>누르면 어떻게 이어지는지</b>를 적어 뒀고, 위 버튼으로 <b>아래까지 내렸을 때</b> 모습도 바꿔 볼 수 있어요. 각 화면 안은 직접 내려 볼 수 있어요. <b>추천</b> 표시가 있는 화면이 Claude의 추천이에요. 고르는 건 직접 해 주세요. (책·도서관 이름은 모두 가짜예요.)</p>
+  <p class="how"><b>지금 보는 것: 2. 책을 눌렀을 때 맨 위 모양</b> (정할 것 1은 아래에 있어요.) 화면 3개를 비교해 보세요. 화면마다 아래에 <b>누르면 어떻게 이어지는지</b>를 적어 뒀고, 위 버튼으로 <b>아래까지 내렸을 때</b> 모습도 바꿔 볼 수 있어요. 각 화면 안은 직접 내려 볼 수 있어요. <b>추천</b> 표시가 있는 화면이 Claude의 추천이에요. 고르는 건 직접 해 주세요. (책·도서관 이름은 모두 가짜예요.)</p>
 </header>
 
 <main>
@@ -340,9 +340,9 @@
     // 채택안 표시 (data-chosen 에 후보 id를 넣으면 기본 선택이 된다)
     function mark(id) {
       el.querySelectorAll('.cand').forEach(function (c) {
-        c.classList.toggle('chosen', c.dataset.id === id);
+        c.classList.remove('chosen');
         var old = c.querySelector('.badge.chosen'); if (old) old.remove();
-        if (c.dataset.id === id) { var s = document.createElement('span'); s.className = 'badge chosen'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+        /* 채택 글자 표시는 사용자 요청으로 뺌 */
       });
       el.querySelector('[data-status]').textContent = id ? '확인' : '결정 전';
     }
