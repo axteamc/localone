@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>도서 탐색 결정 시안</title>
+<!--
+  book-search 큰 틀(PR #17) 결정 1~13을 화면으로 옮겨 본 시안.
+  - 색·곡률은 개발산출물/디자인_기준.md 토큰(warm, M1 기본)만 CSS 변수로 쓴다. 외부 연결 없음, 가짜 값.
+  - 큰 틀은 '방향'만 정한 것이므로 모양·간격·개수는 전부 기본값(Claude)이다. 세부(LIB-1~3)에서 시안 사이클로 다시 정한다.
+  - 후보(탈락안)는 지우지 않는다: 위 "탈락안으로 보기"로 다시 비교할 수 있다.
+-->
+<style>
+  :root {
+    --bg: #E1E1DE; --surface2: #D0CEC8; --surface3: #BFBCB5;
+    --fill1: #E9C970; --fill2: #EDC9A9; --fill3: #B3BFB5;
+    --cream: #EFEFE7; --paper: #EFF1F1; --ink-strong: #2E333F;
+    --ink: #1D1D1F; --ink-sub: #70706F;
+    --r-card: 18px; --r-pill: 18px; --r-cover: 5px 9px 9px 5px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "Noto Sans KR", system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; line-height: 1.5; }
+  header.page { max-width: 1320px; margin: 0 auto; padding: 20px 16px 8px; }
+  header.page h1 { font-size: 20px; margin: 0 0 4px; }
+  .how { background: var(--cream); border-radius: var(--r-card); padding: 12px 16px; margin: 8px 0 0; font-size: 14px; }
+  .how label { font-weight: 700; cursor: pointer; }
+  main { max-width: 1320px; margin: 0 auto; padding: 0 16px 48px; }
+  .screens { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 28px 20px; margin-top: 20px; }
+  .scr h2 { font-size: 15px; margin: 0 0 2px; }
+  .tags { font-size: 12px; margin-bottom: 8px; color: var(--ink-sub); }
+  .tag { display: inline-block; background: var(--surface2); border-radius: var(--r-pill); padding: 0 8px; margin-right: 4px; }
+  .tag.dflt { background: var(--fill2); }
+  .phone { width: 100%; max-width: 360px; background: var(--bg); border: 3px solid var(--ink-strong); border-radius: 30px; overflow: hidden; position: relative; height: 640px; display: flex; flex-direction: column; }
+  .status { height: 26px; font-size: 11px; padding: 6px 18px 0; display: flex; justify-content: space-between; color: var(--ink-sub); }
+  .body { flex: 1; overflow-y: auto; padding: 8px 12px 12px; position: relative; }
+  .tabbar { height: 54px; background: var(--paper); border-top: 1px solid var(--surface2); display: flex; font-size: 11px; }
+  .tabbar span { flex: 1; text-align: center; padding-top: 10px; color: var(--ink-sub); }
+  .tabbar span.on { color: var(--ink-strong); font-weight: 700; }
+  .search { width: 100%; background: var(--paper); border: 1px solid var(--surface3); border-radius: 9999px; padding: 9px 14px; font: inherit; font-size: 14px; }
+  /* 도시 전체 검색: 작은 ○ 체크. 눌렸는지는 ○→◉ 모양과 한 줄 글자로만 알려 준다(색 바꿈 없음) */
+  .citychk { display: flex; align-items: center; gap: 6px; margin: 6px 4px 0; font-size: 12px; color: var(--ink-sub); cursor: pointer; }
+  .citychk input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .citychk .box { width: 13px; height: 13px; border-radius: 50%; border: 1.5px solid var(--ink-sub); flex: none; }
+  .citychk input:checked + .box { background: var(--ink-strong); border-color: var(--ink-strong); box-shadow: inset 0 0 0 2.5px var(--bg); }
+  .citychk em { display: none; font-style: normal; color: var(--ink); }
+  .citychk input:checked ~ em { display: inline; }
+  .rt { text-align: right; }
+  h4 { font-size: 13px; margin: 14px 0 6px; }
+  .covers { display: flex; gap: 8px; }
+  .cover { width: 62px; height: 88px; border-radius: var(--r-cover); background: var(--fill3); font-size: 10px; display: flex; align-items: end; padding: 4px; line-height: 1.2; }
+  .cover.c2 { background: var(--fill2); } .cover.c3 { background: var(--fill1); } .cover.c4 { background: var(--surface3); }
+  ul.sug { list-style: none; margin: 8px 0 0; padding: 0; background: var(--paper); border-radius: var(--r-card); }
+  ul.sug li { padding: 9px 14px; border-bottom: 1px solid var(--surface2); font-size: 14px; }
+  ul.sug li:last-child { border: 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .bk { background: var(--paper); border-radius: var(--r-card); padding: 8px; }
+  .bk .cover { width: 100%; height: 110px; font-size: 12px; }
+  .bk .t { font-size: 13px; font-weight: 700; margin-top: 6px; line-height: 1.3; }
+  .bk .a { font-size: 11px; color: var(--ink-sub); }
+  .avail { font-size: 11px; margin-top: 4px; }
+  .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--fill3); margin-right: 4px; }
+  .dot.no { background: var(--fill2); } .dot.unk { background: var(--surface3); }
+  .link { background: none; border: 0; padding: 4px 0 0; font: inherit; font-size: 12px; font-weight: 700; color: var(--ink-strong); text-decoration: underline; cursor: pointer; }
+  .more { text-align: center; font-size: 12px; color: var(--ink-sub); padding: 12px 0 4px; }
+  .lib { background: var(--paper); border-radius: var(--r-card); padding: 12px; }
+  .libs { display: flex; flex-direction: column; gap: 10px; }
+  .lib .n { font-weight: 700; font-size: 14px; display: flex; justify-content: space-between; }
+  .lib .m { font-size: 12px; color: var(--ink-sub); margin-top: 2px; }
+  .lib .s { font-size: 13px; margin-top: 6px; }
+  .btn { display: block; width: 100%; border: 0; border-radius: 9999px; padding: 11px 14px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; margin-top: 10px; }
+  .btn.fill { background: var(--fill1); color: var(--ink); }
+  .btn.ink { background: var(--ink-strong); color: var(--paper); }
+  .btn.line { background: transparent; border: 1.5px solid var(--ink-strong); color: var(--ink-strong); }
+  .btn.small { padding: 6px 12px; font-size: 12px; margin-top: 8px; }
+  .empty { text-align: center; padding: 28px 8px 0; }
+  .empty p { margin: 0 0 4px; } .empty .big { font-weight: 700; font-size: 16px; } .empty .sub { font-size: 13px; color: var(--ink-sub); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--paper); border-radius: 22px 22px 0 0; padding: 14px 14px 18px; box-shadow: 0 -6px 18px rgba(0,0,0,.18); z-index: 5; }
+  .sheet[hidden] { display: none; }
+  .sheet h5 { margin: 0 0 8px; font-size: 14px; }
+  .opt { display: flex; gap: 8px; align-items: center; padding: 8px 10px; background: var(--cream); border-radius: 12px; margin-bottom: 6px; font-size: 13px; cursor: pointer; }
+  .toast { position: absolute; left: 14px; right: 14px; bottom: 14px; background: var(--ink-strong); color: var(--paper); border-radius: 14px; padding: 9px 12px; font-size: 12px; z-index: 6; }
+  .toast[hidden] { display: none; }
+  .sec { background: var(--paper); border-radius: var(--r-card); padding: 10px 12px; margin-top: 10px; }
+  .sec h4 { margin: 0 0 6px; }
+  .row { display: flex; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--surface2); font-size: 13px; }
+  .row:last-child { border: 0; }
+  .row .cover { width: 34px; height: 48px; flex: none; }
+  .row small { color: var(--ink-sub); display: block; font-size: 11px; }
+  dl.note { font-size: 13px; margin: 10px 0 0; max-width: 360px; }
+  dl.note dt { font-weight: 700; margin-top: 6px; } dl.note dd { margin: 0; }
+  .flow { background: var(--cream); border-radius: 12px; padding: 6px 10px; }
+  .ctrl { font-size: 12px; margin: 8px 0 0; }
+  .ctrl button { font: inherit; border: 0; border-radius: var(--r-pill); padding: 3px 12px; background: var(--surface2); cursor: pointer; margin: 2px; }
+  .ctrl button[aria-pressed="true"] { background: var(--ink-strong); color: var(--paper); }
+  /* 탈락안 전환 */
+  .alt-only { display: none; }
+  body.alt .alt-only { display: block; }
+  body.alt .main-only { display: none; }
+  body.alt .libs { /* 결정 2 탈락안: 빌릴 수 있는 곳 먼저 */ }
+  body.alt .lib[data-alt-order] { order: var(--alt-order); }
+  #spec { background: var(--paper); border-radius: var(--r-card); padding: 14px 16px; margin-top: 32px; }
+  #spec table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  #spec th, #spec td { text-align: left; padding: 6px; border-bottom: 1px solid var(--surface2); vertical-align: top; }
+  #spec h3 { margin: 18px 0 6px; font-size: 15px; }
+  .s-ok { white-space: nowrap; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>도서 탐색(book-search) · 결정 1~13 반영 시안</h1>
+  <p class="how">PR #17에서 정한 결정을 화면으로 옮겨 본 시안이에요. 버튼·링크는 눌러 볼 수 있어요(검색창 글자 치기, 저장 → 도서관 고르는 창, 빈 결과에서 저장).
+    큰 틀은 <b>방향만</b> 정한 것이라 모양·간격·개수는 전부 <b>기본값(Claude)</b>이고, 세부(LIB-1~3)에서 다시 정해요.<br>
+    <label><input type="checkbox" id="alt"> 탈락안으로 보기</label> — 결정 1(책 옆 표시)·2(도서관 순서)·4(저장 위치)·9(실시간 확인 모양)·10(도시 전체 버튼 위치)의 버린 쪽으로 바꿔 비교해요.</p>
+</header>
+
+<main>
+<div class="screens">
+
+  <!-- ① 검색 진입 -->
+  <section class="scr">
+    <h2>① 검색 화면 (글자를 치기 전 / 치는 중)</h2>
+    <div class="tags"><span class="tag">결정 5 추천어</span><span class="tag">결정 10 도시 전체 버튼</span><span class="tag">정해짐 추천·최근 도서</span></div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>검색</span></div>
+      <div class="body">
+        <input class="search" id="q" value="" placeholder="책 이름을 쳐 보세요" readonly>
+        <label class="citychk main-only"><input type="checkbox"><span class="box"></span>현재 도시 내 모든 도서관 검색<em>· 도시 전체 기준으로 찾는 중</em></label>
+        <div id="before">
+          <h4>최근 본 도서</h4>
+          <div class="covers"><div class="cover">소년이 온다</div><div class="cover c2">채식주의자</div><div class="cover c4">아몬드</div><div class="cover c3">불편한 편의점</div></div>
+          <h4>요즘 많이 빌리는 도서 <span style="font-weight:400;color:var(--ink-sub)">(이 도서관 근처 · 최근 한 달)</span></h4>
+          <div class="covers"><div class="cover c3">달러구트 꿈 백화점</div><div class="cover">숨결이 바람 될 때</div><div class="cover c2">작별인사</div><div class="cover c4">파친코</div></div>
+        </div>
+        <ul class="sug" id="after" hidden>
+          <li>해리포터와 마법사의 돌</li><li>해리포터와 비밀의 방</li><li>해리 쿼버트 사건의 진실</li>
+        </ul>
+      </div>
+      <div class="tabbar"><span>홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+    </div>
+    <div class="ctrl">바꿔 보기: <button aria-pressed="true" data-t="0">치기 전</button><button aria-pressed="false" data-t="1">"해리" 치는 중</button></div>
+    <dl class="note">
+      <dt>누르면 이렇게 이어져요</dt>
+      <dd class="flow">검색창을 누름 → 최근 본 도서·인기 도서가 보임(D가 정함) → 글자를 치면 두 칸이 사라지고 책 이름 추천어가 뜸(결정 5) → 추천어를 누르거나 검색하면 결과(②)로. "도시 전체" 버튼은 글자를 쳐도 검색창 바로 아래에 그대로 있음(결정 10).</dd>
+    </dl>
+  </section>
+
+  <!-- ② 검색 결과 -->
+  <section class="scr">
+    <h2>② 검색 결과 (책 2열 · 대출 가능 표시 · 저장)</h2>
+    <div class="tags"><span class="tag">결정 1 책 옆 대출 가능</span><span class="tag">결정 4 저장 버튼</span><span class="tag">결정 6 계속 내리기</span><span class="tag">레퍼런스 2 2열</span><span class="tag dflt">카드 모양 기본값</span></div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>"해리포터"</span></div>
+      <div class="body" id="resBody">
+        <input class="search" value="해리포터" readonly>
+        <label class="citychk main-only"><input type="checkbox"><span class="box"></span>현재 도시 내 모든 도서관 검색<em>· 도시 전체 기준으로 찾는 중</em></label>
+        <div class="grid2" style="margin-top:12px">
+          <div class="bk"><div class="cover">해리포터와 마법사의 돌</div><div class="t">해리포터와 마법사의 돌</div><div class="a">J.K. 롤링</div>
+            <div class="avail main-only"><span class="dot"></span>가까운 ○○도서관 · 어제 기준 · 대출 가능</div>
+            <div class="avail alt-only" style="color:var(--ink-sub)">누르면 도서관 목록 ›</div>
+            <button class="link main-only" data-save>＋ 빌릴 예정</button></div>
+          <div class="bk"><div class="cover c2">해리포터와 비밀의 방</div><div class="t">해리포터와 비밀의 방</div><div class="a">J.K. 롤링</div>
+            <div class="avail main-only"><span class="dot no"></span>가까운 ○○도서관 · 어제 기준 · 대출 중</div>
+            <div class="avail alt-only" style="color:var(--ink-sub)">누르면 도서관 목록 ›</div>
+            <button class="link main-only" data-save>＋ 빌릴 예정</button></div>
+          <div class="bk"><div class="cover c3">해리 쿼버트 사건의 진실</div><div class="t">해리 쿼버트 사건의 진실</div><div class="a">조엘 디케르</div>
+            <div class="avail main-only"><span class="dot unk"></span>□□도서관 · 알 수 없음 · <u>다시 시도</u></div>
+            <div class="avail alt-only" style="color:var(--ink-sub)">누르면 도서관 목록 ›</div>
+            <button class="link main-only" data-save>＋ 빌릴 예정</button></div>
+          <div class="bk"><div class="cover c4">해리 왕자 자서전 스페어</div><div class="t">스페어</div><div class="a">해리 왕자</div>
+            <div class="avail main-only"><span class="dot"></span>가까운 ○○도서관 · 어제 기준 · 대출 가능</div>
+            <div class="avail alt-only" style="color:var(--ink-sub)">누르면 도서관 목록 ›</div>
+            <button class="link main-only" data-save>＋ 빌릴 예정</button></div>
+        </div>
+        <div class="more">내리면 책이 계속 나와요 · 불러오는 중…</div>
+        <label class="citychk alt-only"><input type="checkbox"><span class="box"></span>현재 도시 내 모든 도서관 검색 (탈락안: 결과 맨 아래)<em>· 도시 전체 기준으로 찾는 중</em></label>
+      </div>
+      <div class="sheet" id="sheet1" hidden>
+        <h5>어느 도서관에서 빌릴까요? <span style="font-weight:400;font-size:12px;color:var(--ink-sub)">(해리포터와 마법사의 돌)</span></h5>
+        <label class="opt"><input type="radio" name="l1" checked> ○○도서관 · 0.4km · 어제 기준 · 대출 가능</label>
+        <label class="opt"><input type="radio" name="l1"> △△도서관 · 1.2km · 어제 기준 · 대출 중</label>
+        <label class="opt"><input type="radio" name="l1"> □□도서관 · 2.8km · 어제 기준 · 대출 가능</label>
+        <button class="btn ink" data-confirm="sheet1">빌릴 예정에 저장</button>
+      </div>
+      <div class="toast" id="toast1" hidden>빌릴 예정에 담았어요. 도서관 예약은 아니에요.</div>
+      <div class="tabbar"><span>홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+    </div>
+    <dl class="note">
+      <dt>누르면 이렇게 이어져요</dt>
+      <dd class="flow">"＋ 빌릴 예정"을 누름 → 도서관을 고르는 작은 창이 아래에서 올라옴(결정 4) → 한 곳을 골라 저장 → "예약은 아니에요" 안내와 함께 저장됨. 책 카드를 누르면 도서관 목록(③)으로. 화면을 내리면 책이 계속 나옴(결정 6).</dd>
+    </dl>
+  </section>
+
+  <!-- ③ 도서관 목록 -->
+  <section class="scr">
+    <h2>③ 책을 눌렀을 때: 이 책이 있는 도서관 (②에서 책 카드를 누르면 나와요)</h2>
+    <div class="tags"><span class="tag">결정 4 저장(D 조정)</span><span class="tag">결정 2 가까운 순</span><span class="tag">결정 7·8 카드 정보</span><span class="tag">결정 9 실시간 확인(D 조정)</span><span class="tag dflt">카드 모양 기본값</span></div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>‹ 책 상세</span></div>
+      <div class="body">
+        <div class="row" style="padding-top:0"><div class="cover" style="width:48px;height:68px">해리포터와 마법사의 돌</div><div><b>해리포터와 마법사의 돌</b><small>J.K. 롤링</small></div></div>
+        <button class="btn ink main-only" data-save3 style="margin-top:6px">＋ 빌릴 예정에 저장</button>
+        <div class="more main-only" style="padding:4px 0 0">어느 도서관인지는 저장할 때 골라요</div>
+        <h4>이 책이 있는 도서관 <span style="font-weight:400;color:var(--ink-sub)">· 가까운 순</span></h4>
+        <div class="libs">
+          <div class="lib" style="order:1;--alt-order:2" data-alt-order>
+            <div class="n"><span>○○도서관</span><span style="font-weight:400;font-size:12px">0.4km</span></div>
+            <div class="m"><span class="dot no"></span>어제 기준 · 대출 중</div>
+            <div class="s">서울시 ○○구 ○○로 12 · <u>02-123-4567</u></div>
+            <div class="s">휴관일: 매주 월요일</div>
+            <div class="rt main-only"><button class="link">실시간 확인 ↗</button></div>
+            <button class="btn fill alt-only">실시간 확인 ↗ (이전: 큰 버튼)</button>
+            <button class="link alt-only">＋ 이 도서관에서 빌릴 예정 (탈락안: 도서관 옆 저장)</button>
+          </div>
+          <div class="lib" style="order:2;--alt-order:1" data-alt-order>
+            <div class="n"><span>△△도서관</span><span style="font-weight:400;font-size:12px">1.2km</span></div>
+            <div class="m"><span class="dot"></span>어제 기준 · 대출 가능</div>
+            <div class="s">서울시 △△구 △△길 3 · <u>02-234-5678</u></div>
+            <div class="s">휴관일: 매월 둘째·넷째 일요일</div>
+            <div class="rt main-only"><button class="link">실시간 확인 ↗</button></div>
+            <button class="btn fill alt-only">실시간 확인 ↗ (이전: 큰 버튼)</button>
+            <button class="link alt-only">＋ 이 도서관에서 빌릴 예정 (탈락안: 도서관 옆 저장)</button>
+          </div>
+          <div class="lib" style="order:3;--alt-order:3" data-alt-order>
+            <div class="n"><span>□□도서관</span><span style="font-weight:400;font-size:12px">2.8km</span></div>
+            <div class="m"><span class="dot unk"></span>알 수 없음 · <u>다시 시도</u></div>
+            <div class="s">서울시 □□구 □□대로 80 · <u>02-345-6789</u></div>
+            <div class="s">휴관일: 정보 없음 <small style="color:var(--ink-sub)">(표시 방법은 LIB-2에서)</small></div>
+            <div class="rt main-only"><button class="link">실시간 확인 ↗</button></div>
+            <button class="btn fill alt-only">실시간 확인 ↗ (이전: 큰 버튼)</button>
+            <button class="link alt-only">＋ 이 도서관에서 빌릴 예정 (탈락안: 도서관 옆 저장)</button>
+          </div>
+        </div>
+        <div class="more">가까운 순 · 거리는 내 위치 기준(기본 반경 3km)</div>
+      </div>
+      <div class="sheet" id="sheet3" hidden>
+        <h5>어느 도서관에서 빌릴까요?</h5>
+        <label class="opt"><input type="radio" name="l3" checked> ○○도서관 · 0.4km · 어제 기준 · 대출 중</label>
+        <label class="opt"><input type="radio" name="l3"> △△도서관 · 1.2km · 어제 기준 · 대출 가능</label>
+        <label class="opt"><input type="radio" name="l3"> □□도서관 · 2.8km · 알 수 없음</label>
+        <button class="btn ink" data-confirm="sheet3">빌릴 예정에 저장</button>
+      </div>
+      <div class="toast" id="toast3" hidden>빌릴 예정에 담았어요. 도서관 예약은 아니에요.</div>
+      <div class="tabbar"><span>홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+    </div>
+    <dl class="note">
+      <dt>누르면 이렇게 이어져요</dt>
+      <dd class="flow">②에서 책 카드를 누름 → 이 화면 → 맨 위 "빌릴 예정에 저장"이 가장 크게 보임 → 누르면 도서관 고르는 창 → 저장. 아래 도서관 카드는 가까운 순 정보이고, "실시간 확인 ↗"은 카드 오른쪽 아래 작은 글자라서 누르면 그 도서관 사이트로 이동(외부).</dd>
+      <dt>탈락안으로 보면</dt><dd>도서관 순서가 "빌릴 수 있는 곳 먼저"로 바뀌고(결정 2), 실시간 확인이 이전의 큰 버튼으로 돌아오고(결정 9 원래 안), 저장이 도서관 옆에 붙어요(결정 4).</dd>
+    </dl>
+  </section>
+
+  <!-- ④ 빈 결과 -->
+  <section class="scr">
+    <h2>④ 가까운 도서관에서 못 찾았을 때</h2>
+    <div class="tags"><span class="tag">결정 11 빈 화면</span><span class="tag">결정 12 저장할 도서관</span><span class="tag">결정 10 버튼 위치</span></div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>"달과 6펜스"</span></div>
+      <div class="body">
+        <input class="search" value="달과 6펜스" readonly>
+        <label class="citychk"><input type="checkbox"><span class="box"></span>현재 도시 내 모든 도서관 검색<em>· 도시 전체 기준으로 찾는 중</em></label>
+        <div class="empty">
+          <p class="big">찾지 못했어요</p>
+          <p class="sub">가까운 도서관(3km 안)에서는 이 책이 보이지 않아요.</p>
+          <button class="btn ink">도시 전체 도서관에서 다시 찾기</button>
+          <button class="btn line" data-save2>나중에 빌릴 책으로 저장</button>
+        </div>
+      </div>
+      <div class="sheet" id="sheet2" hidden>
+        <h5>어느 도서관에서 빌릴까요? <span style="font-weight:400;font-size:12px;color:var(--ink-sub)">(지금 찾아본 가까운 도서관)</span></h5>
+        <label class="opt"><input type="radio" name="l2" checked> ○○도서관 · 0.4km</label>
+        <label class="opt"><input type="radio" name="l2"> △△도서관 · 1.2km</label>
+        <label class="opt"><input type="radio" name="l2"> □□도서관 · 2.8km</label>
+        <button class="btn ink" data-confirm="sheet2">빌릴 예정에 저장</button>
+      </div>
+      <div class="toast" id="toast2" hidden>빌릴 예정에 담았어요. 도서관에 들어오면 다시 확인해 보세요.</div>
+      <div class="tabbar"><span>홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+    </div>
+    <dl class="note">
+      <dt>누르면 이렇게 이어져요</dt>
+      <dd class="flow">"도시 전체 도서관에서 다시 찾기"를 누름 → 도시 전체 기준으로 다시 찾음 / "나중에 빌릴 책으로 저장"을 누름 → 지금 찾아본 가까운 도서관 중 한 곳을 고르는 창 → 저장(결정 12). "없다"고 단정하지 않고 "찾지 못했어요"로 씀.</dd>
+    </dl>
+  </section>
+
+  <!-- ⑤ 대출·반납 탭 -->
+  <section class="scr">
+    <h2>⑤ 대출·반납 탭 안 "빌릴 예정"</h2>
+    <div class="tags"><span class="tag">결정 13 보는 곳</span><span class="tag dflt">구역 배치 기본값(loan-assistant와 맞춤)</span></div>
+    <div class="phone">
+      <div class="status"><span>9:41</span><span>대출·반납</span></div>
+      <div class="body">
+        <div class="sec">
+          <h4>빌릴 예정 <span style="font-weight:400;color:var(--ink-sub)">· 본인만 보는 메모예요(예약 아님)</span></h4>
+          <div class="row"><div class="cover">해리포터와 마법사의 돌</div><div>해리포터와 마법사의 돌<small>○○도서관 · 어제 기준 · 대출 가능</small></div></div>
+          <div class="row"><div class="cover c2">달과 6펜스</div><div>달과 6펜스<small>△△도서관 · 어제 기준 · 대출 중</small></div></div>
+          <div class="more" style="padding:6px 0 0">지우는 방법·빈 화면은 LIB-3에서 정해요</div>
+        </div>
+        <div class="sec">
+          <h4>빌린 책</h4>
+          <div class="row"><div class="cover c3">아몬드</div><div>아몬드<small>□□도서관 · 반납 D-5</small></div></div>
+        </div>
+      </div>
+      <div class="tabbar"><span>홈</span><span>독서 기록</span><span class="on">대출·반납</span><span>내 정보</span></div>
+    </div>
+    <dl class="note">
+      <dt>누르면 이렇게 이어져요</dt>
+      <dd class="flow">아래 탭 "대출·반납"을 누름 → 빌릴 예정과 이미 빌린 책이 한 화면에 구역별로 나옴 → 책 한 권(책+도서관)을 누르면 그 책의 도서관 정보로. 검색 화면에는 저장 목록이 없어서 깔끔함(결정 13).</dd>
+    </dl>
+  </section>
+
+</div>
+
+<!-- 명세 패널 -->
+<section id="spec">
+  <h2>명세</h2>
+  <p>PR #17 큰 틀 명세서의 결정 기록과 같은 내용이에요. 이 시안은 결정을 화면으로 옮긴 것이고, 사용자가 시안을 보고 다시 확인한 것은 아니에요(상태: <b>확인 전</b>).</p>
+  <table>
+    <tr><th>#</th><th>요소</th><th>채택안(기본 선택)</th><th>탈락안(시안에서 다시 볼 수 있음)</th><th>상태</th></tr>
+    <tr><td>1</td><td>책 옆 대출 가능 표시</td><td>책 옆에 "어제 기준 · 대출 가능" 바로 표시</td><td>책을 눌러야 도서관 목록이 나옴 (탈락안으로 보기)</td><td class="s-ok">확인(시안 전 결정)</td></tr>
+    <tr><td>2</td><td>도서관 목록 순서</td><td>가까운 순</td><td>빌릴 수 있는 곳 먼저 (탈락안으로 보기)</td><td class="s-ok">확인(시안 전 결정)</td></tr>
+    <tr><td>3</td><td>"빌릴 수 있는 것만" 스위치</td><td>제외(두지 않음)</td><td>스위치를 둠(시안 없음)</td><td class="s-ok">확인(시안 전 결정)</td></tr>
+    <tr><td>4</td><td>빌릴 예정 저장 버튼</td><td>책 옆 "＋ 빌릴 예정" → 도서관 고르는 작은 창. 책 화면(③) 맨 위에도 큰 "빌릴 예정에 저장" 버튼(D 조정)</td><td>도서관 옆에서 바로 저장 (탈락안으로 보기)</td><td class="s-ok">확인(시안 전 결정)</td></tr>
+    <tr><td>5</td><td>추천 검색어</td><td>글자를 치는 동안 추천어 표시</td><td>검색을 눌러야 결과가 나옴(시안 없음)</td><td class="s-ok">확인(시안 전 결정)</td></tr>
+    <tr><td>6</td><td>결과 넘기기</td><td>내리면 계속 나옴</td><td>번호로 넘김(시안 없음)</td><td class="s-ok">확인(시안 전 결정)</td></tr>
+    <tr><td>7·8</td><td>도서관 카드 정보</td><td>이름·거리·대출 가능 + 주소·전화 + 휴관일</td><td>짧은 카드(시안 없음)</td><td class="s-ok">확인(시안 전 결정)</td></tr>
+    <tr><td>9</td><td>실시간 확인</td><td>카드 오른쪽 아래 작은 글자 링크 (D 조정: 빌릴 예정이 메인, 실시간 확인은 확인용)</td><td>카드 맨 아래 큰 버튼 = 원래 결정 (탈락안으로 보기)</td><td class="s-ok">D 조정</td></tr>
+    <tr><td>10</td><td>도시 전체 검색 버튼</td><td>검색창 바로 아래에 늘 보이는 작은 ○ 체크(D 조정: 큰 버튼 아님, 켜지면 ◉ + "도시 전체 기준으로 찾는 중" 한 줄, 색 변화 없음)</td><td>결과 목록 맨 아래 (탈락안으로 보기)</td><td class="s-ok">D 조정</td></tr>
+    <tr><td>11</td><td>빈 결과 화면</td><td>안내 글 + 도시 전체 다시 찾기 큰 버튼 + 저장 버튼</td><td>버튼 하나만(시안 없음)</td><td class="s-ok">확인(시안 전 결정)</td></tr>
+    <tr><td>12</td><td>못 찾았을 때 저장</td><td>지금 찾아본 가까운 도서관 중 한 곳 선택</td><td>도서관 전체에서 선택(시안 없음)</td><td class="s-ok">확인(시안 전 결정)</td></tr>
+    <tr><td>13</td><td>빌릴 예정 보는 곳</td><td>대출·반납 탭 안 "빌릴 예정" 구역</td><td>검색 화면 안에서 보기(시안 없음)</td><td class="s-ok">확인(시안 전 결정)</td></tr>
+  </table>
+
+  <h3>시안에서 Claude가 정한 값 (기본값(Claude) — 큰 틀에서는 묻지 않음, 세부에서 정함)</h3>
+  <table>
+    <tr><th>무엇</th><th>시안의 값</th></tr>
+    <tr><td>책 카드 모양</td><td>2열 · 표지 위 / 제목·저자 / 대출 표시 / 저장 링크 (레퍼런스 2의 2열 목록을 따름)</td></tr>
+    <tr><td>책 옆에 보이는 도서관</td><td>"가까운 ○○도서관" 한 곳의 상태만 표시(여러 곳 요약 방식은 LIB-1·2에서)</td></tr>
+    <tr><td>대출 상태 점 색</td><td>가능=fill3, 대출 중=fill2, 알 수 없음=surface3 (색만 아니라 글자도 함께 표시)</td></tr>
+    <tr><td>저장 완료 안내 문구</td><td>"빌릴 예정에 담았어요. 도서관 예약은 아니에요." (예약 성공처럼 보이는 문구 금지 — D가 정함)</td></tr>
+    <tr><td>휴관일 정보가 없을 때</td><td>"휴관일: 정보 없음" (임시. LIB-2에서 정함)</td></tr>
+    <tr><td>색·곡률</td><td>디자인_기준.md warm 토큰, 카드 18px·알약 18px·책 표지 5·9·9·5px, 진한 채움 강조는 화면당 1개</td></tr>
+  </table>
+
+  <h3>이 시안에 없는 것</h3>
+  <ul style="font-size:13px">
+    <li>예외 네 장면(인터넷 끊김·하나도 없음·두 번 누름·로그인 안 함)과 "처음부터 끝까지" 플로우는 세부(LIB-1~3)의 시안에서 넣어요(1B 3·4단계).</li>
+    <li>문장 카드(레퍼런스 1)는 독서 기록 기능 명세서에서 다뤄요.</li>
+  </ul>
+</section>
+</main>
+
+<script>
+  var body = document.body;
+  document.getElementById('alt').addEventListener('change', function (e) { body.classList.toggle('alt', e.target.checked); });
+
+  // ① 글자 치기 전/후
+  document.querySelectorAll('[data-t]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var typing = b.dataset.t === '1';
+      document.querySelectorAll('[data-t]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      document.getElementById('q').value = typing ? '해리' : '';
+      document.getElementById('before').hidden = typing;
+      document.getElementById('after').hidden = !typing;
+    });
+  });
+
+  // ② 저장 → 도서관 고르는 창
+  document.querySelectorAll('[data-save]').forEach(function (b) {
+    b.addEventListener('click', function () { document.getElementById('toast1').hidden = true; document.getElementById('sheet1').hidden = false; });
+  });
+  // ④ 못 찾았을 때 저장
+  document.querySelectorAll('[data-save2]').forEach(function (b) {
+    b.addEventListener('click', function () { document.getElementById('toast2').hidden = true; document.getElementById('sheet2').hidden = false; });
+  });
+  document.querySelectorAll('[data-save3]').forEach(function (b) {
+    b.addEventListener('click', function () { document.getElementById('toast3').hidden = true; document.getElementById('sheet3').hidden = false; });
+  });
+  document.querySelectorAll('[data-confirm]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var id = b.dataset.confirm;
+      document.getElementById(id).hidden = true;
+      var t = document.getElementById(id.replace('sheet','toast'));
+      t.hidden = false;
+      setTimeout(function () { t.hidden = true; }, 2500);
+    });
+  });
+</script>
+</body>
+</html>
