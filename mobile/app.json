@@ -8,7 +8,13 @@
     "userInterfaceStyle": "automatic",
     "plugins": [
       "expo-router",
-      "expo-web-browser"
+      "expo-web-browser",
+      ["expo-location", {
+        "locationWhenInUsePermission": "가까운 도서관을 찾을 때만 위치를 써요. 위치는 저장하지 않아요.",
+        "isIosBackgroundLocationEnabled": false,
+        "isAndroidBackgroundLocationEnabled": false,
+        "isAndroidForegroundServiceEnabled": false
+      }]
     ],
     "ios": {
       "bundleIdentifier": "kr.localone.app"
