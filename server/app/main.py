@@ -12,7 +12,7 @@ from sqlalchemy import text
 from sqlalchemy import create_engine
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from app.auth import JwksClient, build_jwks_client
+from app.auth import JwksClient, build_jwks_client, router as auth_router
 from app.common import ApiError, error_response, now_kst
 from app.settings import CORS_ENVS, LOCAL_ORIGIN_REGEX, Settings, get_settings
 
@@ -53,6 +53,8 @@ def create_app(
     @app.exception_handler(ApiError)
     async def _api_error(request: Request, exc: ApiError):
         return error_response(exc.status_code, exc.code, exc.message, exc.detail)
+
+    app.include_router(auth_router)
     # ── [/auth-D] ──
 
     if settings.app_env in CORS_ENVS:
