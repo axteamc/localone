@@ -1,5 +1,10 @@
 import { Stack } from "expo-router";
+import { AuthProvider } from "../src/auth/AuthProvider";
 
 export default function RootLayout() {
-  return <Stack screenOptions={{ title: "동네한권" }} />;
+  return (
+    <AuthProvider>
+      <Stack screenOptions={{ title: "동네한권" }} />
+    </AuthProvider>
+  );
 }
