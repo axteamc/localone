@@ -94,7 +94,7 @@
 
 <main>
   <!-- ===== 중심 요소 1: 글쓰기 버튼 ===== -->
-  <section class="element" id="el-1" data-chosen="">
+  <section class="element" id="el-1" data-chosen="A">
     <h2>정할 것 1. 글쓰기 버튼을 어디에, 어떤 모양으로 둘까<span class="status" data-status>결정 전</span></h2>
     <div class="state">바꿔 보기:
       <button aria-pressed="true" data-view="top">피드 맨 위</button><button aria-pressed="false" data-view="scrolled">피드를 내린 뒤</button><button aria-pressed="false" data-view="tapped">버튼을 누른 뒤</button>
@@ -223,7 +223,8 @@
   <section id="fullflow">
     <h2>처음부터 끝까지 이렇게 써요</h2>
     <ol>
-      <li>사용자가 방문 페이지 피드에서 글쓰기 버튼을 누르면 동네한권이 글쓰기 화면을 연다. (버튼 모양·자리는 정할 것 1)</li>
+      <li>사용자가 방문 페이지 피드를 구경하다가 오른쪽 아래에 떠 있는 둥근 "+"를 누른다. 버튼은 피드를 내려도 같은 자리에 있다.</li>
+      <li>동네한권이 글쓰기 화면을 아래에서 올려 "어떤 이미지로 올릴까요?"(사진 찍기·앨범 / 책 표지 / 단색 배경)를 보여 준다.</li>
       <li>(정할 것 1~4를 고르면 이어서 쓴다)</li>
     </ol>
   </section>
@@ -234,7 +235,7 @@
     <p>정할 것 1 다시 비교하기: <select id="pick"><option value="">채택안 보기</option><option value="A">A. 떠 있는 둥근 "+"</option><option value="B">B. 머리 오른쪽 연필</option><option value="C">C. 피드 첫 칸 카드</option></select></p>
     <table>
       <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값 · 유저 플로우</th></tr>
-      <tr><td>1. 글쓰기 버튼 모양·자리</td><td>결정 전</td><td>— (추천: A)</td><td>—</td><td>A: 지름 48(앱 64), `fill1` 채움, 완전한 원, 오른쪽 16·아래 24 / 누르면 글쓰기 화면이 아래에서 올라옴</td></tr>
+      <tr><td>1. 글쓰기 버튼 모양·자리</td><td>확인 (불편한 점 받는 중)</td><td>채택 A 오른쪽 아래 떠 있는 둥근 "+" / 차선 없음 / 탈락 B 머리 오른쪽 연필, C 피드 첫 칸 카드</td><td>"오른쪽 아래 + 버튼이요" · "가장 직관적이고 깔끔해요"</td><td>A: 지름 48(앱 64), `fill1` 채움, 완전한 원, 오른쪽 16·아래 24 / 누르면 글쓰기 화면이 아래에서 올라옴</td></tr>
       <tr><td>2. '책 표지'를 고를 때 이어지는 순서</td><td>결정 전</td><td>—</td><td>—</td><td>1 확인 뒤 시안</td></tr>
       <tr><td>3. 사진·표지 위 글자 자리</td><td>결정 전</td><td>— (임시: 가운데, 위·가운데·아래 중 고름)</td><td>—</td><td>2 확인 뒤 시안</td></tr>
       <tr><td>4. 철회하는 자리와 되돌리기</td><td>결정 전</td><td>—</td><td>—</td><td>3 확인 뒤 시안</td></tr>
