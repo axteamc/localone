@@ -386,11 +386,11 @@
   (function () {
     var ph = document.getElementById('exPhone'), sc = ph.querySelector('.scroll'), base = sc.innerHTML;
     var bx = function (t) { return '<div ' + box + '>' + t + '</div>'; };
-    var retry = ' <u style="cursor:pointer">새로고침</u>';
+    var retry = ' <u style="cursor:pointer;white-space:nowrap"><svg width="1em" height="1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-0.15em;margin-right:3px"><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v5h-5"/></svg>새로고침</u>';
     var books = sc.querySelector('.row').outerHTML;
     var V = {
       net: { html: '<div class="sec">이 동네 인기 도서</div>' + bx('인기 도서를 불러오지 못했어요.' + retry) + '<div class="sec">자주 가는 도서관 소식</div>' + bx('소식을 불러오지 못했어요.' + retry),
-             note: '인터넷이 끊기거나 동네한권이 답을 못 받으면, 칸마다 "불러오지 못했어요 · 새로고침"가 보여요. 한쪽만 안 되면 그쪽만 이렇게 보이고 다른 쪽은 그대로예요. 지도는 지도 홈에서 정한 대로예요.' },
+             note: '인터넷이 끊기거나 동네한권이 답을 못 받으면, 칸마다 "불러오지 못했어요 · ↻ 새로고침"이 보여요. 한쪽만 안 되면 그쪽만 이렇게 보이고 다른 쪽은 그대로예요. 지도는 지도 홈에서 정한 대로예요.' },
       none: { html: '<div class="sec">이 동네 인기 도서</div>' + bx('이 동네 인기 도서를 아직 모으지 못했어요.') + '<div class="sec">가까운 도서관 소식 <small>자주 가는 곳이 생기면 바뀌어요</small></div><div class="chips"><span class="chip on">한빛 시립 320m</span><span class="chip">달빛 작은 860m</span></div>' + bx('가까운 도서관에도 아직 게시물이 없어요.'),
              note: '방문한 도서관도 없고 가까운 도서관에도 게시물이 없으면 "아직 게시물이 없어요"만 보여요. 가짜 게시물은 만들지 않아요. 인기 도서가 없을 때도 안내 한 줄만 보여요.' },
       tap: { html: base,
