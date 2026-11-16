@@ -1,0 +1,689 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LOCAL-1 시안 — 게시물 작성·표지·공개·철회</title>
+<!--
+  ../team/templates/시안.html 에서 복사. ../team/prompts/1_기획.md 1B 2단계 시안 사이클.
+  중심 요소 하나 = section.element 하나. 확인되면 다음 요소를 같은 모양으로 추가한다. 후보는 지우지 않는다.
+  색·곡률은 개발산출물/디자인_기준.md 토큰(warm, M1 기본)만 쓴다. 외부 연결 없음.
+  방문 페이지 머리는 VISIT-2에서 정한다. 여기서는 정해진 값(‹ · 이름 · 거리·오늘 운영시간 · 정보 줄 오른쪽 ⋯)만 넣은 임시 모양.
+-->
+<style>
+  :root {
+    --bg: #E1E1DE; --surface2: #D0CEC8; --surface3: #BFBCB5;
+    --fill1: #E9C970; --fill2: #EDC9A9; --fill3: #B3BFB5;
+    --cream: #EFEFE7; --paper: #EFF1F1; --ink-strong: #2E333F;
+    --text: #1D1D1F; --text-sub: #71716F;
+    --r-card: 18px; --r-pill: 18px; --r-full: 9999px;
+    /* 임시 토큰(의미별, 지금 값 그대로 — 디자인_기준.md에 없는 것. 색 최종 조정 때 공통 정의로 옮긴다, PROJECT §3-14) */
+    --shadow-faint: rgba(0,0,0,.08); --shadow-sheet: rgba(0,0,0,.12); --shadow-soft: rgba(0,0,0,.15); --shadow-float: rgba(0,0,0,.18); --shadow-fab: rgba(0,0,0,.22); --text-shadow-on-image: rgba(0,0,0,.35); --scrim: rgba(0,0,0,.28); --band-on-image: rgba(0,0,0,.45); --band-on-image-end: rgba(0,0,0,0); --on-image: #fff; --sample-photo-1: #8E9A90; --sample-photo-2: #5E6A63; --sample-photo-3: #3F4642;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: "Noto Sans KR", system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; line-height: 1.5; }
+  header.page { padding: 20px 16px 8px; max-width: 1200px; margin: 0 auto; }
+  header.page h1 { font-size: 20px; margin: 0 0 4px; }
+  .how { background: var(--cream); border-radius: var(--r-card); padding: 12px 16px; margin: 8px 0 0; }
+  main { max-width: 1200px; margin: 0 auto; padding: 0 16px 40px; }
+  section.element { margin-top: 24px; }
+  section.element > h2 { font-size: 17px; margin: 0 0 4px; }
+  .status { display: inline-block; font-size: 12px; padding: 2px 10px; border-radius: var(--r-pill); background: var(--surface2); margin-left: 6px; }
+  .cands { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 12px; }
+  .cand { background: var(--paper); border-radius: var(--r-card); padding: 14px; border: 3px solid transparent; }
+  .cand.recommended { border-color: var(--fill1); }
+  .cand.chosen { border-color: var(--ink-strong); }
+  .cand h3 { margin: 0 0 8px; font-size: 15px; }
+  .badge { font-size: 12px; padding: 1px 8px; border-radius: var(--r-pill); background: var(--fill1); margin-left: 6px; }
+  .badge.chosen { background: var(--ink-strong); color: var(--paper); }
+  .note { font-size: 14px; margin-top: 10px; }
+  .note dt { font-weight: 700; margin-top: 6px; }
+  .note dd { margin: 0; }
+  .flow { background: var(--cream); border-radius: 12px; padding: 8px 10px; }
+  .state button { font: inherit; font-size: 14px; border: 0; border-radius: var(--r-pill); padding: 4px 12px; background: var(--surface2); cursor: pointer; margin: 2px; }
+  .state button[aria-pressed="true"] { background: var(--ink-strong); color: var(--paper); }
+  #spec, #except, #fullflow { background: var(--paper); border-radius: var(--r-card); padding: 14px 16px; margin-top: 28px; }
+  #spec table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  #spec th, #spec td { text-align: left; padding: 6px; border-bottom: 1px solid var(--surface2); vertical-align: top; }
+
+  /* ---- 휴대폰 화면 (390×844를 0.75배) ---- */
+  .phone { position: relative; width: 292px; height: 560px; margin: 0 auto; background: var(--cream); border-radius: 28px; overflow: hidden; border: 6px solid var(--ink-strong); }
+  .vhead { padding: 12px 12px 8px; background: var(--cream); position: relative; z-index: 2; transition: all .2s; }
+  .vhead .back { font-size: 26px; font-weight: 900; line-height: 1; text-shadow: 0 1px 2px var(--shadow-soft); }
+  .vhead .name { font-size: 18px; font-weight: 700; margin-top: 2px; }
+  .vhead .info { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-sub); }
+  .vhead .more { font-size: 18px; color: var(--text); letter-spacing: 1px; }
+  .vhead .pen { font-size: 16px; margin-left: 10px; color: var(--text); }
+  .vhead.collapsed { padding: 8px 12px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px var(--shadow-faint); }
+  .vhead.collapsed .back { font-size: 22px; }
+  .vhead.collapsed .name { font-size: 15px; margin: 0; flex: 1; }
+  .vhead.collapsed .info { display: none; }
+  .vhead .mini-tools { display: none; }
+  .vhead.collapsed .mini-tools { display: inline; }
+  .feed { position: absolute; left: 0; right: 0; top: 86px; bottom: 0; padding: 0 9px; overflow: hidden; }
+  .feed.scrolled { top: 40px; }
+  .masonry { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .col { display: flex; flex-direction: column; gap: 8px; }
+  .card { border-radius: 14px; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 700; font-size: 11px; padding: 8px; color: var(--text); }
+  .card.dark { color: var(--on-image); }
+  .card.photo { background: linear-gradient(160deg, var(--fill3), var(--surface3)); }
+  .card.cover { background: linear-gradient(180deg, var(--fill2), var(--fill1)); }
+  .card.new-tile { background: transparent; border: 2px dashed var(--surface3); color: var(--text-sub); font-weight: 700; font-size: 13px; flex-direction: column; gap: 2px; }
+  .card.new-tile .plus { font-size: 24px; line-height: 1; }
+  .fab { position: absolute; right: 14px; bottom: 18px; width: 48px; height: 48px; border-radius: var(--r-full); background: var(--fill1); color: var(--text); font-size: 28px; font-weight: 500; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px var(--shadow-fab); z-index: 3; }
+  .tap { outline: 3px solid var(--on-image); outline-offset: 2px; animation: pulse 1.2s infinite; }
+  @keyframes pulse { 50% { outline-color: var(--ink-strong); } }
+
+  /* ---- 글쓰기 화면 (버튼을 누른 뒤) ---- */
+  .compose { position: absolute; inset: 0; background: var(--paper); z-index: 5; padding: 12px; display: none; }
+  .compose.show { display: block; }
+  .compose .top { display: flex; justify-content: space-between; align-items: center; font-size: 14px; }
+  .compose .top .x { font-size: 20px; }
+  .compose .top .post { color: var(--text-sub); opacity: .5; font-weight: 700; }
+  .compose h4 { margin: 18px 0 4px; font-size: 16px; }
+  .compose p { font-size: 12px; color: var(--text-sub); margin: 0 0 12px; }
+  .pick { display: flex; flex-direction: column; gap: 8px; }
+  .pick div { background: var(--cream); border-radius: 14px; padding: 14px; font-size: 14px; font-weight: 700; }
+  .pick small { display: block; font-weight: 400; color: var(--text-sub); font-size: 11px; }
+  .steps { font-size: 11px; color: var(--text-sub); margin-top: 14px; }
+  /* ---- 요소 2: 단계 띠 ---- */
+  .strip { display: flex; align-items: center; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
+  .mini { flex: 0 0 118px; height: 210px; background: var(--cream); border: 4px solid var(--ink-strong); border-radius: 18px; padding: 8px 7px; font-size: 10px; display: flex; flex-direction: column; gap: 5px; }
+  .mini .mt { font-weight: 700; font-size: 11px; }
+  .mini .opt { background: var(--paper); border-radius: 8px; padding: 6px; font-weight: 700; }
+  .mini .opt.on { outline: 2px solid var(--ink-strong); }
+  .mini .img { height: 100px; border-radius: 5px 9px 9px 5px; background: linear-gradient(180deg, var(--fill2), var(--fill1)); display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 700; font-size: 11px; }
+  .mini .img.gen { background: var(--fill3); flex-direction: column; padding: 4px; }
+  .mini .img.gen small { font-weight: 400; }
+  .mini .img.empty { background: transparent; border: 2px dashed var(--surface3); color: var(--text-sub); font-weight: 400; }
+  .mini .img.sm { height: 80px; flex: 1; font-size: 9px; }
+  .mini .two { display: flex; gap: 4px; }
+  .mini .tiny { font-size: 9px; color: var(--text-sub); }
+  .mini .filled { background: var(--paper); border-radius: 8px; padding: 5px; }
+  .hop { flex: 0 0 64px; font-size: 10px; color: var(--text-sub); text-align: center; }
+  .hop::after { content: " →"; font-weight: 700; color: var(--text); }
+  [hidden] { display: none !important; }
+  /* ---- 요소 3: 글자 자리 ---- */
+  .txtwrap { text-align: center; }
+  .canvas { position: relative; width: 220px; height: 290px; margin: 0 auto; border-radius: 14px; overflow: hidden; transition: all .2s; }
+  .canvas.photo { background: linear-gradient(160deg, var(--sample-photo-1), var(--sample-photo-2) 55%, var(--sample-photo-3)); }
+  .canvas.small { width: 130px; height: 172px; }
+  .canvas.small .ovl { font-size: 9px; }
+  .ovl { position: absolute; left: 8%; right: 8%; color: var(--on-image); font-weight: 700; font-size: 15px; text-align: center; text-shadow: 0 1px 3px var(--text-shadow-on-image); transition: top .2s; }
+  .ovl.top { top: 10%; } .ovl.mid { top: 45%; } .ovl.bot { top: auto; bottom: 0; }
+  .ovl.band { left: 0; right: 0; padding: 10px 8%; background: linear-gradient(0deg, var(--band-on-image), var(--band-on-image-end)); }
+  .ovl.free { left: 30%; right: auto; cursor: grab; white-space: nowrap; }
+  .seg { margin-top: 8px; }
+  .seg button { font: inherit; font-size: 13px; border: 0; padding: 4px 14px; background: var(--surface2); cursor: pointer; }
+  .seg button:first-child { border-radius: var(--r-full) 0 0 var(--r-full); } .seg button:last-child { border-radius: 0 var(--r-full) var(--r-full) 0; }
+  .seg button[aria-pressed="true"] { background: var(--ink-strong); color: var(--paper); }
+  .tiny2 { font-size: 12px; color: var(--text-sub); margin-top: 4px; }
+  /* ---- 요소 4: 내리기 ---- */
+  .mini .dtop { display: flex; justify-content: space-between; font-size: 14px; }
+  .mini .hl { outline: 2px solid var(--ink-strong); border-radius: 6px; padding: 0 3px; }
+  .mini .sheet { margin-top: auto; background: var(--paper); border-radius: 10px 10px 0 0; padding: 4px 6px; box-shadow: 0 -2px 6px var(--shadow-sheet); }
+  .mini .sheet div { padding: 3px 0; border-bottom: 1px solid var(--surface2); }
+  .mini .sheet div:last-child { border: 0; }
+  .mini .danger { font-weight: 700; }
+  .mini .dialog { margin: auto 0; background: var(--paper); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 2px 8px var(--shadow-float); }
+  .mini .dialog small { color: var(--text-sub); }
+  .mini .dbtn { display: flex; justify-content: space-between; margin-top: 4px; }
+  .mini .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
+  .mini .grid2 i { height: 44px; border-radius: 8px; background: var(--surface3); display: block; }
+  .mini .grid2 i.hl2 { background: var(--fill1); outline: 2px solid var(--ink-strong); }
+  .mini .toast { margin-top: auto; align-self: center; background: var(--ink-strong); color: var(--paper); border-radius: var(--r-full); padding: 3px 10px; }
+  .mini .linkbtn { margin-top: auto; color: var(--text-sub); font-weight: 700; text-align: center; }
+  /* ---- 잘 안 될 때(상태 화면) ---- */
+  .stwrap { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; margin-top: 10px; }
+  .stnote { flex: 1; min-width: 260px; font-size: 14px; }
+  .stnote dt { font-weight: 700; margin-top: 8px; } .stnote dd { margin: 0; }
+  #stPhone .cw, #stPhone .fw, #stPhone .dw { position: absolute; inset: 0; background: var(--paper); padding: 12px; display: flex; flex-direction: column; gap: 8px; }
+  #stPhone .fw { background: var(--cream); padding: 0; }
+  #stPhone .ctop { display: flex; justify-content: space-between; font-size: 14px; }
+  #stPhone .cpost { font-weight: 700; } #stPhone .cpost.off { opacity: .35; } #stPhone .cpost.busy { color: var(--text-sub); }
+  #stPhone .cimg { position: relative; height: 300px; border-radius: 14px; background: linear-gradient(160deg, var(--fill3), var(--surface3)); }
+  #stPhone .cimg.gen { background: var(--fill3); display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 18px; }
+  #stPhone .cimg.none { background: transparent; border: 2px dashed var(--surface3); display: flex; align-items: center; justify-content: center; text-align: center; font-size: 13px; color: var(--text-sub); }
+  #stPhone .cnote { font-size: 12px; color: var(--text-sub); }
+  #stPhone .crow { font-size: 13px; background: var(--cream); border-radius: 10px; padding: 8px 10px; }
+  #stPhone .stcard { position: absolute; left: 24px; right: 24px; top: 150px; background: var(--paper); border-radius: var(--r-card); padding: 14px; text-align: center; font-size: 13px; box-shadow: 0 4px 14px var(--shadow-float); z-index: 4; }
+  #stPhone .btn { display: inline-block; margin-top: 8px; background: var(--ink-strong); color: var(--paper); border-radius: var(--r-full); padding: 5px 14px; font-weight: 700; }
+  #stPhone .dim { position: absolute; inset: 0; background: var(--scrim); z-index: 4; }
+  #stPhone .dialog2 { position: absolute; left: 28px; right: 28px; top: 200px; background: var(--paper); border-radius: var(--r-card); padding: 14px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; z-index: 5; }
+  #stPhone .dialog2 small { color: var(--text-sub); }
+  #stPhone .dbtn { display: flex; justify-content: space-between; margin-top: 8px; }
+  #stPhone .bsheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--paper); border-radius: 18px 18px 0 0; padding: 16px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; z-index: 5; text-align: center; }
+  #stPhone .bsheet small, #stPhone .lnk, #stPhone .mrow.sub { color: var(--text-sub); }
+  #stPhone .mrow { text-align: left; padding: 6px 0; border-bottom: 1px solid var(--surface2); }
+  #stPhone .toast2 { position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); background: var(--ink-strong); color: var(--paper); border-radius: var(--r-full); padding: 5px 14px; font-size: 13px; z-index: 5; }
+  #stPhone .dtop2 { display: flex; justify-content: space-between; font-size: 20px; }
+  #stPhone .hl { outline: 2px solid var(--ink-strong); border-radius: 6px; padding: 0 4px; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>지역 SNS · LOCAL-1 시안 — 게시물 쓰기</h1>
+  <p class="how">화면 3개를 비교해 보세요. 화면마다 아래에 <b>누르면 어떻게 이어지는지</b>를 적어 뒀어요. 화면 위 버튼으로 <b>피드를 내린 뒤</b>와 <b>글쓰기 버튼을 누른 뒤</b> 모습도 바꿔 볼 수 있어요. <b>추천</b> 표시가 있는 화면이 Claude의 추천이에요. 고르는 건 직접 해 주세요.</p>
+</header>
+
+<main>
+  <!-- ===== 중심 요소 1: 글쓰기 버튼 ===== -->
+  <section class="element" id="el-1" data-chosen="A">
+    <h2>정할 것 1. 글쓰기 버튼을 어디에, 어떤 모양으로 둘까<span class="status" data-status>결정 전</span></h2>
+    <div class="state">바꿔 보기:
+      <button aria-pressed="true" data-view="top">피드 맨 위</button><button aria-pressed="false" data-view="scrolled">피드를 내린 뒤</button><button aria-pressed="false" data-view="tapped">버튼을 누른 뒤</button>
+    </div>
+
+    <div class="cands">
+      <!-- 후보 A (추천) -->
+      <article class="cand recommended" data-id="A">
+        <h3>A. 오른쪽 아래에 떠 있는 둥근 "+" <span class="badge">추천</span></h3>
+        <div class="phone" data-phone>
+          <div class="vhead" data-head>
+            <span class="back">‹</span>
+            <div class="name">가온도서관</div>
+            <div class="info"><span>320m · 오늘 09:00–18:00</span><span class="more">⋯</span></div>
+          </div>
+          <div class="feed" data-feed>
+            <div class="masonry">
+              <div class="col">
+                <div class="card cover" style="height:150px">작별하지 않는다</div>
+                <div class="card dark" style="height:110px;background:var(--ink-strong)">"그 밤은 길었다"</div>
+                <div class="card photo" style="height:170px"></div>
+                <div class="card" style="height:120px;background:var(--fill2)">아무도 없는 열람실</div>
+              </div>
+              <div class="col">
+                <div class="card photo" style="height:120px"></div>
+                <div class="card" style="height:160px;background:var(--fill1)">오늘의 문장</div>
+                <div class="card cover" style="height:140px">불편한 편의점</div>
+                <div class="card photo" style="height:120px"></div>
+              </div>
+            </div>
+          </div>
+          <div class="fab" data-btn>+</div>
+          <div class="compose" data-compose></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>버튼이 피드 위에 떠 있어서, 피드를 얼마나 내려도 같은 자리(오른쪽 아래)에 늘 있어요. 머리에는 버튼이 없어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">피드를 구경함 → 오른쪽 아래 "+"를 누름 → 글쓰기 화면이 아래에서 올라옴 → 사진 찍기 / 책 표지 / 단색 중 하나를 고름. 사용자는 구경하다가 엄지로 바로 쓰기 시작해요.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>"피드를 내린 뒤"를 눌러 보세요. 머리가 접혀도 버튼은 그대로 있어요. 대신 오른쪽 아래 카드의 일부를 늘 가려요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>어디서든 한 번에 쓰기 시작 / 오른쪽 아래 카드 한 귀퉁이가 가려짐</dd>
+          <dt>추천 이유</dt><dd>구경하다가 "나도 올려 볼까" 하는 순간이 피드 중간에서 오는데, 그때 위로 다시 올라가지 않아도 돼서요. 반대로 피드를 깨끗하게 보는 게 더 중요하면 B가 나아요.</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 B -->
+      <article class="cand" data-id="B">
+        <h3>B. 머리 오른쪽의 연필</h3>
+        <div class="phone" data-phone>
+          <div class="vhead" data-head>
+            <span class="back">‹</span>
+            <div class="name">가온도서관</div>
+            <div class="info"><span>320m · 오늘 09:00–18:00</span><span><span class="pen" data-btn>✎</span><span class="more">⋯</span></span></div>
+            <span class="mini-tools"><span class="pen" data-btn-mini>✎</span><span class="more"> ⋯</span></span>
+          </div>
+          <div class="feed" data-feed>
+            <div class="masonry">
+              <div class="col">
+                <div class="card cover" style="height:150px">작별하지 않는다</div>
+                <div class="card dark" style="height:110px;background:var(--ink-strong)">"그 밤은 길었다"</div>
+                <div class="card photo" style="height:170px"></div>
+                <div class="card" style="height:120px;background:var(--fill2)">아무도 없는 열람실</div>
+              </div>
+              <div class="col">
+                <div class="card photo" style="height:120px"></div>
+                <div class="card" style="height:160px;background:var(--fill1)">오늘의 문장</div>
+                <div class="card cover" style="height:140px">불편한 편의점</div>
+                <div class="card photo" style="height:120px"></div>
+              </div>
+            </div>
+          </div>
+          <div class="compose" data-compose></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>피드 위에는 아무것도 떠 있지 않아요. 연필은 머리의 ⋯ 바로 왼쪽에 작게 있어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">피드를 구경함 → 위쪽 머리의 연필을 누름 → 글쓰기 화면이 아래에서 올라옴 → 사진 찍기 / 책 표지 / 단색 중 하나를 고름. 사용자는 손가락을 화면 위쪽까지 올려서 눌러요.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>"피드를 내린 뒤"를 눌러 보세요. 머리가 "‹ 이름" 한 줄로 접혀도 연필과 ⋯는 그 줄 오른쪽에 남아요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>피드가 아무것에도 가려지지 않음 / 버튼이 작고 위쪽이라 눈에 덜 띄고 엄지가 닿기 멂</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 C -->
+      <article class="cand" data-id="C">
+        <h3>C. 피드 첫 칸에 "+ 올리기" 카드</h3>
+        <div class="phone" data-phone>
+          <div class="vhead" data-head>
+            <span class="back">‹</span>
+            <div class="name">가온도서관</div>
+            <div class="info"><span>320m · 오늘 09:00–18:00</span><span class="more">⋯</span></div>
+          </div>
+          <div class="feed" data-feed>
+            <div class="masonry">
+              <div class="col">
+                <div class="card new-tile" style="height:110px" data-btn><span class="plus">+</span>올리기</div>
+                <div class="card cover" style="height:150px">작별하지 않는다</div>
+                <div class="card dark" style="height:110px;background:var(--ink-strong)">"그 밤은 길었다"</div>
+                <div class="card photo" style="height:170px"></div>
+              </div>
+              <div class="col">
+                <div class="card photo" style="height:120px"></div>
+                <div class="card" style="height:160px;background:var(--fill1)">오늘의 문장</div>
+                <div class="card cover" style="height:140px">불편한 편의점</div>
+                <div class="card photo" style="height:120px"></div>
+              </div>
+            </div>
+          </div>
+          <div class="compose" data-compose></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>버튼이 따로 없고, 피드의 맨 첫 칸이 점선 테두리 "+ 올리기" 카드예요. 다른 카드처럼 피드와 같이 움직여요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">방문 페이지에 들어옴 → 피드 맨 앞의 "+ 올리기" 칸이 바로 보임 → 누르면 글쓰기 화면이 아래에서 올라옴. 피드를 내린 뒤에 쓰려면 맨 위로 다시 올라가야 해요.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>"피드를 내린 뒤"를 눌러 보세요. "+ 올리기" 칸이 위로 지나가서 화면에서 사라져요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>처음 들어왔을 때 "여기에 올릴 수 있구나"가 가장 잘 보임 / 내려서 구경하는 중에는 쓰는 입구가 없음</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===== 중심 요소 2: 책 표지를 고를 때 이어지는 순서 ===== -->
+  <section class="element" id="el-2" data-chosen="A">
+    <h2>정할 것 2. 첫 화면에서 '책 표지'를 누르면 어떻게 이어질까<span class="status" data-status>결정 전</span></h2>
+    <p style="font-size:14px;margin:0">쓰는 순서는 이미 정해져 있어요: 이미지 → 글자 → 감상 → 책·도서관. 그래서 '책 표지'를 고르면 <b>책을 언제 찾는지</b>가 후보마다 달라요. 책 찾기 화면은 다른 화면이라 그리지 않았어요.</p>
+    <div class="state">바꿔 보기:
+      <button aria-pressed="true" data-cover="1">표지가 있는 책</button><button aria-pressed="false" data-cover="0">표지가 없는 책</button>
+    </div>
+
+    <div class="cands">
+      <!-- 후보 A (추천) -->
+      <article class="cand recommended" data-id="A">
+        <h3>A. 누르자마자 책 찾기 <span class="badge">추천</span></h3>
+        <div class="strip">
+          <div class="mini"><div class="mt">1. 이미지</div><div class="opt">사진 찍기</div><div class="opt on">책 표지</div><div class="opt">단색</div></div>
+          <div class="hop">책 찾기 화면에서<br>책을 고르고 돌아와요</div>
+          <div class="mini"><div class="mt">2. 글자</div>
+            <div class="img" data-hascover><span>작별하지<br>않는다</span></div>
+            <div class="img gen" data-nocover hidden><b>작별하지 않는다</b><small>한강</small></div>
+            <div class="tiny" data-nocover hidden>표지를 찾지 못해 제목·저자로 만들었어요 · <u>사진·단색으로 바꾸기</u></div>
+            <div class="tiny">글자를 넣어 보세요</div></div>
+          <div class="hop">감상(선택)</div>
+          <div class="mini"><div class="mt">4. 책·도서관</div><div class="filled">📖 작별하지 않는다 · 한강</div><div class="filled">가온도서관</div><div class="tiny">이미 붙어 있어요</div></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>'책 표지'를 누르면 바로 책 찾기 화면으로 가요. 고른 책의 표지가 곧바로 이미지가 되고, 마지막 단계에 그 책이 이미 붙어 있어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">'책 표지'를 누름 → 책 찾기 화면에서 책을 고름 → 표지가 들어간 글자 단계로 돌아옴 → 감상 → 마지막 단계엔 책이 이미 붙어 있어 바로 올리기. 사용자는 책을 한 번만 찾아요.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>"표지가 없는 책"을 눌러 보세요. 표지 대신 제목·저자로 만든 표지가 들어가고, 사진·단색으로 바꾸는 글자가 함께 보여요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>책을 한 번만 찾고, 쓰는 내내 진짜 표지를 보며 글자를 얹음 / 첫 단계에서 바로 다른 화면으로 넘어가서 시작이 조금 무거움</dd>
+          <dt>추천 이유</dt><dd>표지를 고른 사람은 이미 책이 정해져 있어서, 처음에 찾아도 부담이 적고 마지막에 다시 찾을 일이 없어서요. 대신 "일단 빨리 쓰기 시작하고 싶다"가 더 중요하면 B가 나아요.</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 B -->
+      <article class="cand" data-id="B">
+        <h3>B. 빈 표지 틀로 먼저 쓰고, 마지막에 책 찾기</h3>
+        <div class="strip">
+          <div class="mini"><div class="mt">1. 이미지</div><div class="opt">사진 찍기</div><div class="opt on">책 표지</div><div class="opt">단색</div></div>
+          <div class="hop">바로 다음 단계</div>
+          <div class="mini"><div class="mt">2. 글자</div><div class="img empty"><span>책을 붙이면<br>표지가 들어와요</span></div><div class="tiny">글자를 넣어 보세요</div></div>
+          <div class="hop">감상(선택) → 책 붙이기 → 책 찾기 화면에서 고르고 돌아와요</div>
+          <div class="mini"><div class="mt">올리기 전</div>
+            <div class="img" data-hascover><span>작별하지<br>않는다</span></div>
+            <div class="img gen" data-nocover hidden><b>작별하지 않는다</b><small>한강</small></div>
+            <div class="tiny" data-hascover>이제 표지가 들어왔어요. 글자 자리를 확인하세요</div>
+            <div class="tiny" data-nocover hidden>표지를 찾지 못해 제목·저자로 만들었어요 · <u>사진·단색으로 바꾸기</u></div></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>'책 표지'를 눌러도 책을 찾지 않고 빈 표지 틀로 바로 글자 단계로 가요. 마지막 단계에서 책을 붙이면 그때 표지가 들어와요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">'책 표지'를 누름 → 빈 틀 위에 글자를 얹음 → 감상 → 책 붙이기에서 책을 찾음 → 표지가 들어온 모습을 확인하고 올리기. 사용자는 생각난 문장부터 바로 써요.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>글자를 얹는 동안에는 진짜 표지가 안 보여요. 마지막에 표지가 들어오면 글자가 표지 그림과 겹칠 수 있어서 한 번 더 확인해요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>시작이 가장 가벼움(정해진 쓰는 순서 그대로) / 표지를 못 보고 글자를 얹고, 마지막에 다시 맞춰야 할 수 있음</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 C -->
+      <article class="cand" data-id="C">
+        <h3>C. 책 찾기 뒤 '표지 고르기' 화면을 한 번 더</h3>
+        <div class="strip">
+          <div class="mini"><div class="mt">1. 이미지</div><div class="opt">사진 찍기</div><div class="opt on">책 표지</div><div class="opt">단색</div></div>
+          <div class="hop">책 찾기 화면에서<br>책을 고르고 돌아와요</div>
+          <div class="mini"><div class="mt">표지 고르기</div>
+            <div class="two">
+              <div class="img sm" data-hascover><span>표지</span></div>
+              <div class="img sm gen"><b>작별하지 않는다</b><small>한강</small></div>
+            </div>
+            <div class="tiny" data-hascover>"이 표지로" / "제목·저자 표지로"</div>
+            <div class="tiny" data-nocover hidden>표지를 찾지 못했어요. 제목·저자 표지로 할까요? · <u>사진·단색으로 바꾸기</u></div></div>
+          <div class="hop">글자 → 감상 → 책은 이미 붙어 있음</div>
+          <div class="mini"><div class="mt">4. 책·도서관</div><div class="filled">📖 작별하지 않는다 · 한강</div><div class="filled">가온도서관</div><div class="tiny">이미 붙어 있어요</div></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>A처럼 처음에 책을 찾지만, 돌아오면 진짜 표지와 제목·저자로 만든 표지를 나란히 보여 주고 고르게 해요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">'책 표지'를 누름 → 책 찾기 화면에서 책을 고름 → 표지 두 장 중 하나를 고름 → 글자 단계 → 감상 → 마지막 단계엔 책이 붙어 있어 바로 올리기.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>"표지가 없는 책"을 눌러 보세요. 진짜 표지 칸이 사라지고, 제목·저자 표지로 할지 묻는 한 줄이 보여요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>표지가 마음에 안 들 때(낡은 판 표지 등) 바로 다른 표지로 / 누르는 화면이 하나 더 늘어남</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===== 중심 요소 3: 사진·표지 위 글자 자리 ===== -->
+  <section class="element" id="el-3" data-chosen="A">
+    <h2>정할 것 3. 사진·책 표지 위에 얹은 글자를 어디에 둘까<span class="status" data-status>결정 전</span></h2>
+    <p style="font-size:14px;margin:0">단색 배경은 글자를 가운데에 두는 걸로 이미 정해져 있어요. 이번엔 <b>사진·책 표지 위</b>의 글자만 정해요. 글자 크기와 색(이미지에 맞춰 흰색/어두운색)은 정해져 있어요.</p>
+    <div class="state">바꿔 보기:
+      <button aria-pressed="true" data-where="edit">글쓰기 화면</button><button aria-pressed="false" data-where="feed">피드 카드로 보면</button>
+    </div>
+
+    <div class="cands">
+      <!-- 후보 A (추천) -->
+      <article class="cand recommended" data-id="A">
+        <h3>A. 위·가운데·아래 세 자리 중 고르기 <span class="badge">추천</span></h3>
+        <div class="txtwrap">
+          <div class="canvas photo" data-canvas><span class="ovl mid" data-ovl>"그 밤은 길었다"</span></div>
+          <div class="seg" data-edit><button data-pos="top">위</button><button data-pos="mid" aria-pressed="true">가운데</button><button data-pos="bot">아래</button></div>
+          <div class="tiny2" data-edit>처음엔 가운데. 버튼을 눌러 보세요</div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>글자는 처음에 가운데에 놓여요. 이미지 아래의 버튼 세 개(위·가운데·아래)로 자리를 바꿔요. 그 밖의 자리로는 못 옮겨요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">사진·표지를 고름 → 글자를 침 → 가운데에 놓임 → 사진의 얼굴·표지 제목과 겹치면 "위"나 "아래"를 한 번 누름 → 다음 단계로.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>버튼을 눌러 보세요. 글자가 세 자리로만 옮겨 가요. "피드 카드로 보면"을 누르면 카드가 작아져도 글자가 같은 자리에 있어요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>누르기 한 번으로 끝나고 피드 카드가 가지런해 보임 / 딱 원하는 자리(왼쪽 구석 등)에는 못 둠</dd>
+          <dt>추천 이유</dt><dd>손가락이 서툰 사람도 한 번에 정할 수 있고, 피드에서 카드들이 깔끔하게 맞춰져 보여서요. 사진마다 자리를 세밀하게 맞추고 싶은 사람이 많다면 B가 나아요.</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 B -->
+      <article class="cand" data-id="B">
+        <h3>B. 손가락으로 끌어서 아무 데나</h3>
+        <div class="txtwrap">
+          <div class="canvas photo" data-canvas data-drag><span class="ovl free" data-ovl style="left:30%;top:42%">"그 밤은 길었다"</span></div>
+          <div class="tiny2" data-edit>글자를 마우스로 끌어 보세요</div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>버튼이 없어요. 글자를 손가락으로 눌러 끌면 이미지 안 어디든 옮겨져요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">사진·표지를 고름 → 글자를 침 → 가운데에 놓임 → 글자를 끌어서 원하는 곳에 놓음 → 다음 단계로.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>글자를 끌어 보세요. 구석에도 놓을 수 있어요. 대신 "피드 카드로 보면"에서 카드마다 글자 자리가 제각각이에요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>사진에 꼭 맞는 자리에 둠 / 손으로 맞추느라 시간이 들고, 피드가 덜 가지런해 보임</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 C -->
+      <article class="cand" data-id="C">
+        <h3>C. 늘 아래(자막처럼)</h3>
+        <div class="txtwrap">
+          <div class="canvas photo" data-canvas><span class="ovl bot band" data-ovl>"그 밤은 길었다"</span></div>
+          <div class="tiny2" data-edit>자리를 고르는 버튼이 없어요</div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>글자는 항상 이미지 맨 아래에, 옅은 어두운 띠 위에 놓여요. 고르는 버튼이 없어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">사진·표지를 고름 → 글자를 침 → 자동으로 아래에 놓임 → 바로 다음 단계로.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>"피드 카드로 보면"을 누르면 모든 사진·표지 카드의 글자가 아래 띠에 같은 모양으로 있어요. 표지의 아래쪽(저자 이름 등)은 가려져요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>고를 게 없어 가장 빠르고, 사진 가운데가 늘 보임 / 표지 아래쪽이 가려지고, 자리를 바꿀 수 없음</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===== 중심 요소 4: 철회(내리기) 자리와 확인 ===== -->
+  <section class="element" id="el-4" data-chosen="A">
+    <h2>정할 것 4. 내가 올린 게시물을 어디서 내릴까<span class="status" data-status>결정 전</span></h2>
+    <p style="font-size:14px;margin:0">내리면 광장과 링크에서 <b>바로</b> 사라지는 건 이미 정해져 있어요. 이번엔 <b>내리는 버튼이 어디 있는지</b>를 정해요. 세 후보 모두 잘못 누르지 않게 한 번 더 물어요. 게시물 상세 화면의 나머지 모양은 다음 단계에서 정하므로 여기선 간단히 그렸어요.</p>
+
+    <div class="cands">
+      <!-- 후보 A (추천) -->
+      <article class="cand recommended" data-id="A">
+        <h3>A. 내 게시물 상세의 ⋯ 메뉴 <span class="badge">추천</span></h3>
+        <div class="strip">
+          <div class="mini"><div class="mt">내 게시물 상세</div>
+            <div class="dtop"><b>‹</b><b class="hl">⋯</b></div>
+            <div class="img"><span>"그 밤은 길었다"</span></div>
+            <div class="sheet"><div>공유</div><div class="danger">게시물 내리기</div></div></div>
+          <div class="hop">"게시물 내리기"를 누름</div>
+          <div class="mini"><div class="mt">한 번 더 물음</div>
+            <div class="dialog"><b>이 게시물을 내릴까요?</b><small>내리면 광장과 링크에서 바로 사라져요.</small><div class="dbtn"><span>취소</span><span class="danger">내리기</span></div></div></div>
+          <div class="hop">"내리기"</div>
+          <div class="mini"><div class="mt">피드로 돌아옴</div><div class="grid2"><i></i><i></i><i></i><i></i></div><div class="toast">내렸어요</div></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>내 게시물을 눌러 상세를 열고, 오른쪽 위 ⋯를 누르면 아래에서 메뉴가 올라와요. 그 안에 "게시물 내리기"가 있어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">내 카드를 누름 → 상세에서 ⋯ → "게시물 내리기" → "이 게시물을 내릴까요?"에서 "내리기" → 피드로 돌아오고 내 카드가 사라지며 "내렸어요" 한 줄.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>남의 게시물 ⋯ 메뉴에는 "게시물 내리기"가 없어요. 다른 사람이 링크로 열면 "더 이상 공개되지 않는 게시물이에요."가 보여요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>평소엔 안 보여서 실수로 누를 일이 거의 없음 / 상세를 열고 ⋯까지 눌러야 해서 세 번 눌러야 함</dd>
+          <dt>추천 이유</dt><dd>내리기는 자주 쓰지 않고 되돌릴 수 없어서, 숨겨 두고 한 번 더 묻는 쪽이 안전해서요. 자주 내렸다 올렸다 하는 사람이 많으면 B가 나아요.</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 B -->
+      <article class="cand" data-id="B">
+        <h3>B. 피드에서 내 카드 길게 누르기 메뉴</h3>
+        <div class="strip">
+          <div class="mini"><div class="mt">피드에서 길게 누름</div>
+            <div class="grid2"><i class="hl2"></i><i></i><i></i><i></i></div>
+            <div class="sheet"><div><small>작별하지 않는다 · 한강</small></div><div>책 제목 검색 · 저자로 검색</div><div>공유 · 좋아요 · 북마크</div><div class="danger">게시물 내리기</div></div></div>
+          <div class="hop">"게시물 내리기"를 누름</div>
+          <div class="mini"><div class="mt">한 번 더 물음</div>
+            <div class="dialog"><b>이 게시물을 내릴까요?</b><small>내리면 광장과 링크에서 바로 사라져요.</small><div class="dbtn"><span>취소</span><span class="danger">내리기</span></div></div></div>
+          <div class="hop">"내리기"</div>
+          <div class="mini"><div class="mt">그 자리에서 사라짐</div><div class="grid2"><i></i><i></i><i></i></div><div class="toast">내렸어요</div></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>상세를 열지 않고, 피드에서 내 카드를 길게 누르면 뜨는 메뉴(책 제목 검색·공유 등이 있는 그 메뉴) 맨 아래에 "게시물 내리기"가 붙어요. 내 카드일 때만 보여요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">피드에서 내 카드를 길게 누름 → 메뉴 맨 아래 "게시물 내리기" → "이 게시물을 내릴까요?"에서 "내리기" → 카드가 그 자리에서 사라지고 "내렸어요" 한 줄.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>메뉴에 항목이 하나 늘어서 길어져요. 웹에서는 카드에 마우스를 올리면 나오는 점 세 개로 같은 메뉴를 열어요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>상세를 안 열고 두 번 만에 내림 / 책 검색·공유 같은 자주 쓰는 메뉴 옆에 있어 잘못 누르기 쉬움(한 번 더 묻긴 함)</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 C -->
+      <article class="cand" data-id="C">
+        <h3>C. 내 게시물 상세 맨 아래 글자 버튼</h3>
+        <div class="strip">
+          <div class="mini"><div class="mt">내 게시물 상세(아래로 내림)</div>
+            <div class="img" style="height:70px"><span>"그 밤은 길었다"</span></div>
+            <div class="tiny">나의 감상 … 좋았던 문장 …</div>
+            <div class="tiny">📖 작별하지 않는다 · 한강</div>
+            <div class="linkbtn">이 게시물 내리기</div></div>
+          <div class="hop">"이 게시물 내리기"를 누름</div>
+          <div class="mini"><div class="mt">한 번 더 물음</div>
+            <div class="dialog"><b>이 게시물을 내릴까요?</b><small>내리면 광장과 링크에서 바로 사라져요.</small><div class="dbtn"><span>취소</span><span class="danger">내리기</span></div></div></div>
+          <div class="hop">"내리기"</div>
+          <div class="mini"><div class="mt">피드로 돌아옴</div><div class="grid2"><i></i><i></i><i></i><i></i></div><div class="toast">내렸어요</div></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>⋯ 메뉴 없이, 내 게시물 상세의 본문·책 아래에 흐린 글자 "이 게시물 내리기"가 늘 보여요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">내 카드를 누름 → 상세를 아래로 내림 → "이 게시물 내리기" → "이 게시물을 내릴까요?"에서 "내리기" → 피드로 돌아오고 "내렸어요" 한 줄.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>내 게시물일 때만 그 글자가 보여요. 감상이 길면 한참 내려야 보여요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>메뉴를 몰라도 찾을 수 있음 / 내 게시물을 볼 때마다 "내리기" 글자가 보이고, 상세 아래의 "같은 책의 다른 글"보다 먼저 끼어 있음</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+
+
+  <!-- ===== 잘 안 될 때 (예외, 1B 3단계 — VISIT-1 시안의 상태 화면 형태로 맞춤) ===== -->
+  <section id="except">
+    <h2>마지막으로 함께 볼 화면 — 기다릴 때나 잘 안 될 때</h2>
+    <p style="font-size:14px">이미 정한 동작을 실제 화면으로 바꿔 본 거예요. 버튼을 하나씩 눌러 보세요. 문구는 Claude가 먼저 넣어 둔 것이에요.</p>
+    <div id="stTabs" class="state">
+      <button data-st="0">평소(비교용)</button><button data-st="1">올리는 중</button><button data-st="2">인터넷이 끊김</button><button data-st="3">표지를 찾지 못함</button><button data-st="4">이미지를 안 고름</button><button data-st="5">올리기를 두 번 빠르게</button><button data-st="6">로그인 안 함</button><button data-st="7">남의 게시물</button><button data-st="8">내린 게시물을 링크로 열면</button><button data-st="9">쓰던 글을 닫을 때</button>
+    </div>
+    <div class="stwrap">
+      <div class="phone" id="stPhone">
+        <!-- 글쓰기 화면(마지막 단계) -->
+        <div class="cw" data-st="0 1 2 3 4 5 9">
+          <div class="ctop"><span class="x">✕</span><span class="cpost" data-st="0 2 3 9">올리기</span><span class="cpost off" data-st="4">올리기</span><span class="cpost busy" data-st="1 5">올리는 중…</span></div>
+          <div class="cimg" data-st="0 1 2 5 9"><span class="ovl mid">"그 밤은 길었다"</span></div>
+          <div class="cimg gen" data-st="3"><b>작별하지 않는다</b><small>한강</small></div>
+          <div class="cimg none" data-st="4"><span>사진 찍기 · 앨범 / 책 표지 / 단색 배경<br>중 하나를 골라 주세요</span></div>
+          <div class="cnote" data-st="3">표지를 찾지 못해 제목·저자로 만들었어요 · <u>사진·단색으로 바꾸기</u></div>
+          <div class="cnote" data-st="4">이미지를 하나 골라야 올릴 수 있어요</div>
+          <div class="crow" data-st="0 1 2 3 5 9">+ 감상 쓰기</div>
+          <div class="crow" data-st="0 1 2 3 5 9">📖 작별하지 않는다 · 한강</div>
+          <div class="crow" data-st="0 1 2 3 4 5 9">가온도서관 광장에 올라가요</div>
+          <div class="stcard" data-st="2">지금은 올릴 수 없어요. 쓴 내용은 그대로 있어요.<br><span class="btn">다시 올리기</span></div>
+          <div class="dim" data-st="9"></div>
+          <div class="dialog2" data-st="9"><b>쓰던 글을 버릴까요?</b><small>닫으면 쓴 내용이 남지 않아요.</small><div class="dbtn"><span>계속 쓰기</span><span><b>버리기</b></span></div></div>
+        </div>
+        <!-- 피드(방문 페이지) -->
+        <div class="fw" data-st="5 6 8">
+          <div class="vhead"><span class="back">‹</span><div class="name">가온도서관</div><div class="info"><span>320m · 오늘 09:00–18:00</span><span class="more">⋯</span></div></div>
+          <div class="masonry" style="padding:0 9px">
+            <div class="col"><div class="card" style="height:150px;background:var(--surface3)" data-st="5"><span style="color:var(--paper)">"그 밤은 길었다"</span></div><div class="card cover" style="height:120px">작별하지 않는다</div><div class="card photo" style="height:140px"></div></div>
+            <div class="col"><div class="card photo" style="height:120px"></div><div class="card" style="height:160px;background:var(--fill1)">오늘의 문장</div><div class="card cover" style="height:120px">불편한 편의점</div></div>
+          </div>
+          <div class="fab" data-st="6">+</div>
+          <div class="toast2" data-st="5">올렸어요</div>
+          <div class="dim" data-st="6 8"></div>
+          <div class="bsheet" data-st="6"><b>로그인하면 글을 올릴 수 있어요</b><small>구경은 로그인 없이도 할 수 있어요.</small><span class="btn">로그인하기</span><span class="lnk">닫기</span></div>
+          <div class="dialog2" data-st="8"><b>더 이상 공개되지 않는 게시물이에요.</b><small>쓴 사람이 내렸어요.</small><div class="dbtn" style="justify-content:center"><span><b>광장 보기</b></span></div></div>
+        </div>
+        <!-- 남의 게시물 상세 -->
+        <div class="dw" data-st="7">
+          <div class="dtop2"><b>‹</b><b class="hl">⋯</b></div>
+          <div class="cimg"><span class="ovl mid">"아무도 없는 열람실"</span></div>
+          <div class="crow">이웃의 감상 …</div>
+          <div class="bsheet"><div class="mrow">공유</div><div class="mrow sub">이웃의 게시물이라 "게시물 내리기"가 없어요</div></div>
+        </div>
+      </div>
+      <dl class="stnote" id="stNote"></dl>
+    </div>
+  </section>
+
+  <!-- ===== 처음부터 끝까지 (세부 명세서 2. 유저 플로우와 같게) ===== -->
+  <section id="fullflow">
+    <h2>처음부터 끝까지 이렇게 써요</h2>
+    <ol>
+      <li>사용자가 방문 페이지 피드를 구경하다가 오른쪽 아래에 떠 있는 둥근 "+"를 누른다. 버튼은 피드를 내려도 같은 자리에 있다.</li>
+      <li>동네한권이 글쓰기 화면을 아래에서 올려 "어떤 이미지로 올릴까요?"(사진 찍기·앨범 / 책 표지 / 단색 배경)를 보여 준다.</li>
+      <li>사용자가 '책 표지'를 누르면 동네한권이 책 찾기 화면으로 보낸다.</li>
+      <li>사용자가 책을 고르면 동네한권이 그 책의 표지를 이미지로 넣고 글자 단계로 돌아온다. 표지가 없는 책이면 제목·저자로 만든 표지를 넣고 "사진·단색으로 바꾸기"를 함께 보여 준다.</li>
+      <li>사용자가 글자를 치면 동네한권이 글자를 이미지 가운데에 놓는다. 사용자가 "위"나 "아래" 버튼을 한 번 누르면 동네한권이 글자를 그 자리로 옮긴다. (단색 배경은 늘 가운데)</li>
+      <li>사용자가 감상을 쓰거나 건너뛴다.</li>
+      <li>마지막 단계에서 동네한권이 고른 책과 지금 도서관을 이미 붙여 보여 준다.</li>
+      <li>사용자가 "올리기"를 누르면 동네한권이 글쓰기 화면을 닫고 피드 맨 앞에 내 카드를 보여 주며 "올렸어요"를 2초 띄운다.</li>
+      <li>나중에 사용자가 내 게시물 상세에서 오른쪽 위 ⋯를 누르면 동네한권이 "게시물 내리기"가 있는 메뉴를 보여 준다(남의 게시물에는 없음).</li>
+      <li>사용자가 "게시물 내리기"를 누르면 동네한권이 "이 게시물을 내릴까요? 내리면 광장과 링크에서 바로 사라져요."를 묻는다.</li>
+      <li>사용자가 "내리기"를 누르면 동네한권이 게시물을 광장과 링크에서 바로 감추고, 피드로 돌아가 "내렸어요"를 2초 띄운다. 다른 사람이 링크로 열면 "더 이상 공개되지 않는 게시물이에요."를 보여 준다.</li>
+    </ol>
+  </section>
+
+  <!-- ===== 명세 패널 (세부 명세서 확인 목록·결정 기록과 같게) ===== -->
+  <section id="spec">
+    <h2>명세</h2>
+    <p>정할 것 1 다시 비교하기: <select data-pick="el-1"><option value="">채택안 보기</option><option value="A">A. 떠 있는 둥근 "+"</option><option value="B">B. 머리 오른쪽 연필</option><option value="C">C. 피드 첫 칸 카드</option></select>
+    · 정할 것 2 다시 비교하기: <select data-pick="el-2"><option value="">채택안 보기</option><option value="A">A. 누르자마자 책 찾기</option><option value="B">B. 빈 표지 틀로 먼저</option><option value="C">C. 표지 고르기 화면 한 번 더</option></select>
+    · 정할 것 3 다시 비교하기: <select data-pick="el-3"><option value="">채택안 보기</option><option value="A">A. 세 자리 중 고르기</option><option value="B">B. 끌어서 아무 데나</option><option value="C">C. 늘 아래</option></select>
+    · 정할 것 4 다시 비교하기: <select data-pick="el-4"><option value="">채택안 보기</option><option value="A">A. 상세 ⋯ 메뉴</option><option value="B">B. 길게 누르기 메뉴</option><option value="C">C. 상세 맨 아래 글자</option></select></p>
+    <table>
+      <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값 · 유저 플로우</th></tr>
+      <tr><td>1. 글쓰기 버튼 모양·자리</td><td>확인</td><td>채택 A 오른쪽 아래 떠 있는 둥근 "+" / 차선 없음 / 탈락 B 머리 오른쪽 연필, C 피드 첫 칸 카드</td><td>"오른쪽 아래 + 버튼이요" · "가장 직관적이고 깔끔해요" · 불편한 점: 없음(사용자)</td><td>A: 지름 48(앱 64), `fill1` 채움, 완전한 원, 오른쪽 16·아래 24 / 누르면 글쓰기 화면이 아래에서 올라옴</td></tr>
+      <tr><td>2. '책 표지'를 고를 때 이어지는 순서</td><td>확인</td><td>채택 A 누르자마자 책 찾기 / 차선 없음 / 탈락 B 빈 표지 틀로 먼저, C 표지 고르기 화면 한 번 더</td><td>"A가 마음에 드네요. 심플하기도 하고, 마지막에 다시 찾을 일이 없어서요." · 불편한 점: 없음(사용자)</td><td>표지가 없으면 제목·저자 표지 + 사진·단색으로 바꾸기(AC-COVER)</td></tr>
+      <tr><td>3. 사진·표지 위 글자 자리</td><td>확인</td><td>채택 A 위·가운데·아래 세 자리, 처음은 가운데 / 차선 없음 / 탈락 B 끌어서 아무 데나, C 늘 아래</td><td>"A가 좋아요. 버튼 한번으로 자리를 옮길수 있어서요" · 불편한 점: 없음(사용자)</td><td>A: 위 10% · 가운데 45% · 아래 끝 / 15px 굵게, 자동 대비(정해짐)</td></tr>
+      <tr><td>4. 내 게시물을 내리는 자리</td><td>확인</td><td>채택 A 내 게시물 상세 ⋯ 메뉴 / 차선 없음 / 탈락 B 피드 길게 누르기 메뉴, C 상세 맨 아래 글자</td><td>"A가 좋아요. 실수로 누를 일이 없어서요." · 불편한 점: 없음(사용자)</td><td>세 후보 모두 확인 창 "이 게시물을 내릴까요?"(취소 / 내리기) → "내렸어요" 2초 / 링크로 열면 "더 이상 공개되지 않는 게시물이에요."</td></tr>
+      <tr><td>쓰는 순서</td><td>확인(큰 틀)</td><td>사진·표지·단색 → 글자 → 감상 → 책·도서관</td><td>"직관적으로 보기 좋아서요"</td><td>—</td></tr>
+      <tr><td>단색 배경 글자</td><td>확인(큰 틀)</td><td>가운데</td><td>"눈에 더 잘 들어와요"</td><td>15px 굵게, 자동 대비</td></tr>
+      <tr><td>이미지만 올릴 때 감상 칸</td><td>확인(큰 틀)</td><td>접고 "+ 감상 쓰기"</td><td>"내 마음인데"</td><td>누르면 펼쳐짐</td></tr>
+      <tr><td>글쓰기 화면이 열리는 모양</td><td>기본값(Claude)</td><td>아래에서 올라오는 전체 화면, 왼쪽 위 ✕</td><td>묻지 않음</td><td>—</td></tr>
+      <tr><td>쓰던 글을 닫을 때</td><td>기본값(Claude)</td><td>"쓰던 글을 버릴까요?" (버리기 / 계속 쓰기)</td><td>묻지 않음</td><td>임시 저장 없음(M1)</td></tr>
+      <tr><td>올리기를 누른 뒤</td><td>기본값(Claude)</td><td>피드 맨 앞에 내 카드 + "올렸어요" 2초</td><td>묻지 않음</td><td>최신순</td></tr>
+      <tr><td>올리기 버튼</td><td>기본값(Claude)</td><td>오른쪽 위 "올리기", 이미지가 없으면 흐리게</td><td>묻지 않음</td><td>이미지가 유일한 필수</td></tr>
+      <tr><td>단색 배경 색</td><td>기본값(Claude)</td><td>`fill1`·`fill2`·`fill3`·`cream`·`paper`·`inkStrong`</td><td>묻지 않음</td><td>토큰 6개</td></tr>
+      <tr><td>글자·감상 길이</td><td>기본값(Claude)</td><td>이미지 위 글자 80자, 감상 2,000자</td><td>묻지 않음</td><td>—</td></tr>
+      <tr><td>책·도서관 붙이기</td><td>기본값(Claude)</td><td>"책 붙이기" → 책 찾기 화면으로 감(책 없이도 올림) / 도서관은 지금 방문 페이지가 자동</td><td>묻지 않음</td><td>—</td></tr>
+    </table>
+  </section>
+</main>
+
+<script>
+  var composeHTML = '<div class="top"><span class="x">✕</span><span class="post">올리기</span></div>' +
+    '<h4>어떤 이미지로 올릴까요?</h4><p>가온도서관 광장에 올라가요</p>' +
+    '<div class="pick"><div>사진 찍기 · 앨범<small>사진의 위치 정보는 올리기 전에 지워요</small></div>' +
+    '<div>책 표지<small>책을 찾아 표지를 가져와요</small></div><div>단색 배경<small>좋은 문장을 가운데에 크게</small></div></div>' +
+    '<div class="steps">이미지 → 글자 → 감상(선택) → 책·도서관</div>';
+  document.querySelectorAll('[data-compose]').forEach(function (c) { c.innerHTML = composeHTML; });
+
+  document.querySelectorAll('.element').forEach(function (el) {
+    el.querySelectorAll('[data-view]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var v = b.dataset.view;
+        el.querySelectorAll('[data-view]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        el.querySelectorAll('[data-phone]').forEach(function (p) {
+          var scrolled = v !== 'top';
+          p.querySelector('[data-head]').classList.toggle('collapsed', scrolled);
+          var feed = p.querySelector('[data-feed]');
+          feed.classList.toggle('scrolled', scrolled);
+          feed.querySelector('.masonry').style.marginTop = scrolled ? '-190px' : '0';
+          p.querySelector('[data-compose]').classList.toggle('show', v === 'tapped');
+          p.querySelectorAll('[data-btn],[data-btn-mini]').forEach(function (x) { x.classList.remove('tap'); });
+        });
+      });
+    });
+    function mark(id) {
+      el.querySelectorAll('.cand').forEach(function (c) {
+        c.classList.toggle('chosen', c.dataset.id === id);
+        var old = c.querySelector('.badge.chosen'); if (old) old.remove();
+        if (c.dataset.id === id) { var s = document.createElement('span'); s.className = 'badge chosen'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+      });
+      el.querySelector('[data-status]').textContent = id ? '확인' : '결정 전';
+    }
+    mark(el.dataset.chosen);
+    el.querySelectorAll('[data-where]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var feed = b.dataset.where === 'feed';
+        el.querySelectorAll('[data-where]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        el.querySelectorAll('[data-canvas]').forEach(function (c) { c.classList.toggle('small', feed); });
+        el.querySelectorAll('[data-edit]').forEach(function (x) { x.hidden = feed; });
+      });
+    });
+    el.querySelectorAll('[data-pos]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var cand = b.closest('.cand'); var o = cand.querySelector('[data-ovl]');
+        cand.querySelectorAll('[data-pos]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        o.classList.remove('top', 'mid', 'bot'); o.classList.add(b.dataset.pos);
+      });
+    });
+    el.querySelectorAll('[data-drag]').forEach(function (c) {
+      var o = c.querySelector('[data-ovl]'); var on = false;
+      o.addEventListener('pointerdown', function (e) { on = true; o.setPointerCapture(e.pointerId); });
+      o.addEventListener('pointerup', function () { on = false; });
+      o.addEventListener('pointermove', function (e) {
+        if (!on) return; var r = c.getBoundingClientRect();
+        o.style.left = Math.max(0, Math.min(80, (e.clientX - r.left) / r.width * 100 - 15)) + '%';
+        o.style.top = Math.max(0, Math.min(92, (e.clientY - r.top) / r.height * 100 - 4)) + '%';
+      });
+    });
+    var pk = document.querySelector('[data-pick="' + el.id + '"]');
+    if (pk) pk.addEventListener('change', function (e) { mark(e.target.value || el.dataset.chosen); });
+    el.querySelectorAll('[data-cover]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var has = b.dataset.cover === '1';
+        el.querySelectorAll('[data-cover]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        el.querySelectorAll('[data-hascover]').forEach(function (x) { x.hidden = !has; });
+        el.querySelectorAll('[data-nocover]').forEach(function (x) { x.hidden = has; });
+      });
+    });
+  });
+  // 마지막으로 함께 볼 화면 전환
+  var ST = [
+    ['평소', '글쓰기 마지막 단계예요. 이미지·글자·책·도서관이 다 들어가 있고 오른쪽 위 "올리기"를 누를 수 있어요. 아래 화면들과 비교하는 기준이에요.', '정할 것 1~4'],
+    ['올리는 중', '"올리기"를 누르면 그 자리가 "올리는 중…"으로 흐려지고 다시 눌리지 않아요. 쓴 화면은 그대로 보여요.', '기본값(Claude)'],
+    ['인터넷이 끊김', '올리다가 막히면 글쓰기 화면 위에 "지금은 올릴 수 없어요. 쓴 내용은 그대로 있어요." + "다시 올리기"가 떠요. 이미지·글자·책은 지워지지 않아요. 사진이 너무 크면 같은 자리에 "사진이 너무 커요."가 떠요.', '예외 #1 — 사용자 답 받는 중'],
+    ['표지를 찾지 못함', '고른 책에 표지가 없으면 제목·저자로 만든 표지가 들어가고, 아래에 "표지를 찾지 못해 제목·저자로 만들었어요 · 사진·단색으로 바꾸기"가 보여요.', '정할 것 2 + 기본값(Claude) 문구'],
+    ['이미지를 안 고름', '처음 화면에서 이미지를 아직 안 골랐으면 "올리기"가 흐리고 눌리지 않아요. 아래에 "이미지를 하나 골라야 올릴 수 있어요"가 보여요. 글자·감상·책은 없어도 올릴 수 있어요.', '예외 #2 — 사용자 답 받는 중'],
+    ['올리기를 두 번 빠르게', '"올리기"를 두 번 빨리 눌러도 게시물은 하나만 생겨요. 피드 맨 앞에 내 카드 하나와 "올렸어요"가 보여요.', '예외 #3 — 사용자 답 받는 중'],
+    ['로그인 안 함', '로그인하지 않은 사람이 오른쪽 아래 "+"를 누르면 아래에서 작은 창이 올라와요: "로그인하면 글을 올릴 수 있어요" + "로그인하기" / "닫기". 피드 구경은 그대로 할 수 있어요.', '예외 #4 — 사용자: "구경은 된다고 해서요"(괜찮은 화면으로 고름)'],
+    ['남의 게시물', '이웃의 게시물 상세에서 ⋯를 누르면 "공유"만 있고 "게시물 내리기"는 없어요.', '정할 것 4 + 정해진 것(작성자만 내림)'],
+    ['내린 게시물을 링크로 열면', '내린 게시물의 링크를 다른 사람이 열면 "더 이상 공개되지 않는 게시물이에요." + "광장 보기"가 떠요. 피드에서도 이미 사라져 있어요.', '정해진 문구'],
+    ['쓰던 글을 닫을 때', '쓰는 중에 왼쪽 위 "✕"를 누르면 "쓰던 글을 버릴까요? 닫으면 쓴 내용이 남지 않아요." — "계속 쓰기" / "버리기".', '기본값(Claude)']
+  ];
+  function stShow(i) {
+    var ex = document.getElementById('except');
+    ex.querySelectorAll('#stPhone [data-st]').forEach(function (x) { x.hidden = x.dataset.st.split(' ').indexOf(String(i)) < 0; });
+    ex.querySelectorAll('#stTabs button').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.st === String(i)); });
+    document.getElementById('stNote').innerHTML = '<dt>' + ST[i][0] + '</dt><dd>' + ST[i][1] + '</dd><dt>어디서 정했나</dt><dd>' + ST[i][2] + '</dd>';
+  }
+  document.querySelectorAll('#stTabs button').forEach(function (b) { b.addEventListener('click', function () { stShow(+b.dataset.st); }); });
+  stShow(0);
+</script>
+</body>
+</html>
