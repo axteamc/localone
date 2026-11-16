@@ -71,8 +71,14 @@ export const authStorage = {
       : AsyncStorage.removeItem(key),
 };
 
+// Apple 로그인 켜기 설정(C4). 유료 Apple Developer 계정이 생기기 전에는 꺼 둔다(2026-11-16 D 결정).
+// 정확히 "true"일 때만 켜짐. 빈 값·"false"·오타는 모두 꺼짐. mobile/app.config.js도 같은 값을 본다.
+function isAppleSignInEnabled(): boolean {
+  return process.env.EXPO_PUBLIC_APPLE_SIGNIN_ENABLED === "true";
+}
+
 export async function isAppleSignInAvailable(): Promise<boolean> {
-  if (Platform.OS !== "ios") {
+  if (Platform.OS !== "ios" || !isAppleSignInEnabled()) {
     return false;
   }
   try {
