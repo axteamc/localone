@@ -109,6 +109,16 @@
   .bookscreen .field { background: var(--paper); border-radius: var(--r-pill); padding: 6px 12px; border: 1px solid var(--surface3); }
   .books { display: flex; gap: 5px; margin-top: 4px; }
   .book { width: 34px; height: 48px; border-radius: 5px 9px 9px 5px; background: var(--fill2); }
+  /* 정할 것 3: 핀이 겹칠 때 */
+  .cluster { position: absolute; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; }
+  .cluster b { width: 38px; height: 38px; border-radius: 50%; background: var(--fill1); border: 3px solid var(--paper); display: flex; align-items: center; justify-content: center; font-size: 15px; box-shadow: 0 2px 6px rgba(0,0,0,.18); }
+  .cluster em { font-style: normal; font-size: 11px; background: var(--paper); border-radius: var(--r-pill); padding: 1px 8px; margin-top: 2px; white-space: nowrap; }
+  .pin.sm b { width: 16px; height: 19px; border-radius: 14px 14px 4px 4px; }
+  .pin.sm.hl b { outline-width: 2px; }
+  .cards { position: absolute; left: 0; right: 0; bottom: 64px; display: flex; gap: 8px; padding: 0 10px; overflow: hidden; z-index: 4; }
+  .card { flex: 0 0 78%; background: var(--paper); border-radius: 14px; padding: 8px 12px; box-shadow: 0 2px 8px rgba(0,0,0,.15); font-size: 12px; }
+  .card.on { outline: 2px solid var(--ink-strong); }
+  .card small { opacity: .7; display: block; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -375,11 +385,124 @@
     </div>
   </section>
 
-  <!-- 중심 요소 3 은 2가 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
+  <!-- ===== 중심 요소 3 ===== -->
+  <section class="element" id="el-3" data-chosen="A">
+    <h2>정할 것 3. 가까운 곳에 도서관이 많아 핀이 겹칠 때 어떻게 보여 줄까<span class="status" data-status>결정 전</span></h2>
+    <p style="font-size:14px;margin:4px 0 0">이런 때예요: 시내에서 앱을 켰는데 역 근처에 작은도서관이 4곳 몰려 있어요. 핀마다 이름·거리를 그대로 달면 이름표끼리 겹쳐서 읽을 수가 없어요.</p>
+    <div class="state">바꿔 보기:
+      <button aria-pressed="true" data-step="0">앱을 켰을 때</button><button aria-pressed="false" data-step="1">몰린 곳을 눌렀을 때</button><button aria-pressed="false" data-step="2">지도를 작게(멀리) 볼 때</button>
+    </div>
+
+    <div class="cands">
+      <!-- 후보 A (추천) -->
+      <article class="cand recommended" data-id="A">
+        <h3>A. 몰린 곳은 숫자 동그라미 하나로 <span class="badge">추천</span></h3>
+        <div class="phone">
+          <div class="map">
+            <div class="road" style="left:0;top:300px;width:100%;height:12px"></div>
+            <div class="road" style="left:130px;top:0;width:12px;height:100%"></div>
+            <span class="land station" data-s="0 2" style="left:150px;top:282px">○○역</span>
+            <span class="me" data-s="0 2" style="left:120px;top:330px"></span>
+            <span class="pin" data-s="0" style="left:70px;top:390px"><b></b><em>한빛 시립도서관<br>350m</em></span>
+            <span class="cluster" data-s="0" style="left:185px;top:200px"><b>4</b><em>도서관 4곳</em></span>
+            <!-- 몰린 곳을 누르면 그곳이 커지며 핀이 나뉨 -->
+            <span class="land station" data-s="1" style="left:130px;top:330px">○○역</span>
+            <span class="pin" data-s="1" style="left:70px;top:120px"><b></b><em>달빛 작은도서관<br>600m</em></span>
+            <span class="pin" data-s="1" style="left:210px;top:150px"><b></b><em>별빛 작은도서관<br>650m</em></span>
+            <span class="pin" data-s="1" style="left:90px;top:220px"><b></b><em>새싹 어린이도서관<br>700m</em></span>
+            <span class="pin" data-s="1" style="left:210px;top:250px"><b></b><em>역앞 작은도서관<br>720m</em></span>
+            <span class="cluster" data-s="2" style="left:90px;top:160px"><b>9</b><em>도서관 9곳</em></span>
+            <span class="cluster" data-s="2" style="left:200px;top:230px"><b>5</b><em>도서관 5곳</em></span>
+            <span class="pin" data-s="2" style="left:70px;top:390px"><b></b><em>한빛 시립도서관<br>350m</em></span>
+          </div>
+          <div class="top"><div class="sbar"><span>책 제목·저자를 검색</span><button class="lib">도서관 찾기</button></div></div>
+          <div class="floatbtn" data-s="1">현재 위치로</div>
+          <div class="tabbar"><span class="on">홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>겹치는 핀들이 노란 동그라미 하나로 합쳐지고 안에 숫자(몇 곳인지)가 보여요. 혼자 떨어진 도서관은 평소처럼 이름·거리 핀이에요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">앱을 켬 → 역 근처에 "4" 동그라미 → 동그라미를 누르면 지도가 그곳으로 커지며 핀 4개가 이름·거리를 달고 나뉨 → 핀을 누르면 방문 페이지로 → "현재 위치로"로 처음 모습</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>지도를 멀리 볼수록 동그라미가 커지고 숫자가 늘어요(9, 5…). 가까이 볼수록 동그라미가 풀려 핀으로 나뉘어요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>화면이 늘 깔끔하고, 보이는 핀은 모두 이름·거리가 있어요 / 몰린 곳은 한 번 눌러야 어떤 도서관인지 알아요</dd>
+          <dt>추천 이유</dt><dd>지도 앱(카카오맵·네이버 지도)에서 흔히 쓰는 모양이라 처음 봐도 익숙하고, "핀에는 이름+거리"로 정한 것을 그대로 지킬 수 있어요. 반대로 누르지 않고 한눈에 다 보고 싶은 사람에게는 C가 나아요.</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 B -->
+      <article class="cand" data-id="B">
+        <h3>B. 가까운 곳만 이름표, 나머지는 작은 핀</h3>
+        <div class="phone">
+          <div class="map">
+            <div class="road" style="left:0;top:300px;width:100%;height:12px"></div>
+            <div class="road" style="left:130px;top:0;width:12px;height:100%"></div>
+            <span class="land station" style="left:150px;top:282px">○○역</span>
+            <span class="me" style="left:120px;top:330px"></span>
+            <span class="pin" style="left:70px;top:390px"><b></b><em>한빛 시립도서관<br>350m</em></span>
+            <span class="pin" data-s="0 1" style="left:185px;top:200px"><b></b><em>달빛 작은도서관<br>600m</em></span>
+            <span class="pin sm" data-s="0" style="left:205px;top:180px"><b></b></span>
+            <span class="pin sm hl" data-s="1" style="left:205px;top:180px"><b></b><em>별빛 작은도서관<br>650m</em></span>
+            <span class="pin sm" data-s="0 1 2" style="left:165px;top:175px"><b></b></span>
+            <span class="pin sm" data-s="0 1 2" style="left:215px;top:225px"><b></b></span>
+            <span class="pin sm" data-s="2" style="left:185px;top:200px"><b></b></span>
+            <span class="pin sm" data-s="2" style="left:205px;top:180px"><b></b></span>
+            <span class="pin sm" data-s="2" style="left:60px;top:150px"><b></b></span>
+            <span class="pin sm" data-s="2" style="left:80px;top:130px"><b></b></span>
+            <span class="pin sm" data-s="2" style="left:100px;top:170px"><b></b></span>
+            <span class="pin sm" data-s="2" style="left:240px;top:120px"><b></b></span>
+          </div>
+          <div class="top"><div class="sbar"><span>책 제목·저자를 검색</span><button class="lib">도서관 찾기</button></div></div>
+          <div class="tabbar"><span class="on">홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>핀은 모두 보여요. 대신 나와 가까운 도서관 2곳만 이름·거리 이름표가 있고, 나머지는 이름표 없는 작은 핀이에요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">앱을 켬 → 가까운 2곳만 이름표 → 작은 핀을 누르면 그 핀에 테두리와 이름표가 뜸 → 이름표를 한 번 더 누르면 방문 페이지로</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>이름표는 늘 2개까지만 보여요. 지도를 멀리 보면 작은 핀이 점처럼 많아지고, 가장 가까운 1곳만 이름표가 남아요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>도서관이 어디 몰려 있는지 위치가 그대로 보임 / 작은 핀은 이름을 모르고, 손가락으로 누르기 작아요. 방문 페이지까지 두 번 눌러야 해요</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 C -->
+      <article class="cand" data-id="C">
+        <h3>C. 작은 핀 + 아래 도서관 카드 줄</h3>
+        <div class="phone">
+          <div class="map">
+            <div class="road" style="left:0;top:300px;width:100%;height:12px"></div>
+            <div class="road" style="left:130px;top:0;width:12px;height:100%"></div>
+            <span class="land station" style="left:150px;top:282px">○○역</span>
+            <span class="me" style="left:120px;top:330px"></span>
+            <span class="pin sm" data-s="0 2" style="left:70px;top:250px"><b style="outline:2px solid var(--ink-strong)"></b></span>
+            <span class="pin sm" data-s="1" style="left:70px;top:250px"><b></b></span>
+            <span class="pin sm" data-s="0 2" style="left:185px;top:200px"><b></b></span>
+            <span class="pin sm hl" data-s="1" style="left:185px;top:200px"><b></b></span>
+            <span class="pin sm" style="left:205px;top:180px"><b></b></span>
+            <span class="pin sm" style="left:165px;top:175px"><b></b></span>
+            <span class="pin sm" style="left:215px;top:225px"><b></b></span>
+            <span class="pin sm" data-s="2" style="left:60px;top:150px"><b></b></span>
+            <span class="pin sm" data-s="2" style="left:80px;top:130px"><b></b></span>
+            <span class="pin sm" data-s="2" style="left:240px;top:120px"><b></b></span>
+          </div>
+          <div class="top"><div class="sbar"><span>책 제목·저자를 검색</span><button class="lib">도서관 찾기</button></div></div>
+          <div class="cards">
+            <div class="card on" data-s="0 2"><b>한빛 시립도서관</b><small>350m · 오늘 9:00–18:00</small></div>
+            <div class="card" data-s="0 2"><b>달빛 작은도서관</b><small>600m</small></div>
+            <div class="card" data-s="1" style="flex-basis:12%"></div>
+            <div class="card on" data-s="1"><b>달빛 작은도서관</b><small>600m · 오늘 10:00–17:00</small></div>
+          </div>
+          <div class="tabbar"><span class="on">홈</span><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>지도에는 이름표 없는 작은 핀만 있고, 이름·거리는 지도 아래 카드 줄에 가까운 순서로 보여요. 지금 카드의 핀에 테두리가 생겨요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">앱을 켬 → 아래에 가장 가까운 도서관 카드 → 카드를 옆으로 밀면 다음 도서관 카드, 그 핀에 테두리 → 핀을 누르면 그 카드로 넘어감 → 카드를 누르면 방문 페이지로</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>카드는 1장 반이 보이고 옆으로 밀어서 봐요. 카드에 오늘 운영시간도 들어가요. 카드 줄 때문에 "현재 위치로"·"위치 허용하기" 버튼은 카드 위로 올라가요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>핀이 아무리 많아도 이름이 겹치지 않고, 가까운 순서로 하나씩 볼 수 있음 / 지도가 아래로 좁아지고, "핀에 이름+거리"였던 지도 홈 모양이 바뀌어요</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
 
   <!-- ===== 잘 안 될 때 (예외 네 장면, 1B 3단계) — 중심 요소를 다 정한 뒤에 묻는다 ===== -->
   <section id="except">
-    <h2>잘 안 될 때 보이는 화면 <span class="status">아직 묻지 않음</span></h2>
+    <h2>잘 안 될 때 보이는 화면 <span class="status">확인</span></h2>
     <p style="font-size:14px">정할 것을 다 고른 뒤에 같이 볼 거예요. 문구는 Claude가 먼저 넣어 둔 것이에요.</p>
     <div id="exTabs">
       <button aria-pressed="true" data-ex="0">인터넷이 끊김</button><button aria-pressed="false" data-ex="1">하나도 없음</button><button aria-pressed="false" data-ex="2">두 번 빠르게 누름</button><button aria-pressed="false" data-ex="3">로그인 안 함</button>
@@ -393,6 +516,8 @@
     <ol>
       <li>사용자가 앱을 켜면 동네한권이 현재 위치 주변의 지도와 도서관 핀(이름·거리)을 보여 준다.</li>
       <li>사용자가 핀을 누르면 동네한권이 그 도서관 방문 페이지로 화면을 바꾼다(다음 세부 VISIT-2).</li>
+      <li>도서관이 몰려 핀이 겹치면 동네한권이 그 핀들을 숫자 동그라미(몇 곳인지) 하나로 묶어 보여 준다.</li>
+      <li>사용자가 숫자 동그라미를 누르면 동네한권이 지도를 그곳으로 크게 보여 주고, 핀을 이름·거리와 함께 나눠 보여 준다.</li>
       <li>사용자가 맨 위 검색창을 누르면 동네한권이 책 검색 화면을 연다(다른 팀원 몫).</li>
       <li>사용자가 지도를 끌어 옮기면 동네한권이 "이 지역에서 다시 찾기" 버튼을 보여 주고, 누르면 그 지역 도서관 핀을 다시 보여 준다.</li>
       <li>사용자가 "도서관 찾기"를 누르면 동네한권이 지도 위로 하얀 창을 반쯤 내려 보이고, 아래 지도는 흐리게 남긴다.</li>
@@ -415,8 +540,8 @@
       <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값 · 유저 플로우</th></tr>
       <tr><td>1. "도서관 찾기"를 누르면 열리는 화면</td><td>확인</td><td>채택 A. 위에서 내려오는 반쪽 창 / 차선 없음 / 탈락 B 다른 색 전체 화면(추천이었음), C 지도 위에서 바로 찾기("C는 그냥도 별로고 검색했을때 검색어가 덜나와서 완전 불편할거같아"). B 탈락 이유: "B는페이지 넘어가는게 불편하고"</td><td>"난 A위에서 내려오는게 좋다고 생각해 … 굳이 화면을 바꿔가며 해야할까?" / 불편한 점: 없음(사용자) — "B나 C보던 덜 불편하면 된거 아닐까"</td><td>창 높이 화면의 58%, 바탕 paper(ink-strong → fill3 → paper. 사용자: "검색창 검정색은 좀 아닌거같아", "선 있어야하고 하얀색이여야 한다 생각"), 입력칸 paper + 테두리 1.5px surface3, 결과 줄 앞 핀 그림 없음("여기 핀버튼 없애줄래?"), 아래 지도 흐리게(검정 25%). 결과를 누르면 창이 올라가고 지도가 그곳으로(방문 페이지로 바로 가지 않음, 큰 틀 결정 13). 창 밖을 누르면 닫힘</td></tr>
       <tr><td>1-a. 반쪽 창 색·입력칸 선</td><td>확인</td><td>하얀 창(paper) + 입력칸 테두리 / 이전: 진한색, 초록빛 회색</td><td>"일단 여기서 선 있어야하고 하얀색이여야 한다 생각"(입력칸과 창 전체를 표시한 캡처)</td><td>창 paper, 입력칸 테두리 1.5px surface3. 순백은 디자인 기준상 쓰지 않아 paper(#EFF1F1)</td></tr>
-      <tr><td>2. 위치도 못 쓰고 지도도 안 뜰 때 보이는 도서관 목록<br>다시 비교하기: <select class="pick" data-for="el-2"><option value="">채택안 보기</option><option value="A">A. 지역 고르는 칸 + 목록</option><option value="B">B. 지역부터 고르고 목록</option><option value="C">C. 지도 홈 모양 그대로</option></select></td><td>확인 (불편한 점 받는 중)</td><td>채택 C. 지도 홈 모양 그대로, 지도 자리에 목록(추천이었음) / 차선 없음 / 탈락 A 지역 고르는 칸 + 목록, B 지역부터 고르고 목록</td><td>"C가 좀전 화면과 비슷하고 장점만 남은느낌이라"</td><td>시군구 도서관 목록(정해진 것). 목록 줄: 이름 · 동 · 오늘 운영시간/휴관(기본값(Claude)). 거리 없음(위치를 모름). 아래 가운데 "위치 허용하기" 유지. 도서관을 누르면 방문 페이지</td></tr>
-      <tr><td>3. 가까운 곳에 도서관 핀이 많아 겹칠 때</td><td>결정 전</td><td>— (2를 정한 뒤 시안)</td><td>—</td><td>—</td></tr>
+      <tr><td>2. 위치도 못 쓰고 지도도 안 뜰 때 보이는 도서관 목록<br>다시 비교하기: <select class="pick" data-for="el-2"><option value="">채택안 보기</option><option value="A">A. 지역 고르는 칸 + 목록</option><option value="B">B. 지역부터 고르고 목록</option><option value="C">C. 지도 홈 모양 그대로</option></select></td><td>확인</td><td>채택 C. 지도 홈 모양 그대로, 지도 자리에 목록(추천이었음) / 차선 없음 / 탈락 A 지역 고르는 칸 + 목록, B 지역부터 고르고 목록</td><td>"C가 좀전 화면과 비슷하고 장점만 남은느낌이라", "A와B에 비해 덜 복잡해보인다" / 불편한 점: 없음(사용자) — "아무래도 전에 말했던 이유와 비슷할수밖에없어 덜복잡하니 덜어렵지"</td><td>시군구 도서관 목록(정해진 것). 목록 줄: 이름 · 동 · 오늘 운영시간/휴관(기본값(Claude)). 거리 없음(위치를 모름). 아래 가운데 "위치 허용하기" 유지. 도서관을 누르면 방문 페이지</td></tr>
+      <tr><td>3. 가까운 곳에 도서관 핀이 많아 겹칠 때<br>다시 비교하기: <select class="pick" data-for="el-3"><option value="">채택안 보기</option><option value="A">A. 숫자 동그라미</option><option value="B">B. 가까운 곳만 이름표</option><option value="C">C. 작은 핀 + 카드 줄</option></select></td><td>확인</td><td>채택 A. 숫자 동그라미(추천이었음) / 차선 없음 / 탈락 B 가까운 2곳만 이름표, C 작은 핀 + 아래 카드 줄</td><td>"A가 아무래도 지금 지도앱들과 비슷해서 사람들이 익숙할거같아" / 불편한 점: 한 번 더 눌러야 함 — "잘못눌러서 잘못확인하는 경우떄문에 조금 번거롭더라도 확실하게 하는방법이 좋다 생각해"</td><td>A: 동그라미 지름 38px, fill1 + paper 테두리 3px, 숫자 15px. B: 작은 핀 16×19px, 이름표 최대 2개. C: 카드 폭 78%, 탭 줄 위 8px, 떠 있는 버튼은 카드 위로</td></tr>
       <tr><td>지도 기준 위치</td><td>확인 (큰 틀 결정 1)</td><td>항상 현재 위치</td><td>"현재 위치로 해두면 설정할필요없이 바로바로 위치알수 있어서"</td><td>집·동네 저장 없음</td></tr>
       <tr><td>지도 바탕</td><td>확인 (큰 틀 결정 6)</td><td>큰 길 + 큰 장소 몇 개 + 지하철역</td><td>"이동할 때 지하철역에서 가까울 수 있어서, 이동할 때 편하라고"</td><td>도로 surface2, 역 알약 surface3</td></tr>
       <tr><td>핀에 보이는 것</td><td>확인 (큰 틀 결정 9)</td><td>이름 + 거리, 핀 아래 가운데</td><td>"가운데에 두는게 더 보기좋아서"</td><td>핀 fill1, 아치 곡률 23·23·6·6px, 이름표 paper</td></tr>
@@ -459,7 +584,7 @@
   // 예외 화면 전환
   var ex = ['지도 자리에 "지금은 도서관을 불러올 수 없어요." + "다시 해 보기" 버튼. 지도 그림이 안 뜨면 시군구 도서관 목록으로 바뀜.',
             '반경 안에 도서관이 하나도 없을 때: 지도 아래에 "가까운 곳에서 도서관을 찾지 못했어요." + "더 넓게 찾기" 버튼.',
-            '"이 지역에서 다시 찾기"를 두 번 빠르게 눌러도 한 번만 찾고, 앞의 늦은 답이 지금 지도를 덮지 않음.',
+            '따로 뜨는 문구 없음(사용자: "사용자가 굳이 알아야할까?"). "이 지역에서 다시 찾기"를 두 번 빠르게 눌러도 한 번만 찾고, 앞의 늦은 답이 지금 지도를 덮지 않음.',
             '지도 홈은 로그인 없이 볼 수 있어요. 남의 기록을 보여 주는 곳이 없어서 막는 화면이 없음.'];
   function exShow(i) {
     document.querySelectorAll('#exTabs button').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.ex === String(i)); });
