@@ -87,6 +87,10 @@
   .tabs button { font: inherit; font-size: 13px; border: 0; background: none; padding: 6px 12px; cursor: pointer; color: var(--ink-sub); }
   .tabs button.on { color: var(--ink-strong); font-weight: 700; border-bottom: 2px solid var(--ink-strong); }
   [data-pane][hidden] { display: none; }
+  .sg { padding: 8px 4px; border-bottom: 1px solid var(--surface2); font-size: 13.5px; }
+  .sg .ic { margin-right: 8px; font-size: 12px; }
+  .sgb { display: flex; gap: 10px; align-items: center; padding: 6px 2px; border-bottom: 1px solid var(--surface2); font-size: 13px; }
+  .before[hidden], .after[hidden] { display: none; }
   .more { text-align: center; font-size: 12.5px; color: var(--ink-sub); padding: 14px 0 6px; }
   .more[hidden] { display: none; }
 
@@ -106,7 +110,7 @@
 <body>
 <header class="page">
   <h1>도서 탐색 · LIB-1 시안</h1>
-  <p class="how"><b>지금 보는 것: 2. 책을 눌렀을 때 맨 위 모양</b> (정할 것 1은 아래에 있어요.) 화면 3개를 비교해 보세요. 화면마다 아래에 <b>누르면 어떻게 이어지는지</b>를 적어 뒀고, 위 버튼으로 <b>아래까지 내렸을 때</b> 모습도 바꿔 볼 수 있어요. 각 화면 안은 직접 내려 볼 수 있어요. <b>추천</b> 표시가 있는 화면이 Claude의 추천이에요. 고르는 건 직접 해 주세요. (책·도서관 이름은 모두 가짜예요.)</p>
+  <p class="how"><b>지금 정하는 것: 3. 글자를 치면 뜨는 추천어를 눌렀을 때 어디로 갈지</b> (정할 것 1·2는 아래에 있어요.) 화면 3개를 비교해 보세요. 화면마다 아래에 <b>누르면 어떻게 이어지는지</b>를 적어 뒀고, 위 버튼으로 <b>아래까지 내렸을 때</b> 모습도 바꿔 볼 수 있어요. 각 화면 안은 직접 내려 볼 수 있어요. <b>추천</b> 표시가 있는 화면이 Claude의 추천이에요. 고르는 건 직접 해 주세요. (책·도서관 이름은 모두 가짜예요.)</p>
 </header>
 
 <main>
@@ -203,6 +207,60 @@
   </section>
 
 
+
+  <!-- ===== 중심 요소 3 ===== -->
+  <section class="element" id="el-3" data-chosen="" data-pick="pick3">
+    <h2>정할 것 3. 검색창에 글자를 치면 뜨는 추천어, 누르면 어디로 갈까<span class="status" data-status>결정 전</span></h2>
+    <div class="state">보기 바꾸기:
+      <button aria-pressed="true" data-typed="0">글자 치기 전</button><button aria-pressed="false" data-typed="1">"해리"까지 쳤을 때</button>
+    </div>
+    <div class="cands">
+      <article class="cand" data-id="A">
+        <h3>검색어만 → 결과 목록</h3>
+        <div class="phone">
+          <input class="searchbar typed" value="" placeholder="책 제목이나 저자를 입력해 주세요" readonly>
+          <div class="before"><div class="sec">최근 본 도서</div><div class="pills"><span class="pill">불편한 편의점 ✕</span><span class="pill">소년이 온다 ✕</span></div><div class="sec">전국 인기 도서 <small>최근 한 달</small></div><div class="rank"><span><b>1</b>불편한 편의점</span><span><b>2</b>세이노의 가르침</span></div></div>
+          <div class="after" hidden><div class="sg"><span class="ic">🔍</span>해리포터</div><div class="sg"><span class="ic">🔍</span>해리포터와 마법사의 돌</div><div class="sg"><span class="ic">🔍</span>해리포터와 비밀의 방</div><div class="sg"><span class="ic">🔍</span>해리 쿼버트 사건의 진실</div><div class="sg"><span class="ic">🔍</span>해리 왕자</div></div>
+          <div class="kbd">키보드</div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>글자를 치면 아래 칸이 사라지고 🔍 검색어 5개가 글자로만 떠요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">"해리포터"를 누름 → 그 말로 찾은 결과 목록(2열)이 열림 → 책을 누름 → 책 화면. 사용자는 비슷한 책을 다 훑어보고 고를 수 있어요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>제목을 몰라도 넓게 찾을 수 있음 / 원하는 책이 확실해도 한 번 더 눌러야 함</dd>
+        </dl>
+      </article>
+      <article class="cand" data-id="B">
+        <h3>책만 → 바로 책 화면</h3>
+        <div class="phone">
+          <input class="searchbar typed" value="" placeholder="책 제목이나 저자를 입력해 주세요" readonly>
+          <div class="before"><div class="sec">최근 본 도서</div><div class="pills"><span class="pill">불편한 편의점 ✕</span><span class="pill">소년이 온다 ✕</span></div><div class="sec">전국 인기 도서 <small>최근 한 달</small></div><div class="rank"><span><b>1</b>불편한 편의점</span><span><b>2</b>세이노의 가르침</span></div></div>
+          <div class="after" hidden><div class="sgb"><div class="cover" style="width:34px;height:48px;font-size:7px;flex:none">해리포터</div><div><b>해리포터와 마법사의 돌 1</b><br><span class="au">J.K. 롤링</span></div></div><div class="sgb"><div class="cover c2" style="width:34px;height:48px;font-size:7px;flex:none">비밀의 방</div><div><b>해리포터와 비밀의 방 2</b><br><span class="au">J.K. 롤링</span></div></div><div class="sgb"><div class="cover none" style="width:34px;height:48px;font-size:7px;flex:none">표지 없음</div><div><b>해리 쿼버트 사건의 진실</b><br><span class="au">조엘 디케르</span></div></div><div class="sgb"><div class="cover c1" style="width:34px;height:48px;font-size:7px;flex:none">스페어</div><div><b>스페어</b><br><span class="au">해리 왕자</span></div></div></div>
+          <div class="kbd">키보드</div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>글자를 치면 작은 표지 + 제목·저자로 책 4권이 떠요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">"해리포터와 마법사의 돌 1"을 누름 → 그 책 화면(책 정보 + 도서관 목록)이 바로 열림. 사용자는 찾던 책으로 한 번에 가요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>가장 빨리 책에 닿음, 표지로 알아봄 / 4권 안에 없으면 검색 버튼을 따로 눌러야 함</dd>
+        </dl>
+      </article>
+      <article class="cand recommended" data-id="C">
+        <h3>책 2권 + 검색어 섞기 <span class="badge">추천</span></h3>
+        <div class="phone">
+          <input class="searchbar typed" value="" placeholder="책 제목이나 저자를 입력해 주세요" readonly>
+          <div class="before"><div class="sec">최근 본 도서</div><div class="pills"><span class="pill">불편한 편의점 ✕</span><span class="pill">소년이 온다 ✕</span></div><div class="sec">전국 인기 도서 <small>최근 한 달</small></div><div class="rank"><span><b>1</b>불편한 편의점</span><span><b>2</b>세이노의 가르침</span></div></div>
+          <div class="after" hidden><div class="lh">책 바로 보기</div><div class="sgb"><div class="cover" style="width:34px;height:48px;font-size:7px;flex:none">해리포터</div><div><b>해리포터와 마법사의 돌 1</b><br><span class="au">J.K. 롤링</span></div></div><div class="sgb"><div class="cover c2" style="width:34px;height:48px;font-size:7px;flex:none">비밀의 방</div><div><b>해리포터와 비밀의 방 2</b><br><span class="au">J.K. 롤링</span></div></div><div class="lh" style="margin-top:8px">검색어</div><div class="sg"><span class="ic">🔍</span>해리포터</div><div class="sg"><span class="ic">🔍</span>해리 쿼버트</div><div class="sg"><span class="ic">🔍</span>해리 왕자</div></div>
+          <div class="kbd">키보드</div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>위에는 책 2권(표지+제목), 아래에는 🔍 검색어 3개가 함께 떠요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">위의 책을 누름 → 바로 책 화면. 아래 검색어를 누름 → 결과 목록. 사용자는 확실하면 책으로, 애매하면 검색어로 가요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>두 경우를 다 챙김 / 칸이 둘이라 조금 복잡해 보임</dd>
+          <dt>추천 이유</dt><dd>추천어를 넣기로 한 이유가 "제목을 정확히 몰라도 쉽게 찾기"라서, 아는 사람·모르는 사람 둘 다 편한 쪽이 맞다고 봤어요.</dd>
+        </dl>
+      </article>
+    </div>
+    <p>다시 비교하기: <select id="pick3"><option value="">채택안 보기</option><option value="A">검색어만</option><option value="B">책만</option><option value="C">책 2권 + 검색어</option></select></p>
+  </section>
   <!-- ===== 중심 요소 2 ===== -->
   <section class="element" id="el-2" data-chosen="A" data-pick="pick2">
     <h2>정할 것 2. 결과에서 책을 눌렀을 때, 책 화면 맨 위를 어떻게 보여 줄까<span class="status" data-status>결정 전</span></h2>
@@ -314,8 +372,8 @@
     <table>
       <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값</th></tr>
       <tr><td>1. 검색 결과 목록의 모양</td><td>확인</td><td>채택: 2열 표지 큰 카드(기본) + 오른쪽 위 버튼으로 1열 목록 전환 / 차선: 1열 목록(버튼으로 볼 수 있음) / 탈락: 1열 큰 카드</td><td>"첫번째 화면은 시력이 안좋으신분들이나 어른들이 보기 편하시게 좋게 고른거고 두번째는 뭐 젊은 사람들이 그런식으로 보는걸 좋아하는분들이 잇으니 골랏어"</td><td>기본 2열 한 화면 6권쯤 · 목록 5~7권. 버튼 글자 "☰ 목록으로"/"▦ 표지로" 12px 알약은 기본값(Claude)</td></tr>
-      <tr><td>2. 책 상세 위쪽 모양</td><td>확인 (불편한 점 받는 중)</td><td>채택: 책 정보 한 줄 + 도서관 목록 바로 / 차선: 없음 / 탈락: 큰 표지 + 책 소개 먼저, 작은 머리 + 탭</td><td>"책정보 와 같이 도서관 목록이 바로 나오잖아 그러니 보는입장에서는 더 편하고 좋을거같습니다"</td><td>A 첫눈에 도서관 3곳 · B 0곳(내려야 보임) · C 4곳</td></tr>
-      <tr><td>3. 추천어를 눌렀을 때 가는 곳</td><td>결정 전</td><td>— (2가 끝난 뒤 연다)</td><td>—</td><td>—</td></tr>
+      <tr><td>2. 책 상세 위쪽 모양</td><td>확인</td><td>채택: 책 정보 한 줄 + 도서관 목록 바로 / 차선: 없음 / 탈락: 큰 표지 + 책 소개 먼저, 작은 머리 + 탭</td><td>"책정보 와 같이 도서관 목록이 바로 나오잖아 그러니 보는입장에서는 더 편하고 좋을거같습니다"</td><td>A 첫눈에 도서관 3곳 · B 0곳(내려야 보임) · C 4곳</td></tr>
+      <tr><td>3. 추천어를 눌렀을 때 가는 곳</td><td>결정 전</td><td>— (추천: 책 2권 + 검색어 섞기)</td><td>—</td><td>A 검색어 5개 · B 책 4권 · C 책 2권 + 검색어 3개</td></tr>
       <tr><td>검색 진입 화면 기준</td><td>기본값(Claude)</td><td>항상 전국 기준 ("전국 인기 도서 · 최근 한 달"). 도서관별 추천은 넣지 않음</td><td>묻지 않음(이미 정해짐: 방문 페이지에 검색창 없음)</td><td>칸 제목 옆 13px 보조색 "최근 한 달"</td></tr>
       <tr><td>"현재 도시 내 모든 도서관 검색" 자리</td><td>기본값(Claude)</td><td>검색창 바로 아래 (큰 틀에서 정함). 모양은 다음 단계</td><td>묻지 않음</td><td>결과 위 "내 주변 3km 도서관 기준" 12px</td></tr>
       <tr><td>검색 진입 화면 배치</td><td>기본값(Claude)</td><td>스크린샷대로: 최근 본 도서 알약 → 인기 도서 순위 2열 → 테마 도서 띠</td><td>묻지 않음(D가 정함)</td><td>알약 10글자 넘으면 "…", 옆으로 밀어 봄</td></tr>
@@ -363,6 +421,16 @@
       var ph = b.closest('.phone');
       ph.querySelectorAll('.tabs button').forEach(function (x) { x.classList.toggle('on', x === b); });
       ph.querySelectorAll('[data-pane]').forEach(function (p) { p.hidden = p.dataset.pane !== b.dataset.tab; });
+    });
+  });
+  // 정할 것 3: 글자 치기 전/후
+  document.querySelectorAll('[data-typed]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var el = b.closest('.element'), t = b.dataset.typed === '1';
+      el.querySelectorAll('[data-typed]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      el.querySelectorAll('.before').forEach(function (x) { x.hidden = t; });
+      el.querySelectorAll('.after').forEach(function (x) { x.hidden = !t; });
+      el.querySelectorAll('.typed').forEach(function (x) { x.value = t ? '해리' : ''; });
     });
   });
   // 예외 화면 전환
