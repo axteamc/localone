@@ -6,9 +6,14 @@
     "scheme": "localone",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
-    "plugins": ["expo-router"],
+    "plugins": [
+      "expo-router",
+      "expo-web-browser",
+      "expo-apple-authentication"
+    ],
     "ios": {
-      "bundleIdentifier": "kr.localone.app"
+      "bundleIdentifier": "kr.localone.app",
+      "usesAppleSignIn": true
     },
     "android": {
       "package": "kr.localone.app"

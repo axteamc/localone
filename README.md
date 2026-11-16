@@ -106,7 +106,7 @@ flowchart LR
 - **기능별 기획 현황 (큰 틀 3건 모두 `main` 머지 완료 → 세부 명세 단계 진행 중)**:
   - `library-visit` (A): 큰 틀 머지(PR #2 + D 결정 반영) → `VISIT-1` 세부 명세·시안 진행 중
   - `local-feed` (B): 큰 틀 머지(PR #50 + D 결정 반영) → `LOCAL-1` 세부 명세·시안 진행 중
-  - `book-search` (C): 큰 틀 머지(PR #17) → `LIB-1` 세부 명세(PR #48 Draft) 진행 중
+  - `book-search` (C): 큰 틀 머지(PR #17) → `LIB-1` 세부 명세 진행 중(브랜치 `spec/book-search-LIB-1b`, 이전 PR #48은 닫힘)
   - `auth` (D): B1 계약 확정 완료 → `AUTH-1-P1` 구현 착수 단계
 
 ## 6. 기술 스택 및 저장소 구조
