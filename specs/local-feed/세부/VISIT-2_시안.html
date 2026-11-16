@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VISIT-2 시안 — 도서관 방문 페이지의 틀</title>
+<!--
+  ../team/templates/시안.html 에서 복사. ../team/prompts/1_기획.md 1B 2단계 시안 사이클.
+  중심 요소 하나 = section.element 하나. 확인되면 다음 요소를 같은 모양으로 추가한다. 후보는 지우지 않는다.
+  색·곡률은 개발산출물/디자인_기준.md 토큰(warm, M1 기본). 없는 것은 :root의 의미별 임시 토큰. 외부 연결 없음.
+  지도 홈(A 화면)은 그리지 않는다. 참고: 브랜치 spec/library-visit-VISIT-2의 머리 배치 후보 3개(A 초안).
+-->
+<style>
+  :root {
+    --bg: #E1E1DE; --surface2: #D0CEC8; --surface3: #BFBCB5;
+    --fill1: #E9C970; --fill2: #EDC9A9; --fill3: #B3BFB5;
+    --cream: #EFEFE7; --paper: #EFF1F1; --ink-strong: #2E333F;
+    --text: #1D1D1F; --text-sub: #71716F;
+    --r-card: 18px; --r-pill: 18px; --r-full: 9999px; --r-arch-top: 70px;
+    /* 임시 토큰(의미별, 지금 값 그대로 — 디자인_기준.md에 없는 것. 색 최종 조정 때 공통 정의로 옮긴다, PROJECT §3-14) */
+    --shadow-soft: rgba(0,0,0,.15); --shadow-float: rgba(0,0,0,.18); --shadow-fab: rgba(0,0,0,.22);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: "Noto Sans KR", system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; line-height: 1.5; }
+  header.page { padding: 20px 16px 8px; max-width: 1200px; margin: 0 auto; }
+  header.page h1 { font-size: 20px; margin: 0 0 4px; }
+  .how { background: var(--cream); border-radius: var(--r-card); padding: 12px 16px; margin: 8px 0 0; }
+  main { max-width: 1200px; margin: 0 auto; padding: 0 16px 40px; }
+  section.element { margin-top: 24px; }
+  section.element > h2 { font-size: 17px; margin: 0 0 4px; }
+  .status { display: inline-block; font-size: 12px; padding: 2px 10px; border-radius: var(--r-pill); background: var(--surface2); margin-left: 6px; }
+  .cands { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 12px; }
+  .cand { background: var(--paper); border-radius: var(--r-card); padding: 14px; border: 3px solid transparent; }
+  .cand.recommended { border-color: var(--fill1); }
+  .cand.chosen { border-color: var(--ink-strong); }
+  .cand h3 { margin: 0 0 8px; font-size: 15px; }
+  .badge { font-size: 12px; padding: 1px 8px; border-radius: var(--r-pill); background: var(--fill1); margin-left: 6px; }
+  .badge.chosen { background: var(--ink-strong); color: var(--paper); }
+  .note { font-size: 14px; margin-top: 10px; }
+  .note dt { font-weight: 700; margin-top: 6px; }
+  .note dd { margin: 0; }
+  .flow { background: var(--cream); border-radius: 12px; padding: 8px 10px; }
+  .state button { font: inherit; font-size: 14px; border: 0; border-radius: var(--r-pill); padding: 4px 12px; background: var(--surface2); cursor: pointer; margin: 2px; }
+  .state button[aria-pressed="true"] { background: var(--ink-strong); color: var(--paper); }
+  #spec, #except, #fullflow { background: var(--paper); border-radius: var(--r-card); padding: 14px 16px; margin-top: 28px; }
+  #spec table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  #spec th, #spec td { text-align: left; padding: 6px; border-bottom: 1px solid var(--surface2); vertical-align: top; }
+
+  /* ---- 휴대폰 화면 (390×844를 0.75배) ---- */
+  .phone { position: relative; width: 292px; height: 560px; margin: 0 auto; background: var(--cream); border-radius: 28px; overflow: hidden; border: 6px solid var(--ink-strong); }
+  .back { font-size: 26px; font-weight: 900; line-height: 1; text-shadow: 0 1px 2px var(--shadow-soft); }
+  .more { font-size: 18px; letter-spacing: 1px; }
+  .sub { font-size: 12px; color: var(--text-sub); }
+  .hd { padding: 12px 12px 8px; }
+  /* A: 왼쪽 정렬 두 줄 */
+  .hA .name { font-size: 20px; font-weight: 700; margin-top: 4px; }
+  .hA .info { display: flex; justify-content: space-between; align-items: center; }
+  /* B: 가운데 큰 간판 */
+  .hB { text-align: center; position: relative; }
+  .hB .back { position: absolute; left: 12px; top: 12px; }
+  .hB .plaque { margin: 4px auto 0; width: 200px; background: var(--fill1); border-radius: var(--r-arch-top) var(--r-arch-top) var(--r-card) var(--r-card); padding: 26px 10px 10px; }
+  .hB .plaque .name { font-size: 22px; font-weight: 700; }
+  .hB .info { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 6px; }
+  /* C: 한 줄 이름 + 정보 알약 */
+  .hC .row1 { display: flex; align-items: center; gap: 8px; }
+  .hC .name { font-size: 18px; font-weight: 700; }
+  .hC .info { display: flex; align-items: center; gap: 6px; margin-top: 6px; }
+  .pill { font-size: 11px; background: var(--paper); border-radius: var(--r-pill); padding: 2px 10px; }
+  .hC .info .more { margin-left: auto; }
+  .feed { padding: 0 9px; }
+  .masonry { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .col { display: flex; flex-direction: column; gap: 8px; }
+  .card { border-radius: 14px; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 700; font-size: 11px; padding: 8px; }
+  .card.photo { background: linear-gradient(160deg, var(--fill3), var(--surface3)); }
+  .card.cover { background: linear-gradient(180deg, var(--fill2), var(--fill1)); }
+  .fab { position: absolute; right: 14px; bottom: 18px; width: 48px; height: 48px; border-radius: var(--r-full); background: var(--fill1); font-size: 28px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px var(--shadow-fab); z-index: 3; }
+  .toastcard { position: absolute; left: 50%; bottom: 84px; transform: translateX(-50%); background: var(--paper); border-radius: var(--r-card); padding: 8px 14px; font-size: 12px; font-weight: 700; white-space: nowrap; box-shadow: 0 4px 14px var(--shadow-float); z-index: 4; }
+  .closed { font-weight: 700; color: var(--text); }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>지역 SNS · VISIT-2 시안 — 도서관 방문 페이지의 틀</h1>
+  <p class="how">지도에서 도서관 핀을 누르면 들어오는 화면이에요. 화면 3개를 비교해 보세요. 화면마다 아래에 <b>누르면 어떻게 이어지는지</b>를 적어 뒀고, 화면 위 버튼으로 <b>처음 들어올 때·운영시간을 모를 때·쉬는 날</b> 모습도 바꿔 볼 수 있어요. <b>추천</b> 표시가 있는 화면이 Claude의 추천이에요. 고르는 건 직접 해 주세요.</p>
+</header>
+
+<main>
+  <!-- ===== 중심 요소 1: 머리 배치 ===== -->
+  <section class="element" id="el-1" data-chosen="">
+    <h2>정할 것 1. 머리(이름·거리·오늘 운영시간·‹·⋯)를 어떻게 놓을까<span class="status" data-status>결정 전</span></h2>
+    <p style="font-size:14px;margin:0">이미 정해진 것: 왼쪽 위 굵은 "‹"(누르거나 화면 왼쪽 끝에서 밀면 지도로), ⋯는 도서관 정보 줄 오른쪽, 검색창 없음. 이번엔 <b>이름과 정보를 어떻게 놓을지</b>만 정해요.</p>
+    <div class="state">바꿔 보기:
+      <button aria-pressed="true" data-v="normal">평소</button><button aria-pressed="false" data-v="first">처음 들어올 때</button><button aria-pressed="false" data-v="nohours">운영시간을 모를 때</button><button aria-pressed="false" data-v="closed">오늘 쉬는 날</button>
+    </div>
+
+    <div class="cands">
+      <!-- 후보 A (추천) -->
+      <article class="cand recommended" data-id="A">
+        <h3>A. 왼쪽 정렬 두 줄 <span class="badge">추천</span></h3>
+        <div class="phone" data-phone>
+          <div class="hd hA">
+            <span class="back">‹</span>
+            <div class="name">가온도서관</div>
+            <div class="info"><span class="sub" data-info></span><span class="more">⋯</span></div>
+          </div>
+          <div class="feed" data-feedbox></div>
+          <div class="fab">+</div>
+          <div class="toastcard" data-toast hidden>처음으로 가온도서관에 방문했어요!</div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>이름이 왼쪽에 크게 한 줄, 그 아래 작은 글자로 "거리 · 오늘 운영시간"과 오른쪽 ⋯. 머리가 낮아서 피드가 가장 많이 보여요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">핀을 누름 → 화면이 옆으로 밀리며 들어옴 → 위에 이름과 운영시간을 한눈에 확인 → 바로 아래 피드를 구경 → ‹를 누르면 지도로.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>머리 높이: 약 86(앱 기준 115). 피드 카드가 첫 화면에 2열로 4~5장 보여요. "운영시간을 모를 때"는 그 자리에 "정보 없음".</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>깔끔하고 피드가 많이 보임 / "도서관에 들어왔다"는 느낌은 셋 중 가장 약함</dd>
+          <dt>추천 이유</dt><dd>이 화면의 주인공은 이웃의 피드라서, 머리는 이름·운영시간만 빨리 읽히고 비켜 주는 게 좋아서요. 들어온 느낌이 더 중요하면 B가 나아요.</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 B -->
+      <article class="cand" data-id="B">
+        <h3>B. 가운데 큰 간판</h3>
+        <div class="phone" data-phone>
+          <div class="hd hB">
+            <span class="back">‹</span>
+            <div class="plaque"><div class="name">가온도서관</div></div>
+            <div class="info"><span class="sub" data-info></span><span class="more">⋯</span></div>
+          </div>
+          <div class="feed" data-feedbox></div>
+          <div class="fab">+</div>
+          <div class="toastcard" data-toast hidden>처음으로 가온도서관에 방문했어요!</div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>이름이 가운데의 위가 둥근 아치 간판(대표색 `fill1`) 안에 크게 있어요. 그 아래 가운데에 "거리 · 오늘 운영시간"과 ⋯.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">핀을 누름 → 옆으로 밀리며 들어옴 → 가운데 간판이 먼저 눈에 들어와 "가온도서관에 왔다"를 바로 앎 → 아래로 피드 구경 → ‹로 지도로.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>머리 높이: 약 140(앱 기준 185). 첫 화면의 피드 카드가 A보다 한 줄쯤 적어요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>들어온 느낌이 가장 강하고 도서관마다 간판처럼 보임 / 머리가 커서 피드가 덜 보이고, 색 면이 하나 늘어 덜 깔끔함</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 C -->
+      <article class="cand" data-id="C">
+        <h3>C. 한 줄 이름 + 정보 알약</h3>
+        <div class="phone" data-phone>
+          <div class="hd hC">
+            <div class="row1"><span class="back">‹</span><span class="name">가온도서관</span></div>
+            <div class="info" data-pills></div>
+          </div>
+          <div class="feed" data-feedbox></div>
+          <div class="fab">+</div>
+          <div class="toastcard" data-toast hidden>처음으로 가온도서관에 방문했어요!</div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>"‹"와 이름이 한 줄에 나란히 있어요. 그 아래 거리와 운영시간이 각각 작은 알약으로 따로 있고, 오른쪽 끝에 ⋯.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">핀을 누름 → 옆으로 밀리며 들어옴 → 이름 옆 ‹가 바로 보여 돌아가는 길이 분명함 → 알약으로 거리·운영시간을 따로 읽음 → 피드 구경.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>머리 높이: 약 80(앱 기준 105). 알약은 누를 수 없는 표시예요. "오늘 쉬는 날"이면 운영시간 알약이 "오늘 휴관"으로 바뀌어요.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>머리가 가장 낮고 정보가 칸으로 나뉘어 읽기 쉬움 / 알약이 버튼처럼 보여 눌러 보게 될 수 있음, 이름이 작아짐</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <!-- 중심 요소 2(피드를 올렸을 때 머리), 3(게시물이 하나도 없을 때)은 1이 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
+
+  <section id="except">
+    <h2>마지막으로 함께 볼 화면 — 기다릴 때나 잘 안 될 때 <span class="status">아직 묻지 않음</span></h2>
+    <p style="font-size:14px;margin:4px 0 0">정할 것 1~3을 다 정한 뒤에 채워요.</p>
+  </section>
+
+  <section id="fullflow">
+    <h2>처음부터 끝까지 이렇게 써요</h2>
+    <ol>
+      <li>사용자가 지도 홈에서 도서관 핀을 누르면 동네한권이 화면을 오른쪽에서 왼쪽으로 0.3초 밀며 그 도서관 방문 페이지를 연다. 배경이 지도색에서 크림색으로 바뀐다.</li>
+      <li>(정할 것 1~3을 고르면 이어서 쓴다)</li>
+    </ol>
+  </section>
+
+  <section id="spec">
+    <h2>명세</h2>
+    <p>정할 것 1 다시 비교하기: <select data-pick="el-1"><option value="">채택안 보기</option><option value="A">A. 왼쪽 정렬 두 줄</option><option value="B">B. 가운데 큰 간판</option><option value="C">C. 한 줄 이름 + 정보 알약</option></select></p>
+    <table>
+      <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값 · 유저 플로우</th></tr>
+      <tr><td>1. 머리 배치</td><td>결정 전</td><td>— (추천: A)</td><td>—</td><td>A: 이름 20px 굵게(앱 26), 정보 12px `--text-sub`, 머리 높이 약 86</td></tr>
+      <tr><td>2. 피드를 올렸을 때 머리</td><td>결정 전</td><td>— (기본값: 접혀서 "‹ 이름" 한 줄)</td><td>—</td><td>1 확인 뒤 시안</td></tr>
+      <tr><td>3. 게시물이 하나도 없을 때</td><td>결정 전</td><td>—</td><td>—</td><td>2 확인 뒤 시안. 가짜 게시물 금지, "아직 게시물이 없어요" 같은 안내</td></tr>
+      <tr><td>들어오는 전환</td><td>기본값(Claude) · 정해짐</td><td>오른쪽에서 왼쪽으로 0.3초 밀림 + 배경 지도색 → `cream`</td><td>묻지 않음</td><td>문이 열리는 연출 없음</td></tr>
+      <tr><td>돌아가기</td><td>정해짐</td><td>왼쪽 위 굵은 "‹" + 왼쪽 끝 밀기</td><td>—</td><td>누르면 지도 홈으로</td></tr>
+      <tr><td>⋯ 메뉴</td><td>정해짐 · 문구 기본값(Claude)</td><td>정보 줄 오른쪽 · "앱을 켜면 여기부터 열기" ↔ "바로 열기 끄기" / "도서관 홈페이지"</td><td>—</td><td>누르면 한 줄 안내 2초</td></tr>
+      <tr><td>방문 멘트 카드</td><td>정해짐 · 시간 기본값(Claude)</td><td>아래 가운데 작은 카드, 버튼 없음</td><td>—</td><td>첫 방문·연속 3·7·14·30일째(그 뒤 100일마다)·30일 이상 만. 0.3초 떠오름, 2.5초 뒤 사라짐</td></tr>
+      <tr><td>세 번째 방문 질문 카드</td><td>정해짐 · 문구 기본값(Claude)</td><td>"세 번째 방문이에요 / 앱을 켜면 ○○도서관부터 열까요?" "네, 여기부터"·"아니요"</td><td>—</td><td>도서관마다 한 번, 연속 멘트와 겹치면 이 카드가 우선</td></tr>
+      <tr><td>운영시간·거리를 모를 때</td><td>정해짐</td><td>"정보 없음" / 거리는 넘겨받지 못하면 안 보임</td><td>—</td><td>—</td></tr>
+      <tr><td>검색창</td><td>정해짐</td><td>방문 페이지에 없음</td><td>—</td><td>카드 메뉴로 책 제목·저자 검색</td></tr>
+      <tr><td>글쓰기 버튼</td><td>LOCAL-1 결정 1</td><td>오른쪽 아래 둥근 "+"</td><td>"오른쪽 아래 + 버튼이요"</td><td>—</td></tr>
+    </table>
+  </section>
+</main>
+
+<script>
+  var feedHTML = '<div class="masonry"><div class="col">' +
+    '<div class="card cover" style="height:150px">작별하지 않는다</div><div class="card" style="height:110px;background:var(--ink-strong);color:var(--paper)">"그 밤은 길었다"</div><div class="card photo" style="height:170px"></div></div>' +
+    '<div class="col"><div class="card photo" style="height:120px"></div><div class="card" style="height:160px;background:var(--fill1)">오늘의 문장</div><div class="card cover" style="height:140px">불편한 편의점</div></div></div>';
+  document.querySelectorAll('[data-feedbox]').forEach(function (f) { f.innerHTML = feedHTML; });
+  var V = {
+    normal:  { dist: '320m', hours: '오늘 09:00–18:00' },
+    first:   { dist: '320m', hours: '오늘 09:00–18:00', toast: true },
+    nohours: { dist: '320m', hours: '운영시간 정보 없음' },
+    closed:  { dist: '320m', hours: '<span class="closed">오늘 휴관</span>' }
+  };
+  function show(v) {
+    var d = V[v];
+    document.querySelectorAll('[data-info]').forEach(function (x) { x.innerHTML = d.dist + ' · ' + d.hours; });
+    document.querySelectorAll('[data-pills]').forEach(function (x) { x.innerHTML = '<span class="pill">' + d.dist + '</span><span class="pill">' + d.hours + '</span><span class="more">⋯</span>'; });
+    document.querySelectorAll('[data-toast]').forEach(function (x) { x.hidden = !d.toast; });
+  }
+  show('normal');
+  document.querySelectorAll('.element').forEach(function (el) {
+    el.querySelectorAll('[data-v]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        el.querySelectorAll('[data-v]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        show(b.dataset.v);
+      });
+    });
+    function mark(id) {
+      el.querySelectorAll('.cand').forEach(function (c) {
+        c.classList.toggle('chosen', c.dataset.id === id);
+        var old = c.querySelector('.badge.chosen'); if (old) old.remove();
+        if (c.dataset.id === id) { var s = document.createElement('span'); s.className = 'badge chosen'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+      });
+      el.querySelector('[data-status]').textContent = id ? '확인' : '결정 전';
+    }
+    mark(el.dataset.chosen);
+    var pk = document.querySelector('[data-pick="' + el.id + '"]');
+    if (pk) pk.addEventListener('change', function (e) { mark(e.target.value || el.dataset.chosen); });
+  });
+</script>
+</body>
+</html>
