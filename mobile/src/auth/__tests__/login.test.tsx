@@ -140,4 +140,20 @@ describe("LoginScreen (AUTH-1-P6)", () => {
     });
     expect(screen.queryByTestId("apple-btn")).toBeNull();
   });
+
+  test("signed_in_status_goes_home_once (DEF-019)", async () => {
+    // 웹: 제공자에서 /login으로 돌아온 뒤 AuthProvider가 signedIn이 되면 스모크 화면으로 간다.
+    const signedIn = {
+      status: "signedIn" as const,
+      userId: "00000000-0000-4000-8000-00000000000a",
+      signInWithGoogle: signInWithGoogleMock,
+      signInWithApple: signInWithAppleMock,
+    };
+    mockedUseAuth.mockReturnValue(signedIn);
+    const screen = await render(<LoginScreen />);
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/"));
+
+    await screen.rerender(<LoginScreen />);
+    expect(mockReplace).toHaveBeenCalledTimes(1);
+  });
 });

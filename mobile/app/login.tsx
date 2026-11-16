@@ -41,11 +41,27 @@ function messageForFailure(result: Extract<SignInResult, { ok: false }>): string
 
 export default function LoginScreen(): React.JSX.Element {
   const router = useRouter();
-  const { signInWithGoogle, signInWithApple } = useAuth();
+  const { status, signInWithGoogle, signInWithApple } = useAuth();
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errorCopy, setErrorCopy] = useState("");
   const busyRef = useRef(false);
+  const navigatedRef = useRef(false);
+
+  const goHome = useCallback(() => {
+    if (navigatedRef.current) {
+      return;
+    }
+    navigatedRef.current = true;
+    router.replace("/");
+  }, [router]);
+
+  // DEF-019: 웹은 제공자에서 /login으로 돌아온 뒤 세션이 복원되므로 상태를 보고 넘어간다.
+  useEffect(() => {
+    if (status === "signedIn") {
+      goHome();
+    }
+  }, [status, goHome]);
 
   useEffect(() => {
     let active = true;
@@ -74,7 +90,7 @@ export default function LoginScreen(): React.JSX.Element {
             ? await signInWithGoogle()
             : await signInWithApple();
         if (result.ok) {
-          router.replace("/");
+          goHome();
           return;
         }
         setErrorCopy(messageForFailure(result));
@@ -83,7 +99,7 @@ export default function LoginScreen(): React.JSX.Element {
         setBusy(false);
       }
     },
-    [router, signInWithApple, signInWithGoogle]
+    [goHome, signInWithApple, signInWithGoogle]
   );
 
   return (
