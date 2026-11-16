@@ -8,12 +8,10 @@
     "userInterfaceStyle": "automatic",
     "plugins": [
       "expo-router",
-      "expo-web-browser",
-      "expo-apple-authentication"
+      "expo-web-browser"
     ],
     "ios": {
-      "bundleIdentifier": "kr.localone.app",
-      "usesAppleSignIn": true
+      "bundleIdentifier": "kr.localone.app"
     },
     "android": {
       "package": "kr.localone.app"
