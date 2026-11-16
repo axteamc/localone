@@ -1,26 +1,41 @@
-"""Supabase access JWT 검증. 외부 키 조회는 스레드에서, DB는 사용하지 않는다."""
+"""Supabase access JWT 검증 및 로그인 세션 등록·내 계정 조회."""
 
 import asyncio
 from dataclasses import dataclass
-from typing import Protocol
+from datetime import datetime
+from typing import Any, Protocol
 from uuid import UUID
 
 import jwt
-from fastapi import Request
+from fastapi import APIRouter, Depends, Request
+from sqlalchemy import text
+from sqlalchemy.engine import Connection
 
-from app.common import ApiError
+from app.common import ApiError, now_kst
+from app.db import run_db
 from app.settings import Settings
 
 ALLOWED_ALGS = ["ES256", "RS256"]
 MSG_INVALID = "로그인 정보를 확인하지 못했어요. 다시 로그인해 주세요."
 MSG_EXPIRED = MSG_INVALID
 MSG_UNAVAILABLE = "로그인 확인이 잠시 안 돼요. 잠시 뒤 다시 시도해 주세요."
+MSG_NOT_REGISTERED = "다시 로그인해 주세요."
+MSG_WITHDRAWN = "탈퇴한 계정이에요."
+
+router = APIRouter()
 
 
 @dataclass(frozen=True)
 class CurrentUser:
     id: UUID
     session_id: str | None
+
+
+@dataclass(frozen=True)
+class UserRow:
+    id: UUID
+    status: str
+    created_at: datetime
 
 
 class JwksClient(Protocol):
@@ -102,3 +117,71 @@ async def verify_access_token(request: Request) -> CurrentUser:
         raise ApiError(401, "AUTH_INVALID", MSG_INVALID)
     user_id = parse_uuid_or_raise_invalid(claims["sub"])
     return CurrentUser(id=user_id, session_id=claims.get("session_id"))
+
+
+def select_user(conn: Connection, user_id: UUID) -> UserRow | None:
+    row = conn.execute(
+        text("SELECT id, status, created_at FROM users WHERE id = :id"),
+        {"id": user_id},
+    ).one_or_none()
+    if row is None:
+        return None
+    return UserRow(id=row.id, status=row.status, created_at=row.created_at)
+
+
+def insert_user_if_absent(conn: Connection, user_id: UUID) -> bool:
+    inserted = conn.execute(
+        text("INSERT INTO users (id) VALUES (:id) ON CONFLICT (id) DO NOTHING RETURNING id"),
+        {"id": user_id},
+    ).one_or_none()
+    return inserted is not None
+
+
+async def get_current_user(request: Request) -> CurrentUser:
+    user = await verify_access_token(request)
+    row = await run_db(request.app.state.engine, lambda c: select_user(c, user.id))
+    if row is None:
+        raise ApiError(401, "AUTH_NOT_REGISTERED", MSG_NOT_REGISTERED)
+    if row.status != "active":
+        raise ApiError(403, "ACCOUNT_WITHDRAWN", MSG_WITHDRAWN)
+    request.state.user_row = row
+    return user
+
+
+@router.post("/api/v1/auth/session")
+async def create_session(
+    request: Request, user: CurrentUser = Depends(verify_access_token)
+) -> dict[str, Any]:
+    def tx(c: Connection) -> tuple[UserRow, bool]:
+        inserted = insert_user_if_absent(c, user.id)
+        row = select_user(c, user.id)
+        assert row is not None
+        return row, inserted
+
+    row, is_new = await run_db(request.app.state.engine, tx)
+    if row.status != "active":
+        raise ApiError(403, "ACCOUNT_WITHDRAWN", MSG_WITHDRAWN)
+    return {
+        "user_id": str(row.id),
+        "status": row.status,
+        "is_new": is_new,
+        "created_at": now_kst(row.created_at).isoformat(timespec="seconds"),
+    }
+
+
+@router.get("/api/v1/me")
+async def get_me(
+    request: Request, user: CurrentUser = Depends(get_current_user)
+) -> dict[str, Any]:
+    row: UserRow | None = getattr(request.state, "user_row", None)
+    if row is None or row.id != user.id:
+        row = await run_db(request.app.state.engine, lambda c: select_user(c, user.id))
+        if row is None:
+            raise ApiError(401, "AUTH_NOT_REGISTERED", MSG_NOT_REGISTERED)
+        if row.status != "active":
+            raise ApiError(403, "ACCOUNT_WITHDRAWN", MSG_WITHDRAWN)
+    return {
+        "user_id": str(row.id),
+        "status": row.status,
+        "created_at": now_kst(row.created_at).isoformat(timespec="seconds"),
+    }
