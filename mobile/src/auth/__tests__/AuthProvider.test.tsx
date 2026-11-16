@@ -215,4 +215,49 @@ describe("AuthProvider registration gate (AUTH-1-P5)", () => {
     );
     expect(mockedRawRegisterSession).toHaveBeenCalledTimes(2);
   });
+
+  test("provider_sign_in_succeeds_when_sdk_emits_signed_in_first (DEF-019)", async () => {
+    const uid = "00000000-0000-4000-8000-00000000000a";
+    let emit: ((event: string, session: unknown) => void) | undefined;
+    mockedOnAuthStateChange.mockImplementation(((cb: (e: string, s: unknown) => void) => {
+      emit = cb;
+      return { data: { subscription: { unsubscribe: unsubscribeMock } } };
+    }) as never);
+    mockedGetSession.mockResolvedValueOnce({ data: { session: null }, error: null });
+
+    let capturedCtx: ReturnType<typeof useAuth> | null = null;
+    const screen = await render(
+      <AuthProvider>
+        <Probe
+          onReady={(ctx) => {
+            capturedCtx = ctx;
+          }}
+        />
+      </AuthProvider>
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("probe").props.children).toBe("signedOut:none")
+    );
+
+    const session = { access_token: "tok-new", user: { id: uid } };
+    // supabase-js처럼 exchangeCodeForSession 안에서 SIGNED_IN 구독자를 부른 뒤 반환한다.
+    mockedStartGoogleSignIn.mockImplementationOnce(async () => {
+      emit?.("SIGNED_IN", session);
+      return { ok: true };
+    });
+    mockedGetSession.mockResolvedValue({ data: { session: session as never }, error: null });
+    mockedRawRegisterSession.mockResolvedValue(
+      makeJsonResponse(200, { user_id: uid, status: "active", is_new: true })
+    );
+
+    let loginRes:
+      | Awaited<ReturnType<ReturnType<typeof useAuth>["signInWithGoogle"]>>
+      | undefined;
+    await act(async () => {
+      loginRes = await capturedCtx!.signInWithGoogle();
+    });
+    expect(loginRes).toEqual({ ok: true });
+    expect(screen.getByTestId("probe").props.children).toBe(`signedIn:${uid}`);
+    expect(mockedRawRegisterSession).toHaveBeenCalledTimes(1);
+  });
 });

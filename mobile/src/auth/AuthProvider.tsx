@@ -57,6 +57,8 @@ export function AuthProvider({
   const generationRef = useRef(0);
   const statusRef = useRef<AuthStatus>("loading");
   const userIdRef = useRef<string | null>(null);
+  // 제공자 로그인(signInWithGoogle/Apple)이 진행 중인 동안 true.
+  const providerSignInRef = useRef(false);
 
   useEffect(() => {
     statusRef.current = status;
@@ -157,6 +159,12 @@ export function AuthProvider({
         ) {
           return;
         }
+        // DEF-019: supabase-js는 exchangeCodeForSession·signInWithIdToken 안에서 SIGNED_IN
+        // 구독자를 await한 뒤 반환한다. 여기서 세대를 올리면 진행 중인 제공자 로그인이
+        // 성공인데도 cancelled로 끝난다. 그 SIGNED_IN은 completeProviderSignIn이 등록한다.
+        if (event === "SIGNED_IN" && providerSignInRef.current) {
+          return;
+        }
         const eventGen = ++generationRef.current;
         if (!session?.access_token) {
           if (mountedRef.current) {
@@ -184,7 +192,13 @@ export function AuthProvider({
       runner: () => Promise<SignInResult>
     ): Promise<SignInResult> => {
       const myGen = ++generationRef.current;
-      const result = await runner();
+      providerSignInRef.current = true;
+      let result: SignInResult;
+      try {
+        result = await runner();
+      } finally {
+        providerSignInRef.current = false;
+      }
       if (!mountedRef.current || generationRef.current !== myGen) {
         return result.ok ? { ok: false, reason: "cancelled" } : result;
       }
