@@ -17,6 +17,8 @@
     --cream: #EFEFE7; --paper: #EFF1F1; --ink-strong: #2E333F;
     --text: #1D1D1F; --text-sub: #71716F;
     --r-card: 18px; --r-pill: 18px; --r-full: 9999px;
+    /* 임시 토큰(의미별, 지금 값 그대로 — 디자인_기준.md에 없는 것. 색 최종 조정 때 공통 정의로 옮긴다, PROJECT §3-14) */
+    --shadow-faint: rgba(0,0,0,.08); --shadow-sheet: rgba(0,0,0,.12); --shadow-soft: rgba(0,0,0,.15); --shadow-float: rgba(0,0,0,.18); --shadow-fab: rgba(0,0,0,.22); --text-shadow-on-image: rgba(0,0,0,.35); --scrim: rgba(0,0,0,.28); --band-on-image: rgba(0,0,0,.45); --band-on-image-end: rgba(0,0,0,0); --on-image: #fff; --sample-photo-1: #8E9A90; --sample-photo-2: #5E6A63; --sample-photo-3: #3F4642;
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font-family: "Noto Sans KR", system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; line-height: 1.5; }
@@ -47,12 +49,12 @@
   /* ---- 휴대폰 화면 (390×844를 0.75배) ---- */
   .phone { position: relative; width: 292px; height: 560px; margin: 0 auto; background: var(--cream); border-radius: 28px; overflow: hidden; border: 6px solid var(--ink-strong); }
   .vhead { padding: 12px 12px 8px; background: var(--cream); position: relative; z-index: 2; transition: all .2s; }
-  .vhead .back { font-size: 26px; font-weight: 900; line-height: 1; text-shadow: 0 1px 2px rgba(0,0,0,.15); }
+  .vhead .back { font-size: 26px; font-weight: 900; line-height: 1; text-shadow: 0 1px 2px var(--shadow-soft); }
   .vhead .name { font-size: 18px; font-weight: 700; margin-top: 2px; }
   .vhead .info { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-sub); }
   .vhead .more { font-size: 18px; color: var(--text); letter-spacing: 1px; }
   .vhead .pen { font-size: 16px; margin-left: 10px; color: var(--text); }
-  .vhead.collapsed { padding: 8px 12px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+  .vhead.collapsed { padding: 8px 12px; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 6px var(--shadow-faint); }
   .vhead.collapsed .back { font-size: 22px; }
   .vhead.collapsed .name { font-size: 15px; margin: 0; flex: 1; }
   .vhead.collapsed .info { display: none; }
@@ -63,13 +65,13 @@
   .masonry { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .col { display: flex; flex-direction: column; gap: 8px; }
   .card { border-radius: 14px; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 700; font-size: 11px; padding: 8px; color: var(--text); }
-  .card.dark { color: #fff; }
+  .card.dark { color: var(--on-image); }
   .card.photo { background: linear-gradient(160deg, var(--fill3), var(--surface3)); }
   .card.cover { background: linear-gradient(180deg, var(--fill2), var(--fill1)); }
   .card.new-tile { background: transparent; border: 2px dashed var(--surface3); color: var(--text-sub); font-weight: 700; font-size: 13px; flex-direction: column; gap: 2px; }
   .card.new-tile .plus { font-size: 24px; line-height: 1; }
-  .fab { position: absolute; right: 14px; bottom: 18px; width: 48px; height: 48px; border-radius: var(--r-full); background: var(--fill1); color: var(--text); font-size: 28px; font-weight: 500; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,0,0,.22); z-index: 3; }
-  .tap { outline: 3px solid #fff; outline-offset: 2px; animation: pulse 1.2s infinite; }
+  .fab { position: absolute; right: 14px; bottom: 18px; width: 48px; height: 48px; border-radius: var(--r-full); background: var(--fill1); color: var(--text); font-size: 28px; font-weight: 500; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px var(--shadow-fab); z-index: 3; }
+  .tap { outline: 3px solid var(--on-image); outline-offset: 2px; animation: pulse 1.2s infinite; }
   @keyframes pulse { 50% { outline-color: var(--ink-strong); } }
 
   /* ---- 글쓰기 화면 (버튼을 누른 뒤) ---- */
@@ -104,12 +106,12 @@
   /* ---- 요소 3: 글자 자리 ---- */
   .txtwrap { text-align: center; }
   .canvas { position: relative; width: 220px; height: 290px; margin: 0 auto; border-radius: 14px; overflow: hidden; transition: all .2s; }
-  .canvas.photo { background: linear-gradient(160deg, #8E9A90, #5E6A63 55%, #3F4642); }
+  .canvas.photo { background: linear-gradient(160deg, var(--sample-photo-1), var(--sample-photo-2) 55%, var(--sample-photo-3)); }
   .canvas.small { width: 130px; height: 172px; }
   .canvas.small .ovl { font-size: 9px; }
-  .ovl { position: absolute; left: 8%; right: 8%; color: #fff; font-weight: 700; font-size: 15px; text-align: center; text-shadow: 0 1px 3px rgba(0,0,0,.35); transition: top .2s; }
+  .ovl { position: absolute; left: 8%; right: 8%; color: var(--on-image); font-weight: 700; font-size: 15px; text-align: center; text-shadow: 0 1px 3px var(--text-shadow-on-image); transition: top .2s; }
   .ovl.top { top: 10%; } .ovl.mid { top: 45%; } .ovl.bot { top: auto; bottom: 0; }
-  .ovl.band { left: 0; right: 0; padding: 10px 8%; background: linear-gradient(0deg, rgba(0,0,0,.45), rgba(0,0,0,0)); }
+  .ovl.band { left: 0; right: 0; padding: 10px 8%; background: linear-gradient(0deg, var(--band-on-image), var(--band-on-image-end)); }
   .ovl.free { left: 30%; right: auto; cursor: grab; white-space: nowrap; }
   .seg { margin-top: 8px; }
   .seg button { font: inherit; font-size: 13px; border: 0; padding: 4px 14px; background: var(--surface2); cursor: pointer; }
@@ -119,11 +121,11 @@
   /* ---- 요소 4: 내리기 ---- */
   .mini .dtop { display: flex; justify-content: space-between; font-size: 14px; }
   .mini .hl { outline: 2px solid var(--ink-strong); border-radius: 6px; padding: 0 3px; }
-  .mini .sheet { margin-top: auto; background: var(--paper); border-radius: 10px 10px 0 0; padding: 4px 6px; box-shadow: 0 -2px 6px rgba(0,0,0,.12); }
+  .mini .sheet { margin-top: auto; background: var(--paper); border-radius: 10px 10px 0 0; padding: 4px 6px; box-shadow: 0 -2px 6px var(--shadow-sheet); }
   .mini .sheet div { padding: 3px 0; border-bottom: 1px solid var(--surface2); }
   .mini .sheet div:last-child { border: 0; }
   .mini .danger { font-weight: 700; }
-  .mini .dialog { margin: auto 0; background: var(--paper); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 2px 8px rgba(0,0,0,.18); }
+  .mini .dialog { margin: auto 0; background: var(--paper); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; gap: 4px; box-shadow: 0 2px 8px var(--shadow-float); }
   .mini .dialog small { color: var(--text-sub); }
   .mini .dbtn { display: flex; justify-content: space-between; margin-top: 4px; }
   .mini .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; }
@@ -144,9 +146,9 @@
   #stPhone .cimg.none { background: transparent; border: 2px dashed var(--surface3); display: flex; align-items: center; justify-content: center; text-align: center; font-size: 13px; color: var(--text-sub); }
   #stPhone .cnote { font-size: 12px; color: var(--text-sub); }
   #stPhone .crow { font-size: 13px; background: var(--cream); border-radius: 10px; padding: 8px 10px; }
-  #stPhone .stcard { position: absolute; left: 24px; right: 24px; top: 150px; background: var(--paper); border-radius: var(--r-card); padding: 14px; text-align: center; font-size: 13px; box-shadow: 0 4px 14px rgba(0,0,0,.18); z-index: 4; }
+  #stPhone .stcard { position: absolute; left: 24px; right: 24px; top: 150px; background: var(--paper); border-radius: var(--r-card); padding: 14px; text-align: center; font-size: 13px; box-shadow: 0 4px 14px var(--shadow-float); z-index: 4; }
   #stPhone .btn { display: inline-block; margin-top: 8px; background: var(--ink-strong); color: var(--paper); border-radius: var(--r-full); padding: 5px 14px; font-weight: 700; }
-  #stPhone .dim { position: absolute; inset: 0; background: rgba(0,0,0,.28); z-index: 4; }
+  #stPhone .dim { position: absolute; inset: 0; background: var(--scrim); z-index: 4; }
   #stPhone .dialog2 { position: absolute; left: 28px; right: 28px; top: 200px; background: var(--paper); border-radius: var(--r-card); padding: 14px; font-size: 13px; display: flex; flex-direction: column; gap: 4px; z-index: 5; }
   #stPhone .dialog2 small { color: var(--text-sub); }
   #stPhone .dbtn { display: flex; justify-content: space-between; margin-top: 8px; }
@@ -669,7 +671,7 @@
     ['표지를 찾지 못함', '고른 책에 표지가 없으면 제목·저자로 만든 표지가 들어가고, 아래에 "표지를 찾지 못해 제목·저자로 만들었어요 · 사진·단색으로 바꾸기"가 보여요.', '정할 것 2 + 기본값(Claude) 문구'],
     ['이미지를 안 고름', '처음 화면에서 이미지를 아직 안 골랐으면 "올리기"가 흐리고 눌리지 않아요. 아래에 "이미지를 하나 골라야 올릴 수 있어요"가 보여요. 글자·감상·책은 없어도 올릴 수 있어요.', '예외 #2 — 사용자 답 받는 중'],
     ['올리기를 두 번 빠르게', '"올리기"를 두 번 빨리 눌러도 게시물은 하나만 생겨요. 피드 맨 앞에 내 카드 하나와 "올렸어요"가 보여요.', '예외 #3 — 사용자 답 받는 중'],
-    ['로그인 안 함', '로그인하지 않은 사람이 오른쪽 아래 "+"를 누르면 아래에서 작은 창이 올라와요: "로그인하면 글을 올릴 수 있어요" + "로그인하기" / "닫기". 피드 구경은 그대로 할 수 있어요.', '예외 #4 — 사용자 답 받는 중'],
+    ['로그인 안 함', '로그인하지 않은 사람이 오른쪽 아래 "+"를 누르면 아래에서 작은 창이 올라와요: "로그인하면 글을 올릴 수 있어요" + "로그인하기" / "닫기". 피드 구경은 그대로 할 수 있어요.', '예외 #4 — 사용자: "구경은 된다고 해서요"(괜찮은 화면으로 고름)'],
     ['남의 게시물', '이웃의 게시물 상세에서 ⋯를 누르면 "공유"만 있고 "게시물 내리기"는 없어요.', '정할 것 4 + 정해진 것(작성자만 내림)'],
     ['내린 게시물을 링크로 열면', '내린 게시물의 링크를 다른 사람이 열면 "더 이상 공개되지 않는 게시물이에요." + "광장 보기"가 떠요. 피드에서도 이미 사라져 있어요.', '정해진 문구'],
     ['쓰던 글을 닫을 때', '쓰는 중에 왼쪽 위 "✕"를 누르면 "쓰던 글을 버릴까요? 닫으면 쓴 내용이 남지 않아요." — "계속 쓰기" / "버리기".', '기본값(Claude)']
