@@ -1,51 +1,16 @@
-// TODO(연결): D — core APP-0-P1 `mobile/src/lib/publicApi.ts`가 머지되면 이 파일 대신 그 모듈을 쓴다.
-// 타입 이름·함수 시그니처·응답 모양은 core.md APP-0 C2 / LIB-0 C3 그대로다.
+// TODO(연결): D LIB-0-P2 — 서버 #7·#8·#9가 머지되면 이 파일을 지우고 `../../../lib/publicApi`의 같은 함수를 쓴다.
+// 타입·오류는 이미 `lib/publicApi`(APP-0-P1)의 것을 쓴다. 함수 시그니처는 core.md APP-0 C2 그대로다.
 // 응답 값은 core.md LIB-0 C7 가짜 값(Book 2개)에서 시작하고, 화면 확인용 책 몇 권을 같은 모양으로 더했다.
 
-export type Book = {
-  isbn13: string;
-  title: string;
-  author: string | null;
-  publisher: string | null;
-  cover_url: string | null;
-  source: "naver" | "data4library" | "manual";
-  description: string | null;
-  pub_year: number | null;
-};
+import { ApiCallError } from "../../../lib/publicApi";
+import type {
+  Book,
+  BookSearchResponse,
+  RecommendationResponse,
+} from "../../../lib/publicApi";
 
-export type FallbackReason = "not_configured" | "limit" | "provider_error" | "no_data" | null;
-
-export type BookSearchResponse = {
-  items: Book[];
-  next_start: number | null;
-  source: "naver" | "cache";
-  fallback_reason: FallbackReason;
-};
-
-export type RecommendationResponse = {
-  kind: "popular";
-  scope: "national" | "library";
-  library_id: number | null;
-  basis_label: string;
-  theme: null;
-  books: Book[];
-  fetched_at: string | null;
-  stale: boolean;
-  fallback_reason: FallbackReason;
-};
-
-export class ApiCallError extends Error {
-  status: number;
-  code: string;
-  detail: string;
-  constructor(status: number, code: string, message: string, detail = "") {
-    super(message);
-    this.name = "ApiCallError";
-    this.status = status;
-    this.code = code;
-    this.detail = detail;
-  }
-}
+export { ApiCallError };
+export type { Book, BookSearchResponse, RecommendationResponse };
 
 // core.md LIB-0 C7의 Book 2개(원문 그대로)
 const CANONICAL: Book[] = [
@@ -106,7 +71,7 @@ function delay<T>(value: T, signal?: AbortSignal): Promise<T> {
     const t = setTimeout(() => resolve(value), 300);
     signal?.addEventListener("abort", () => {
       clearTimeout(t);
-      reject(new ApiCallError(0, "NETWORK", "aborted"));
+      reject(new ApiCallError(0, "NETWORK", "aborted", ""));
     });
   });
 }
@@ -129,7 +94,7 @@ export async function fetchBook(isbn13: string, signal?: AbortSignal): Promise<B
   const book = CATALOG.find((b) => b.isbn13 === isbn13);
   if (!book) {
     await delay(null, signal);
-    throw new ApiCallError(404, "NOT_FOUND", "찾을 수 없어요.");
+    throw new ApiCallError(404, "NOT_FOUND", "찾을 수 없어요.", "");
   }
   return delay(book, signal);
 }
@@ -156,5 +121,5 @@ export async function fetchRecommendations(
 
 // LIB-2에서 쓰는 소장 조회. LIB-1 화면은 부르지 않는다(B6). 테스트가 "0번 불렸음"을 확인하는 데 쓴다.
 export async function fetchAvailabilityNearby(): Promise<never> {
-  throw new ApiCallError(0, "NETWORK", "LIB-1에서는 부르지 않는다");
+  throw new ApiCallError(0, "NETWORK", "LIB-1에서는 부르지 않는다", "");
 }

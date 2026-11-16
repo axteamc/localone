@@ -14,8 +14,8 @@ import {
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { theme } from "./__fakes__/core"; // TODO(연결): D theme
-import type { Book } from "./__fakes__/publicApi"; // TODO(연결): D — lib/publicApi
+import type { Book } from "../../lib/publicApi";
+import { theme } from "../../theme";
 import { SearchEntry } from "./SearchEntry";
 import {
   QUERY_MAX_CHARS,
@@ -56,12 +56,12 @@ export function BookCover({
   fontSize?: number;
 }) {
   const [broken, setBroken] = useState(false);
-  const r = theme.radii.bookCover;
+  const [topLeft, topRight, bottomRight, bottomLeft] = theme.radii.bookCover;
   const shape = {
-    borderTopLeftRadius: r.topLeft,
-    borderTopRightRadius: r.topRight,
-    borderBottomRightRadius: r.bottomRight,
-    borderBottomLeftRadius: r.bottomLeft,
+    borderTopLeftRadius: topLeft,
+    borderTopRightRadius: topRight,
+    borderBottomRightRadius: bottomRight,
+    borderBottomLeftRadius: bottomLeft,
     overflow: "hidden" as const,
   };
   if (book.cover_url && !broken) {

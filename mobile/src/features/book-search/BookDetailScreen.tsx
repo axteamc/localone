@@ -4,8 +4,10 @@ import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
-import { createLatestRunner, theme } from "./__fakes__/core"; // TODO(연결): D — theme, lib/latest
-import { ApiCallError, fetchBook, type Book } from "./__fakes__/publicApi"; // TODO(연결): D — lib/publicApi
+import { createLatestRunner } from "../../lib/latest";
+import { ApiCallError, type Book } from "../../lib/publicApi";
+import { theme } from "../../theme";
+import { fetchBook } from "./__fakes__/publicApi"; // TODO(연결): D LIB-0-P2 — lib/publicApi
 import { pushRecentBook } from "./recentBooks";
 import { BookCover, SEARCH_FAILED } from "./SearchScreen";
 

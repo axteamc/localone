@@ -3,8 +3,10 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
-import { createLatestRunner, theme } from "./__fakes__/core"; // TODO(연결): D — theme, lib/latest
-import { fetchRecommendations, type RecommendationResponse } from "./__fakes__/publicApi"; // TODO(연결): D
+import { createLatestRunner } from "../../lib/latest";
+import type { RecommendationResponse } from "../../lib/publicApi";
+import { theme } from "../../theme";
+import { fetchRecommendations } from "./__fakes__/publicApi"; // TODO(연결): D LIB-0-P2 — lib/publicApi
 import {
   clearRecentBooks,
   listRecentBooks,

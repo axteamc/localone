@@ -1,12 +1,7 @@
 // 최근 본 도서 — 기기에만 저장(book-search.md LIB-1 B4, core.md APP-0 C3)
-import { deviceStorage } from "./__fakes__/core"; // TODO(연결): D — lib/platform
-import type { Book } from "./__fakes__/publicApi"; // TODO(연결): D — lib/publicApi
-
-// TODO(연결): D policy — core lib/policy.ts가 머지되면 거기서 가져온다(같은 이름·같은 값).
-export const RECENT_BOOK_LIMIT = 20;
-export const STORAGE_KEYS = {
-  recentBooks: (userId: string | null) => `recent_books:${userId ?? "guest"}`,
-};
+import { deviceStorage } from "../../lib/platform";
+import { RECENT_BOOK_LIMIT, STORAGE_KEYS } from "../../lib/policy";
+import type { Book } from "../../lib/publicApi";
 
 export type RecentBook = {
   isbn13: string;

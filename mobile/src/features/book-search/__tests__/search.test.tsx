@@ -102,7 +102,7 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-const providerDown = () => new api.ApiCallError(503, "PROVIDER_UNAVAILABLE", "x");
+const providerDown = () => new api.ApiCallError(503, "PROVIDER_UNAVAILABLE", "x", "");
 
 async function typeAndSearch(q: string) {
   await fireEvent.changeText(screen.getByTestId("search-input"), q);

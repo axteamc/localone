@@ -1,11 +1,10 @@
 // 검색·더 내리기·입력 중 추천(book-search.md LIB-1 B3·B7·B8, C2)
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createLatestRunner } from "./__fakes__/core"; // TODO(연결): D — lib/latest
-import { searchBooks, type Book } from "./__fakes__/publicApi"; // TODO(연결): D — lib/publicApi
+import { createLatestRunner } from "../../lib/latest";
+import { SUGGEST_DEBOUNCE_MS, SUGGEST_MIN_CHARS } from "../../lib/policy";
+import type { Book } from "../../lib/publicApi";
+import { searchBooks } from "./__fakes__/publicApi"; // TODO(연결): D LIB-0-P2 — lib/publicApi
 
-// TODO(연결): D policy — core lib/policy.ts가 머지되면 거기서 가져온다(같은 이름·같은 값).
-export const SUGGEST_MIN_CHARS = 2;
-export const SUGGEST_DEBOUNCE_MS = 400;
 export const QUERY_MAX_CHARS = 100; // 06 #7 q 1~100자(S-2)
 
 export type SearchStatus = "idle" | "loading" | "ready" | "empty" | "error";

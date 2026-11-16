@@ -13,7 +13,7 @@
 | LIB-01 | AC-UI | 21권 기록 | 기록·다시 보기·삭제 | 최대 20, 다시 본 책 맨 앞, 개별·전체 삭제, 비로그인은 `recent_books:guest` | 시험 통과 | `recentBooks.ts:34-77`, `recent books max 20…`, `recent books keys are exact`, `remove and clear…` | 통과 | 미실행 | 대기 |
 | LIB-01 | AC-UI | #9 503 | 진입 → 다시 해 보기 | 인기 칸만 오류·다시 시도 | 시험 통과 | `SearchEntry.tsx:117-124`, `recommendation failure keeps recent and search` | 통과(가짜) | 미실행 | 대기 |
 | (LIB-1) | AC-RACE | 검색 deferred 2개 | "소년" → "편의점", "소년" 늦게 도착 | 편의점 결과만 | 시험 통과 | `useBookSearch.ts:59`, `late response for old query is dropped`, `submit cancels pending suggestion` | 통과 | 미실행 | 대기 |
-| (LIB-1) | 실제 서버 연결 | D LIB-0 서버 | 실제 #7·#8·#9 | 같은 화면 | 미실행 | D LIB-0·APP-0 미머지 | 미실행 | 미실행 | 대기 |
+| (LIB-1) | 실제 서버 연결 | D LIB-0 서버 | 실제 #7·#8·#9 | 같은 화면 | 미실행 | D LIB-0-P2 미머지 | 미실행 | 미실행 | 대기 |
 
 ## 2. 명세서 예외 상황 점검
 
@@ -32,5 +32,5 @@
 ## 4. 남은 문제
 
 - Android 미실행: 이 PC에 에뮬레이터가 없음.
-- 실제 서버 연결 미실행: D LIB-0(#7~#9)·APP-0(theme·publicApi 등) 머지 뒤 `TODO(연결): D`를 바꾸고 다시 확인.
+- 실제 서버 연결 미실행: D LIB-0-P2(#7~#9) 머지 뒤 `TODO(연결): D LIB-0-P2`(가짜 세 함수)를 `lib/publicApi`로 바꾸고 다시 확인. APP-0-P1 공통 부품(theme·deviceStorage·latest·policy)은 연결 완료.
 - 저장 버튼의 로그인 뒤 동작은 LIB-3(`TODO(연결): C LIB-3`).

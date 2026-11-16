@@ -5,7 +5,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 import React from "react";
 import { StyleSheet } from "react-native";
 import { useAuth } from "../../../auth/AuthProvider";
-import { theme } from "../__fakes__/core";
+import { theme } from "../../../theme";
 import * as api from "../__fakes__/publicApi";
 import type { Book, BookSearchResponse } from "../__fakes__/publicApi";
 import { BookDetailScreen } from "../BookDetailScreen";
@@ -99,7 +99,7 @@ beforeEach(async () => {
   signedIn(null);
   fetchBook.mockImplementation(async (isbn) => {
     const b = [BOY, STORE].find((x) => x.isbn13 === isbn);
-    if (!b) throw new api.ApiCallError(404, "NOT_FOUND", "x");
+    if (!b) throw new api.ApiCallError(404, "NOT_FOUND", "x", "");
     return b;
   });
   searchBooks.mockResolvedValue(page([BOY, STORE]));
@@ -188,7 +188,7 @@ describe("상세 화면", () => {
   });
 
   test("detail provider failure shows retry and does not record", async () => {
-    fetchBook.mockRejectedValueOnce(new api.ApiCallError(503, "PROVIDER_UNAVAILABLE", "x"));
+    fetchBook.mockRejectedValueOnce(new api.ApiCallError(503, "PROVIDER_UNAVAILABLE", "x", ""));
     await render(<BookDetailScreen isbn13={BOY.isbn13} />);
     expect(
       await screen.findByText("지금은 책을 찾을 수 없어요. 잠시 후 다시 해 주세요.")
