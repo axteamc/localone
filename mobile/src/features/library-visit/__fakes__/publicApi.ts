@@ -143,6 +143,86 @@ export async function getDefaultLibrary(): Promise<number | null> {
   return null;
 }
 
+export type VisitRecord = {
+  libraryId: number;
+  count: number;
+  firstVisitedOn: string;
+  lastVisitedOn: string;
+  streakDays: number;
+  defaultAsked: boolean;
+};
+
+/** 방문 기록 가짜 (library-visit.md VISIT-1b C7). 많이 간 순 */
+export const FAKE_VISITS: VisitRecord[] = [
+  { libraryId: 101, count: 5, firstVisitedOn: "2026-11-01", lastVisitedOn: "2026-11-15", streakDays: 1, defaultAsked: true },
+  { libraryId: 102, count: 2, firstVisitedOn: "2026-11-10", lastVisitedOn: "2026-11-12", streakDays: 1, defaultAsked: false },
+];
+
+export async function getFrequentLibraries(limit = 3): Promise<VisitRecord[]> {
+  return FAKE_VISITS.slice(0, Math.max(0, limit));
+}
+
+// ── 가짜 #9 응답 (core LIB-0 C7, VISIT-1b C7) ──────────────────────────
+export type Book = {
+  isbn13: string;
+  title: string;
+  author: string | null;
+  publisher: string | null;
+  cover_url: string | null;
+  source: "naver" | "data4library" | "manual";
+  description: string | null;
+  pub_year: number | null;
+};
+
+export type RecommendationResponse = {
+  kind: "popular";
+  scope: "national" | "library";
+  library_id: number | null;
+  basis_label: string;
+  theme: null;
+  books: Book[];
+  fetched_at: string | null;
+  stale: boolean;
+  fallback_reason: "not_configured" | "limit" | "provider_error" | "no_data" | null;
+};
+
+export const FAKE_RECOMMENDATIONS: RecommendationResponse = {
+  kind: "popular",
+  scope: "library",
+  library_id: 101,
+  basis_label: "정독도서관 · 최근 30일 대출",
+  theme: null,
+  books: [
+    {
+      isbn13: "9788936434120",
+      title: "소년이 온다",
+      author: "한강",
+      publisher: "창비",
+      cover_url: "https://example.invalid/cover/9788936434120.jpg",
+      source: "data4library",
+      description: "1980년 5월 광주를 겪은 사람들의 이야기.",
+      pub_year: 2014,
+    },
+    {
+      isbn13: "9788954682152",
+      title: "불편한 편의점",
+      author: "김호연",
+      publisher: "나무옆의자",
+      cover_url: null,
+      source: "data4library",
+      description: null,
+      pub_year: null,
+    },
+  ],
+  fetched_at: "2026-11-16T06:00:00+09:00",
+  stale: false,
+  fallback_reason: null,
+};
+
+export async function fetchRecommendations(_libraryId?: number, _signal?: AbortSignal): Promise<RecommendationResponse> {
+  return FAKE_RECOMMENDATIONS;
+}
+
 // ── lib/regions (core APP-0 C2, K20 / 지역 표 가짜는 library-visit.md C7) ─────
 export type Region = { code: string; sido: string; sigungu: string; label: string };
 

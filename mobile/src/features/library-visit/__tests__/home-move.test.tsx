@@ -18,6 +18,12 @@ jest.mock("../../../auth/AuthProvider", () => ({
   useAuth: jest.fn(() => ({ status: "signedOut", session: null, user: null })),
 }));
 
+// 지도 홈 시험은 지도·목록 동작만 본다. 하단 창(VISIT-1b)은 home-sheet·home-news 시험이 따로 본다.
+// 창 위쪽 끝에 붙는 안내·버튼(above)만 그대로 그린다
+jest.mock("../HomeSheet", () => ({
+  HomeSheet: (p: { above?: unknown }) => p.above ?? null,
+}));
+
 jest.mock("../deps", () => {
   const actual = jest.requireActual("../__fakes__/publicApi") as typeof import("../__fakes__/publicApi");
   const ReactLib = require("react");
