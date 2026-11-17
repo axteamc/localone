@@ -138,6 +138,9 @@
 - [Claude가 정함] VISIT 마무리 상태 화면 기본값 — 불러오는 중("도서관을 찾는 중…" 알약), 도서관 찾기 결과 없음 문구, 다시 찾기 연타 시 버튼 흐림, 창 닫기(창 밖·뒤로 가기·‹) — 이 문서 8절, 시안 `#except`
 - [구현 중 변경] 홈 탭 파일 `mobile/app/(tabs)/index.tsx` 미생성 — APP-0-P2(홈 탭 스텁) 머지 전이라 계약 C7대로 `HomeScreen.tsx`만 만들고 시험으로 확인. APP-0-P2 머지 뒤 한 줄 연결 — contracts/library-visit.md C7
 - [Claude가 정함] 목록 모드 시군구 — 첫 주변 조회가 끝나기 전에 지도가 실패하면 조회가 끝난 뒤 그 결과로 시군구를 고른다(V8 규칙 유지) — mobile/src/features/library-visit/useHomeLibraries.ts
+- [계약 개정 반영] V5 방문 페이지 `distanceM` 전달 — 계약 V5·P5가 2026-11-17 10:32(team `b0a1523`, core K15 D 확정)에 바뀐 것을 반영. `[구현 중 변경]` 아님. `distance_m`이 0 이상 안전한 정수일 때만 넘기고 `null`·음수·소수는 키 생략(PR #115) — mobile/src/features/library-visit/HomeScreen.tsx `openLibrary`, 시험 `home-map.test.tsx` `marker press omits distanceM …`
+- [계약 보완 필요] `reloadHere(center, stillHere?)` — C2는 `reloadHere(center)`. 다시 찾기 응답을 기다리는 사이 지도를 또 옮겼는지 묻는 선택 인자를 더함(호환됨, PR #93 재리뷰 반영 `0b1500a`) — mobile/src/features/library-visit/useHomeLibraries.ts `reloadHere`
+- [완료] 홈 탭 파일 연결 — 위 `[구현 중 변경]` 항목은 APP-0-P2(#109) 머지 뒤 PR #115에서 `(tabs)/index.tsx`가 `HomeScreen`을 그리도록 처리됨 — mobile/app/(tabs)/index.tsx
 - [Claude가 정함] 묶음 누름 확대 — 처음 level 5, 누를 때마다 2단계 가깝게(최소 1). 계약 V4는 "확대해 핀이 나뉜다"까지만 정함 — mobile/src/features/library-visit/LibraryMap.tsx
 - [처리 못 함] P2 실제 지도 화면 확인 — APP-0-P3(KakaoMap) 머지 전이라 가짜 지도(바로 실패 → 목록)로만 실행. 핀은 시험으로만 확인, 주니어에게 핀 화면을 보여 주지 못함 — 계약 VISIT-1-P2 머리말 5칸
 - [구현 중 변경] P3 화면 확인 때 주니어 지적("도서관 찾기 누르면 책 제목 저자 검색 대신 도서관찾는걸로 바꾸는걸로 아는데") — 찾기 창이 맨 위 검색창 아래에서 열려 검색창이 그대로 보였음. 시안 후보 A(`.top`은 창이 닫혔을 때만, `.drop`은 top:0)대로 창을 화면 맨 위부터 덮고 열려 있는 동안 검색창을 숨김. 검색창 모양도 시안 `.sbar`(안쪽 작은 둥근 "도서관 찾기")에 맞춤. 색은 theme 머지 뒤 — specs/library-visit/세부/VISIT-1_시안.html:54-56,206-209
