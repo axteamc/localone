@@ -16,11 +16,14 @@ import { ApiCallError, fetchLibrary, type LibraryDetail } from "../../lib/public
 import { getDefaultLibrary, recordVisit } from "../../lib/visits";
 import { onFill, theme } from "../../theme";
 import { FOLD_AT, VisitHeader, VisitHeaderFolded } from "./VisitHeader";
+import { AskDefaultCard } from "./AskDefaultCard";
+import { VisitMenu } from "./VisitMenu";
 import { pickVisitMent } from "./visitMent";
 
 const C = theme.colors;
 const MENT_DELAY_MS = 300; // 전환 끝나고 0.3초 (G3)
 const MENT_SHOW_MS = 2500; // 2.5초 뒤 사라짐 (G3)
+const NOTICE_MS = 2000; // ⋯ 메뉴 한 줄 안내 2초 (G4)
 
 export const VISIT_TEXT = {
   notFound: "찾을 수 없어요.",
@@ -54,8 +57,8 @@ export type VisitScreenProps = {
   distanceM: number | null;
   loadFeed?: FeedLoader; // TODO(연결): B LOCAL-2 fetchLibraryPosts
   renderFeed?: (items: unknown[]) => React.ReactNode;
-  more?: (lib: LibraryDetail) => React.ReactNode; // ⋯ 메뉴(VISIT-2-P2)
-  askCard?: (lib: LibraryDetail, close: () => void) => React.ReactNode; // 세 번째 방문 질문(VISIT-2-P2)
+  more?: (lib: LibraryDetail) => React.ReactNode; // 기본: VisitMenu (시험에서 바꿔 끼움)
+  askCard?: (lib: LibraryDetail, close: () => void) => React.ReactNode; // 기본: AskDefaultCard
 };
 
 export function VisitScreen({ libraryId, distanceM, loadFeed, renderFeed, more, askCard }: VisitScreenProps) {
@@ -68,6 +71,8 @@ export function VisitScreen({ libraryId, distanceM, loadFeed, renderFeed, more, 
   const [ment, setMent] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
   const [loginSheet, setLoginSheet] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const libRunner = useRef(createLatestRunner()).current;
   const feedRunner = useRef(createLatestRunner()).current;
   const backing = useRef(false);
@@ -82,8 +87,15 @@ export function VisitScreen({ libraryId, distanceM, loadFeed, renderFeed, more, 
       libRunner.cancel();
       feedRunner.cancel();
       timers.current.forEach(clearTimeout);
+      if (noticeTimer.current) clearTimeout(noticeTimer.current);
     };
   }, [libRunner, feedRunner]);
+
+  const showNotice = useCallback((text: string) => {
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    setNotice(text);
+    noticeTimer.current = setTimeout(() => alive.current && setNotice(null), NOTICE_MS);
+  }, []);
 
   // 화면 왼쪽 끝 밀기(Stack 제스처)로 나가는 중이면 ‹를 더 받지 않는다(V-#3)
   useEffect(() => {
@@ -199,7 +211,24 @@ export function VisitScreen({ libraryId, distanceM, loadFeed, renderFeed, more, 
   }
 
   const name = lib.kind === "ok" ? lib.lib.name : "";
-  const moreNode = lib.kind === "ok" && more ? more(lib.lib) : <View style={styles.moreSpace} />;
+  const moreNode =
+    lib.kind === "ok" ? (
+      more ? more(lib.lib) : <VisitMenu library={lib.lib} onNotice={showNotice} />
+    ) : (
+      <View style={styles.moreSpace} />
+    );
+  const renderAsk =
+    askCard ??
+    ((l: LibraryDetail, close: () => void) => (
+      <AskDefaultCard
+        libraryId={l.id}
+        name={l.name}
+        onDone={(yes) => {
+          close();
+          if (yes) showNotice(`앱을 켜면 ${l.name}부터 열어요`);
+        }}
+      />
+    ));
 
   return (
     <View style={styles.screen}>
@@ -275,7 +304,13 @@ export function VisitScreen({ libraryId, distanceM, loadFeed, renderFeed, more, 
         </View>
       ) : null}
 
-      {asking && lib.kind === "ok" && askCard ? askCard(lib.lib, () => setAsking(false)) : null}
+      {asking && lib.kind === "ok" ? renderAsk(lib.lib, () => setAsking(false)) : null}
+
+      {notice ? (
+        <View style={styles.ment} pointerEvents="none" testID="visit-notice" accessibilityLiveRegion="polite">
+          <Text style={styles.mentText}>{notice}</Text>
+        </View>
+      ) : null}
 
       {loginSheet ? (
         <View style={styles.sheetBackdrop}>

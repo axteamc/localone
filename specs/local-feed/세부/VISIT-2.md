@@ -123,6 +123,9 @@
 - [구현 중 변경] 명세 상태를 `승인(머지됨)`으로 맞춤(PR #94 머지) — 이 파일은 VISIT-2 파트 허용 목록 밖이지만 상태·8절 기록용으로만 고침
 - [Claude가 정함] 도서관 정보를 못 받았을 때도 방문은 세고(G-#2), 멘트의 도서관 이름 자리는 "이 도서관"으로 씀
 
+- [Claude가 정함] ⋯ 메뉴 한 줄 안내 문구: 켤 때 "앱을 켜면 ○○부터 열어요", 끌 때 "바로 열기를 껐어요", 홈페이지를 못 열 때 "홈페이지를 열 수 없어요"(G4 "한 줄 안내 2초"의 글자가 정해지지 않음)
+- [Claude가 정함] 앱 시작 분기: 주변에 도서관이 하나도 없거나 주변 조회가 실패하면 풀지 않고 방문 페이지로 연다(G6은 "다른 도서관이 하나 이상"일 때만 풂). 반경 안이면 그 도서관 거리도 넘긴다
+
 ## 다음에 할 것
 
 ## 이전 버전
@@ -131,7 +134,7 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 (대기/진행/검토요청/완료) | 구현 근거 (`파일:줄`) 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| VISIT-2-P1 틀·방문 멘트 | `feat/local-feed-VISIT-2` | (첫 push 때) | 완료 | `mobile/app/libraries/[libraryId].tsx`, `mobile/src/features/local-feed/VisitScreen.tsx`, `VisitHeader.tsx`, `visitMent.ts` · `visit.test.tsx` 39개 통과, 가드 7개 제거 확인 | `TODO(연결)`: B LOCAL-2 `fetchLibraryPosts`(그 전에는 빈 피드) / `to:D` #129(routes.test) |
-| VISIT-2-P2 기본값·앱 시작 분기 | `feat/local-feed-VISIT-2` | 같은 PR | 진행 | - | - |
+| VISIT-2-P1 틀·방문 멘트 | `feat/local-feed-VISIT-2` | #132 | 완료 | `mobile/app/libraries/[libraryId].tsx`, `mobile/src/features/local-feed/VisitScreen.tsx`, `VisitHeader.tsx`, `visitMent.ts` · `visit.test.tsx` 39개 통과, 가드 7개 제거 확인 | `TODO(연결)`: B LOCAL-2 `fetchLibraryPosts`(그 전에는 빈 피드) / `to:D` #129(routes.test) |
+| VISIT-2-P2 기본값·앱 시작 분기 | `feat/local-feed-VISIT-2` | #132 | 완료 | `VisitMenu.tsx`, `AskDefaultCard.tsx`, `DefaultLibraryGate.tsx`, `VisitScreen.tsx`(메뉴·질문 카드·한 줄 안내 연결) · `default-library.test.tsx` 13개, local-feed 52개 통과, 가드 6개 제거 확인 | 홈 탭 배치는 A(library-visit V17) |
 
-- **다음 세션 이어하기 메모**: 3_구현 진행 중. P1 완료 → P2(⋯ 메뉴·세 번째 방문 질문·DefaultLibraryGate). 그다음 LOCAL-2.
+- **다음 세션 이어하기 메모**: 3_구현 진행 중. P1·P2 완료 → 검증서 후 검토 요청. 그다음 LOCAL-2.
