@@ -164,6 +164,28 @@ describe("VISIT-1b-P2 library news", () => {
     expect(news().queryAllByTestId("post-card")).toHaveLength(0); // 가짜 게시물 없음
   });
 
+  test("nearby libraries all without posts", async () => {
+    m.getFrequentLibraries.mockResolvedValue([]);
+    posts.mockResolvedValue(page([]));
+    await openHome();
+    expect(await news().findByText("가까운 도서관에도 아직 게시물이 없어요.")).toBeTruthy(); // 예외 #2-c
+    const pills = news().getAllByTestId(/^news-pill-/);
+    expect(pills).toHaveLength(3); // 알약은 그대로
+    expect(pills.every((p) => p.props.accessibilityState?.selected === false)).toBe(true);
+    expect(posts).toHaveBeenCalledTimes(3); // 가까운 세 곳을 차례로 확인
+  });
+
+  test("nearby opens first library that has posts", async () => {
+    m.getFrequentLibraries.mockResolvedValue([]);
+    posts.mockImplementation(async (id) => page(id === 102 ? [post(2, 102)] : []));
+    await openHome();
+    expect(await news().findByLabelText("글2")).toBeTruthy();
+    expect(news().getByTestId("news-pill-102").props.accessibilityState).toMatchObject({ selected: true });
+    // 그 뒤 게시물 없는 가까운 알약을 누르면 그 도서관 이름으로 안내
+    await fireEvent.press(news().getByTestId("news-pill-101"));
+    expect(await news().findByText("정독도서관에는 아직 게시물이 없어요.")).toBeTruthy();
+  });
+
   test("missing frequent library pill is dropped", async () => {
     const before = JSON.stringify(actual.FAKE_VISITS);
     m.fetchLibrary.mockImplementation(async (id) => {
