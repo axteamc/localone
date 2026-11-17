@@ -9,7 +9,7 @@ import { createLatestRunner } from "../../lib/latest";
 import { openExternalUrl } from "../../lib/platform";
 import { fetchAvailabilityAt, type AvailabilityItem } from "../../lib/publicApi";
 import { onFill, theme } from "../../theme";
-import { ApiCallError, emitPostWithdrawn, fetchPost, type Post } from "./api";
+import { ApiCallError, emitPostReaction, emitPostWithdrawn, fetchPost, type Post } from "./api";
 import { PostImage, PostMoreMenu } from "./ComposeScreen";
 import { LoginPrompt, MENU_TEXT } from "./PostMenu";
 import { ReactionButton, SaveButton } from "./ReactionButton";
@@ -220,7 +220,10 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
             signedIn={signedIn}
             reacted={post.my_reaction}
             count={post.reaction_count}
-            onChange={(reacted, count) => update({ my_reaction: reacted, reaction_count: count })}
+            onChange={(reacted, count) => {
+              update({ my_reaction: reacted, reaction_count: count });
+              emitPostReaction(post.id, { my_reaction: reacted }); // 돌아갈 피드 카드 메뉴도 맞춘다(①-2)
+            }}
             onLoginNeeded={() => setLogin(true)}
             onNotice={showNotice}
           />
@@ -266,7 +269,10 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
           postId={post.id}
           signedIn={signedIn}
           saved={post.my_bookmark}
-          onChange={(saved) => update({ my_bookmark: saved })}
+          onChange={(saved) => {
+            update({ my_bookmark: saved });
+            emitPostReaction(post.id, { my_bookmark: saved });
+          }}
           onLoginNeeded={() => setLogin(true)}
           onNotice={showNotice}
         />

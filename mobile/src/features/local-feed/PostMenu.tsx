@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { onFill, theme } from "../../theme";
-import { ApiCallError, setBookmark, setReaction, type FeedPost } from "./api";
+import { ApiCallError, setBookmark, setReaction, type FeedPost, type PostReactionPatch } from "./api";
 import { shareNotice, sharePost } from "./share";
 
 const C = theme.colors;
@@ -62,7 +62,7 @@ export type PostMenuProps = {
   post: FeedPost;
   signedIn: boolean;
   onClose(): void;
-  onChange(post: FeedPost): void;
+  onChange(postId: string, patch: PostReactionPatch): void;
   onNotice(text: string): void;
   onLoginNeeded(): void;
 };
@@ -82,12 +82,13 @@ export function PostMenu({ post, signedIn, onClose, onChange, onNotice, onLoginN
     busy.current[kind] = true;
     rerender((n) => n + 1);
     try {
+      // 응답이 온 필드만 넘긴다. 누른 시점의 post 전체를 넘기면 동시에 보낸 다른 쪽 결과를 덮는다(①-1)
       if (kind === "reaction") {
         const res = await setReaction(post.id, !post.my_reaction);
-        onChange({ ...post, my_reaction: res.reacted });
+        onChange(post.id, { my_reaction: res.reacted });
       } else {
         const res = await setBookmark(post.id, !post.my_bookmark);
-        onChange({ ...post, my_bookmark: res.bookmarked });
+        onChange(post.id, { my_bookmark: res.bookmarked });
       }
     } catch (e) {
       onNotice(toggleFailText(e));
