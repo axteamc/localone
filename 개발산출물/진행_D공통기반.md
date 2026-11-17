@@ -1,8 +1,8 @@
 # D 공통 기반 진행
 
-상태: APP-0-P1 머지 완료(PR [#96](https://github.com/axteamc/localone/pull/96), `00f71a3`). APP-0-P2 머지 완료(PR [#109](https://github.com/axteamc/localone/pull/109), `4393e3f`; `main` push CI `43998844366` iOS 빌드 점검 진행 중, 실기기 `needs-ios` 미확인). **APP-0-P1 VISIT-2 선행 보완 4파일 로컬 구현·검증·게시 완료, PR [#110](https://github.com/axteamc/localone/pull/110).** 사람 역할 D / AI 구현·자체 검증 담당. 2026-11-17 Windows.
+상태: **LIB-0-P1 구현·로컬 검증·PR [#111](https://github.com/axteamc/localone/pull/111) 게시, 리뷰 대기.** APP-0-P1 #96·P2 #109·VISIT-2 선행 보완 #110은 main 반영 확인. 사람 역할 D / AI 구현·자체 검수. 2026-11-17 Windows. APP-0 이전 기록은 아래에 보존하며 이번 허용 범위는 LIB-0-P1 현재 기록을 따른다.
 
-## 입력과 경계
+## APP-0 이전 입력과 경계 (보존)
 
 - B2: [기준선 §0](기준선.md), team `3361a5f` / `908eae4`(VISIT-2 보완 포함), `.team_docs/contracts/core.md` APP-0 C1~C7·P1~P5·`APP-0-P1 보완(VISIT-2 선행)`(본문 SHA `b0a1523899fe33e798af39227db273b8dfdde02a`).
 - PR #96(`00f71a3`)·PR #102(`71a9e67`)·PR #109(`4393e3f`)·PR #94(`ad56767`) 머지 반영된 `origin/main` `ad5676704009047934fb0c66cc14a695e5510781`에서 격리 worktree(`../libproject-app0-p1-visit2`)로 `feat/core-APP-0-part1-visit2` 생성.
@@ -14,10 +14,10 @@
 
 | 순서 | 파트 | 상태 |
 | --- | --- | --- |
-| 1 | APP-0-P1 (+ VISIT-2 선행 보완) | 본편 머지 완료(PR #96, `00f71a3`) / **VISIT-2 선행 보완 PR [#110](https://github.com/axteamc/localone/pull/110) 게시·CI 대기** |
+| 1 | APP-0-P1 (+ VISIT-2 선행 보완) | 본편 머지 완료(PR #96, `00f71a3`) / **VISIT-2 선행 보완 #110 main 반영(`dfa7f23`)** |
 | 2 | APP-0-P2 | 머지 완료 (PR [#109](https://github.com/axteamc/localone/pull/109), `4393e3f`; `main` iOS 빌드 진행 중, 실기기 `needs-ios` 확인 대기) |
 | 3 | APP-0-P3 | 미착수; `EXPO_PUBLIC_KAKAO_JS_KEY` 키 없음 확인(발급·도메인 확인 필요) |
-| 4 | LIB-0-P1 → P2 → P3 | 별도 worktree `../libproject-core-LIB-0-part1`에 P1 미커밋 작업물 존재 |
+| 4 | LIB-0-P1 → P2 → P3 | P1 PR #111 게시·검증 완료 / P2·P3 미착수 |
 | 5 | SRV-0-P1 → P2 | 미착수 |
 
 제품 순서 원본은 `계획/상용_서비스_계획.md` §2다.
@@ -29,29 +29,28 @@
 - 실제 가드 제거 변이 3곳(`write()` catch 반환값, `recordVisit()` `!saved` 분기, `shadowFloat` 토큰 값) 실패(exit 1) 확인 및 원복 후 전체 Jest 재통과(7 suites / 48 tests).
 - 실행 증거·제한 원본은 [결과](결과/APP-0-P1_VISIT2_선행보완.md).
 
-## 다음 세션 시작 지시
+## LIB-0-P1 현재 기록
 
-- 권장 Effort: **중간** (이 보완 PR 머지 + PR #109 `main` iOS CI 결과/실기기 목록 반영, 이후 `카카오 JS 키 확인 후 APP-0-P3` 또는 `LIB-0-P1` 진행).
-
-```text
-GEMINI.md(또는 AGENTS.md), AI간_협업_구조.md, 개발산출물/진행_D공통기반.md를 읽고 이어서 한다.
-1) 먼저 git status, origin/main, PR #109 main CI(43998844366) iOS 빌드 점검 결과 및 APP-0-P1 VISIT-2 선행 보완 PR 머지 여부를 확인한다.
-2) 다음 작업(카카오 JS 키 확인 후 APP-0-P3 / 기존 ../libproject-core-LIB-0-part1 이어서 LIB-0-P1 / SRV-0-P1) 중 D가 지시한 파트를 진행한다.
-```
+- 이번 허용 범위: core LIB-0 P2 표의 P1 14파일 및 진행·결과·목록·인수인계 기록. 계약 Pre-flight·C1~C7·P1~P5를 전수 대조. 상세는 [결과](결과/LIB-0-P1_도서관조회_공공기반.md).
+- 전용 worktree `../libproject-core-LIB-0-part1`, 브랜치 `feat/core-LIB-0-part1`. 구현 `4da20f7`, 최신 main `dfa7f23`까지 merge `52dd694`. 기존 메인 작업 폴더 미커밋 변경을 보존했다.
+- 검증: 격리 PostgreSQL17 55434, Alembic -1/base 왕복, `pytest -W error` 148 passed, 가드 변이 5개 실패·원복. 앱 tsc·Jest 48·web export 통과.
+- CI: 제품 코드 동일한 `08ac02d`의 [44000415084](https://github.com/axteamc/localone/actions/runs/44000415084)에서 서버·앱·CI ok success(2026-11-17 11:06 KST). iOS는 PR 정책으로 skipped. 후속 CI 기록 전용 docs 커밋과 구별한다.
+- GitHub CLI로 PR #111 생성. 연결 도구 PR 쓰기 권한 403으로 CLI fallback, 활성 gh 계정 전환 없음. 커밋·push·PR까지 허용, 직접 머지·배포·알림은 하지 않는다.
+- APP-0 기존 입력·검증 기록은 위에 보존했다. 이전 작업의 다음 범위/금지 목록을 이번 LIB-0 승인 범위로 오해하지 않는다.
 
 ## 재개 인계 (§7)
 
 ```text
-작업 ID / 목표: APP-0-P1 VISIT-2 선행 보완 4파일 구현·검증·PR 게시, D 머지 및 후속 파트 선택 대기
-사람 역할 / 기능 / AI 담당 역할: D / core / 구현·자체 검증 완료(독립 리뷰 아님)
-현재 단계 / 브랜치 / HEAD / PR: 리뷰 대기 / feat/core-APP-0-part1-visit2 / 코드 739d54a + 별도 docs 커밋 / #110
-기존 미커밋 변경과 보존할 파일: 공유 worktree(docs/sync-artifacts-20261117), ../libproject-core-LIB-0-part1 및 ../team 보류 묶음 보존
-읽을 원문·승인 명세·계약: GEMINI.md/AGENTS.md → 필수 규칙, B2, core APP-0 C1~C7·P1~P5·APP-0-P1 보완, 이 결과 §2~4
-수정 허용 파일 / 금지 범위: 보완 4파일 + 진행/결과/목록/인수인계 기록. P3·LIB-0·SRV-0·직접 머지 금지
-완료 기준 / 현재 충족: 보완 4파일 구현·로컬 검증·변이 3건 충족. 웹 실사용·Android/iOS·머지 미확인
-실행 명령·위치·결과: 결과 §3, mobile npm ci / tsc / Jest 48 / expo export web exit 0
-정적 검토 / 실행 검증 / 미검증: 결과 §2~4. 웹 조작·Android/iOS 실기기·운영 미실행
-명세와 달라진 점 / 결정 대기: 없음. APP-0-P3는 mobile/.env에 EXPO_PUBLIC_KAKAO_JS_KEY 미설정 상태
-다음 담당자가 할 첫 행동: 보완 PR CI 확인 후 D 머지 판단, PR #109 iOS job 결과 확인, 다음 파트 선택
-허용된 Git 단계 / 외부 알림 여부 / 승인 근거: commit/push/PR·CI 확인. 직접 머지·외부 알림 미수행
+작업 ID / 목표: LIB-0-P1 리뷰 및 별도 머지 판단. P2·P3 자동 착수 금지
+사람 역할 / 기능 / AI 담당 역할: D / core / 구현·자체 검수 완료(독립 리뷰 아님)
+현재 단계 / 브랜치 / HEAD / PR: 리뷰 대기 / feat/core-LIB-0-part1 / 구현 4da20f7, main #110 merge 52dd694 + 별도 docs 커밋(재개 시 실제 HEAD 확인) / #111
+기존 미커밋 변경과 보존할 파일: 기존 libproject 공유 폴더의 tracked 3·untracked 2파일, 다른 세션 및 team 변경 보존. 새 worktree에서만 진행
+읽을 원문·승인 명세·계약: AGENTS.md → 필수 규칙, B2, core LIB-0 Pre-flight·C1~C7·P1~P5, 이번 결과
+수정 허용 파일 / 금지 범위: P1 담당 파일·필요한 기록만. P2·P3·SRV-0·M2·team 변경·머지·배포 금지
+완료 기준 / 현재 충족: P1 코드·로컬 검증·자체 검수·PR 게시. 독립 리뷰·실제 제공자·운영은 미검증
+실행 명령·위치·결과: 결과 §3. server pytest -W error 148, Alembic -1/base 왕복; mobile tsc/Jest48/export 통과
+정적 검토 / 실행 검증 / 미검증: 결과 §2~4. 실제 Uvicorn 접근 로그·동시 예약 확인, 화면/실기기/운영 미검증
+명세와 달라진 점 / 결정 대기: 계약 필드·경로 변경 없음. 괄호 주소 정규화 및 422 detail 공통 등록은 결과 §4
+다음 담당자가 할 첫 행동: 전용 worktree에서 branch/HEAD/status/diff 및 PR #111 최신 head·CI를 확인하고 독립 리뷰
+허용된 Git 단계 / 외부 알림 여부 / 승인 근거: 사용자 2026-11-17 요청으로 commit/push/PR. 머지·배포·외부 알림 미수행
 ```
