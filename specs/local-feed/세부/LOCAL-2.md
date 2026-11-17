@@ -114,6 +114,6 @@
 | 파트 | 상태 | 파일:줄 | 테스트 | 다음 |
 | :--- | :--- | :--- | :--- | :--- |
 | LOCAL-2-P1 | 완료 | `server/app/routers/feed.py:121-206`, `server/migrations/versions/0005_post_reactions_bookmarks.py` | `test_feed.py` 18 통과, 서버 전체 310 통과(`-W error`), 가드 제거 5종 확인 | P2 |
-| LOCAL-2-P2 | 진행 전 | | | |
+| LOCAL-2-P2 | 완료 | `server/app/routers/reactions.py:17-85` | `test_reactions.py` 15 통과, 서버 전체 `-W error` 통과, 가드 제거 4종 확인 | P3 |
 | LOCAL-2-P3 | 진행 전 | | | |
 | LOCAL-2-P4 | 진행 전 | | | |

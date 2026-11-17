@@ -118,6 +118,9 @@ def create_app(
     from app.routers.feed import router as feed_router
 
     app.include_router(feed_router)
+    from app.routers.reactions import router as reactions_router
+
+    app.include_router(reactions_router)
     # ── [/local-feed-B] ──
 
     return app
