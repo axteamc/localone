@@ -97,6 +97,7 @@ def create_app(
         return error_response(500, "INTERNAL_ERROR", "문제가 생겼어요.")
 
     # ── [lib-D] ──
+    from app.routers.books import router as books_router
     from app.routers.libraries import router as libraries_router
     from app.routers.library_privacy import install_coordinate_privacy_filter
     from app.services.provider_engine import ProviderEngine, build_providers
@@ -104,6 +105,7 @@ def create_app(
     install_coordinate_privacy_filter()
     app.state.provider_engine = ProviderEngine(engine, build_providers(settings))
     app.include_router(libraries_router)
+    app.include_router(books_router)
 
     # ── [/lib-D] ──
 

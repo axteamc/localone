@@ -1,18 +1,20 @@
-"""LIB-0-P1: 도서관 조회·동기화와 원자 호출량 예약. 외부 I/O는 트랜잭션 밖."""
+"""LIB-0: 도서·인기·도서관 조회 엔진. 외부 I/O는 트랜잭션 밖."""
 from __future__ import annotations
 
 import asyncio
 import hashlib
+import html
+import re
 import http.client
 import json
 import math
 import sys
 import urllib.error
 import urllib.request
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
-from datetime import date, datetime
-from typing import Any, Protocol, TypeVar
+from datetime import date, datetime, timedelta
+from typing import Any, Literal, Protocol, TypeVar
 from urllib.parse import urlencode
 
 from sqlalchemy import text
@@ -225,11 +227,14 @@ def _clean_text(raw: Any) -> str | None:
 
 
 class LibraryDataProvider(Protocol):
+    def popular(self, lib_code: str | None, start: date, end: date, size: int) -> list[BookInfo]: ...
+
     def libraries(self, dtl_region: str, page: int, size: int) -> tuple[list[LibraryInfo], int]: ...
 
 
 @dataclass(frozen=True)
 class Providers:
+    books: BookSearchProvider | None = None
     library_data: LibraryDataProvider | None = None
 
 
@@ -246,6 +251,41 @@ class Data4LibraryClient:
         if not isinstance(response, dict) or "error" in response:
             raise ProviderError("정보나루 응답 형식이 다르거나 오류")
         return response
+
+    def popular(self, lib_code: str | None, start: date, end: date, size: int) -> list[BookInfo]:
+        params: dict[str, Any] = {
+            "startDt": start.isoformat(),
+            "endDt": end.isoformat(),
+            "pageNo": 1,
+            "pageSize": size,
+        }
+        op = "loanItemSrch"
+        if lib_code is not None:
+            op, params["libCode"] = "loanItemSrchByLib", lib_code
+        docs = self._get(op, params).get("docs")
+        if not isinstance(docs, list):
+            raise ProviderError("docs가 없어요")
+        books: list[BookInfo] = []
+        for entry in docs:
+            doc = entry.get("doc") if isinstance(entry, dict) else None
+            if not isinstance(doc, dict):
+                continue
+            isbn13 = normalize_isbn(doc.get("isbn13"))
+            title = _clean_book_text(doc.get("bookname"))
+            if isbn13 and title:
+                books.append(
+                    BookInfo(
+                        isbn13=isbn13,
+                        title=title,
+                        author=_clean_book_text(doc.get("authors")),
+                        publisher=_clean_book_text(doc.get("publisher")),
+                        cover_url=https_cover(doc.get("bookImageURL")),
+                        description=_description(doc.get("description")),
+                        pub_year=_pub_year(doc.get("publication_year")),
+                    )
+                )
+        return books
+
 
     def libraries(self, dtl_region: str, page: int, size: int) -> tuple[list[LibraryInfo], int]:
         response = self._get(
@@ -283,11 +323,24 @@ class Data4LibraryClient:
 
 
 def build_providers(settings: Settings) -> Providers:
+    """키가 있는 제공자만 만든다. 없으면 None(시드·캐시 Fallback)."""
+    books = None
+    if settings.naver_client_id and settings.naver_client_secret:
+        books = NaverBookClient(
+            settings.naver_client_id,
+            settings.naver_client_secret,
+            settings.naver_api_base_url,
+            policy.PROVIDER_TIMEOUT_SECONDS,
+        )
     library_data = None
     if settings.data4library_api_key:
-        library_data = Data4LibraryClient(settings.data4library_api_key, settings.data4library_api_base_url,
-                                         policy.PROVIDER_TIMEOUT_SECONDS)
-    return Providers(library_data=library_data)
+        library_data = Data4LibraryClient(
+            settings.data4library_api_key,
+            settings.data4library_api_base_url,
+            policy.PROVIDER_TIMEOUT_SECONDS,
+        )
+    return Providers(books=books, library_data=library_data)
+
 
 
 def libraries_by_name(conn: Connection, q: str, limit: int) -> list[LibraryRow]:
@@ -326,6 +379,138 @@ class ProviderEngine:
         except (TimeoutError, OSError, ValueError) as exc:
             raise ProviderError(provider) from exc
 
+    async def search_books(self, query: str, start: int) -> SearchResult:
+        size = policy.SEARCH_PAGE_SIZE
+        provider = self.providers.books
+        reason: FallbackReason
+        if provider is None:
+            reason = "not_configured"
+        else:
+            try:
+                page = await self._guarded_call(
+                    "naver", policy.NAVER_DAILY_LIMIT, lambda: provider.search(query, start, size)
+                )
+            except ProviderLimitReached:
+                reason = "limit"
+            except ProviderError:
+                reason = "provider_error"
+            else:
+                fetched_at = self.now_fn()
+                records = await self._db(
+                    lambda c: upsert_books(c, page.items, "naver", fetched_at, overwrite=True)
+                )
+                following = start + size
+                has_more = following <= min(page.total, policy.SEARCH_MAX_START)
+                return SearchResult(records, following if has_more else None, "naver", None)
+
+        records, has_more = await self._db(lambda c: search_cached_books(c, query, start, size))
+        if not records and reason == "limit":
+            raise ApiError(429, "PROVIDER_LIMIT", MSG_PROVIDER_LIMIT)
+        if not records and reason in {"provider_error", "not_configured"}:
+            raise ApiError(503, "PROVIDER_UNAVAILABLE", MSG_PROVIDER_UNAVAILABLE)
+        return SearchResult(records, start + size if has_more and start + size <= policy.SEARCH_MAX_START else None, "cache", reason)
+
+
+    async def get_book(self, isbn13: str) -> BookRecord:
+        """DB에 있으면 그대로, 없으면 제공자 조회. 키가 없고 캐시도 없으면 503."""
+        record = await self._db(lambda c: select_book(c, isbn13))
+        if record is not None:
+            return record
+        provider = self.providers.books
+        if provider is None:
+            raise ApiError(503, "PROVIDER_UNAVAILABLE", MSG_PROVIDER_UNAVAILABLE)
+        try:
+            info = await self._guarded_call(
+                "naver", policy.NAVER_DAILY_LIMIT, lambda: provider.lookup_isbn(isbn13)
+            )
+        except ProviderLimitReached:
+            raise ApiError(429, "PROVIDER_LIMIT", MSG_PROVIDER_LIMIT) from None
+        except ProviderError:
+            raise ApiError(503, "PROVIDER_UNAVAILABLE", MSG_PROVIDER_UNAVAILABLE) from None
+        if info is None:
+            raise ApiError(404, "NOT_FOUND", MSG_NOT_FOUND)
+        fetched_at = self.now_fn()
+        return (await self._db(lambda c: upsert_books(c, [info], "naver", fetched_at, overwrite=True)))[0]
+
+
+    async def find_book_quietly(self, isbn13: str) -> BookRecord | None:
+        """소장 조회용: 서지를 못 찾아도 오류로 끊지 않는다(관측 저장만 못 함)."""
+        try:
+            return await self.get_book(isbn13)
+        except ApiError as exc:
+            if exc.code not in {"NOT_FOUND", "PROVIDER_LIMIT", "PROVIDER_UNAVAILABLE"}:
+                raise
+            return None
+
+
+    def _popular_is_fresh(self, scope: str, fetched_at: datetime, now: datetime) -> bool:
+        if scope == "national":
+            return today_kst(fetched_at) == today_kst(now)  # 전국은 하루 한 번(서울 날짜)
+        return now - fetched_at < policy.POPULAR_LIBRARY_TTL
+
+
+    async def popular_books(self, library: LibraryRow | None) -> PopularResult:
+        """도서관 → (데이터 없으면) 전국 순. 아무것도 없으면 429(상한) 또는 503."""
+        reasons: list[FallbackReason] = []
+        if library is not None:
+            result = await self._popular_scope("library", library, reasons)
+            if result is not None:
+                return result
+        result = await self._popular_scope("national", None, reasons)
+        if result is not None:
+            if library is not None and result.fallback_reason is None:
+                # 도서관 데이터가 없어 전국으로 대체했다는 사실을 남긴다(02 LIB-01 "기준을 표시")
+                result = PopularResult(**{**result.__dict__, "fallback_reason": reasons[0]})
+            return result
+        if "limit" in reasons:
+            raise ApiError(429, "PROVIDER_LIMIT", MSG_PROVIDER_LIMIT)
+        raise ApiError(503, "PROVIDER_UNAVAILABLE", MSG_PROVIDER_UNAVAILABLE)
+
+
+    async def _popular_scope(
+        self,
+        scope: Literal["national", "library"],
+        library: LibraryRow | None,
+        reasons: list[FallbackReason],
+    ) -> PopularResult | None:
+        library_id = library.id if library else None
+        now = self.now_fn()
+        cached = await self._db(lambda c: _read_popular(c, scope, library_id))
+        if cached is not None and self._popular_is_fresh(scope, cached.fetched_at, now):
+            return cached
+
+        provider = self.providers.library_data
+        reason: FallbackReason
+        if provider is None:
+            reason = "not_configured"
+        else:
+            end = today_kst(now) - timedelta(days=1)
+            start = end - timedelta(days=policy.POPULAR_PERIOD_DAYS - 1)
+            code = library.provider_lib_code if library else None
+            try:
+                infos = await self._guarded_call(
+                    "data4library",
+                    policy.DATA4LIBRARY_DAILY_LIMIT,
+                    lambda: provider.popular(code, start, end, policy.POPULAR_SIZE),
+                )
+            except ProviderLimitReached:
+                reason = "limit"
+            except ProviderError:
+                reason = "provider_error"
+            else:
+                if infos:
+                    label = f"{library.name if library else '전국'} · 최근 {policy.POPULAR_PERIOD_DAYS}일 대출"
+                    fetched_at = self.now_fn()
+                    return await self._db(
+                        lambda c: _store_popular(c, scope, library_id, infos, label, fetched_at)
+                    )
+                reason = "no_data"
+        reasons.append(reason)
+        if cached is not None:
+            return PopularResult(**{**cached.__dict__, "stale": True, "fallback_reason": reason})
+        return None
+
+
     async def sync_libraries(self, dtl_region_codes: Sequence[str], page_size: int = 100) -> dict[str, int]:
         """시군구별로 도서관 목록을 받아 해시가 달라진 곳만 고친다(05 §3.1 libraries). 요청 경로에서 부르지 않는다."""
         provider = self.providers.library_data
@@ -352,6 +537,346 @@ class ProviderEngine:
                     break
                 page += 1
         return counts
+
+
+MSG_NOT_FOUND = "찾을 수 없어요."
+FallbackReason = Literal["not_configured", "limit", "provider_error", "no_data"]
+_TAG_RE = re.compile(r"<[^>]+>")
+
+def _clean_book_text(raw: Any) -> str | None:
+    if not isinstance(raw, str):
+        return None
+    value = html.unescape(_TAG_RE.sub("", raw)).strip()
+    return value or None
+
+
+def isbn13_is_valid(value: str) -> bool:
+    if not re.fullmatch(r"[0-9]{13}", value):
+        return False
+    total = sum(int(c) * (1 if i % 2 == 0 else 3) for i, c in enumerate(value[:12]))
+    return (10 - total % 10) % 10 == int(value[12])
+
+
+def isbn10_to_13(value: str) -> str | None:
+    """10자리 ISBN(마지막 X 허용)을 978 접두 13자리로 바꾼다(05 §3.1 books.isbn13). 틀리면 None."""
+    value = value.strip().upper()
+    if not re.fullmatch(r"[0-9]{9}[0-9X]", value):
+        return None
+    check10 = sum((10 - i) * (10 if c == "X" else int(c)) for i, c in enumerate(value)) % 11
+    if check10 != 0:
+        return None
+    core = "978" + value[:9]
+    total = sum(int(c) * (1 if i % 2 == 0 else 3) for i, c in enumerate(core))
+    return core + str((10 - total % 10) % 10)
+
+
+def normalize_isbn(raw: str | None) -> str | None:
+    """제공자 ISBN 칸(예: 네이버 "8936434128 9788936434120")에서 유효한 13자리를 고른다."""
+    if not raw:
+        return None
+    tokens = [t.replace("-", "") for t in str(raw).split()]
+    for token in tokens:
+        if isbn13_is_valid(token):
+            return token
+    for token in tokens:
+        converted = isbn10_to_13(token)
+        if converted:
+            return converted
+    return None
+
+
+def https_cover(url: Any) -> str | None:
+    """표지 주소만 저장하고 이미지는 복사하지 않는다. http는 https로 바꾼다(05 §3.1 books.cover_url)."""
+    if not isinstance(url, str) or not url.strip():
+        return None
+    url = url.strip()
+    if url.startswith("http://"):
+        url = "https://" + url[len("http://") :]
+    return url if url.startswith("https://") else None
+
+
+@dataclass(frozen=True)
+class BookInfo:
+    isbn13: str
+    title: str
+    author: str | None = None
+    publisher: str | None = None
+    cover_url: str | None = None
+    description: str | None = None
+    pub_year: int | None = None
+
+
+@dataclass(frozen=True)
+class SearchPage:
+    items: list[BookInfo]
+    total: int
+
+
+class BookSearchProvider(Protocol):
+    def search(self, query: str, start: int, display: int) -> SearchPage: ...
+
+    def lookup_isbn(self, isbn13: str) -> BookInfo | None: ...
+
+
+def _naver_item(item: Any) -> BookInfo | None:
+    if not isinstance(item, dict):
+        return None
+    isbn13 = normalize_isbn(item.get("isbn"))
+    title = _clean_book_text(item.get("title"))
+    if not isbn13 or not title:
+        return None  # 상세·소장 조회 대상이 될 수 없는 항목은 뺀다
+    author = _clean_book_text(item.get("author"))
+    return BookInfo(
+        isbn13=isbn13,
+        title=title,
+        author=author.replace("^", ", ") if author else None,
+        publisher=_clean_book_text(item.get("publisher")),
+        cover_url=https_cover(item.get("image")),
+        description=_description(item.get("description")),
+        pub_year=_pub_year(item.get("pubdate")),
+    )
+
+
+class NaverBookClient:
+    """네이버 책 검색 API. 키는 헤더로만 보낸다."""
+
+    def __init__(self, client_id: str, client_secret: str, base_url: str, timeout: float):
+        self._headers = {"X-Naver-Client-Id": client_id, "X-Naver-Client-Secret": client_secret}
+        self._base = base_url.rstrip("/")
+        self._timeout = timeout
+
+    def _get(self, path: str, params: dict[str, Any]) -> dict[str, Any]:
+        data = _http_get_json(f"{self._base}/{path}?{urlencode(params)}", self._headers, self._timeout)
+        if not isinstance(data, dict) or not isinstance(data.get("items"), list):
+            raise ProviderError("네이버 응답 형식이 달라요")
+        return data
+
+    def search(self, query: str, start: int, display: int) -> SearchPage:
+        data = self._get("book.json", {"query": query, "start": start, "display": display})
+        total = data.get("total")
+        if not isinstance(total, int) or total < 0:
+            raise ProviderError("네이버 total이 없어요")
+        items = [b for b in (_naver_item(i) for i in data["items"]) if b is not None]
+        return SearchPage(items=items, total=total)
+
+    def lookup_isbn(self, isbn13: str) -> BookInfo | None:
+        data = self._get("book_adv.json", {"d_isbn": isbn13, "display": 10})
+        for item in data["items"]:
+            book = _naver_item(item)
+            if book is not None and book.isbn13 == isbn13:
+                return book
+        return None
+
+
+@dataclass(frozen=True)
+class BookRecord:
+    id: int
+    isbn13: str
+    title: str
+    author: str | None
+    publisher: str | None
+    cover_url: str | None
+    source: str
+    description: str | None
+    pub_year: int | None
+
+    def public(self) -> dict[str, Any]:
+        return {
+            "isbn13": self.isbn13,
+            "title": self.title,
+            "author": self.author,
+            "publisher": self.publisher,
+            "cover_url": self.cover_url,
+            "source": self.source,
+            "description": self.description,
+            "pub_year": self.pub_year,
+        }
+
+
+def _book_row(row: Any) -> BookRecord:
+    return BookRecord(
+        id=int(row.id),
+        isbn13=row.isbn13,
+        title=row.title,
+        author=row.author,
+        publisher=row.publisher,
+        cover_url=row.cover_url,
+        source=row.source,
+        description=row.description,
+        pub_year=row.pub_year,
+    )
+
+
+def select_book(conn: Connection, isbn13: str) -> BookRecord | None:
+    row = conn.execute(
+        text("SELECT id, isbn13, title, author, publisher, cover_url, source, description, pub_year FROM books WHERE isbn13 = :i"),
+        {"i": isbn13},
+    ).first()
+    return _book_row(row) if row else None
+
+
+def upsert_books(
+    conn: Connection, infos: Iterable[BookInfo], source: str, fetched_at: datetime, *, overwrite: bool
+) -> list[BookRecord]:
+    """제공자가 준 서지를 books에 넣는다(순서 보존, 같은 ISBN은 한 번).
+
+    overwrite=False(인기 도서)는 이미 있는 서지를 덮지 않고 빈 표지만 채운다.
+    """
+    seen: set[str] = set()
+    records: list[BookRecord] = []
+    update = (
+        "title = EXCLUDED.title, author = EXCLUDED.author, publisher = EXCLUDED.publisher, "
+        "cover_url = COALESCE(EXCLUDED.cover_url, books.cover_url), source = EXCLUDED.source, "
+        "description = COALESCE(EXCLUDED.description, books.description), "
+        "pub_year = COALESCE(EXCLUDED.pub_year, books.pub_year), fetched_at = EXCLUDED.fetched_at"
+        if overwrite
+        else "cover_url = COALESCE(books.cover_url, EXCLUDED.cover_url), "
+        "description = COALESCE(books.description, EXCLUDED.description), "
+        "pub_year = COALESCE(books.pub_year, EXCLUDED.pub_year)"
+    )
+    for info in infos:
+        if info.isbn13 in seen:
+            continue
+        seen.add(info.isbn13)
+        row = conn.execute(
+            text(
+                f"""
+                INSERT INTO books (isbn13, title, author, publisher, cover_url, source, fetched_at, description, pub_year)
+                VALUES (:isbn13, :title, :author, :publisher, :cover_url, :source, :fetched_at, :description, :pub_year)
+                ON CONFLICT (isbn13) DO UPDATE SET {update}
+                RETURNING id, isbn13, title, author, publisher, cover_url, source, description, pub_year
+                """
+            ),
+            {
+                "isbn13": info.isbn13,
+                "title": info.title,
+                "author": info.author,
+                "publisher": info.publisher,
+                "cover_url": https_cover(info.cover_url),
+                "description": _description(info.description),
+                "pub_year": _pub_year(info.pub_year),
+                "source": source,
+                "fetched_at": fetched_at,
+            },
+        ).one()
+        records.append(_book_row(row))
+    return records
+
+
+def _like_pattern(query: str) -> str:
+    escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
+def search_cached_books(conn: Connection, query: str, start: int, size: int) -> tuple[list[BookRecord], bool]:
+    rows = conn.execute(
+        text(
+            """
+            SELECT id, isbn13, title, author, publisher, cover_url, source, description, pub_year FROM books
+            WHERE isbn13 IS NOT NULL
+              AND (title ILIKE :p OR author ILIKE :p OR isbn13 = :q)
+            ORDER BY title COLLATE "C", id
+            OFFSET :offset LIMIT :limit
+            """
+        ),
+        {"p": _like_pattern(query), "q": query, "offset": start - 1, "limit": size + 1},
+    ).all()
+    return [_book_row(r) for r in rows[:size]], len(rows) > size
+
+
+@dataclass(frozen=True)
+class SearchResult:
+    items: list[BookRecord]
+    next_start: int | None
+    source: Literal["naver", "cache"]
+    fallback_reason: FallbackReason | None
+
+
+@dataclass(frozen=True)
+class PopularResult:
+    scope: Literal["national", "library"]
+    library_id: int | None
+    period_label: str
+    books: list[BookRecord]
+    fetched_at: datetime
+    stale: bool
+    fallback_reason: FallbackReason | None
+
+
+def _read_popular(conn: Connection, scope: str, library_id: int | None) -> PopularResult | None:
+    rows = conn.execute(
+        text(
+            """
+            SELECT b.id, b.isbn13, b.title, b.author, b.publisher, b.cover_url, b.source, b.description, b.pub_year,
+                   p.period_label, p.fetched_at
+            FROM popular_books_cache p JOIN books b ON b.id = p.book_id
+            WHERE p.scope = :scope AND p.library_id IS NOT DISTINCT FROM :library_id
+              AND b.isbn13 IS NOT NULL
+            ORDER BY p.rank
+            """
+        ),
+        {"scope": scope, "library_id": library_id},
+    ).all()
+    if not rows:
+        return None
+    return PopularResult(
+        scope=scope,  # type: ignore[arg-type]
+        library_id=library_id,
+        period_label=rows[0].period_label,
+        books=[_book_row(r) for r in rows][: policy.POPULAR_SIZE],
+        fetched_at=min(r.fetched_at for r in rows),
+        stale=False,
+        fallback_reason=None,
+    )
+
+
+def _store_popular(
+    conn: Connection,
+    scope: Literal["national", "library"],
+    library_id: int | None,
+    infos: list[BookInfo],
+    label: str,
+    fetched_at: datetime,
+) -> PopularResult:
+    # 같은 범위를 동시에 갱신하면 DELETE·INSERT가 엇갈려 순위 UNIQUE에 걸린다 → 범위별로 직렬화
+    conn.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"), {"k": f"popular:{scope}:{library_id}"})
+    records = upsert_books(conn, infos[: policy.POPULAR_SIZE], "data4library", fetched_at, overwrite=False)
+    conn.execute(
+        text("DELETE FROM popular_books_cache WHERE scope = :scope AND library_id IS NOT DISTINCT FROM :lid"),
+        {"scope": scope, "lid": library_id},
+    )
+    for rank, record in enumerate(records, start=1):
+        conn.execute(
+            text(
+                """
+                INSERT INTO popular_books_cache (scope, library_id, rank, book_id, period_label, fetched_at)
+                VALUES (:scope, :lid, :rank, :book_id, :label, :fetched_at)
+                """
+            ),
+            {
+                "scope": scope,
+                "lid": library_id,
+                "rank": rank,
+                "book_id": record.id,
+                "label": label,
+                "fetched_at": fetched_at,
+            },
+        )
+    return PopularResult(scope, library_id, label, records, fetched_at, False, None)
+
+
+
+def _description(value: Any) -> str | None:
+    cleaned = _clean_book_text(value)
+    return cleaned[:policy.BOOK_DESCRIPTION_MAX_CHARS] if cleaned else None
+
+
+def _pub_year(value: Any) -> int | None:
+    raw = str(value) if value is not None else ""
+    if not re.fullmatch(r"[0-9]{4}(?:[0-9]{4})?", raw):
+        return None
+    year = int(raw[:4])
+    return year if 1000 <= year <= 2999 else None
 
 
 if __name__ == "__main__":
