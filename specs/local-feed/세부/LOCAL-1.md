@@ -134,6 +134,7 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 (대기/진행/검토요청/완료) | 구현 근거 (`파일:줄`) 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 파트 1 | `feat/local-feed-LOCAL-1-part1` | - | 대기 | - | - |
+| LOCAL-1-P1 서버 | `feat/local-feed-LOCAL-1` | (첫 push 때) | 완료 | `server/migrations/versions/0004_posts.py`, `server/app/routers/posts.py:45-307`, `server/app/services/post_storage.py`, `server/app/main.py`(`[local-feed-B]`) · `server/tests/test_posts_create.py` 37개 통과, 서버 전체 290 통과, 가드 7개 제거 확인 | `TODO(연결)`: Supabase Storage 버킷·`SUPABASE_SERVICE_ROLE_KEY`(D 외부 설정, 없으면 메모리 저장소) |
+| LOCAL-1-P2 앱 | `feat/local-feed-LOCAL-1` | 같은 PR | 진행 | - | - |
 
-- **다음 세션 이어하기 메모**: 기획 넘김(검토 요청). 머지되면 계약서 LOCAL-1 절이 있으므로 바로 3_구현(브랜치 `feat/local-feed-LOCAL-1` 하나, PR 하나).
+- **다음 세션 이어하기 메모**: 3_구현 진행 중. P1(서버) 완료 → P2(앱 글쓰기·올리기·내리기). 이어서 VISIT-2 → LOCAL-2(각각 새 브랜치·새 PR).
