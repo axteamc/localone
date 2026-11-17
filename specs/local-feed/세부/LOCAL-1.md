@@ -126,6 +126,12 @@
 - [계약 보완 필요] 표지가 없는 책의 "제목·저자로 만든 표지"(결정 2) — 계약서 F6은 `cover`에 표지 주소가 없으면 422이고 "사진·단색으로 안내"라 적혀 있음. 화면에서는 제목·저자 표지를 바로 넣어 보여 주기로 함 → 저장 형태(예: `image_kind=color` + 제목·저자 글자, 또는 서버가 만드는 표지)를 D+B 판에서 정해야 함 — `../team/contracts/local-feed.md` LOCAL-1 C1 F6
 - [Claude가 정함] 시안의 직접 색 값(그림자·화면 어둡게·이미지 위 글자 흰색·가짜 사진 3색)을 의미별 임시 토큰으로 모음(값은 그대로): `--shadow-faint/sheet/soft/float/fab`, `--scrim`, `--on-image`, `--text-shadow-on-image`, `--band-on-image(-end)`, `--sample-photo-1~3`(시안 전용 가짜 사진). 디자인_기준.md에 없는 것이라 색 최종 조정 때 공통 정의로 옮김(PROJECT §3-14) — `specs/local-feed/세부/LOCAL-1_시안.html` :root
 
+- [계약 보완 필요] LOCAL-1-P1 선행 — `posts` FK 대상(`libraries`·`books`)·`user_profiles`·`lock_active_user`가 main에 없어 P1 마이그레이션을 만들 수 없음. 파트 순서를 지키지 못해 P2(앱, 가짜 API)를 먼저 함 — `../team/contracts/local-feed.md` LOCAL-1 C7·파트 머리말 5칸
+- [계약 보완 필요] 사진 권한 문구 config plugin(`"게시물에 넣을 사진을 고를 때만 써요."`, 계약서 P3)은 `mobile/app.json`이 P2 허용 파일에 없어 넣지 못함 — 계약서 P2 파일 목록
+- [계약 보완 필요] 내리기(결정 4)는 내 게시물 상세의 ⋯ 메뉴인데 상세 화면은 LOCAL-2 파일이라, P2에서는 `PostMoreMenu`를 `ComposeScreen.tsx`에 두고 `/posts/new`에서 올린 직후 보여 줌. LOCAL-2 상세가 이 조각을 가져다 씀 — `mobile/src/features/local-feed/ComposeScreen.tsx:278`
+- [구현 중 변경] "올리기를 누른 뒤 피드 맨 앞에 내 카드 + 올렸어요"(기본값) — 피드(VISIT-2·LOCAL-2)가 아직 없어 올린 뒤 같은 경로에서 내 게시물과 "올렸어요"를 보여 줌. `TODO(연결): B LOCAL-2` — `mobile/app/posts/new.tsx`
+- [Claude가 정함] 시안 확인용 `?signedIn=1`(로그인 화면 연결 전 웹에서 글쓰기를 보여 주려고) — 로그인 연결 뒤 지움, `TODO(연결)` — `mobile/app/posts/new.tsx`
+
 ## 다음에 할 것
 
 ## 이전 버전
@@ -134,6 +140,7 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 (대기/진행/검토요청/완료) | 구현 근거 (`파일:줄`) 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 파트 1 | `feat/local-feed-LOCAL-1-part1` | - | 대기 | - | - |
+| LOCAL-1-P1 서버 | `feat/local-feed-LOCAL-1` | (같은 PR) | 대기 | 아직 없음 — `posts`가 FK로 기대는 `libraries`·`books`(D LIB-0-P1)·`user_profiles`·`lock_active_user`(D SRV-0-P1)가 main에 없어 마이그레이션을 만들 수 없음(2026-11-17 main: `server/migrations/versions/0001_users.py`만) | `TODO(연결): B LOCAL-1-P1` (`mobile/src/features/local-feed/api.ts:158`) |
+| LOCAL-1-P2 앱 | `feat/local-feed-LOCAL-1` | (같은 PR) | 진행(사용자 확인 받음) | 결정 1 `ComposeScreen.tsx`(글쓰기 버튼 자체는 피드 화면 VISIT-2·LOCAL-2, 이 파트는 `/posts/new` 경로) · 결정 2 `ComposeScreen.tsx:86`·`choose()` · 결정 3 `ComposeScreen.tsx` 자리 버튼·`s.oTop/oMid/oBot` · 결정 4 `ComposeScreen.tsx:278` `PostMoreMenu` · 예외 1·3·4·5·7 `ComposeScreen.tsx:55`·`:114`·`:153`·`:260` / 시험 `__tests__/compose.test.tsx` 17개 통과, 앱 전체 59개 통과, `tsc --noEmit` 통과, 웹 번들 성공 | `TODO(연결): C 책 찾기 화면`(`app/posts/new.tsx`), `TODO(연결): D LIB-0 fetchLibrary`, `TODO(연결): B LOCAL-2`(올린 뒤 피드로) |
 
-- **다음 세션 이어하기 메모**: 기획 넘김(검토 요청). 머지되면 계약서 LOCAL-1 절이 있으므로 바로 3_구현(브랜치 `feat/local-feed-LOCAL-1` 하나, PR 하나).
+- **다음 세션 이어하기 메모**: P2(앱) 사용자 확인 받고 올림. P1(서버)은 D LIB-0-P1·SRV-0-P1 머지 뒤 같은 브랜치에서 착수 → 그 뒤 마지막 파트 절차(verify.md·Ready).
