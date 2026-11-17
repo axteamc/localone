@@ -1,7 +1,7 @@
 // 대출·반납 탭의 "빌릴 예정" 구역(book-search.md LIB-3 N5·N9·N10, C6 L3-#6·#7)
 // 본인만 보는 메모 목록이다(N1). 로그인했을 때만 그린다(비로그인 처리는 탭 화면).
 import { useFocusEffect, useRouter } from "expo-router";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { createLatestRunner } from "../../lib/latest";
 import { theme } from "../../theme";
@@ -66,6 +66,14 @@ export function LoanPlansSection() {
     });
   };
 
+  // 보이는 예정을 다 뺐는데 다음 쪽이 남아 있으면 빈 안내 대신 다음 쪽을 바로 읽는다(사후 검토 ②-1)
+  const emptyWithMore = list.kind === "ready" && list.items.length === 0 && list.nextCursor !== null;
+  useEffect(() => {
+    if (emptyWithMore && !moreBusy) void loadMore();
+    // loadMore는 렌더마다 새로 만들어지므로 조건 값만 본다
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [emptyWithMore, moreBusy]);
+
   const release = async (planId: string) => {
     if (releasingRef.current.has(planId)) return;
     releasingRef.current.add(planId);
@@ -103,7 +111,7 @@ export function LoanPlansSection() {
         </View>
       )}
 
-      {list.kind === "ready" && list.items.length === 0 && (
+      {list.kind === "ready" && list.items.length === 0 && list.nextCursor === null && (
         <View style={styles.box}>
           <Text style={styles.text}>{PLANS_EMPTY}</Text>
           <Pressable accessibilityRole="button" onPress={() => router.push("/search")} style={styles.darkBtn}>
