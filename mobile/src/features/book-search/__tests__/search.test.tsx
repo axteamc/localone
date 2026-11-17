@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, jest, test } from "@jest/globa
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import React from "react";
+import { StyleSheet } from "react-native";
 import { useAuth } from "../../../auth/AuthProvider";
 import * as api from "../__fakes__/publicApi";
 import type { Book, BookSearchResponse, RecommendationResponse } from "../__fakes__/publicApi";
@@ -301,6 +302,18 @@ describe("검색 결과", () => {
     await fireEvent.press(screen.getByText("▦ 표지로"));
     expect(order()).toEqual(expected);
     expect(searchBooks).toHaveBeenCalledTimes(1);
+  });
+
+  test("grid card stays half width when alone in row", async () => {
+    searchBooks.mockResolvedValueOnce(page([book(1), book(2), book(3)])); // 홀수: 마지막 줄에 1권
+    await render(<SearchScreen />);
+    await typeAndSearch("해리");
+    await screen.findByTestId(`book-${book(3).isbn13}`);
+    for (const n of [1, 2, 3]) {
+      const style = StyleSheet.flatten(screen.getByTestId(`book-${book(n).isbn13}`).props.style);
+      expect(style.width).toBe("50%"); // B11 2열
+      expect(style.flex).toBeUndefined(); // flex: 1이면 혼자인 칸이 줄 전체로 늘어난다
+    }
   });
 
   test("list row shows publisher and year", async () => {

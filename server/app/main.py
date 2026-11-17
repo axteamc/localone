@@ -117,6 +117,12 @@ def create_app(
     app.include_router(posts_router)
     # ── [/local-feed-B] ──
 
+    # ── [book-search-C] ──
+    from app.routers.loan_plans import router as loan_plans_router
+
+    app.include_router(loan_plans_router)
+    # ── [/book-search-C] ──
+
     return app
 
 
