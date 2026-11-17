@@ -216,7 +216,7 @@ export function VisitScreen({
     setLoginSheet(false);
     if (libraryId === null) {
       setLib({ kind: "notFound" });
-      setFeed(loadFeed ? { kind: "loading" } : { kind: "empty" });
+      setFeed({ kind: "empty" }); // 없는 도서관: 피드를 부르지 않는다
       return;
     }
     let current = true;
