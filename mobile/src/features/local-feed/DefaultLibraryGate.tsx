@@ -50,7 +50,7 @@ export function DefaultLibraryGate(): React.JSX.Element | null {
     async function decide() {
       const defaultId = await getDefaultLibrary();
       if (defaultId === null || ctrl.signal.aborted) return;
-      let name = "기본 도서관";
+      let name: string | null = null;
       try {
         name = (await fetchLibrary(defaultId, ctrl.signal)).name;
       } catch (e) {
@@ -83,8 +83,10 @@ export function DefaultLibraryGate(): React.JSX.Element | null {
       if (items.length > 0) {
         await setDefaultLibrary(null);
         if (ctrl.signal.aborted) return;
-        setNotice(releasedText(name));
-        timer = setTimeout(() => setNotice(null), NOTICE_MS);
+        if (name) {
+          setNotice(releasedText(name));
+          timer = setTimeout(() => setNotice(null), NOTICE_MS);
+        }
         return;
       }
       open(defaultId); // 주변에 도서관이 하나도 없으면 판단할 근거가 없어 그대로 연다

@@ -151,12 +151,26 @@ export function VisitScreen({ libraryId, distanceM, loadFeed, renderFeed, more, 
 
   // 들어올 때: #11 → (404가 아니면) 방문 한 번 기록 → 멘트. 피드는 따로.
   useEffect(() => {
-    if (libraryId === null) return;
     backing.current = false;
+    foldedRef.current = false;
+    setFolded(false);
+    libRunner.cancel();
+    feedRunner.cancel();
     timers.current.forEach(clearTimeout);
     timers.current = [];
+    if (noticeTimer.current) {
+      clearTimeout(noticeTimer.current);
+      noticeTimer.current = null;
+    }
+    setNotice(null);
     setMent(null);
     setAsking(false);
+    setLoginSheet(false);
+    if (libraryId === null) {
+      setLib({ kind: "notFound" });
+      setFeed(loadFeed ? { kind: "loading" } : { kind: "empty" });
+      return;
+    }
     let current = true;
     void loadFeedOnly(libraryId);
     void (async () => {
@@ -164,16 +178,15 @@ export function VisitScreen({ libraryId, distanceM, loadFeed, renderFeed, more, 
       if (result === null || result === "notFound" || !current) return; // 늦은 응답·없는 도서관은 기록하지 않음
       const visit = await recordVisit(libraryId);
       const isDefault = (await getDefaultLibrary()) === libraryId;
-      if (!current || !alive.current) return;
-      const name = typeof result === "object" ? result.name : "이 도서관";
-      const picked = pickVisitMent(visit, name, isDefault, visit.record.lastVisitedOn);
+      if (!current || !alive.current || typeof result !== "object") return; // #11 실패 시 가짜 이름을 지어내지 않고 멘트·질문 카드 생략
+      const picked = pickVisitMent(visit, result.name, isDefault, visit.record.lastVisitedOn);
       if (picked?.kind === "ment") showMent(picked.text);
       else if (picked?.kind === "ask") setAsking(true);
     })();
     return () => {
       current = false;
     };
-  }, [libraryId, loadLibrary, loadFeedOnly, showMent]);
+  }, [libraryId, libRunner, feedRunner, loadFeed, loadLibrary, loadFeedOnly, showMent]);
 
   const goBack = () => {
     if (backing.current) return; // ‹ 연타·밀기 겹침 (V-#3)
@@ -254,6 +267,7 @@ export function VisitScreen({ libraryId, distanceM, loadFeed, renderFeed, more, 
             today={lib.kind === "ok" ? lib.lib.today : null}
             onBack={goBack}
             more={moreNode}
+            folded={folded && lib.kind === "ok"}
           />
         )}
         <View style={styles.feed} testID="visit-feed">
