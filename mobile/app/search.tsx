@@ -1,48 +1,15 @@
-// TODO(연결): C
-import { useLocalSearchParams } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
-import { theme } from "../src/theme";
+// `/search` 책 검색(core.md APP-0 C2, book-search.md LIB-1 B1). 쿼리 `q`를 받으면 그 검색어로 바로 결과를 보인다.
+// `libraryId`는 M1에서 쓰지 않는다(VISIT_LOCAL_D결정 결정 10 영향).
+import { Stack, useLocalSearchParams } from "expo-router";
+import { SearchScreen } from "../src/features/book-search/SearchScreen";
 
-function firstString(raw: string | string[] | undefined): string {
-  return typeof raw === "string" ? raw : "";
-}
-
-export default function SearchStubScreen() {
-  const params = useLocalSearchParams<{
-    q?: string | string[];
-    libraryId?: string | string[];
-  }>();
-  const q = firstString(params.q);
-  const libraryId = firstString(params.libraryId);
-  const parts: string[] = [];
-  if (q) parts.push(`q: ${q}`);
-  if (libraryId) parts.push(`libraryId: ${libraryId}`);
-  const summary = parts.length > 0 ? parts.join(" · ") : "검색 조건 없음";
-
+export default function Search() {
+  const { q } = useLocalSearchParams<{ q?: string }>();
+  const initial = typeof q === "string" && q.trim() ? q : undefined;
   return (
-    <View style={styles.container}>
-      <Text style={styles.params}>{summary}</Text>
-      <Text style={styles.subtitle}>준비 중이에요</Text>
-    </View>
+    <>
+      <Stack.Screen options={{ title: "책 검색" }} />
+      <SearchScreen initialQuery={initial} />
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-    gap: 8,
-    backgroundColor: theme.colors.bg,
-  },
-  params: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: theme.colors.text,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: theme.colors.textSub,
-  },
-});
