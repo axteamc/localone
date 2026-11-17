@@ -129,12 +129,42 @@ def select_user(conn: Connection, user_id: UUID) -> UserRow | None:
     return UserRow(id=row.id, status=row.status, created_at=row.created_at)
 
 
+def lock_active_user(conn: Connection, user_id: UUID) -> None:
+    """쓰기 트랜잭션의 첫 SQL로 탈퇴와 직렬화하고 계정 상태를 다시 확인한다."""
+    status = conn.execute(
+        text("SELECT status FROM users WHERE id = :id FOR SHARE"), {"id": user_id}
+    ).scalar_one_or_none()
+    if status is None:
+        raise ApiError(401, "AUTH_NOT_REGISTERED", MSG_NOT_REGISTERED)
+    if status != "active":
+        raise ApiError(403, "ACCOUNT_WITHDRAWN", MSG_WITHDRAWN)
+
+
 def insert_user_if_absent(conn: Connection, user_id: UUID) -> bool:
     inserted = conn.execute(
         text("INSERT INTO users (id) VALUES (:id) ON CONFLICT (id) DO NOTHING RETURNING id"),
         {"id": user_id},
     ).one_or_none()
     return inserted is not None
+
+
+def default_nickname_for_user(user_id: UUID) -> str:
+    return "이웃-" + str(user_id).replace("-", "")[:4]
+
+
+def ensure_user_profile_if_absent(conn: Connection, user_id: UUID) -> None:
+    conn.execute(
+        text("INSERT INTO user_profiles (user_id, nickname) VALUES (:id, :nickname) "
+             "ON CONFLICT (user_id) DO NOTHING"),
+        {"id": user_id, "nickname": default_nickname_for_user(user_id)},
+    )
+
+
+def nickname_of(conn: Connection, user_id: UUID) -> str:
+    nickname = conn.execute(
+        text("SELECT nickname FROM user_profiles WHERE user_id = :id"), {"id": user_id}
+    ).scalar_one_or_none()
+    return nickname if nickname is not None else "이웃"
 
 
 async def get_current_user(request: Request) -> CurrentUser:
@@ -148,14 +178,24 @@ async def get_current_user(request: Request) -> CurrentUser:
     return user
 
 
+async def get_optional_user(request: Request) -> CurrentUser | None:
+    if request.headers.get("authorization") is None:
+        return None
+    return await get_current_user(request)
+
+
 @router.post("/api/v1/auth/session")
 async def create_session(
     request: Request, user: CurrentUser = Depends(verify_access_token)
 ) -> dict[str, Any]:
     def tx(c: Connection) -> tuple[UserRow, bool]:
         inserted = insert_user_if_absent(c, user.id)
+        # 신규 등록은 users INSERT가 먼저 필요하다. 기존 계정도 프로필 쓰기 전에
+        # 탈퇴와 직렬화해, 상태 조회 이후 탈퇴가 끼어 프로필이 되살아나지 않게 한다.
+        lock_active_user(c, user.id)
         row = select_user(c, user.id)
         assert row is not None
+        ensure_user_profile_if_absent(c, user.id)
         return row, inserted
 
     row, is_new = await run_db(request.app.state.engine, tx)

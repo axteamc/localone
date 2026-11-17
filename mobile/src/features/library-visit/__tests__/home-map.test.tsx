@@ -164,13 +164,16 @@ describe("VISIT-1-P2 home map", () => {
       items: [
         { ...actual.FAKE_LIBRARIES[0]!, id: 201, distance_m: null },
         { ...actual.FAKE_LIBRARIES[1]!, id: 202, distance_m: 12.5 },
+        { ...actual.FAKE_LIBRARIES[2]!, id: 203, distance_m: -1 },
       ],
     });
     await render(<HomeScreen />);
     await screen.findByText("정독도서관");
     await act(async () => mapProps().onMarkerPress(201));
     await act(async () => mapProps().onMarkerPress(202));
+    await act(async () => mapProps().onMarkerPress(203));
     expect(mockPush).toHaveBeenNthCalledWith(1, { pathname: "/libraries/[libraryId]", params: { libraryId: "201" } });
     expect(mockPush).toHaveBeenNthCalledWith(2, { pathname: "/libraries/[libraryId]", params: { libraryId: "202" } });
+    expect(mockPush).toHaveBeenNthCalledWith(3, { pathname: "/libraries/[libraryId]", params: { libraryId: "203" } });
   });
 });
