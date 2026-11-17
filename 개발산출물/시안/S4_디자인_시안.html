@@ -130,7 +130,7 @@ select{font:inherit;font-size:14px;padding:4px 8px;border-radius:8px;border:1px 
 <h2>2. 중심 요소 ① 카드 질감</h2>
 <p class="lead">책 상세의 도서관 카드, 검색 결과, 빈 상태 카드처럼 "정보를 담은 면"이 홈 블록의 재료감(1px 줄눈 · 두께면 · 그림자)을 얼마나 가져올지. 화면을 열면 제일 먼저 보이는 차이다.</p>
 <div class="picker"><label>D 카드 곡률(D: "곡률 줄이기") <select id="pickRad">
-<option value="18">기준 18 (지금 radii.card)</option><option value="12" selected>-33% · 12 (radii.inner와 같음, 임시)</option><option value="9">-50% · 9</option><option value="6">-67% · 6 (modern 룩 카드와 같음)</option></select></label>
+<option value="18">기준 18 (지금 radii.card)</option><option value="12">-33% · 12 (radii.inner와 같음)</option><option value="9" selected>-50% · 9 (D 채택)</option><option value="6">-67% · 6 (modern 룩 카드와 같음)</option></select></label>
 <span class="note">값이 바뀌면 카드 곡률만 바뀐다(받침·줄눈은 같은 곡률을 따름). 홈 블록은 3.</span></div>
 <div class="cands" id="tex"></div>
 
@@ -235,7 +235,7 @@ const BTN = {
      gain:"네 룩 모두 같은 중성 위계(룩마다 주 버튼 색이 달라지지 않음). 강조를 색이 아닌 명도로 한다는 원칙과 맞다.",
      lose:"새 토큰 2개가 생긴다. warm에서 \"짙은 덩어리\" 인상은 지금과 거의 같다. 홈(노랑 \"도서관 찾기\")·방문 +·글 저장과 주 행동 색이 계속 다르다. 확정 \"inkStrong = 하단 주 행동\" 문장 변경 필요."},
 };
-const state = { tex:"D", btn:"B", info:"A", rad:12 };
+const state = { tex:"D", btn:"B", info:"B", rad:9 };
 function phone(tex, btn, info){
   info = info || state.info;
   const L = [["광주광역시립무등도서관","5m","광주광역시 북구 면앙로 130","062-613-7753","북구"],
@@ -259,7 +259,7 @@ function phone(tex, btn, info){
   </div></div>`;
 }
 const INFO = {
-  A:{name:"A 상태 한 줄 + 주소·전화 한 줄", rec:true,
+  A:{name:"A 상태 한 줄 + 주소·전화 한 줄", rec:true, note:"(Claude 추천이었음)",
      desc:"상태를 \"● 대출 가능 · 어제(추정) 기준\" 한 줄로 합친다(대출 가능/불가가 보이면 \"소장 있음\"은 따로 쓰지 않음, 소장 없음·알 수 없음은 지금처럼). 주소와 전화를 한 줄에 붙이고 넘치면 말줄임. 카드 5줄 → 3줄.",
      flow:"지금과 같다. 카드는 누르는 곳이 아니고 \"실시간 ↗\"만 도서관 사이트로.",
      see:"카드 높이 약 142 → 96. 390×844에서 카드 3장 → 4~5장. 긴 주소는 \"…\"로 잘린다.",
@@ -297,9 +297,9 @@ function render(){
   document.getElementById("btn").innerHTML = Object.entries(BTN).map(([k,c])=>candHTML(k,c,"btn")).join("") + `<p class="note">${REC.btn}</p>`;
   const others = (o,k)=>Object.keys(o).filter(x=>x!==k).map(x=>o[x].name).join(", ");
   document.getElementById("spec").innerHTML = `<tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>값</th><th>유저 플로우</th><th>이유(D 말)</th><th>상태</th></tr>
-   <tr><td>① 카드 질감</td><td>${TEX[state.tex].name}</td><td>—</td><td>${others(TEX,state.tex)}</td><td>${TEX[state.tex].desc}</td><td>${TEX[state.tex].flow} · 카드 곡률 ${state.rad}px</td><td>"D로 하되 곡률 줄이기"(D, 2026-11-18)</td><td><span class="state">확인(D) · 곡률 단계 결정 전(임시 12)</span></td></tr>
+   <tr><td>① 카드 질감</td><td>${TEX[state.tex].name}</td><td>—</td><td>${others(TEX,state.tex)}</td><td>${TEX[state.tex].desc}</td><td>${TEX[state.tex].flow} · 카드 곡률 ${state.rad}px</td><td>"D로 하되 곡률 줄이기"(D, 2026-11-18)</td><td><span class="state">확인(D) · 곡률 9</span></td></tr>
    <tr><td>② 주 버튼</td><td>${BTN[state.btn].name}</td><td>—</td><td>${others(BTN,state.btn)}</td><td>${BTN[state.btn].desc}</td><td>${BTN[state.btn].flow}</td><td>"B 승인"(D, 2026-11-18)</td><td><span class="state">확인(D)</span></td></tr>
-   <tr><td>③ 카드 정보 줄이기</td><td>${INFO[state.info].name}</td><td>—</td><td>${others(INFO,state.info)}</td><td>${INFO[state.info].desc}</td><td>${INFO[state.info].flow}</td><td>"카드 하나하나 정보(줄 글)이 과다한 느낌"(D)</td><td><span class="state">결정 전(임시: 추천안)</span></td></tr>
+   <tr><td>③ 카드 정보 줄이기</td><td>${INFO[state.info].name}</td><td>—</td><td>${others(INFO,state.info)}</td><td>${INFO[state.info].desc}</td><td>${INFO[state.info].flow}</td><td>"카드 하나하나 정보(줄 글)이 과다한 느낌", "정보는 B"(D)</td><td><span class="state">확인(D)</span></td></tr>
    <tr><td>실시간 버튼</td><td>"실시간 ↗", 높이 34 → 38, 글자 13 bold, 좌우 12, hitSlop 3(누르는 영역 44)</td><td>—</td><td>"실시간 확인 ↗"(너무 길어 본문이 두 줄로 밀림)</td><td>B 버튼 규칙의 카드 안 필(<code>cream</code> + <code>surface3</code> 테두리)</td><td>누르면 도서관 사이트(그대로)</td><td>"글자 수 줄이고 세로 크기 약간 늘리기는 확정"(D). D는 "실시간->"로 적음 — 외부 이동 표시(DESIGN.md 문구)라 ↗ 유지</td><td><span class="state">확인(D)</span></td></tr>`;
 }
 document.getElementById("pickRad").onchange=e=>{state.rad=+e.target.value; render();};
