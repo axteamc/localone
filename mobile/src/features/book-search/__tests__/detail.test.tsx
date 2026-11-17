@@ -164,7 +164,9 @@ describe("상세 화면", () => {
     expect(at("소년이 온다")).toBeLessThan(at("빌릴 예정에 저장"));
     expect(at("빌릴 예정에 저장")).toBeLessThan(at("책 소개"));
     expect(at("책 소개")).toBeLessThan(at("1980년 5월"));
-    expect(screen.queryByText(/도서관/)).toBeNull(); // 도서관 목록 칸 없음(LIB-2)
+    // LIB-2부터 B5 ③ 가까운 도서관 칸이 저장 버튼과 책 소개 사이에 들어온다
+    expect(at("빌릴 예정에 저장")).toBeLessThan(at("가까운 도서관"));
+    expect(at("가까운 도서관")).toBeLessThan(at("책 소개"));
   });
 
   test("no description hides section", async () => {

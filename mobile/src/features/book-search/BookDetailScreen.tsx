@@ -1,15 +1,18 @@
-// 책 상세: 표지 + 제목·저자·출판사·연도 → 빌릴 예정에 저장 → (LIB-2 도서관 목록 자리) → 책 소개
-// book-search.md LIB-1 B4·B5·B12, S-4·S-9·S-11
+// 책 상세: 표지 + 제목·저자·출판사·연도 → 빌릴 예정에 저장 → 가까운 도서관 → 책 소개
+// book-search.md LIB-1 B4·B5·B12, S-4·S-9·S-11 / LIB-2 A1~A3·A7·A10·A11, V-1·V-4·V-9
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
 import { ApiCallError, type Book } from "../../lib/publicApi";
 import { theme } from "../../theme";
-import { fetchBook } from "./__fakes__/publicApi"; // TODO(연결): D LIB-0-P2 — lib/publicApi
+import { fetchBook } from "./__fakes__/publicApi"; // detail.test.tsx 호환상 LIB-2에서 유지(book-search.md LIB-2 C7)
+import { checkedAtLabel } from "./availabilityText";
+import { LibraryAvailabilityCard } from "./LibraryAvailabilityCard";
 import { pushRecentBook } from "./recentBooks";
 import { BookCover, SEARCH_FAILED } from "./SearchScreen";
+import { useAvailability } from "./useAvailability";
 
 export const NOT_FOUND = "찾을 수 없어요.";
 export const LOGIN_TO_SAVE = "로그인하면 빌릴 예정을 저장할 수 있어요";
@@ -47,9 +50,7 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
       return;
     }
     setState({ kind: "ready", book: r.value });
-    // 책을 받아 온 뒤에만 최근 본 도서에 남긴다(B4). 저장 실패는 화면을 막지 않는다(S-6).
-    await pushRecentBook(userId, r.value).catch(() => undefined);
-  }, [isbn13, runner, userId]);
+  }, [isbn13, runner]);
 
   useEffect(() => {
     void load();
@@ -57,6 +58,16 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
     // userId가 바뀌어도 다시 부르지 않는다(같은 책)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isbn13]);
+
+  // 책을 받아 온 뒤에만 최근 본 도서에 남긴다(B4). 로그인 복원이 끝난 뒤의 계정으로 한 번만 남긴다
+  // (복원 중 guest 키로 가지 않게 — D 이월 메모, 이슈 113). 저장 실패는 화면을 막지 않는다(S-6).
+  const recordedFor = useRef<string | null>(null);
+  const readyBook = state.kind === "ready" ? state.book : null;
+  useEffect(() => {
+    if (!readyBook || authStatus === "loading" || recordedFor.current === readyBook.isbn13) return;
+    recordedFor.current = readyBook.isbn13;
+    void pushRecentBook(userId, readyBook).catch(() => undefined);
+  }, [readyBook, authStatus, userId]);
 
   const onSave = () => {
     // TODO(연결): C LIB-3 — 로그인했으면 도서관 고르는 창(LIB-3)
@@ -134,7 +145,8 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
         </View>
       )}
 
-      {/* 가까운 도서관 목록은 LIB-2에서 이 자리에 넣는다(B5 ③). LIB-1에서는 그리지 않는다. */}
+      {/* B5 ③ 가까운 도서관. 책을 받아 온 뒤에만 조회한다(A10). */}
+      <AvailabilitySection isbn13={b.isbn13} />
 
       {b.description !== null && (
         <View testID="description">
@@ -146,8 +158,52 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
   );
 }
 
+function AvailabilitySection({ isbn13 }: { isbn13: string }) {
+  const a = useAvailability(isbn13);
+  const today = a.checkedAt?.slice(0, 10) ?? "";
+  const footer = a.checkedAt ? checkedAtLabel(a.checkedAt) : null;
+  const busy = a.status === "locating" || a.status === "loading";
+
+  return (
+    <View testID="availability" style={styles.availability}>
+      <Text style={styles.section}>가까운 도서관</Text>
+
+      {busy && <ActivityIndicator accessibilityLabel="도서관 찾는 중" style={styles.availBusy} />}
+
+      {a.status === "error" && (
+        <View style={styles.stateBoxInline}>
+          <Text style={styles.stateText}>{a.errorMessage}</Text>
+          <Pressable accessibilityRole="button" onPress={a.retry} style={styles.darkBtn}>
+            <Text style={styles.darkBtnText}>다시 시도</Text>
+          </Pressable>
+        </View>
+      )}
+
+      {!busy && a.status !== "error" && a.items.length > 0 && (
+        <View testID="availability-list" style={styles.cards}>
+          {a.items.map((item) => (
+            <LibraryAvailabilityCard key={item.library.id} item={item} today={today} onRetry={a.retry} />
+          ))}
+          {!!footer && <Text style={styles.footer}>{footer}</Text>}
+        </View>
+      )}
+    </View>
+  );
+}
+
 const c = theme.colors;
 const styles = StyleSheet.create({
+  availability: { marginTop: 8 },
+  availBusy: { marginVertical: 16 },
+  cards: { gap: 10 },
+  footer: { fontSize: 12, color: c.textSub, marginTop: 2 },
+  stateBoxInline: {
+    backgroundColor: c.paper,
+    borderRadius: theme.radii.card,
+    padding: 18,
+    gap: 12,
+    alignItems: "flex-start",
+  },
   screen: { flex: 1, backgroundColor: c.cream },
   center: { alignItems: "center", justifyContent: "center" },
   flex: { flex: 1 },
