@@ -7,7 +7,7 @@
 - B2 [기준선](../기준선.md) 및 발행 core LIB-0 Pre-flight·C1~C7·P1~P5의 P1 범위. 계약 본문 기준 `492425d`, 열람 파일 Git blob `ce3dd881c83c6a21810e020c27483c5f17424196`.
 - 새 worktree에 `.team_docs`가 없어 동일 발행 원본 `../team/contracts/core.md`를 직접 대조했다. 필수 로컬 규칙 두 파일은 사용자 승인으로 기존 폴더에서 읽기·복사만 했다.
 - 시작 `origin/main` `71a9e6780907279dd8d63a63af3c5b0e5daf9242`, 전용 `../libproject-core-LIB-0-part1` / `feat/core-LIB-0-part1`.
-- 구현 커밋 `4da20f7`, 최신 main `ad56767` 반영 merge `6a1506cdaf365547d5c3d3a39a1a8dc42ba79d24`. merge 전후 `server/` diff 0. APP-0-P2·VISIT-2의 기존 변경을 그대로 보존했다.
+- 구현 커밋 `4da20f7`, 최신 main `ad56767` 반영 merge `6a1506cdaf365547d5c3d3a39a1a8dc42ba79d24`. merge 전후 `server/` diff 0. 이후 main `dfa7f23`(#110)도 merge `52dd694`로 반영했다. 진행 파일 충돌은 최신 APP-0 기록과 LIB-0 기록을 모두 보존해 해결했다. 두 merge 전후 서버 diff 0을 확인했다.
 - 원래 폴더 `docs/sync-artifacts-20261117`의 기존 tracked 3파일·untracked 2파일은 수정·stash·checkout하지 않았다. 이후 탐색·수정·실행은 전용 worktree 안에서 수행했다(허용된 규칙 복사와 필수 team 원본 열람 제외).
 
 ## 2. Pre-flight와 구현 대조
@@ -43,10 +43,10 @@ DB는 이번 작업 전용 `localone-lib0-p1-db` (`postgres:17`, `127.0.0.1:5543
 | `server` | `python -m uv run pytest -W error` | 최종 `148 passed in 5.01s` (LIB-0-P1 86 + 기존 62). 경고 무시·skip·단언 완화 없음 |
 | `mobile` | `npm ci` | exit 0, 1,094 packages. 기존 잠금의 deprecated/audit 경고는 기록만 하고 의존성 변경하지 않음 |
 | `mobile` | `npx tsc --noEmit` | exit 0 |
-| `mobile` | `npx jest --runInBand` | exit 0, 7 suites / 45 tests passed |
-| `mobile` | `npx expo export --platform web` | exit 0, 870 modules, Exported: dist |
+| `mobile` | `npx jest --runInBand` | 최초 45개, 최신 main #110 반영 후 7 suites / 48 tests passed |
+| `mobile` | `npx expo export --platform web` | exit 0, 최신 main 반영 후 850 modules, Exported: dist |
 
-서버 최종 검증 소스는 `4da20f7`과 동일하다. 최신 main merge 후 모바일 검증을 실행했고 서버 diff 0을 확인했다. 테스트의 실제 HTTP+DB 검증과 별도로 Uvicorn 접근 로그까지 실행했다.
+서버 최종 검증 소스는 `4da20f7`과 동일하다. 최신 main #110 merge `52dd694` 후 모바일 tsc/Jest/export를 재검증했고 서버 diff 0을 확인했다. 테스트의 실제 HTTP+DB 검증과 별도로 Uvicorn 접근 로그까지 실행했다.
 
 ### 핵심 가드 변이
 
@@ -75,3 +75,5 @@ DB는 이번 작업 전용 `localone-lib0-p1-db` (`postgres:17`, `127.0.0.1:5543
 - GitHub 연결 도구의 PR 쓰기는 403(integration 권한)이라 저장소 `team.ghuser=Hunseokc` 계정의 GitHub CLI로 #111을 만들었다. 전역 활성 계정은 바꾸지 않았다.
 
 CI 결과와 최종 게시 상태는 PR의 최신 head를 기준으로 확인한다. 본 문서는 로컬 검증 증거이며 독립 리뷰·배포 증거가 아니다.
+
+첫 게시 `6a1506c`의 CI 실행 `43999922977`은 success였다. 이후 문서·main #110 반영 head의 CI는 PR 최신 checks를 별도로 확인한다.
