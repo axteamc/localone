@@ -50,6 +50,14 @@ export function darken(hex: string, ratio: number): string {
   return toHex([r * (1 - ratio), g * (1 - ratio), b * (1 - ratio)]);
 }
 
+/** 선형 RGB 혼합: A를 weightA, B를 (1-weightA)만큼 섞는다. 시안 C 파생 색 산식. */
+export function mix(hexA: string, hexB: string, weightA: number): string {
+  const [r1, g1, b1] = parseHex(hexA);
+  const [r2, g2, b2] = parseHex(hexB);
+  const w = Math.max(0, Math.min(1, weightA));
+  return toHex([r1 * w + r2 * (1 - w), g1 * w + g2 * (1 - w), b1 * w + b2 * (1 - w)]);
+}
+
 function luminance(hex: string): number {
   const channel = (c: number) => {
     const s = c / 255;
@@ -80,6 +88,13 @@ export function getTheme(look: LookPreset = DEFAULT_LOOK): Theme {
       text: TEXT_COLOR,
       textSub: darken(base.bg, DERIVE.textSubDarken),
       divider: darken(base.bg, DERIVE.dividerDarken),
+      panelFrosted: mix(base.paper, base.bg, DERIVE.panelFrostedPaperWeight),
+      panelLit: mix(base.paper, base.cream, DERIVE.panelLitPaperWeight),
+      seamHairline: mix(base.inkStrong, base.bg, DERIVE.seamInkWeight),
+      rivetBase: mix(base.inkStrong, base.surface3, DERIVE.rivetInkWeight),
+      rivetShine: mix(base.paper, base.bg, DERIVE.rivetShinePaperWeight),
+      reliefBottomMid: mix(base.inkStrong, base.surface2, DERIVE.reliefMidInkWeight),
+      reliefSideDark: mix(base.inkStrong, base.surface3, DERIVE.reliefDarkInkWeight),
     },
     radii: LOOK_RADII[look],
   };

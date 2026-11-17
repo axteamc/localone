@@ -20,8 +20,24 @@ const mockRecordedTabScreens: Array<{ name: string; options?: { title?: string }
 const mockRecordedStackScreens: Array<{ name: string; options?: { headerShown?: boolean } }> = [];
 let mockLastStackScreenOptions: { title?: string } | undefined;
 
+// LIB-3: 대출·반납 탭의 빌릴 예정 구역은 plans.test.tsx에서 본다(서버 호출 모듈을 읽지 않게)
+jest.mock("../features/book-search/LoanPlansSection", () => ({ LoanPlansSection: () => null }));
+
 const mockComposeScreen = jest.fn<(props: { libraryId: number; isbn13?: string | null }) => void>();
 const mockVisitScreen = jest.fn<(props: { libraryId: number | null; distanceM: number | null }) => void>();
+const mockPostDetail = jest.fn<(props: { postId: string; visitLibraryId: number | null }) => void>();
+
+// LOCAL-2: 게시물 상세는 실제 화면이 붙었다. 이 시험은 경로가 넘기는 값만 본다(화면은 local-feed 시험에서)
+jest.mock("../features/local-feed/PostDetail", () => {
+  const ReactLib = require("react");
+  const { View } = require("react-native");
+  return {
+    PostDetail: (props: { postId: string; visitLibraryId: number | null }) => {
+      mockPostDetail(props);
+      return ReactLib.createElement(View, { testID: "local-feed-post-detail" });
+    },
+  };
+});
 
 jest.mock("../features/library-visit/HomeScreen", () => {
   const ReactLib = require("react");
@@ -163,7 +179,7 @@ describe("APP-0-P2 routes and tabs", () => {
 
     const loans = await render(<LoansTabScreen />);
     expect(loans.getByText("대출·반납")).toBeTruthy();
-    expect(loans.getByText("준비 중이에요")).toBeTruthy();
+    expect(loans.getByText("로그인하면 빌릴 예정과 내 대출을 볼 수 있어요")).toBeTruthy(); // LIB-3 N9
 
     const meSignedOut = await render(<MeTabScreen />);
     expect(meSignedOut.getByText("내 정보")).toBeTruthy();
@@ -214,8 +230,31 @@ describe("APP-0-P2 routes and tabs", () => {
       postId: "00000000-0000-4000-8000-000000000001",
     });
     const post = await render(<PostDetailStubScreen />);
-    expect(post.getByText("postId: 00000000-0000-4000-8000-000000000001")).toBeTruthy();
-    expect(post.getByText("준비 중이에요")).toBeTruthy();
+    expect(post.getByTestId("local-feed-post-detail")).toBeTruthy();
+    expect(mockPostDetail).toHaveBeenLastCalledWith({
+      postId: "00000000-0000-4000-8000-000000000001",
+      visitLibraryId: null,
+    });
+
+    // 방문 중인 도서관(libraryId)이 양의 정수면 함께 넘기고, 아니면 null
+    mockUseLocalSearchParams.mockReturnValue({
+      postId: "00000000-0000-4000-8000-000000000001",
+      libraryId: "101",
+    });
+    await render(<PostDetailStubScreen />);
+    expect(mockPostDetail).toHaveBeenLastCalledWith({
+      postId: "00000000-0000-4000-8000-000000000001",
+      visitLibraryId: 101,
+    });
+    mockUseLocalSearchParams.mockReturnValue({
+      postId: "00000000-0000-4000-8000-000000000001",
+      libraryId: "abc",
+    });
+    await render(<PostDetailStubScreen />);
+    expect(mockPostDetail).toHaveBeenLastCalledWith({
+      postId: "00000000-0000-4000-8000-000000000001",
+      visitLibraryId: null,
+    });
 
     mockUseLocalSearchParams.mockReturnValue({
       libraryId: "101",

@@ -1,40 +1,27 @@
-// TODO(연결): B
-import { useLocalSearchParams } from "expo-router";
-import { StyleSheet, Text, View } from "react-native";
+// 게시물 상세 경로 `/posts/[postId]?libraryId=` (core K15, local-feed LOCAL-2 H14)
+import { Stack, useLocalSearchParams } from "expo-router";
+import { PostDetail } from "../../src/features/local-feed/PostDetail";
 import { theme } from "../../src/theme";
 
 function firstString(raw: string | string[] | undefined): string {
-  return typeof raw === "string" ? raw : "";
+  return typeof raw === "string" ? raw : Array.isArray(raw) && typeof raw[0] === "string" ? raw[0] : "";
 }
 
-export default function PostDetailStubScreen() {
-  const params = useLocalSearchParams<{ postId?: string | string[] }>();
-  const postId = firstString(params.postId);
+/** 방문 중인 도서관 번호(양의 정수만) */
+function parseVisitLibraryId(raw: string | string[] | undefined): number | null {
+  const value = firstString(raw);
+  return /^[1-9][0-9]{0,15}$/.test(value) ? Number(value) : null;
+}
 
+export default function PostDetailScreen() {
+  const params = useLocalSearchParams<{ postId?: string | string[]; libraryId?: string | string[] }>();
+  const postId = firstString(params.postId);
   return (
-    <View style={styles.container}>
-      <Text style={styles.params}>{`postId: ${postId}`}</Text>
-      <Text style={styles.subtitle}>준비 중이에요</Text>
-    </View>
+    <>
+      <Stack.Screen
+        options={{ headerShown: false, gestureEnabled: true, contentStyle: { backgroundColor: theme.colors.cream } }}
+      />
+      <PostDetail key={postId} postId={postId} visitLibraryId={parseVisitLibraryId(params.libraryId)} />
+    </>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-    gap: 8,
-    backgroundColor: theme.colors.bg,
-  },
-  params: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: theme.colors.text,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: theme.colors.textSub,
-  },
-});

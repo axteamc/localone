@@ -115,7 +115,19 @@ def create_app(
 
     app.state.post_storage = build_post_storage(settings)
     app.include_router(posts_router)
+    from app.routers.feed import router as feed_router
+
+    app.include_router(feed_router)
+    from app.routers.reactions import router as reactions_router
+
+    app.include_router(reactions_router)
     # ── [/local-feed-B] ──
+
+    # ── [book-search-C] ──
+    from app.routers.loan_plans import router as loan_plans_router
+
+    app.include_router(loan_plans_router)
+    # ── [/book-search-C] ──
 
     return app
 
