@@ -101,5 +101,3 @@ async def recommendations(
 @router.get("/{isbn13}")
 async def book_detail(request: Request, isbn13: str) -> Any:
     return (await _engine(request).get_book(_isbn(isbn13))).public()
-
-

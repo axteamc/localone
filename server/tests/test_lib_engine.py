@@ -171,3 +171,21 @@ def test_quiet_lookup_does_not_hide_database_failure(refusing_db_url):
         assert error.value.code == "DB_UNAVAILABLE"
     finally:
         db.dispose()
+
+
+def test_detail_fills_missing_metadata_without_duplicate(reference_db):
+    cached = seed_book(reference_db)
+    fake = FakeBookSearch([book(description="새 소개", pub_year=2014)])
+    service = engine(reference_db, fake)
+    refreshed = run(service.get_book(isbn()))
+    assert refreshed.id == cached.id
+    assert refreshed.description == "새 소개" and refreshed.pub_year == 2014
+    assert run(service.get_book(isbn())) == refreshed and len(fake.calls) == 1
+
+
+@pytest.mark.parametrize("cause", ["missing", "error", "limit", "no_data"])
+def test_detail_enrichment_failure_preserves_cache(reference_db, monkeypatch, cause):
+    cached = seed_book(reference_db)
+    fake = FakeBookSearch(error=pe.ProviderError("offline")) if cause == "error" else FakeBookSearch([])
+    if cause == "limit": monkeypatch.setattr(policy, "NAVER_DAILY_LIMIT", 0)
+    assert run(engine(reference_db, None if cause == "missing" else fake).get_book(isbn())) == cached
