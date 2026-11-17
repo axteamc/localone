@@ -13,6 +13,7 @@ from app.settings import Settings
 from app.services import provider_engine as pe
 from tests.provider_fakes import FakeBookSearch, FakeLibraryData, public_reference_data
 from tests.test_lib_engine import NOW, book, engine, isbn, reference_db, seed_book
+from tests.test_lib_engine import FakeHoldingProvider, availability_libraries
 
 
 @pytest.fixture
@@ -136,3 +137,85 @@ def test_routers_have_no_http_client_imports():
                 assert all(n.name.split(".")[0] not in {"httpx", "requests", "urllib"} for n in node.names)
             elif isinstance(node, ast.ImportFrom):
                 assert (node.module or "").split(".")[0] not in {"httpx", "requests", "urllib"}
+
+
+def test_availability_nearby_three_states_and_live_check(client, reference_db, availability_libraries):
+    seed_book(reference_db)
+    fake = FakeHoldingProvider(outcomes={"availability-test-01": pe.HoldingResult("no", "no"),
+                                        "availability-test-02": pe.ProviderError("offline")})
+    client.app.state.provider_engine = engine(reference_db, library=fake)
+    response = client.get(f"/api/v1/books/{isbn()}/availability?scope=nearby&lat=30&lng=30")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["scope"] == "nearby" and body["radius_km"] == 3 and body["dtl_region"] is None
+    assert body["checked_at"].endswith("+09:00")
+    assert [item["holding"] for item in body["items"]] == ["yes", "no", "unknown"]
+    assert [item["live_check"]["kind"] if item["live_check"] else None for item in body["items"]] == ["isbn_search", "homepage", None]
+    for item in body["items"]:
+        lib = item["library"]
+        assert set(lib) == {"id", "name", "address", "tel", "area_label", "distance_m", "today"}
+        assert lib["tel"] == "02-000-0000" and lib["area_label"] == "화동"
+        assert set(lib["today"]) == {"date", "is_closed", "hours_text", "holiday_unchecked"}
+    assert len(fake.calls) == 3
+
+
+def test_availability_city_40_and_single_library(client, reference_db, availability_libraries):
+    seed_book(reference_db)
+    fake = FakeHoldingProvider()
+    client.app.state.provider_engine = engine(reference_db, library=fake)
+    response = client.get(f"/api/v1/books/{isbn()}/availability?scope=city&dtl_region=98001")
+    assert response.status_code == 200 and response.json()["scope"] == "city"
+    items = response.json()["items"]
+    assert len(items) == 45 and len(fake.calls) == 40
+    assert all(i["fallback_reason"] == "limit" and i["holding"] == "unknown" for i in items[40:])
+    response = client.get(f"/api/v1/books/{isbn()}/availability?library_id={availability_libraries[0].id}")
+    assert response.status_code == 200 and response.json()["scope"] == "library"
+    assert len(response.json()["items"]) == 1 and len(fake.calls) == 40
+
+
+@pytest.mark.parametrize("query,field", [("", "scope"), ("scope=bad", "scope"), ("scope=nearby", "lat,lng"),
+    ("scope=nearby&lat=30&lng=30&radius_km=4", "radius_km"), ("scope=city", "dtl_region"),
+    ("scope=city&dtl_region=98001&lat=30", "dtl_region"), ("library_id=101&scope=city", "library_id,scope"),
+    ("library_id=0", "library_id"), ("library_id=9223372036854775808", "library_id"),
+    ("scope=city&dtl_region=123", "dtl_region"), ("scope=nearby&lat=nan&lng=30", "lat")])
+def test_availability_validation(client, reference_db, query, field):
+    fake = FakeHoldingProvider()
+    client.app.state.provider_engine = engine(reference_db, library=fake)
+    response = client.get(f"/api/v1/books/{isbn()}/availability?{query}")
+    assert response.status_code == 422 and response.json()["error"]["detail"] == field
+    assert not fake.calls
+
+
+def test_availability_failure_and_no_results(client, reference_db, availability_libraries):
+    seed_book(reference_db)
+    fake = FakeHoldingProvider(pe.ProviderError("offline"))
+    client.app.state.provider_engine = engine(reference_db, library=fake)
+    response = client.get(f"/api/v1/books/{isbn()}/availability?library_id={availability_libraries[0].id}")
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["holding"] == item["loanable"] == "unknown" and item["fallback_reason"] == "provider_error"
+    calls = len(fake.calls)
+    response = client.get(f"/api/v1/books/{isbn()}/availability?scope=nearby&lat=80&lng=80")
+    assert response.status_code == 200 and response.json()["items"] == [] and len(fake.calls) == calls
+    with reference_db.connect() as conn:
+        assert conn.execute(text("SELECT count(*) FROM availability_observations WHERE library_id=ANY(:ids)"), {"ids": [lib.id for lib in availability_libraries]}).scalar_one() == 0
+
+
+def test_availability_all_limited_is_429(client, reference_db, availability_libraries, monkeypatch):
+    seed_book(reference_db)
+    fake = FakeHoldingProvider()
+    monkeypatch.setattr(policy, "DATA4LIBRARY_DAILY_LIMIT", 0)
+    client.app.state.provider_engine = engine(reference_db, library=fake)
+    response = client.get(f"/api/v1/books/{isbn()}/availability?library_id={availability_libraries[0].id}")
+    assert response.status_code == 429 and response.json()["error"]["code"] == "PROVIDER_LIMIT"
+    assert not fake.calls
+
+
+def test_purchase_link_and_invalid_isbn(client):
+    response = client.get(f"/api/v1/books/{isbn()}/purchase-link")
+    assert response.status_code == 200
+    assert response.json() == {"isbn13": isbn(), "provider": "yes24", "kind": "search",
+                               "url": f"https://www.yes24.com/Product/Search?domain=BOOK&query={isbn()}"}
+    assert client.get("/api/v1/books/bad/purchase-link").status_code == 422
+    assert client.get("/api/v1/books/bad/availability?library_id=101").status_code == 422
+    assert client.get(f"/api/v1/books/{isbn()}/availability?library_id=9999999").status_code == 404

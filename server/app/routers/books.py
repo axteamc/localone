@@ -4,23 +4,31 @@
 """
 
 from datetime import date, datetime
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Query, Request
 
 from app import policy
-from app.common import KST, ApiError
+from app.common import KST, ApiError, now_kst
 from app.db import run_db
 from app.routers.libraries import (
     BIGINT_MAX,
+    check_radius,
+    library_summary,
     validation_error,
 )
 from app.services.provider_engine import (
+    AvailabilityItem,
+    live_check_link,
+    libraries_in_region,
+    libraries_nearby,
     LibraryRow,
     ProviderEngine,
     get_library,
     isbn13_is_valid,
 )
+
+DTL_REGION_PATTERN = r"^[0-9]{5}$"
 
 MSG_NOT_FOUND = "찾을 수 없어요."
 
@@ -101,3 +109,85 @@ async def recommendations(
 @router.get("/{isbn13}")
 async def book_detail(request: Request, isbn13: str) -> Any:
     return (await _engine(request).get_book(_isbn(isbn13))).public()
+
+
+# ─────────── #12~#14 소장·대출 가능 ───────────
+
+
+def _availability_item(item: AvailabilityItem, isbn13: str, distance_km: float | None) -> dict[str, Any]:
+    url, kind = live_check_link(item.library, isbn13)
+    summary = library_summary(item.library, distance_km)
+    return {
+        "library": {**{k: summary[k] for k in ("id", "name", "address", "area_label", "distance_m", "today")},
+                    "tel": item.library.tel},
+        "holding": item.holding,
+        "loanable": item.loanable,
+        "basis": item.basis,
+        "source": item.source,
+        "observed_at": _iso(item.observed_at),
+        "data_date": _iso(item.data_date),
+        "data_date_assumed": item.data_date_assumed,
+        "fallback_reason": item.fallback_reason,
+        "live_check": {"url": url, "kind": kind} if url else None,
+    }
+
+
+@router.get("/{isbn13}/availability")
+async def availability(
+    request: Request,
+    isbn13: str,
+    scope: Literal["nearby", "city"] | None = Query(None),
+    lat: float | None = Query(None, ge=-90, le=90),
+    lng: float | None = Query(None, ge=-180, le=180),
+    radius_km: int | None = Query(None),
+    dtl_region: str | None = Query(None, pattern=DTL_REGION_PATTERN),
+    library_id: int | None = Query(None, ge=1, le=BIGINT_MAX),
+) -> Any:
+    isbn13 = _isbn(isbn13)
+    db = request.app.state.engine
+    distances: dict[int, float] = {}
+    radius: int | None = None
+    if library_id is not None:
+        if scope is not None or lat is not None or lng is not None or radius_km is not None or dtl_region:
+            raise validation_error("library_id", "scope")
+        libraries = [await _library_or_404(request, library_id)]
+        scope_name = "library"
+    elif scope == "nearby":
+        if lat is None or lng is None or dtl_region is not None:
+            raise validation_error("lat", "lng")
+        radius = check_radius(radius_km)
+        found = await run_db(db, lambda c: libraries_nearby(c, lat, lng, radius))
+        libraries = [lib for lib, _ in found]
+        distances = {lib.id: d for lib, d in found}
+        scope_name = "nearby"
+    elif scope == "city":
+        if dtl_region is None or lat is not None or lng is not None or radius_km is not None:
+            raise validation_error("dtl_region")
+        libraries = await run_db(db, lambda c: libraries_in_region(c, dtl_region))
+        scope_name = "city"
+    else:
+        raise validation_error("scope")
+
+    items = await _engine(request).availability(isbn13, libraries)
+    return {
+        "isbn13": isbn13,
+        "scope": scope_name,
+        "radius_km": radius,
+        "dtl_region": dtl_region if scope_name == "city" else None,
+        "checked_at": now_kst().isoformat(timespec="seconds"),
+        "items": [_availability_item(i, isbn13, distances.get(i.library.id)) for i in items],
+    }
+
+
+# ─────────── #15 구매 링크(Q-41 ② 미결: 예스24 검색 주소만) ───────────
+
+
+@router.get("/{isbn13}/purchase-link")
+async def purchase_link(isbn13: str) -> Any:
+    isbn13 = _isbn(isbn13)
+    return {
+        "isbn13": isbn13,
+        "provider": "yes24",
+        "kind": "search",
+        "url": policy.YES24_SEARCH_URL_TEMPLATE.format(isbn13=isbn13),
+    }
