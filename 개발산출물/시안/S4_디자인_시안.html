@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S4 디자인 시안</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* warm 룩 토큰(mobile/src/theme/tokens.ts·index.ts 계산값, 2026-11-18) */
+:root{
+  --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5; --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+  --cream:#EFEFE7; --paper:#EFF1F1; --ink:#2E333F; --text:#1D1D1F; --textSub:#71716F; --divider:#C4C4C1;
+  --inkMuted:#6B6B66; --loanAvailable:#5B8A5B; --panelFrosted:#E9EAE9; --seam:#C8C9C8;
+  --reliefMid:#B8B7B3; --reliefDark:#999896; --rivet:#8E8D8D;
+  --rCard:18px; --rBlock:3px; --rControl:9999px; --rInner:12px;
+  --page:#F6F6F3; --pageInk:#1D1D1F; --panel:#FFFFFF; --line:#DADAD6; --accent:#2E333F;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --page:#1B1C1F; --pageInk:#E8E8E6; --panel:#26282C; --line:#3A3C41; --accent:#E9C970; }
+}
+:root[data-theme="dark"]{ --page:#1B1C1F; --pageInk:#E8E8E6; --panel:#26282C; --line:#3A3C41; --accent:#E9C970; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--pageInk);font-family:"Noto Sans KR",system-ui,sans-serif;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 16px 80px}
+h1{font-size:24px;margin:0 0 4px}
+h2{font-size:19px;margin:40px 0 6px;padding-top:12px;border-top:1px solid var(--line)}
+h3{font-size:15px;margin:18px 0 6px}
+.lead{color:var(--pageInk);opacity:.75;margin:0 0 12px;font-size:14px}
+.note{font-size:13px;opacity:.8}
+table{border-collapse:collapse;width:100%;font-size:13px;background:var(--panel)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{font-weight:700;white-space:nowrap}
+.tblwrap{overflow-x:auto}
+.shots{display:flex;gap:10px;overflow-x:auto;padding:6px 0 10px}
+.shots figure{margin:0;flex:0 0 150px;font-size:12px;text-align:center}
+.shots img{width:150px;border:1px solid var(--line);border-radius:8px;display:block}
+.cands{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:10px}
+.cand{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;position:relative}
+.cand.sel{outline:3px solid var(--accent);outline-offset:-1px}
+.cand h4{margin:0 0 4px;font-size:15px}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:99px;background:var(--fill1);color:#1D1D1F;margin-left:6px;vertical-align:2px}
+.cand p,.cand li{font-size:13px;margin:4px 0}
+.cand ul{padding-left:18px;margin:4px 0}
+.k{font-weight:700}
+select{font:inherit;font-size:14px;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--pageInk)}
+.picker{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin:8px 0;font-size:14px}
+.spec td:first-child{white-space:nowrap;font-weight:700}
+.state{font-size:11px;font-weight:700;padding:1px 6px;border-radius:4px;background:var(--line)}
+
+/* ---------- 휴대폰 미리보기(앱 토큰만 사용) ---------- */
+.phone{width:280px;max-width:100%;margin:8px auto 10px;height:560px;overflow:hidden;border-radius:22px;border:6px solid #111;background:var(--cream);font-size:11px;color:var(--text);position:relative}
+.ph-head{height:40px;background:var(--cream);border-bottom:1px solid var(--divider);display:flex;align-items:center;padding:0 12px;font-weight:700;font-size:13px}
+.ph-body{padding:10px 12px}
+.book{display:flex;gap:10px;margin-bottom:10px}
+.cover{width:62px;height:88px;border-radius:5px 9px 9px 5px;background:linear-gradient(160deg,#3b3a2c,#1f1f18);position:relative}
+.cover:after{content:"";position:absolute;left:20px;top:22px;width:22px;height:40px;background:#E98B2A;border-radius:2px}
+.btitle{font-size:14px;font-weight:700}
+.bsub{color:var(--textSub)}
+.secT{font-weight:700;font-size:12px;margin:12px 0 6px}
+.chip{display:inline-block;border:1px solid var(--divider);border-radius:var(--rControl);padding:3px 9px;font-weight:500;margin-bottom:8px;background:var(--paper)}
+.card{position:relative;margin-bottom:10px}
+.card .face{position:relative;z-index:2;display:flex;gap:6px;padding:9px 10px}
+.card .l{flex:1;min-width:0}
+.card .r{display:flex;align-items:center}
+.cname{font-weight:700;font-size:12px;display:flex;justify-content:space-between;gap:6px}
+.cname span{font-weight:400;color:var(--textSub)}
+.st1{margin-top:3px}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--loanAvailable);margin-right:4px}
+.st2,.info{color:var(--textSub);font-size:10.5px}
+/* 질감 A: 홈 블록 그대로 */
+.texA .card .face{background:var(--paper);border:1px solid var(--seam);border-radius:var(--rBlock);box-shadow:6px 10px 12px rgba(46,51,63,.22)}
+.texA .card .layer1,.texA .card .layer2{position:absolute;inset:0;border-radius:var(--rBlock)}
+.texA .card .layer1{background:var(--surface3);transform:translate(3px,4px);z-index:1}
+.texA .card .layer2{background:var(--reliefDark);transform:translate(6px,8px);z-index:0}
+.texA .card{margin-right:8px;margin-bottom:16px}
+.texA .card .face:before{content:"";width:8px;margin:-9px 4px -9px -10px;background:var(--fill3);border-right:1px solid var(--seam);border-radius:2px 0 0 2px}
+/* 질감 B: 가벼운 릴리프 */
+.texB .card .face{background:var(--paper);border:1px solid var(--seam);border-radius:var(--rCard);box-shadow:0 1px 0 rgba(255,255,255,.68) inset, 0 6px 10px rgba(28,30,36,.10)}
+.texB .card .layer1{position:absolute;left:0;right:0;top:0;bottom:-3px;border-radius:var(--rCard);background:var(--reliefMid);z-index:1}
+.texB .card .layer2{display:none}
+.texB .card{margin-bottom:13px}
+/* 질감 C: 평평 + 줄눈 */
+.texC .card .face{background:var(--paper);border:1px solid var(--seam);border-radius:var(--rCard)}
+.texC .card .layer1,.texC .card .layer2{display:none}
+/* 주 버튼 */
+.primary{display:flex;align-items:center;justify-content:center;height:36px;font-weight:700;font-size:12px;margin-bottom:4px;position:relative}
+.btnA .primary{background:var(--ink);color:#fff;border-radius:var(--rControl)}
+.btnB .primary{background:var(--fill1);color:var(--text);border-radius:var(--rControl);border:1px solid var(--seam)}
+.btnC .primary{background:var(--ink);color:#fff;border-radius:var(--rBlock);box-shadow:3px 4px 0 var(--reliefDark),6px 10px 12px rgba(46,51,63,.22);margin-right:6px}
+.live{font-weight:700;font-size:10.5px;white-space:nowrap}
+.btnA .live{border:1px solid var(--ink);color:var(--ink);border-radius:var(--rControl);padding:5px 9px}
+.btnB .live{border:1px solid var(--surface3);background:var(--cream);color:var(--text);border-radius:var(--rControl);padding:5px 9px}
+.btnC .live{color:var(--text);text-decoration:underline;text-underline-offset:3px;padding:5px 2px}
+.btnNow .primary{background:var(--ink);color:#fff;border-radius:var(--rInner)}
+.btnNow .live{background:var(--ink);color:#fff;border-radius:var(--rControl);padding:6px 10px}
+.hint{font-size:11px;opacity:.7;text-align:center;margin-top:-4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>S4 디자인 감사 · 방향 시안</h1>
+<p class="lead">시연 전 개선 S4(2026-11-18 mac, D). 홈 화면의 질감·색감을 기준으로 다른 화면이 어긋난 곳을 모으고, 화면 인상을 크게 바꾸는 두 요소만 후보 3개씩 비교한다. 나머지는 <b>기본값(Claude)</b>으로 S5에서 바로 고친다. 미리보기 색은 warm 룩 토큰 값 그대로다.</p>
+
+<h2>1. 감사 — 웹 390×844 화면별 스크린샷</h2>
+<p class="note">Metro 8083(CI 없이 실행, 번들에 S2·S3 코드 확인), 위치 광주 북구, 로그아웃 상태. 원본: <code>개발산출물/시안/S4_감사_스크린샷/</code></p>
+<div class="shots">
+  <figure><img src="S4_감사_스크린샷/01_home.jpg" alt="홈"><figcaption>홈(기준)</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/02_find.jpg" alt="도서관 찾기"><figcaption>도서관 찾기</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/03_visit.jpg" alt="방문"><figcaption>방문</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/04_compose.jpg" alt="글쓰기"><figcaption>글쓰기(로그아웃)</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/05_post.jpg" alt="글 상세"><figcaption>글 상세</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/06_search.jpg" alt="책 검색"><figcaption>책 검색</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/07_search_q.jpg" alt="검색 결과"><figcaption>검색 결과</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/08_detail.jpg" alt="책 상세"><figcaption>책 상세·대출</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/09_loans.jpg" alt="대출 반납"><figcaption>대출·반납</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/10_me.jpg" alt="내 정보"><figcaption>내 정보</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/11_login.jpg" alt="로그인"><figcaption>로그인</figcaption></figure>
+</div>
+<p class="note">감사 표 전체는 <code>개발산출물/진행_시연전개선.md</code> S4 절. 요약: ① 머리 띠가 탭 화면은 <code>cream</code>, 책·검색·글쓰기·로그인은 순백 #FFFFFF ② 본문 바탕이 탭 화면 <code>bg</code> / 나머지 <code>cream</code> ③ 홈 블록만 줄눈·두께면·그림자가 있고 다른 카드는 평평 ④ 책 상세에 <code>inkStrong</code> 채움이 주 버튼 1 + "실시간 확인" 카드 수만큼(390×844에서 4개) ⑤ 입력칸 포커스 때 브라우저 기본 파란 테두리 ⑥ 상세 카드 상태 둘째 줄이 "·"로 시작 ⑦ 시작선 16/20/24/30이 섞임.</p>
+
+<h2>2. 중심 요소 ① 카드 질감</h2>
+<p class="lead">책 상세의 도서관 카드, 검색 결과, 빈 상태 카드처럼 "정보를 담은 면"이 홈 블록의 재료감(1px 줄눈 · 두께면 · 그림자)을 얼마나 가져올지. 화면을 열면 제일 먼저 보이는 차이다.</p>
+<div class="cands" id="tex"></div>
+
+<h2>3. 중심 요소 ② 주 버튼과 진한 채움</h2>
+<p class="lead">"빌릴 예정에 저장" 같은 주 행동과 "실시간 확인 ↗" 같은 카드 안 행동의 색·모양. 지금은 남색(<code>inkStrong</code>) 덩어리가 한 화면에 4개 이상 보인다(DESIGN.md "진한 채움은 주 행동 1개"와 어긋남).</p>
+<div class="cands" id="btn"></div>
+
+<h2>4. 명세</h2>
+<div class="picker">
+  <label>① 카드 질감 채택안 <select id="pickTex"></select></label>
+  <label>② 주 버튼 채택안 <select id="pickBtn"></select></label>
+  <span class="note">선택 상자를 바꾸면 위 미리보기의 다른 요소도 그 값으로 그려진다.</span>
+</div>
+<div class="tblwrap"><table class="spec" id="spec"></table></div>
+
+<h3>기본값(Claude) — S5에서 묻지 않고 고친다</h3>
+<div class="tblwrap"><table>
+<tr><th>항목</th><th>지금</th><th>바꿀 값</th><th>상태</th></tr>
+<tr><td>머리 띠 색</td><td>책·검색·글쓰기·로그인 #FFFFFF(순백), 탭 화면 cream</td><td>모두 <code>cream</code> + 아래 1px <code>divider</code>(탭 화면과 같게). 순백 금지 원칙</td><td><span class="state">기본값(Claude)</span></td></tr>
+<tr><td>본문 바탕</td><td>탭 화면(대출·내 정보) <code>bg</code>, 나머지 <code>cream</code></td><td>모두 <code>cream</code>. 홈 지도 판(<code>panelFrosted</code>)만 예외</td><td><span class="state">기본값(Claude)</span></td></tr>
+<tr><td>좌우 시작선</td><td>16 · 20(글쓰기 안내) · 24(로그인) · 카드 안 30</td><td>화면 바깥 16, 카드 안 12(카드 테두리부터). 홈 검색창 10·하단 창 14도 16으로</td><td><span class="state">기본값(Claude)</span></td></tr>
+<tr><td>입력칸 포커스</td><td>브라우저 기본 파란 테두리(찾기 창·검색)</td><td>파란 테두리 끔 → <code>inkStrong</code> 1.5px 테두리. 링크용 파랑 금지 원칙</td><td><span class="state">기본값(Claude)</span></td></tr>
+<tr><td>상세 카드 상태 줄</td><td>좁은 칸에서 "소장 있음" / "· 어제(추정) 기준 · 대출 가능"으로 끊겨 둘째 줄이 "·"로 시작(S3 넘김)</td><td>상태를 두 줄로 나눠 그린다: 1줄 "● 소장 있음", 2줄 "어제(추정) 기준 · 대출 가능"(가운데 점은 둘째 줄 안에서만)</td><td><span class="state">기본값(Claude)</span></td></tr>
+<tr><td>글자 단계</td><td>10·10.5·11·12·13·14·15·16·18·19·24·26·30·32</td><td>11 · 13 · 15 · 18 · 24(큰 제목) 다섯 단계로 맞춤. 방문 페이지 도서관 이름 30 → 24</td><td><span class="state">기본값(Claude)</span></td></tr>
+<tr><td>로그인 머리</td><td>머리 "동네한권" + 본문 작은 "동네한권" 두 번</td><td>머리 글자를 비움(본문 제목만)</td><td><span class="state">기본값(Claude)</span></td></tr>
+<tr><td>컨트롤 곡률</td><td>검색 입력·버튼 18, "빌릴 예정에 저장" 12, 홈 검색창 6·버튼 4</td><td>컨트롤은 <code>radii.control</code>(완전한 필), 홈 파사드 안 검색창은 홈 기준이라 그대로</td><td><span class="state">기본값(Claude)</span></td></tr>
+</table></div>
+
+<h2>5. 고성능 AI(Astra) 검토 결과</h2>
+<p class="note">D가 Astra 결과를 받아 오면 여기에 붙인다. Claude가 규칙 위반(새 색·나무색·토큰 밖 값·파랑)을 걸러 위 후보에 합치거나 후보를 바꾼다. <span class="state">결정 전</span></p>
+</div>
+
+<script>
+const TEX = {
+  A:{name:"A 홈 블록 그대로", rec:false,
+     desc:"홈 도서관 블록과 같은 재료: 곡률 3(<code>radii.block</code>), 1px 줄눈(<code>seamHairline</code>), 오른쪽 아래 두께면 2겹(<code>surface3</code>·<code>reliefSideDark</code>), 그림자 6·10·12 <code>inkStrong</code> 22%, 왼쪽 스파인(<code>fill1~3</code>).",
+     flow:"카드를 누르는 동작은 지금과 같다(카드 자체는 누르는 곳이 아님, 오른쪽 버튼만). 스크롤하면 블록이 층층이 쌓인 목록이 된다.",
+     see:"카드 6개가 모두 돌출 블록이라 목록이 꽉 차 보이고, 카드 사이 여백이 16으로 늘어 390×844에서 3장 → 2.5장 정도 보인다.",
+     gain:"홈과 완전히 같은 질감. 앱 전체가 하나의 조형 시스템으로 보인다.",
+     lose:"DESIGN.md 확정 \"카드 곡률 18\"을 바꿔야 한다. 긴 목록에서 무겁고, 스파인 색이 도서관 구분이 아닌 장식이 된다."},
+  B:{name:"B 가벼운 릴리프", rec:true,
+     desc:"곡률 18(<code>radii.card</code>)은 그대로 두고, 1px 줄눈 + 위쪽 안쪽 밝은 선(<code>seamHighlight</code>) + 아래로만 3px 두께면(<code>reliefBottomMid</code>) + 옅은 그림자(<code>shadowAmbient</code> 정도).",
+     flow:"누르는 동작은 지금과 같다. 홈에서 들어오면 \"같은 재료로 만든 얇은 판\"으로 이어진다.",
+     see:"카드 간격 13, 390×844에서 3장 보임(지금과 같음). 두께면이 아래쪽에만 있어 긴 목록에서도 무겁지 않다.",
+     gain:"확정 곡률을 지키면서 홈의 줄눈·두께감을 가져온다. 상세·검색·빈 상태에 같은 규칙 하나로 쓸 수 있다.",
+     lose:"홈 블록만큼 입체적이지는 않다. 파생 색을 그대로 쓰지만 그림자 하나(아래 두께면)를 새로 정의해야 한다."},
+  C:{name:"C 평평 + 줄눈만", rec:false,
+     desc:"지금 카드에 1px 줄눈(<code>seamHairline</code>)만 더한다. 그림자·두께면 없음.",
+     flow:"지금과 같다.",
+     see:"지금 화면과 거의 같고 카드 가장자리만 또렷해진다.",
+     gain:"가장 차분하고 변경이 작다. 성능·플랫폼 차이(그림자) 걱정이 없다.",
+     lose:"\"홈의 질감을 다른 화면에도\"라는 요청을 거의 채우지 못한다. 홈과 다른 화면의 차이가 그대로 남는다."},
+};
+const BTN = {
+  A:{name:"A 남색 주 버튼 하나 + 테두리 알약", rec:false,
+     desc:"주 행동(빌릴 예정에 저장·로그인)만 <code>inkStrong</code> 채움 필. 카드 안 \"실시간 확인 ↗\"·검색 버튼은 <code>inkStrong</code> 1px 테두리 필(채움 없음).",
+     flow:"\"빌릴 예정에 저장\" → 도서관 고르기 창(지금과 같음). \"실시간 확인 ↗\" → 도서관 사이트로 나감(지금과 같음).",
+     see:"상세 화면의 진한 덩어리가 4개 → 1개. 카드 버튼은 윤곽선만 보인다.",
+     gain:"DESIGN.md \"진한 채움은 주 행동 1개\"를 그대로 지킨다. 가장 작은 변경.",
+     lose:"주 버튼은 여전히 남색 덩어리다. 홈(노랑 \"도서관 찾기\")·방문(노랑 +)·글 상세(노랑 저장)와 주 행동 색이 다르다."},
+  B:{name:"B 주 버튼을 홈처럼 대표색(fill1)", rec:true,
+     desc:"주 행동을 <code>fill1</code>(warm 노랑) 채움 필 + 1px 줄눈, 글자색은 채움 대비로 자동. <code>inkStrong</code> 채움은 홈 기점·하단 바 같은 구조에만. \"실시간 확인 ↗\"은 <code>cream</code> 바탕 + <code>surface3</code> 테두리 필.",
+     flow:"동작은 A와 같다. 홈에서 \"도서관 찾기\"를 누르던 노랑이 상세의 \"빌릴 예정에 저장\"으로 이어진다.",
+     see:"상세 화면에 진한 남색 면이 없다. 노랑 주 버튼 1개, 카드 버튼은 밝은 필.",
+     gain:"홈·방문·글 상세에서 이미 쓰는 \"주 행동 = 대표색\"과 하나가 된다. 룩이 바뀌면 주 버튼도 그 도서관 색을 따른다.",
+     lose:"DESIGN.md \"inkStrong 꽉 채움 = 하단 주 행동 버튼\" 문장을 바꿔야 한다. toffee·Oxford 룩에서는 주 버튼이 짙은 갈색·남색이 된다(글자색 자동)."},
+  C:{name:"C 홈 기점처럼 돌출 블록 버튼", rec:false,
+     desc:"주 행동을 홈 \"현위치\" 기점과 같은 <code>inkStrong</code> 블록(곡률 3, 두께면 <code>reliefSideDark</code>, 그림자). 카드 안 \"실시간 확인 ↗\"은 굵은 글자 링크(배경 없음).",
+     flow:"동작은 A와 같다. 버튼이 눌리는 느낌(두께면이 줄어드는 눌림)을 S5에서 더한다.",
+     see:"주 버튼이 화면에서 가장 무겁고 입체적이다. 카드 안 행동은 글자만 보인다.",
+     gain:"홈 기점과 같은 조형. \"목록·카드 안 행동은 텍스트 링크\" 확정 규칙과 맞다.",
+     lose:"확정 \"컨트롤은 완전한 필\"과 충돌. 남색 덩어리 느낌은 더 커진다. 글자 링크는 누르는 곳으로 덜 보인다."},
+};
+const state = { tex:"B", btn:"B" };
+function phone(tex, btn){
+  const card = (n,d,addr)=>`<div class="card"><div class="layer2"></div><div class="layer1"></div><div class="face"><div class="l">
+    <div class="cname">${n}<span>${d}</span></div><div class="st1"><i class="dot"></i>소장 있음</div>
+    <div class="st2">어제(추정) 기준 · 대출 가능</div><div class="info">${addr}</div></div>
+    <div class="r"><span class="live">실시간 확인 ↗</span></div></div></div>`;
+  return `<div class="phone tex${tex} btn${btn}"><div class="ph-head">책</div><div class="ph-body">
+    <div class="book"><div class="cover"></div><div><div class="btitle">소년이 온다</div><div class="bsub">한강</div><div class="bsub">창비 · 2014</div></div></div>
+    <div class="primary">빌릴 예정에 저장</div>
+    <div class="secT">가까운 도서관</div><span class="chip">현재 도시 내 모든 도서관 검색</span>
+    ${card("광주광역시립무등도서관","5m","광주광역시 북구 면앙로 130")}
+    ${card("북구 중흥도서관","1.2km","광주광역시 북구 당뢰로 39")}
+    ${card("계림꿈나무도서관","2.1km","광주광역시 동구 경양로247번길 26")}
+  </div></div>`;
+}
+function candHTML(key, c, kind){
+  const p = kind==="tex" ? phone(key, state.btn) : phone(state.tex, key);
+  const on = (kind==="tex"?state.tex:state.btn)===key;
+  return `<div class="cand ${on?"sel":""}"><h4>${c.name}${c.rec?'<span class="badge">추천</span>':""}</h4>${p}
+   <p>${c.desc}</p><p><span class="k">누르면 이렇게 이어져요:</span> ${c.flow}</p>
+   <p><span class="k">열어 보면:</span> ${c.see}</p>
+   <ul><li><span class="k">얻는 것:</span> ${c.gain}</li><li><span class="k">포기하는 것:</span> ${c.lose}</li></ul></div>`;
+}
+const REC = {
+  tex:"B를 추천: \"홈의 질감을 다른 화면에도\"를 채우면서 확정된 카드 곡률 18과 긴 목록의 가벼움을 지킨다. A는 확정 규칙을 바꿔야 하고 C는 요청을 거의 채우지 못한다.",
+  btn:"B를 추천: 홈·방문·글 상세가 이미 주 행동을 대표색으로 쓰고 있어, 상세·검색·로그인만 남색인 것이 지금 가장 큰 어긋남이다. 룩을 바꿔 끼우는 구조(M2)와도 맞는다."
+};
+function render(){
+  document.getElementById("tex").innerHTML = Object.entries(TEX).map(([k,c])=>candHTML(k,c,"tex")).join("") + `<p class="note">${REC.tex}</p>`;
+  document.getElementById("btn").innerHTML = Object.entries(BTN).map(([k,c])=>candHTML(k,c,"btn")).join("") + `<p class="note">${REC.btn}</p>`;
+  const others = (o,k)=>Object.keys(o).filter(x=>x!==k).map(x=>o[x].name).join(", ");
+  document.getElementById("spec").innerHTML = `<tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>값</th><th>유저 플로우</th><th>이유(D 말)</th><th>상태</th></tr>
+   <tr><td>① 카드 질감</td><td>${TEX[state.tex].name}</td><td>—</td><td>${others(TEX,state.tex)}</td><td>${TEX[state.tex].desc}</td><td>${TEX[state.tex].flow}</td><td>—</td><td><span class="state">결정 전</span></td></tr>
+   <tr><td>② 주 버튼</td><td>${BTN[state.btn].name}</td><td>—</td><td>${others(BTN,state.btn)}</td><td>${BTN[state.btn].desc}</td><td>${BTN[state.btn].flow}</td><td>—</td><td><span class="state">결정 전</span></td></tr>`;
+}
+for (const [id,o,k] of [["pickTex",TEX,"tex"],["pickBtn",BTN,"btn"]]){
+  const s=document.getElementById(id);
+  s.innerHTML=Object.entries(o).map(([key,c])=>`<option value="${key}">${c.name}${c.rec?" (추천)":""}</option>`).join("");
+  s.value=state[k]; s.onchange=()=>{state[k]=s.value; render();};
+}
+render();
+</script>
+</body>
+</html>
