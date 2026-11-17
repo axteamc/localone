@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     app_env: Literal["local", "test", "production"]
     database_url: str
     supabase_url: str = ""
+    data4library_api_key: str = ""
+    data4library_api_base_url: str = "http://data4library.kr/api"
+    naver_client_id: str = ""
+    naver_client_secret: str = ""
+    naver_api_base_url: str = "https://openapi.naver.com/v1/search"
 
     @model_validator(mode="after")
     def _check_database_url(self) -> "Settings":

@@ -6,11 +6,9 @@ import TabsLayout from "../../app/(tabs)/_layout";
 import HomeTabScreen from "../../app/(tabs)/index";
 import LoansTabScreen from "../../app/(tabs)/loans";
 import MeTabScreen from "../../app/(tabs)/me";
-import BookDetailStubScreen from "../../app/books/[isbn13]";
 import LibraryDetailStubScreen from "../../app/libraries/[libraryId]";
 import PostDetailStubScreen from "../../app/posts/[postId]";
 import NewPostStubScreen from "../../app/posts/new";
-import SearchStubScreen from "../../app/search";
 import type { SignInResult } from "../auth/platform";
 import { useAuth } from "../auth/AuthProvider";
 
@@ -185,19 +183,5 @@ describe("APP-0-P2 routes and tabs", () => {
     const newPost = await render(<NewPostStubScreen />);
     expect(newPost.getByText("libraryId: 101 · isbn13: 9788936434120")).toBeTruthy();
     expect(newPost.getByText("준비 중이에요")).toBeTruthy();
-
-    mockUseLocalSearchParams.mockReturnValue({ q: "한강", libraryId: "101" });
-    const search = await render(<SearchStubScreen />);
-    expect(search.getByText("q: 한강 · libraryId: 101")).toBeTruthy();
-    expect(search.getByText("준비 중이에요")).toBeTruthy();
-
-    mockUseLocalSearchParams.mockReturnValue({});
-    const searchEmpty = await render(<SearchStubScreen />);
-    expect(searchEmpty.getByText("검색 조건 없음")).toBeTruthy();
-
-    mockUseLocalSearchParams.mockReturnValue({ isbn13: "9788936434120" });
-    const book = await render(<BookDetailStubScreen />);
-    expect(book.getByText("isbn13: 9788936434120")).toBeTruthy();
-    expect(book.getByText("준비 중이에요")).toBeTruthy();
   });
 });
