@@ -14,6 +14,11 @@
         "isIosBackgroundLocationEnabled": false,
         "isAndroidBackgroundLocationEnabled": false,
         "isAndroidForegroundServiceEnabled": false
+      }],
+      ["expo-image-picker", {
+        "photosPermission": "게시물에 넣을 사진을 고를 때만 써요.",
+        "cameraPermission": "게시물에 넣을 사진을 고를 때만 써요.",
+        "microphonePermission": false
       }]
     ],
     "ios": {
