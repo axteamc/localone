@@ -28,7 +28,8 @@ export type HomeLibraries = {
   status: HomeStatus;
   radiusKm: 3 | 5;
   selectedId: number | null;
-  reloadHere(center: LatLng): void;
+  /** stillHere: 응답이 왔을 때 false면(그 사이 지도를 또 옮김) 지도를 그 자리로 되돌리지 않는다 */
+  reloadHere(center: LatLng, stillHere?: () => boolean): void;
   backToCurrent(): void;
   widen(): void;
   showRegion(code: string): void;
@@ -66,6 +67,7 @@ export function useHomeLibraries(): HomeLibraries {
   const currentRef = useRef<LatLng | null>(null); // 이번에 켠 뒤 알게 된 현재 위치(기기에 저장하지 않음, V1)
   const startingRef = useRef(true); // 첫 주변 조회가 끝나기 전에 지도가 실패하면 끝난 뒤 목록으로
   const aliveRef = useRef(true);
+  const searchedRef = useRef<LatLng | null>(null); // 마지막으로 결과를 받은 자리("더 넓게 찾기"가 쓴다)
 
   /** 현재 위치를 알면 옮긴 곳은 "moved", 모르면 계속 "start"(V10: "위치 허용하기"와 "현재 위치로"는 함께 뜨지 않음) */
   const movedOrigin = useCallback((): Origin => (currentRef.current ? "moved" : "start"), []);
@@ -92,12 +94,20 @@ export function useHomeLibraries(): HomeLibraries {
   );
 
   const load = useCallback(
-    async (at: LatLng, from: Origin, radius: 3 | 5, select: number | null = null) => {
+    async (
+      at: LatLng,
+      from: Origin,
+      radius: 3 | 5,
+      select: number | null = null,
+      applyView: () => boolean = () => true
+    ) => {
       setStatus("loading");
       const r = await runner.run((signal) => fetchLibrariesNearby(at.lat, at.lng, radius, signal));
       if (r.status === "stale") return; // 예외 #3: 화면 무변경
       startingRef.current = false;
-      setCenter(at);
+      searchedRef.current = at;
+      // V10: 요청 뒤 사용자가 지도를 또 옮겼으면 마지막으로 옮긴 자리를 지킨다
+      if (applyView()) setCenter(at);
       setOrigin(from);
       setRadiusKm(radius);
       setSelectedId(select);
@@ -150,9 +160,9 @@ export function useHomeLibraries(): HomeLibraries {
 
   // V10: 지도를 끌어 옮긴 뒤 "이 지역에서 다시 찾기" — 지도 중심으로 주변 조회
   const reloadHere = useCallback(
-    (at: LatLng) => {
+    (at: LatLng, stillHere?: () => boolean) => {
       const same = currentRef.current && currentRef.current.lat === at.lat && currentRef.current.lng === at.lng;
-      void load(at, same ? "current" : movedOrigin(), radiusKm);
+      void load(at, same ? "current" : movedOrigin(), radiusKm, null, stillHere);
     },
     [load, movedOrigin, radiusKm]
   );
@@ -164,7 +174,7 @@ export function useHomeLibraries(): HomeLibraries {
     void load(currentRef.current, "current", BASE_RADIUS);
   }, [load]);
 
-  const widen = useCallback(() => void load(center, origin, 5), [load, center, origin]);
+  const widen = useCallback(() => void load(searchedRef.current ?? center, origin, 5), [load, center, origin]);
 
   // V12: 지역 결과 — 지도 모드는 그 지역 도서관 평균 자리로 옮기고 핀을 그 결과로, 목록 모드는 그 지역 목록
   const showRegion = useCallback(

@@ -67,9 +67,19 @@ export function useFindLibrary(): FindLibrary {
       const q = raw.slice(0, MAX_QUERY);
       setQueryState(q);
       if (timer.current) clearTimeout(timer.current);
+      // V14·예외 #3: 글자가 바뀌는 즉시 앞 요청을 무효로 하고 앞 결과를 숨긴다(새 요청을 기다리는 300ms 동안 앞 결과가 뜨지 않게)
+      runner.cancel();
+      setRegions([]);
+      setLibraries([]);
+      if (!q.trim()) {
+        timer.current = null;
+        setStatus("idle");
+        return;
+      }
+      setStatus("loading");
       timer.current = setTimeout(() => void find(q), FIND_DELAY_MS); // 매 글자마다 묻지 않는다
     },
-    [find]
+    [find, runner]
   );
 
   useEffect(

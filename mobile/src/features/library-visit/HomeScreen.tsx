@@ -50,20 +50,26 @@ export function HomeScreen() {
   const [findOpen, setFindOpen] = useState(false);
 
   const { center, status } = home;
+  // 끌어 옮길 때마다 하나씩 는다. 다시 찾기를 보낸 때의 값과 비교해 그 사이 또 옮겼는지 안다(V10)
+  const dragSeqRef = useRef(0);
+  const hereSeqRef = useRef(0);
   const onRegionChange = useCallback(
     (at: LatLng) => {
       if (Math.abs(at.lat - center.lat) < SAME_SPOT && Math.abs(at.lng - center.lng) < SAME_SPOT) return;
+      dragSeqRef.current += 1;
       setDragCenter(at);
     },
     [center.lat, center.lng]
   );
+  const stillHere = useCallback(() => dragSeqRef.current === hereSeqRef.current, []);
 
   useEffect(() => {
     if (hereBusy && status !== "loading") {
       setHereBusy(false);
-      setDragCenter(null);
+      // 응답을 기다리는 사이 또 끌어 옮겼으면 그 자리와 "이 지역에서 다시 찾기"를 남긴다
+      if (stillHere()) setDragCenter(null);
     }
-  }, [hereBusy, status]);
+  }, [hereBusy, status, stillHere]);
 
   // 화면이 다시 그려지기 전에 두 번 눌려도 요청은 하나(예외 #3)
   const hereBusyRef = useRef(false);
@@ -73,9 +79,10 @@ export function HomeScreen() {
   const searchHere = useCallback(() => {
     if (hereBusyRef.current || !dragCenter) return;
     hereBusyRef.current = true;
+    hereSeqRef.current = dragSeqRef.current;
     setHereBusy(true);
-    home.reloadHere(dragCenter);
-  }, [dragCenter, home]);
+    home.reloadHere(dragCenter, stillHere);
+  }, [dragCenter, home, stillHere]);
 
   const backToCurrent = useCallback(() => {
     setDragCenter(null);

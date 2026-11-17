@@ -156,6 +156,26 @@ describe("VISIT-1-P3 move and find", () => {
     expect(mapProps().center).toEqual(CURRENT);
   });
 
+  test("drag during search here keeps newer spot", async () => {
+    await openHome();
+    const first = deferred<api.LibraryListResponse>();
+    m.fetchLibrariesNearby.mockImplementationOnce(() => first.promise);
+    const A = { lat: 37.57, lng: 126.99 };
+    const B = { lat: 37.55, lng: 126.97 };
+    await drag(A);
+    await fireEvent.press(screen.getByText("이 지역에서 다시 찾기")); // A 요청 시작
+    await drag(B); // 요청 없이 지도만 또 옮김
+    await act(async () => first.resolve(nearby([lib(301, "A지역도서관")])));
+    await screen.findByText("A지역도서관");
+    // B를 다시 찾을 버튼이 남아 있고 누를 수 있다. 지도는 A로 되돌아가지 않는다
+    expect(screen.getByTestId("home-search-here").props.accessibilityState).toMatchObject({ disabled: false });
+    expect(mapProps().center).not.toEqual(A);
+    await fireEvent.press(screen.getByText("이 지역에서 다시 찾기"));
+    await waitFor(() => expect(m.fetchLibrariesNearby).toHaveBeenLastCalledWith(B.lat, B.lng, 3, expect.anything()));
+    await waitFor(() => expect(screen.queryByText("이 지역에서 다시 찾기")).toBeNull());
+    expect(mapProps().center).toEqual(B);
+  });
+
   test("back to current restores current location", async () => {
     await openHome();
     await drag({ lat: 37.57, lng: 126.99 });
@@ -305,6 +325,48 @@ describe("VISIT-1-P3 move and find", () => {
     expect(screen.queryByTestId("find-sheet")).toBeNull();
     expect(mockPush).not.toHaveBeenCalled();
     spy.mockRestore();
+  });
+
+  test("find sheet drops old result as soon as query changes", async () => {
+    jest.useFakeTimers();
+    await openHome();
+    await openFind();
+    const old = deferred<api.LibraryListResponse>();
+    m.searchLibrariesByName.mockImplementationOnce(() => old.promise);
+    await typeAndWait("정독"); // 앞 요청 진행 중
+    await fireEvent.changeText(screen.getByTestId("find-sheet-input"), "종로"); // 새 요청은 아직(300ms 전)
+    await act(async () =>
+      old.resolve({ mode: "search", radius_km: null, dtl_region: null, q: "정독", items: [lib(401, "OLD_RESULT")] })
+    );
+    const sheet = within(screen.getByTestId("find-sheet"));
+    expect(sheet.queryByText("OLD_RESULT")).toBeNull();
+    expect(sheet.getByText("찾는 중…")).toBeTruthy();
+    await act(async () => {
+      jest.advanceTimersByTime(300);
+    });
+    await waitFor(() => expect(sheet.getByText("종로도서관")).toBeTruthy());
+    expect(sheet.queryByText("OLD_RESULT")).toBeNull();
+  });
+
+  test("find sheet drops old result when query is cleared", async () => {
+    jest.useFakeTimers();
+    await openHome();
+    await openFind();
+    const old = deferred<api.LibraryListResponse>();
+    m.searchLibrariesByName.mockImplementationOnce(() => old.promise);
+    await typeAndWait("정독");
+    await fireEvent.changeText(screen.getByTestId("find-sheet-input"), "");
+    await act(async () =>
+      old.resolve({ mode: "search", radius_km: null, dtl_region: null, q: "정독", items: [lib(401, "OLD_RESULT")] })
+    );
+    const sheet = within(screen.getByTestId("find-sheet"));
+    expect(sheet.queryByText("OLD_RESULT")).toBeNull();
+    expect(sheet.getByText("지역이나 도서관 이름을 적어 주세요")).toBeTruthy();
+    await act(async () => {
+      jest.advanceTimersByTime(300);
+    });
+    expect(sheet.queryByText("OLD_RESULT")).toBeNull();
+    expect(m.searchLibrariesByName).toHaveBeenCalledTimes(1);
   });
 
   test("query longer than 30 is trimmed", async () => {
