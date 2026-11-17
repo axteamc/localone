@@ -223,6 +223,18 @@ describe("검색 결과", () => {
     expect(screen.getByText("여기까지예요")).toBeTruthy();
   });
 
+  test("cache source shows saved-info note only for cache", async () => {
+    searchBooks.mockResolvedValueOnce({ ...page([book(1)]), source: "cache" });
+    await render(<SearchScreen />);
+    await typeAndSearch("해리");
+    await screen.findByTestId(`book-${book(1).isbn13}`);
+    expect(screen.getByText("저장된 정보에서 찾은 결과예요")).toBeTruthy(); // C3
+    searchBooks.mockResolvedValueOnce(page([book(2)])); // naver
+    await typeAndSearch("편의점");
+    await screen.findByTestId(`book-${book(2).isbn13}`);
+    expect(screen.queryByText("저장된 정보에서 찾은 결과예요")).toBeNull();
+  });
+
   test("late response for old query is dropped", async () => {
     const boy = deferred<BookSearchResponse>();
     const store = deferred<BookSearchResponse>();
