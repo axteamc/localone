@@ -1,10 +1,10 @@
 // 방문 페이지 2열 메이슨리 피드(contracts/local-feed.md LOCAL-2 H1·H4·H10·H13).
 // 페이지 넘기기(next_cursor)는 VisitScreen이 스크롤 끝에서 한다. 여기서는 그리기·카드 메뉴만.
 import { useRouter } from "expo-router";
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { LayoutChangeEvent, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
-import { onPostWithdrawn, type FeedPost } from "./api";
+import { onPostReaction, onPostWithdrawn, type FeedPost, type PostReactionPatch } from "./api";
 import { cardHeightRatio, PostCard } from "./PostCard";
 import { LoginPrompt, PostMenu } from "./PostMenu";
 
@@ -62,14 +62,24 @@ export type LibraryFeedProps = {
 export function LibraryFeed({ items, onNotice }: LibraryFeedProps) {
   const router = useRouter();
   const { status } = useAuth();
-  const [changed, setChanged] = useState<Record<string, FeedPost>>({}); // 메뉴에서 바꾼 좋아요·북마크
+  // 메뉴·상세에서 바꾼 좋아요·북마크. 필드 단위로 최신 상태에 합친다(①-1: 늦은 응답이 다른 필드를 덮지 않게)
+  const [changed, setChanged] = useState<Record<string, PostReactionPatch>>({});
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [login, setLogin] = useState(false);
   const [hidden, setHidden] = useState<Set<string>>(() => new Set());
   const shown = useMemo(
-    () => items.filter((p) => !hidden.has(p.id)).map((p) => changed[p.id] ?? p),
+    () => items.filter((p) => !hidden.has(p.id)).map((p) => (changed[p.id] ? { ...p, ...changed[p.id] } : p)),
     [items, changed, hidden]
   );
+  const patch = useCallback(
+    (id: string, next: PostReactionPatch) => setChanged((m) => ({ ...m, [id]: { ...m[id], ...next } })),
+    []
+  );
+
+  // 상세에서 바꾼 공감·북마크를 돌아왔을 때 메뉴에 그대로 보인다(①-2)
+  useEffect(() => onPostReaction(patch), [patch]);
+  // 로그인 상태가 바뀌면 앞 사용자의 변경을 남기지 않는다
+  useEffect(() => setChanged({}), [status]);
 
   // 상세에서 내린 글은 돌아왔을 때 바로 감추고 "내렸어요"(LOCAL-1 F16)
   useEffect(
@@ -99,7 +109,7 @@ export function LibraryFeed({ items, onNotice }: LibraryFeedProps) {
           post={menuPost}
           signedIn={status === "signedIn"}
           onClose={() => setMenuFor(null)}
-          onChange={(p) => setChanged((m) => ({ ...m, [p.id]: p }))}
+          onChange={patch}
           onNotice={onNotice}
           onLoginNeeded={() => setLogin(true)}
         />
