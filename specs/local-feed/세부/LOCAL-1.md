@@ -120,6 +120,10 @@
 
 ## 검토 메모
 
+- [구현 중 변경] 올린 직후 화면 — 명세 §0 "글쓰기 화면이 닫히고 피드 맨 앞에 내 카드"는 피드(VISIT-2·LOCAL-2)가 아직 없어, 계약 F16대로 글쓰기 화면에 내 게시물 미리보기 + ⋯ "게시물 내리기"를 두고 "피드 보기"로 방문 페이지에 간다 — `ComposeScreen.tsx` posted 화면
+- [Claude가 정함] 글자 자리(위·가운데·아래)는 계약 F15대로 DB에 저장하지 않아 글쓰기 미리보기에만 쓰인다
+- [Claude가 정함] `/posts/new?isbn13=`(core K15 선택값)으로 들어오면 그 책을 마지막 단계에 미리 붙인다
+
 - [Claude가 정함] 확인 목록 아래 '기본값(Claude)' 8줄 — 시안 명세 패널에 `기본값(Claude)`로 표시 — `specs/local-feed/세부/LOCAL-1.md` 0절
 - [계약 보완 필요] 글쓰기의 "책 붙이기"·"책 표지"에서 C의 책 찾기 화면을 다시 쓰는지, 고른 책을 어떤 값으로 돌려받는지 — 책 찾기 화면은 그리지 않고 "누르면 책 찾기 화면으로 간다" 한 줄만 둠(team CLAUDE.md 8절 9항) — `../team/기능_배정.md` 맨 위
 - [기준 충돌] 하단 바에 글쓰기가 있는지 — `DESIGN.md` "화면" 절·`디자인_기준.md` §4(홈·독서 기록·글쓰기·대출·반납·내 정보) ↔ `../team/기능_배정.md` A절·00 O-45(하단 4탭, 글쓰기는 SNS 안) — 기능_배정·O-45를 따름(글쓰기는 하단에 없음)
@@ -134,6 +138,7 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 (대기/진행/검토요청/완료) | 구현 근거 (`파일:줄`) 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 파트 1 | `feat/local-feed-LOCAL-1-part1` | - | 대기 | - | - |
+| LOCAL-1-P1 서버 | `feat/local-feed-LOCAL-1-v2` | #126 | 완료 | `server/migrations/versions/0004_posts.py`, `server/app/routers/posts.py:45-307`, `server/app/services/post_storage.py`, `server/app/main.py`(`[local-feed-B]`) · `server/tests/test_posts_create.py` 37개 통과, 서버 전체 290 통과, 가드 7개 제거 확인 | `TODO(연결)`: Supabase Storage 버킷·`SUPABASE_SERVICE_ROLE_KEY`(D 외부 설정, 없으면 메모리 저장소) |
+| LOCAL-1-P2 앱 | `feat/local-feed-LOCAL-1-v2` | #126 | 완료 | `mobile/src/features/local-feed/ComposeScreen.tsx:302-640`(글쓰기), `:122-185`(`PostMoreMenu`), `:233-300`(책 찾기), `api.ts`, `imagePicker.ts`, `mobile/app/posts/new.tsx` · `compose.test.tsx` 17개 통과, 앱 전체 182 통과(routes.test는 스텁 단언으로 실패 → D 이슈 #129) | `to:D` #129 (routes.test) |
 
-- **다음 세션 이어하기 메모**: 기획 넘김(검토 요청). 머지되면 계약서 LOCAL-1 절이 있으므로 바로 3_구현(브랜치 `feat/local-feed-LOCAL-1` 하나, PR 하나).
+- **다음 세션 이어하기 메모**: 3_구현 진행 중. P1·P2 완료 → 검증서 후 검토 요청. 이어서 VISIT-2 → LOCAL-2(각각 새 브랜치·새 PR).

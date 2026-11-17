@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     naver_client_id: str = ""
     naver_client_secret: str = ""
     naver_api_base_url: str = "https://openapi.naver.com/v1/search"
+    # 게시물 사진 저장소(local-feed LOCAL-1 F4). 키가 없으면 기기 메모리 저장소를 쓴다(시험·로컬)
+    supabase_service_role_key: str = ""
+    post_image_bucket: str = "post-images"
 
     @model_validator(mode="after")
     def _check_database_url(self) -> "Settings":
@@ -41,6 +44,8 @@ class Settings(BaseSettings):
             raise ValueError("APP_ENV=test에서는 localhost·127.0.0.1 DB만 쓸 수 있어요")
         if self.app_env == "production" and not self.supabase_url:
             raise ValueError("production에서는 SUPABASE_URL이 필요해요")
+        if self.app_env == "production" and not self.supabase_service_role_key:
+            raise ValueError("production에서는 SUPABASE_SERVICE_ROLE_KEY가 필요해요")
         return self
 
 

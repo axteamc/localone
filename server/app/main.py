@@ -109,6 +109,14 @@ def create_app(
 
     # ── [/lib-D] ──
 
+    # ── [local-feed-B] ──
+    from app.routers.posts import router as posts_router
+    from app.services.post_storage import build_post_storage
+
+    app.state.post_storage = build_post_storage(settings)
+    app.include_router(posts_router)
+    # ── [/local-feed-B] ──
+
     return app
 
 
