@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, render, screen, waitFor } from "@testing-library/react-native";
 import React from "react";
-import * as api from "../__fakes__/publicApi";
+import * as api from "../deps";
 import { HomeScreen } from "../HomeScreen";
 
 const mockPush = jest.fn();
@@ -17,7 +17,7 @@ jest.mock("../../../auth/AuthProvider", () => ({
   useAuth: jest.fn(() => ({ status: "signedOut", session: null, user: null })),
 }));
 
-jest.mock("../__fakes__/publicApi", () => {
+jest.mock("../deps", () => {
   const actual = jest.requireActual("../__fakes__/publicApi") as typeof import("../__fakes__/publicApi");
   const ReactLib = require("react");
   const { Text, View } = require("react-native");
@@ -140,8 +140,31 @@ describe("VISIT-1-P2 home map", () => {
     const shownBefore = screen.toJSON();
     await act(async () => mapProps().onMarkerPress(102));
     expect(mockPush).toHaveBeenCalledTimes(1);
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/libraries/[libraryId]", params: { libraryId: "102" } });
+    // V5: 그 도서관의 distance_m(1310)을 distanceM으로 같이 넘긴다
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/libraries/[libraryId]",
+      params: { libraryId: "102", distanceM: "1310" },
+    });
     // 미리보기 창 없이 화면은 그대로
     expect(screen.toJSON()).toEqual(shownBefore);
+  });
+
+  test("marker press omits distanceM when distance is null or invalid", async () => {
+    m.fetchLibrariesNearby.mockResolvedValue({
+      mode: "nearby",
+      radius_km: 3,
+      dtl_region: null,
+      q: null,
+      items: [
+        { ...actual.FAKE_LIBRARIES[0]!, id: 201, distance_m: null },
+        { ...actual.FAKE_LIBRARIES[1]!, id: 202, distance_m: 12.5 },
+      ],
+    });
+    await render(<HomeScreen />);
+    await screen.findByText("정독도서관");
+    await act(async () => mapProps().onMarkerPress(201));
+    await act(async () => mapProps().onMarkerPress(202));
+    expect(mockPush).toHaveBeenNthCalledWith(1, { pathname: "/libraries/[libraryId]", params: { libraryId: "201" } });
+    expect(mockPush).toHaveBeenNthCalledWith(2, { pathname: "/libraries/[libraryId]", params: { libraryId: "202" } });
   });
 });

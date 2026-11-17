@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, jest, test } from "@jest/globa
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import React from "react";
 import { BackHandler } from "react-native";
-import * as api from "../__fakes__/publicApi";
+import * as api from "../deps";
 import { HomeScreen } from "../HomeScreen";
 
 const mockPush = jest.fn();
@@ -18,7 +18,7 @@ jest.mock("../../../auth/AuthProvider", () => ({
   useAuth: jest.fn(() => ({ status: "signedOut", session: null, user: null })),
 }));
 
-jest.mock("../__fakes__/publicApi", () => {
+jest.mock("../deps", () => {
   const actual = jest.requireActual("../__fakes__/publicApi") as typeof import("../__fakes__/publicApi");
   const ReactLib = require("react");
   const { Text, View } = require("react-native");
@@ -189,6 +189,16 @@ describe("VISIT-1-P3 move and find", () => {
     expect(mapProps().center).toEqual(CURRENT);
   });
 
+  test("back to current right after drag moves map back even though home center is unchanged", async () => {
+    await openHome();
+    const away = { lat: 37.57, lng: 126.99 };
+    await drag(away);
+    // 지도는 끌어 옮긴 자리를 기억한다(실제 지도 어댑터는 이 값과 다를 때만 옮긴다)
+    expect(mapProps().center).toEqual(away);
+    await fireEvent.press(screen.getByText("현재 위치로"));
+    await waitFor(() => expect(mapProps().center).toEqual(CURRENT));
+  });
+
   test("allow and back buttons never show together when location denied", async () => {
     m.locate.mockResolvedValue({ ok: false, reason: "denied" });
     await render(<HomeScreen />);
@@ -274,7 +284,7 @@ describe("VISIT-1-P3 move and find", () => {
   test("find sheet error shows reload", async () => {
     jest.useFakeTimers();
     await openHome();
-    m.searchLibrariesByName.mockRejectedValueOnce(new api.ApiCallError(0, "NETWORK", "Network request failed"));
+    m.searchLibrariesByName.mockRejectedValueOnce(new actual.ApiCallError(0, "NETWORK", "Network request failed"));
     await openFind();
     await typeAndWait("정독");
     expect(await screen.findByText("지금은 도서관을 불러올 수 없어요.")).toBeTruthy();

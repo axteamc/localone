@@ -1,13 +1,12 @@
 // "도서관 찾기" 창의 찾기 상태 (계약서 library-visit.md VISIT-1 C2·V11·V14, 예외 #3, C6 31자 이상)
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-// TODO(연결): D — core APP-0-P1(`lib/regions`·`lib/latest`)·LIB-0-P1(#10 `q`) 머지 뒤 `../../lib/*`로 바꾼다
 import {
   createLatestRunner,
   searchLibrariesByName,
   searchRegions,
   type LibrarySummary,
   type Region,
-} from "./__fakes__/publicApi";
+} from "./deps";
 
 /** 입력이 멈추고 이만큼 지나면 찾는다(기본값(Claude), V11) */
 export const FIND_DELAY_MS = 300;

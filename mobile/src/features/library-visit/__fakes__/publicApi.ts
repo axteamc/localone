@@ -1,6 +1,5 @@
-// TODO(연결): D — core APP-0-P1(`mobile/src/lib/*`)·APP-0-P3(`lib/map/KakaoMap`)·LIB-0-P1(#10·#11)이
-// 머지되기 전까지 쓰는 가짜 값. 모양은 contracts/core.md APP-0 C2·C7, LIB-0 C3·C7 그대로.
-// 머지되면 이 파일의 import를 core 모듈로 바꾸고 이 파일은 시험용 가짜 응답만 남긴다.
+// 시험 전용 가짜. 앱은 `../deps.ts`(core 모듈)를 쓰고, 시험은 `jest.mock("../deps")`로 이 파일을 끼운다.
+// 모양은 contracts/core.md APP-0 C2·C7, LIB-0 C3·C7 그대로.
 import React, { useEffect } from "react";
 
 // ── 타입 (core `lib/publicApi.ts`와 같은 이름) ──────────────────────────

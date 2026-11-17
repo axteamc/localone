@@ -2,7 +2,7 @@
 // TODO(연결): D theme — 색은 core `theme.colors`가 머지된 뒤 넣는다(창 paper, 입력칸 테두리 divider, 덮개 검정 30%, 글자 text·inkMuted)
 import React, { useEffect } from "react";
 import { BackHandler, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import type { LibrarySummary, Region } from "./__fakes__/publicApi"; // TODO(연결): D APP-0-P1
+import type { LibrarySummary, Region } from "./deps";
 import { useFindLibrary } from "./useFindLibrary";
 
 const TEXT = {

@@ -20,6 +20,12 @@ const mockRecordedTabScreens: Array<{ name: string; options?: { title?: string }
 const mockRecordedStackScreens: Array<{ name: string; options?: { headerShown?: boolean } }> = [];
 let mockLastStackScreenOptions: { title?: string } | undefined;
 
+jest.mock("../features/library-visit/HomeScreen", () => {
+  const ReactLib = require("react");
+  const { View } = require("react-native");
+  return { HomeScreen: () => ReactLib.createElement(View, { testID: "library-visit-home" }) };
+});
+
 jest.mock("expo-router", () => {
   const ReactLib = require("react");
   const { Text, View } = require("react-native");
@@ -126,9 +132,9 @@ describe("APP-0-P2 routes and tabs", () => {
   });
 
   test("stub routes render params", async () => {
+    // 홈 탭은 VISIT-1 지도 홈을 그린다(스텁 아님)
     const home = await render(<HomeTabScreen />);
-    expect(home.getByText("홈")).toBeTruthy();
-    expect(home.getByText("준비 중이에요")).toBeTruthy();
+    expect(home.getByTestId("library-visit-home")).toBeTruthy();
 
     const loans = await render(<LoansTabScreen />);
     expect(loans.getByText("대출·반납")).toBeTruthy();

@@ -1,5 +1,5 @@
 // 지도 홈 글자 모양 (계약서 library-visit.md VISIT-1 C2)
-import type { Today } from "./__fakes__/publicApi"; // TODO(연결): D — core `mobile/src/lib/publicApi.ts` 머지 뒤 그쪽 타입
+import type { Today } from "./deps";
 
 /** 1000m 미만은 "420m", 이상은 소수 한 자리 "1.3km" */
 export function formatDistance(m: number): string {

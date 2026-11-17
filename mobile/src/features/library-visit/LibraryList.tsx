@@ -2,7 +2,7 @@
 // TODO(연결): D theme — 색은 core `theme.colors`가 머지된 뒤 넣는다(글자 text·textSub, 구분선 divider)
 import React from "react";
 import { FlatList, Pressable, StyleSheet, Text } from "react-native";
-import type { LibrarySummary } from "./__fakes__/publicApi";
+import type { LibrarySummary } from "./deps";
 import { todayLine } from "./format";
 
 export function rowText(lib: LibrarySummary): string {

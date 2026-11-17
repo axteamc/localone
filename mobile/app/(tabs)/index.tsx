@@ -1,32 +1,7 @@
-// TODO(연결): A
-import { StyleSheet, Text, View } from "react-native";
-import { theme } from "../../src/theme";
+// 홈 탭 = 지도 홈 (contracts/library-visit.md VISIT-1, 파일 담당 A)
+// TODO(연결): B DefaultLibraryGate — VISIT-2가 머지되면 화면 맨 위에 한 번 놓는다(V17)
+import { HomeScreen } from "../../src/features/library-visit/HomeScreen";
 
 export default function HomeTabScreen() {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>홈</Text>
-      <Text style={styles.subtitle}>준비 중이에요</Text>
-    </View>
-  );
+  return <HomeScreen />;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    padding: 24,
-    gap: 8,
-    backgroundColor: theme.colors.bg,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: theme.colors.text,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: theme.colors.textSub,
-  },
-});
