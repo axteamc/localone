@@ -227,6 +227,8 @@ def _clean_text(raw: Any) -> str | None:
 
 
 class LibraryDataProvider(Protocol):
+    def book_exist(self, lib_code: str, isbn13: str) -> HoldingResult: ...
+
     def popular(self, lib_code: str | None, start: date, end: date, size: int) -> list[BookInfo]: ...
 
     def libraries(self, dtl_region: str, page: int, size: int) -> tuple[list[LibraryInfo], int]: ...
@@ -251,6 +253,16 @@ class Data4LibraryClient:
         if not isinstance(response, dict) or "error" in response:
             raise ProviderError("정보나루 응답 형식이 다르거나 오류")
         return response
+
+    def book_exist(self, lib_code: str, isbn13: str) -> HoldingResult:
+        result = self._get("bookExist", {"libCode": lib_code, "isbn13": isbn13}).get("result")
+        if not isinstance(result, dict):
+            raise ProviderError("bookExist result가 없어요")
+        holding = _yn(result.get("hasBook"))
+        if holding == "no":
+            return HoldingResult(holding="no", loanable="no")
+        return HoldingResult(holding="yes", loanable=_yn(result.get("loanAvailable")))
+
 
     def popular(self, lib_code: str | None, start: date, end: date, size: int) -> list[BookInfo]:
         params: dict[str, Any] = {
@@ -509,6 +521,87 @@ class ProviderEngine:
         if cached is not None:
             return PopularResult(**{**cached.__dict__, "stale": True, "fallback_reason": reason})
         return None
+
+
+    async def availability(self, isbn13: str, libraries: Sequence[LibraryRow]) -> list[AvailabilityItem]:
+        if not libraries:
+            return []
+        book = await self.find_book_quietly(isbn13)
+        now = self.now_fn()
+        today = today_kst(now)
+        lib_ids = [lib.id for lib in libraries]
+        latest: dict[int, _Observation] = (
+            await self._db(lambda c: _latest_observations(c, book.id, lib_ids)) if book else {}
+        )
+
+        need = [lib for lib in libraries if not (lib.id in latest and latest[lib.id].observed_on == today)]
+        fetched: dict[int, _Fetch] = {}
+        provider = self.providers.library_data
+        if provider is None:
+            fetched = {lib.id: _Fetch(reason="not_configured") for lib in need}
+        else:
+            cap = policy.AVAILABILITY_MAX_CALLS_PER_REQUEST
+            for lib in need[cap:]:
+                fetched[lib.id] = _Fetch(reason="limit")
+            semaphore = asyncio.Semaphore(policy.AVAILABILITY_MAX_CONCURRENCY)
+
+            async def _one(lib: LibraryRow) -> None:
+                async with semaphore:
+                    try:
+                        result = await self._guarded_call(
+                            "data4library",
+                            policy.DATA4LIBRARY_DAILY_LIMIT,
+                            lambda: provider.book_exist(lib.provider_lib_code, isbn13),
+                        )
+                    except ProviderLimitReached:
+                        fetched[lib.id] = _Fetch(reason="limit")
+                    except ProviderError:
+                        fetched[lib.id] = _Fetch(reason="provider_error")
+                    else:
+                        if result.holding not in {"yes", "no"} or result.loanable not in {"yes", "no"}:
+                            fetched[lib.id] = _Fetch(reason="provider_error")
+                        else:
+                            fetched[lib.id] = _Fetch(result=result, observed_at=self.now_fn())
+
+            await asyncio.gather(*(_one(lib) for lib in need[:cap]))
+
+        successes = {lid: f for lid, f in fetched.items() if f.result is not None}
+        if book is not None and successes:
+            await self._db(lambda c: _store_observations(c, book.id, today, successes))
+
+        items: list[AvailabilityItem] = []
+        for lib in libraries:
+            fetch = fetched.get(lib.id)
+            if fetch is None:  # 오늘 캐시
+                obs = latest[lib.id]
+                items.append(_from_observation(lib, obs, "today", None))
+            elif fetch.result is not None:
+                assert fetch.observed_at is not None
+                data_date, assumed = _data_date(fetch.result.data_date, today)
+                items.append(
+                    AvailabilityItem(
+                        library=lib,
+                        holding=fetch.result.holding,
+                        loanable=fetch.result.loanable,
+                        basis="today",
+                        source="data4library",
+                        observed_at=fetch.observed_at,
+                        data_date=data_date,
+                        data_date_assumed=assumed,
+                    )
+                )
+            elif lib.id in latest:  # 새로 못 받았지만 예전 관측이 있다 → 시각과 함께 구별(AC-UNKNOWN)
+                items.append(_from_observation(lib, latest[lib.id], "stale", fetch.reason))
+            else:
+                items.append(
+                    AvailabilityItem(
+                        library=lib, holding="unknown", loanable="unknown", basis="none",
+                        fallback_reason=fetch.reason,
+                    )
+                )
+        if all(i.basis == "none" and i.fallback_reason == "limit" for i in items):
+            raise ApiError(429, "PROVIDER_LIMIT", MSG_PROVIDER_LIMIT)
+        return items
 
 
     async def sync_libraries(self, dtl_region_codes: Sequence[str], page_size: int = 100) -> dict[str, int]:
@@ -877,6 +970,154 @@ def _pub_year(value: Any) -> int | None:
         return None
     year = int(raw[:4])
     return year if 1000 <= year <= 2999 else None
+
+
+Tri = Literal["yes", "no", "unknown"]
+
+@dataclass(frozen=True)
+class HoldingResult:
+    holding: Literal["yes", "no"]
+    loanable: Tri
+    data_date: date | None = None
+
+
+@dataclass(frozen=True)
+class AvailabilityItem:
+    library: LibraryRow
+    holding: Tri
+    loanable: Tri
+    basis: Literal["today", "stale", "none"]
+    source: str | None = None
+    observed_at: datetime | None = None
+    data_date: date | None = None
+    data_date_assumed: bool = False
+    fallback_reason: FallbackReason | None = None
+
+
+@dataclass
+class _Observation:
+    holding: Tri
+    loanable: Tri
+    observed_on: date
+    observed_at: datetime
+    data_date: date | None
+    data_date_assumed: bool
+    source: str
+
+
+@dataclass
+class _Fetch:
+    result: HoldingResult | None = None
+    reason: FallbackReason | None = None
+    observed_at: datetime | None = None
+
+
+def _yn(value: Any) -> Literal["yes", "no"]:
+    if value == "Y":
+        return "yes"
+    if value == "N":
+        return "no"
+    raise ProviderError("Y/N이 아닌 값")  # 모르는 값을 no로 추측하지 않는다
+
+
+def live_check_link(library: LibraryRow, isbn13: str) -> tuple[str | None, str | None]:
+    """"실시간 확인" 주소(02 §9 Q-48): 템플릿 → 홈페이지 → 없음(버튼 숨김). (주소, 종류)."""
+    template = library.isbn_search_url_template
+    if template and "{isbn13}" in template and template.startswith(("https://", "http://")):
+        return template.replace("{isbn13}", isbn13), "isbn_search"
+    if library.homepage and library.homepage.startswith(("https://", "http://")):
+        return library.homepage, "homepage"
+    return None, None
+
+
+def _data_date(provided: date | None, today: date) -> tuple[date, bool]:
+    """기준일이 없으면 조회일 전날로 두고 추정했다고 표시한다(05 §3.1, 02 LIB-03)."""
+    if provided is not None:
+        return provided, False
+    return today - timedelta(days=1), True
+
+
+def _from_observation(
+    lib: LibraryRow, obs: _Observation, basis: Literal["today", "stale"], reason: FallbackReason | None
+) -> AvailabilityItem:
+    return AvailabilityItem(
+        library=lib,
+        holding=obs.holding,
+        loanable=obs.loanable,
+        basis=basis,
+        source=obs.source,
+        observed_at=obs.observed_at,
+        data_date=obs.data_date,
+        data_date_assumed=obs.data_date_assumed,
+        fallback_reason=reason,
+    )
+
+
+def _latest_observations(conn: Connection, book_id: int, library_ids: list[int]) -> dict[int, _Observation]:
+    """도서관마다 가장 최근 관측(unknown 제외 — unknown은 캐시로 치지 않는다, 05 §3.1)."""
+    rows = conn.execute(
+        text(
+            """
+            SELECT DISTINCT ON (library_id)
+                library_id, holding, loanable, observed_on, observed_at, data_date, data_date_assumed, source
+            FROM availability_observations
+            WHERE book_id = :book_id AND library_id = ANY(:ids) AND holding <> 'unknown' AND loanable <> 'unknown'
+            ORDER BY library_id, observed_on DESC
+            """
+        ),
+        {"book_id": book_id, "ids": library_ids},
+    ).all()
+    return {
+        int(r.library_id): _Observation(
+            holding=r.holding,
+            loanable=r.loanable,
+            observed_on=r.observed_on,
+            observed_at=r.observed_at,
+            data_date=r.data_date,
+            data_date_assumed=r.data_date_assumed,
+            source=r.source,
+        )
+        for r in rows
+    }
+
+
+def _store_observations(conn: Connection, book_id: int, today: date, successes: dict[int, _Fetch]) -> None:
+    for library_id, fetch in successes.items():
+        assert fetch.result is not None
+        if fetch.result.holding not in {"yes", "no"} or fetch.result.loanable not in {"yes", "no"}:
+            raise ProviderError("unknown observations cannot be persisted")
+        data_date, assumed = _data_date(fetch.result.data_date, today)
+        conn.execute(
+            text(
+                """
+                INSERT INTO availability_observations (
+                    library_id, book_id, observed_on, holding, loanable,
+                    data_date, data_date_assumed, observed_at, source
+                ) VALUES (
+                    :library_id, :book_id, :observed_on, :holding, :loanable,
+                    :data_date, :assumed, :observed_at, 'data4library'
+                )
+                ON CONFLICT (library_id, book_id, observed_on) DO UPDATE SET
+                    holding = EXCLUDED.holding,
+                    loanable = EXCLUDED.loanable,
+                    data_date = EXCLUDED.data_date,
+                    data_date_assumed = EXCLUDED.data_date_assumed,
+                    observed_at = EXCLUDED.observed_at,
+                    source = EXCLUDED.source
+                """
+            ),
+            {
+                "library_id": library_id,
+                "book_id": book_id,
+                "observed_on": today,
+                "holding": fetch.result.holding,
+                "loanable": fetch.result.loanable,
+                "data_date": data_date,
+                "assumed": assumed,
+                "observed_at": fetch.observed_at,
+            },
+        )
+
 
 
 if __name__ == "__main__":
