@@ -148,6 +148,25 @@ def insert_user_if_absent(conn: Connection, user_id: UUID) -> bool:
     return inserted is not None
 
 
+def default_nickname_for_user(user_id: UUID) -> str:
+    return "이웃-" + str(user_id).replace("-", "")[:4]
+
+
+def ensure_user_profile_if_absent(conn: Connection, user_id: UUID) -> None:
+    conn.execute(
+        text("INSERT INTO user_profiles (user_id, nickname) VALUES (:id, :nickname) "
+             "ON CONFLICT (user_id) DO NOTHING"),
+        {"id": user_id, "nickname": default_nickname_for_user(user_id)},
+    )
+
+
+def nickname_of(conn: Connection, user_id: UUID) -> str:
+    nickname = conn.execute(
+        text("SELECT nickname FROM user_profiles WHERE user_id = :id"), {"id": user_id}
+    ).scalar_one_or_none()
+    return nickname if nickname is not None else "이웃"
+
+
 async def get_current_user(request: Request) -> CurrentUser:
     user = await verify_access_token(request)
     row = await run_db(request.app.state.engine, lambda c: select_user(c, user.id))
@@ -171,8 +190,12 @@ async def create_session(
 ) -> dict[str, Any]:
     def tx(c: Connection) -> tuple[UserRow, bool]:
         inserted = insert_user_if_absent(c, user.id)
+        # 신규 등록은 users INSERT가 먼저 필요하다. 기존 계정도 프로필 쓰기 전에
+        # 탈퇴와 직렬화해, 상태 조회 이후 탈퇴가 끼어 프로필이 되살아나지 않게 한다.
+        lock_active_user(c, user.id)
         row = select_user(c, user.id)
         assert row is not None
+        ensure_user_profile_if_absent(c, user.id)
         return row, inserted
 
     row, is_new = await run_db(request.app.state.engine, tx)
