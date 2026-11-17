@@ -246,6 +246,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 - 순번은 **머지 순서**로 매긴다. 두 파트가 같은 번호를 잡으면 나중에 머지되는 쪽이 번호를 올린다(`기본값(Claude)`).
 - 예상 순서(선행 관계만, 번호 아님): `users` → `user_profiles`·`user_settings` → `libraries`·`books` → `availability_observations`·`popular_books_cache`·`provider_daily_usage` → `loan_plans` → `loans`·`library_return_stats` / `posts` → `post_reactions`·`post_bookmarks`.
 - 탈퇴·삭제 처리와 보관 기간은 AUTH-3 계약서에서 정한다(Q-23, 출시 관문).
+- **번호가 바뀐 리비전과 옛 개발 DB(2026-11-17, PR #141 사후 검토 ②-5, C-65)**: 통합(PR #141, `1ee1bab`) 때 공감·북마크 마이그레이션이 `0005`에서 `0006_post_reactions_bookmarks.py`로 밀리고 `0005`는 `0005_loan_plans.py`가 됐다. 통합 전 `feat/local-feed-LOCAL-2` 브랜치에서 `alembic upgrade head`를 돌린 DB는 `alembic_version = 0005`가 옛 반응 테이블을 뜻해, main에서 다시 `upgrade head`하면 `loan_plans`를 건너뛰고 `0006`에서 이미 있는 테이블 때문에 실패한다. 이런 DB는 **개발 DB뿐이고 버려도 된다(사용자 확인)**: 컨테이너·볼륨을 지우고 새로 만든 뒤 `alembic upgrade head`(예: 저장소 루트 `docker compose down -v` → `docker compose up -d --wait db` → `server`에서 `uv run alembic upgrade head`). 다른 저장소의 컨테이너(예: `~/code/libtalk`의 `libtalk-db-1`)는 이 일과 관계없으니 지우지 않는다. 남겨야 할 데이터가 있는 DB라면 지우지 말고 D에게 먼저 알린다(백업·이력 대조 후 따로 복구). 새 DB의 리비전 사슬(`0001→…→0006`)은 정상이다
 
 ## 9. 계약서와 맞출 것
 
