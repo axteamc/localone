@@ -72,4 +72,6 @@ def build_post_storage(settings: Settings) -> PostImageStorage:
         return SupabasePostImageStorage(
             settings.supabase_url, settings.supabase_service_role_key, settings.post_image_bucket
         )
-    return MemoryPostImageStorage()
+    if settings.app_env in ("local", "test"):
+        return MemoryPostImageStorage()
+    raise ValueError("production에서는 SUPABASE_URL과 SUPABASE_SERVICE_ROLE_KEY가 필요해요")

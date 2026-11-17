@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.main import create_app
 from app.services import provider_engine as pe
-from app.services.post_storage import MemoryPostImageStorage
+from app.services.post_storage import MemoryPostImageStorage, SupabasePostImageStorage, build_post_storage
 from app.settings import Settings
 from tests.conftest import TEST_SUPABASE_URL, USER_A_ID, USER_B_ID
 from tests.provider_fakes import public_reference_data  # noqa: F401  (픽스처)
@@ -161,6 +161,47 @@ def test_upload_storage_failure_is_503(client, auth):
     assert response.status_code == 503
     assert response.json()["error"]["code"] == "PROVIDER_UNAVAILABLE"
     assert response.json()["error"]["message"] == "사진을 올리지 못했어요. 다시 시도해 주세요."
+
+
+def test_upload_rejects_excessive_pixels_and_disallowed_format(client, auth):
+    huge_png = io.BytesIO()
+    Image.new("1", (6000, 6000)).save(huge_png, format="PNG")
+    res_huge = upload(client, auth["A"], huge_png.getvalue(), "image/png")
+    assert res_huge.status_code == 422 and res_huge.json()["error"]["detail"] == "image"
+
+    gif_buf = io.BytesIO()
+    Image.new("RGB", (10, 10)).save(gif_buf, format="GIF")
+    res_gif = upload(client, auth["A"], gif_buf.getvalue(), "image/jpeg")
+    assert res_gif.status_code == 422 and res_gif.json()["error"]["detail"] == "image"
+    assert client.app.state.post_storage.files == {}
+
+
+def test_production_requires_storage_key_and_rejects_memory_fallback(test_db_url):
+    with pytest.raises(ValueError, match="SUPABASE_SERVICE_ROLE_KEY"):
+        Settings(
+            app_env="production",
+            database_url=test_db_url,
+            supabase_url=TEST_SUPABASE_URL,
+            supabase_service_role_key="",
+        )
+    prod_missing = Settings.model_construct(
+        app_env="production",
+        database_url=test_db_url,
+        supabase_url=TEST_SUPABASE_URL,
+        supabase_service_role_key="",
+        post_image_bucket="post-images",
+    )
+    with pytest.raises(ValueError):
+        build_post_storage(prod_missing)
+    prod_ok = Settings(
+        app_env="production",
+        database_url=test_db_url,
+        supabase_url=TEST_SUPABASE_URL,
+        supabase_service_role_key="service-role-secret",
+    )
+    assert isinstance(build_post_storage(prod_ok), SupabasePostImageStorage)
+    local_settings = Settings(app_env="local", database_url=test_db_url, supabase_url="")
+    assert isinstance(build_post_storage(local_settings), MemoryPostImageStorage)
 
 
 # ─────────── #24 ───────────

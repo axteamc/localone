@@ -20,6 +20,8 @@ from app.services.provider_engine import BookRecord, isbn13_is_valid
 
 POST_IMAGE_MAX_BYTES = 10_000_000  # F5
 ALLOWED_TYPES = {"image/jpeg", "image/png", "image/webp"}  # F5
+ALLOWED_IMAGE_FORMATS = ("JPEG", "PNG", "WEBP")
+IMAGE_MAX_PIXELS = 25_000_000
 IMAGE_LONG_SIDE = 2048  # F3
 JPEG_QUALITY = 85  # F3
 OVERLAY_MAX = 80  # F15
@@ -47,7 +49,12 @@ def reencode_without_exif(data: bytes) -> tuple[bytes, int, int]:
     from PIL import Image, ImageOps
 
     try:
-        with Image.open(io.BytesIO(data)) as src:
+        with Image.open(io.BytesIO(data), formats=ALLOWED_IMAGE_FORMATS) as src:
+            w, h = src.size
+            if w * h > IMAGE_MAX_PIXELS:
+                raise ValueError("image pixel limit exceeded")
+            if src.format == "JPEG":
+                src.draft("RGB", (IMAGE_LONG_SIDE, IMAGE_LONG_SIDE))
             src.load()
             img = ImageOps.exif_transpose(src)
             if img.mode != "RGB":

@@ -44,6 +44,8 @@ class Settings(BaseSettings):
             raise ValueError("APP_ENV=test에서는 localhost·127.0.0.1 DB만 쓸 수 있어요")
         if self.app_env == "production" and not self.supabase_url:
             raise ValueError("production에서는 SUPABASE_URL이 필요해요")
+        if self.app_env == "production" and not self.supabase_service_role_key:
+            raise ValueError("production에서는 SUPABASE_SERVICE_ROLE_KEY가 필요해요")
         return self
 
 

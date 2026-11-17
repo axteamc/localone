@@ -20,10 +20,23 @@ const mockRecordedTabScreens: Array<{ name: string; options?: { title?: string }
 const mockRecordedStackScreens: Array<{ name: string; options?: { headerShown?: boolean } }> = [];
 let mockLastStackScreenOptions: { title?: string } | undefined;
 
+const mockComposeScreen = jest.fn<(props: { libraryId: number; isbn13?: string | null }) => void>();
+
 jest.mock("../features/library-visit/HomeScreen", () => {
   const ReactLib = require("react");
   const { View } = require("react-native");
   return { HomeScreen: () => ReactLib.createElement(View, { testID: "library-visit-home" }) };
+});
+
+jest.mock("../features/local-feed/ComposeScreen", () => {
+  const ReactLib = require("react");
+  const { View } = require("react-native");
+  return {
+    ComposeScreen: (props: { libraryId: number; isbn13?: string | null }) => {
+      mockComposeScreen(props);
+      return ReactLib.createElement(View, { testID: "local-feed-compose" });
+    },
+  };
 });
 
 jest.mock("expo-router", () => {
@@ -187,7 +200,10 @@ describe("APP-0-P2 routes and tabs", () => {
       isbn13: "9788936434120",
     });
     const newPost = await render(<NewPostStubScreen />);
-    expect(newPost.getByText("libraryId: 101 · isbn13: 9788936434120")).toBeTruthy();
-    expect(newPost.getByText("준비 중이에요")).toBeTruthy();
+    expect(newPost.getByTestId("local-feed-compose")).toBeTruthy();
+    expect(mockComposeScreen).toHaveBeenLastCalledWith({
+      libraryId: 101,
+      isbn13: "9788936434120",
+    });
   });
 });

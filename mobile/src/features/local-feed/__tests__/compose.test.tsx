@@ -13,8 +13,9 @@ import * as picker from "../imagePicker";
 const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockBack = jest.fn();
+const mockCanGoBack = jest.fn(() => true);
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: mockPush, replace: mockReplace, back: mockBack, canGoBack: () => true }),
+  useRouter: () => ({ push: mockPush, replace: mockReplace, back: mockBack, canGoBack: mockCanGoBack }),
 }));
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")
@@ -44,6 +45,7 @@ const uploadPostImage = jest.mocked(api.uploadPostImage);
 const withdrawPost = jest.mocked(api.withdrawPost);
 const pickPostImage = jest.mocked(picker.pickPostImage);
 const fetchLibrary = jest.mocked(publicApi.fetchLibrary);
+const fetchBook = jest.mocked(publicApi.fetchBook);
 const searchBooks = jest.mocked(publicApi.searchBooks);
 const mockedUseAuth = jest.mocked(useAuth);
 
@@ -287,6 +289,40 @@ describe("막힐 때", () => {
     await fireEvent.press(submitButton());
     expect(await screen.findByText(TEXT.tooLarge)).toBeTruthy();
     expect(screen.getByText(TEXT.retry)).toBeTruthy();
+  });
+
+  test("404 and 422 show message without retry button", async () => {
+    createPost.mockRejectedValueOnce(new api.ApiCallError(404, "NOT_FOUND", "찾을 수 없어요.", "library_id"));
+    await openCompose();
+    await chooseColor();
+    await fireEvent.press(submitButton());
+    expect(await screen.findByText("찾을 수 없어요.")).toBeTruthy();
+    expect(screen.queryByText(TEXT.retry)).toBeNull();
+
+    createPost.mockRejectedValueOnce(
+      new api.ApiCallError(422, "VALIDATION_ERROR", "요청 형식이 올바르지 않아요.", "library_id")
+    );
+    await fireEvent.press(submitButton());
+    expect(await screen.findByText("요청 형식이 올바르지 않아요.")).toBeTruthy();
+    expect(screen.queryByText(TEXT.retry)).toBeNull();
+  });
+
+  test("pickPostImage failure shows notice", async () => {
+    pickPostImage.mockRejectedValueOnce(new Error("permission denied"));
+    await openCompose();
+    await fireEvent.press(screen.getByText("앨범에서 고르기"));
+    expect(await screen.findByText(TEXT.pickFailed)).toBeTruthy();
+  });
+
+  test("invalid libraryId shows not found and blocks API calls and /libraries/NaN navigation", async () => {
+    mockCanGoBack.mockReturnValueOnce(false);
+    await render(<ComposeScreen libraryId={Number.NaN} isbn13="9788936434120" />);
+    expect(screen.getByText(TEXT.notFound)).toBeTruthy();
+    expect(fetchLibrary).not.toHaveBeenCalled();
+    expect(fetchBook).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByText(TEXT.goBack));
+    expect(mockReplace).toHaveBeenCalledWith("/");
+    expect(mockReplace).not.toHaveBeenCalledWith("/libraries/NaN");
   });
 
   test("camera unavailable shows album guidance", async () => {

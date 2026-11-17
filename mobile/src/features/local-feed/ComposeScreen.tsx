@@ -57,6 +57,9 @@ export const TEXT = {
   withdrawn: "내렸어요",
   withdrawFailed: "지금은 내릴 수 없어요. 다시 시도해 주세요.",
   noCamera: "이 기기에서는 사진 찍기를 쓸 수 없어요. 앨범에서 골라 주세요.",
+  pickFailed: "사진을 불러오지 못했어요. 다시 시도해 주세요.",
+  notFound: "찾을 수 없어요",
+  goBack: "돌아가기",
 } as const;
 
 const TOAST_MS = 2000;
@@ -73,6 +76,24 @@ export function titleAuthorText(book: Pick<Book, "title" | "author">): string {
 function nullIfBlank(value: string): string | null {
   const trimmed = value.trim();
   return trimmed ? trimmed : null;
+}
+
+type SubmitError = { message: string; retryable: boolean };
+
+function classifySubmitError(e: unknown): SubmitError {
+  if (e instanceof ApiCallError) {
+    if (e.status === 413) return { message: TEXT.tooLarge, retryable: true };
+    if (e.status === 0 || e.status === 429 || e.status === 503) {
+      return { message: TEXT.failed, retryable: true };
+    }
+    if (e.status >= 400 && e.status < 500) {
+      return {
+        message: e.status === 404 ? "찾을 수 없어요." : e.message || TEXT.failed,
+        retryable: false,
+      };
+    }
+  }
+  return { message: TEXT.failed, retryable: true };
 }
 
 type Picked =
@@ -314,7 +335,7 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
   const [finder, setFinder] = useState<null | "cover" | "attach">(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<SubmitError | null>(null);
   const [confirmClose, setConfirmClose] = useState(false);
   const [posted, setPosted] = useState<Post | null>(null);
   const [withdrawnDone, setWithdrawnDone] = useState(false);
@@ -332,24 +353,26 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
     if (toastTimer.current) clearTimeout(toastTimer.current);
   }, []);
 
+  const invalidLibraryId = !Number.isSafeInteger(libraryId) || libraryId < 1;
+
   useEffect(() => {
-    if (!Number.isSafeInteger(libraryId) || libraryId < 1) return;
+    if (invalidLibraryId) return;
     const ctrl = new AbortController();
     fetchLibrary(libraryId, ctrl.signal)
       .then((lib) => setLibraryName(lib.name))
       .catch(() => undefined); // 이름을 못 받아도 쓰기는 막지 않는다(표시만 "이 도서관")
     return () => ctrl.abort();
-  }, [libraryId]);
+  }, [invalidLibraryId, libraryId]);
 
   useEffect(() => {
     // 책 상세에서 "글쓰기"로 들어오면(/posts/new?isbn13=) 그 책을 마지막 단계에 미리 붙인다
-    if (!isbn13) return;
+    if (!isbn13 || invalidLibraryId) return;
     const ctrl = new AbortController();
     fetchBook(isbn13, ctrl.signal)
       .then((b) => setBook((cur) => cur ?? b))
       .catch(() => undefined);
     return () => ctrl.abort();
-  }, [isbn13]);
+  }, [invalidLibraryId, isbn13]);
 
   const coverMissing = picked?.kind === "cover" && book !== null && book.cover_url === null;
   const effectiveKind: ImageKind | null = picked ? (coverMissing ? "color" : picked.kind) : null;
@@ -358,7 +381,8 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
 
   const leave = () => {
     if (router.canGoBack()) router.back();
-    else router.replace(`/libraries/${libraryId}`);
+    else if (!invalidLibraryId) router.replace(`/libraries/${libraryId}`);
+    else router.replace("/");
   };
 
   const onClose = () => {
@@ -372,8 +396,12 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
       setNotice(TEXT.noCamera);
       return;
     }
-    const result = await pickPostImage(source);
-    if (result) setPicked({ kind: "photo", uri: result.uri });
+    try {
+      const result = await pickPostImage(source);
+      if (result) setPicked({ kind: "photo", uri: result.uri });
+    } catch {
+      setNotice(TEXT.pickFailed);
+    }
   };
 
   const pickBook = (chosen: Book) => {
@@ -409,12 +437,23 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
       setPosted(post);
       showToast(TEXT.posted);
     } catch (e) {
-      setError(e instanceof ApiCallError && e.status === 413 ? TEXT.tooLarge : TEXT.failed);
+      setError(classifySubmitError(e));
     } finally {
       running.current = false;
       setSubmitting(false);
     }
   };
+
+  if (invalidLibraryId) {
+    return (
+      <View style={[styles.screen, styles.center]}>
+        <Text style={styles.dialogTitle}>{TEXT.notFound}</Text>
+        <Pressable accessibilityRole="button" onPress={leave} style={styles.secondary}>
+          <Text style={styles.dialogCancel}>{TEXT.goBack}</Text>
+        </Pressable>
+      </View>
+    );
+  }
 
   if (status === "loading") {
     return (
@@ -522,10 +561,12 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
 
       {error ? (
         <View style={styles.banner} accessibilityRole="alert">
-          <Text style={styles.bannerText}>{error}</Text>
-          <Pressable accessibilityRole="button" onPress={() => void submit()} disabled={submitting} style={styles.pill}>
-            <Text style={styles.pillText}>{TEXT.retry}</Text>
-          </Pressable>
+          <Text style={styles.bannerText}>{error.message}</Text>
+          {error.retryable ? (
+            <Pressable accessibilityRole="button" onPress={() => void submit()} disabled={submitting} style={styles.pill}>
+              <Text style={styles.pillText}>{TEXT.retry}</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
       {!picked ? <Text style={styles.hint}>{TEXT.needImage}</Text> : null}
