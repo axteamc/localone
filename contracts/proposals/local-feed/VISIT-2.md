@@ -289,11 +289,14 @@ async def create_post(request, body: PostCreate, user=Depends(get_current_user))
 ## VISIT-2 도서관 방문 페이지의 틀
 
 - **담당 역할**: B · **대상 브랜치**: `main`
-- **기준 명세서**: `specs/local-feed/세부/VISIT-2.md` (아직 없음 — 머지 뒤 SHA 기입)
-- **수정본(B, 검토 전·구현 착수 불가)**: 기준 명세서 `specs/local-feed/세부/VISIT-2.md`와 시안 `specs/local-feed/세부/VISIT-2_시안.html`은 코드 레포 기획 PR #94의 명세 커밋 `1b01e4614b9ae76a859b6deb0beafeef31b51d32`이다. 이 절에서 세부 명세로 채운 것은 C1 G11~G14, C3 추가 행, C6 V-#1~#6과 예외 연결, P1·P3 수정본 줄, P4 골격 2, P5 추가 행이다. D 승인·발행 전에는 구현 계약이 아니다.
-- **기준선**: `B1` + 이 판(B2 준비)
+- **기준 명세서**: `specs/local-feed/세부/VISIT-2.md` 내용 커밋 `1b01e4614b9ae76a859b6deb0beafeef31b51d32`, PR #94 head `584bfc1b69a9ebe3ea79dd60ee0778c1f8a51001`. 기획 PR 머지는 별도 착수 관문이다.
+- **채택한 B 제안**: 기준 명세서 `specs/local-feed/세부/VISIT-2.md`와 시안 `specs/local-feed/세부/VISIT-2_시안.html`은 코드 레포 기획 PR #94의 명세 커밋 `1b01e4614b9ae76a859b6deb0beafeef31b51d32`이다. 이 절에서 세부 명세로 채운 것은 C1 G11~G14, C3 추가 행, C6 V-#1~#6과 예외 연결, P1·P3 전제 줄, P4 골격 2, P5 추가 행이다. 이 제안의 열린 결정은 D가 채택했고 아래 직접 보완한 약속을 함께 적용한다. 최초 제안의 미승인 상태는 이 확정판으로 대체한다.
+- **기준선**: B2의 M1 VISIT-2 보완, **D+B 확정판(2026-11-17)**. 근거: PR #102 `98b5f9a`와 사용자의 D 직접 보완·완성 지시. LOCAL-1·LOCAL-2의 승인 상태는 이 절로 바꾸지 않는다.
 - **선행 설계**: 05 §6(도서관 기본값·방문 횟수는 기기), 06 #11·#26, `개발산출물/명세/VISIT_LOCAL_D결정.md` 1.1(결정 3·7·8 보완, 결정 10)·1.2·1.2-1
-- **작성자**: D (시니어)
+- **작성자**: B 제안 + D 직접 검토·보완.
+- **상태**: 계약 내용 확정. 구현은 기획 #94 승인·main 반영, 계약 team main 발행·본문 SHA 확인 뒤 시작한다. 아래 공통 보완 전에는 C7 가짜 값으로 UI를 진행할 수 있으나 실제 연결·Step 완료는 보완 구현/검증 뒤에만 인정한다.
+- **발행 본문 SHA**: b0a1523899fe33e798af39227db273b8dfdde02a
+
 
 
 ### 계약
@@ -313,13 +316,13 @@ async def create_post(request, body: PostCreate, user=Depends(get_current_user))
 | G9 | M1은 피드만. 책장·방명록·스탬프·룩은 만들지 않되 아래에 붙을 수 있게 레이아웃을 열어 둔다. 빈 가짜 화면 금지. 피드가 없을 때(LOCAL-2 전 포함)는 빈 피드 안내 | 확정 | `기능_배정.md` B절 |
 | G10 | 방문 페이지는 로그인 없이 보인다. 방문 기록·기본값은 기기에만이고 서버에 보내지 않는다 | 확정 | 05 §6 |
 | G11 | **머리 배치**: 왼쪽 정렬 두 줄. 맨 위 왼쪽 굵은 `"‹"`(G7). 그 아래 `#11 name`(굵게, 앱 26 / 시안 20px). 그 아래 작은 글자 한 줄(앱 16 / 시안 12px, `theme.colors.textSub`) `"<거리> · <오늘 운영시간>"` — 거리는 G1대로 넘겨받은 값이 있을 때만 쓰고 없으면 거리와 `" · "`를 뺀다. 운영시간은 `today.hours_text`, 없으면 `"정보 없음"`(G1). `today.is_closed === true`면 운영시간 자리에 굵은 `"오늘 휴관"`, `null`이면 평소 줄. 같은 줄 오른쪽 끝에 `⋯`(G4 메뉴). 머리 전체 높이 앱 약 115 / 시안 약 86. 크기 단위: 시안 px는 390×844 화면을 0.75배로 그린 값이고 앱 값은 시안 ÷ 0.75(React Native 크기 단위, iOS pt·Android dp 공통) | 확인 — 사용자: "깔끔하고 피드가 많이 보여서요." / 크기·휴관 표시 기본값(Claude) | 명세 결정 1, 예외 #5·#6 |
-| G12 | **피드를 올렸을 때 머리**: 피드를 내려 스크롤 위치가 (두 줄 머리 높이 − 한 줄 높이)를 넘으면 거리·운영시간 줄을 접고 `‹ <이름> ⋯` 한 줄(앱 높이 약 52 / 시안 40, 이름 앱 20 / 시안 15px 굵게, 배경 `theme.colors.cream`, 아래 은은한 그림자)을 맨 위에 붙인다. 맨 위로 돌아오면 두 줄로 펼친다. 한 줄 상태에서도 `‹`(G7)·`⋯`(G4)는 그대로 동작한다. 그림자 색은 `tokens.ts`에 없다: 임시 토큰 제안 `shadowSoft` = 시안 `--shadow-soft` `rgba(0,0,0,.15)`, 사용처 접힌 머리 아래 그림자·`‹` 글자 그림자(공통 토큰 추가 여부는 PR 쟁점, P2 밖 `tokens.ts`는 고치지 않음) | 확인 — 사용자: "어느 도서관인지 계속 보여서요" (아래 '정할 것'의 기본값과 같음) / 값 기본값(Claude) | 명세 결정 2 |
-| G13 | **게시물이 하나도 없을 때**: `#26` 결과 0개(LOCAL-2 머지 전 포함, G9)면 피드 자리 가운데에 세 줄 — `"아직 게시물이 없어요"`(굵게) / `"이 도서관의 첫 글을 올려 보세요"`(`theme.colors.textSub`) / 굵은 글자 링크 `"첫 글 올리기 →"`(글자 앱 18 / 시안 14px). 링크는 오른쪽 아래 둥근 `"+"`(LOCAL-1 명세 결정 1)와 같은 곳 `/posts/new?libraryId=<libraryId>`(이 계약서 LOCAL-1 C7 경로)로 이동만 한다. 로그인 안 했으면 이동하지 않고 LOCAL-1의 로그인 안내 창(`"로그인하면 글을 올릴 수 있어요"` + `"로그인하기"` / `"닫기"`, LOCAL-1 명세 예외 #4)을 띄운다. 가짜 게시물을 만들지 않는다 | 확인 — 사용자: "첫 글을 올려 보라고 해서요." | 명세 결정 3, 예외 #2·#4 |
-| G14 | **전환 세부**: 들어올 때 오른쪽에서 왼쪽으로 밀린다 — `Stack` 기본 push 전환(약 0.3초, 플랫폼 기본 시간을 그대로 쓰고 플랫폼별로 맞추지 않음, C4 분기 없음). 배경은 `theme.colors.cream`. 방문 멘트 카드(G3) 크기·자리: 화면 아래 가운데, 아래 끝에서 앱 약 112 / 시안 84px 위, 배경 `theme.colors.paper`, 모서리 `theme.radii.card`, 한 줄 굵은 작은 글자(앱 16 / 시안 12px), 그림자 임시 토큰 제안 `shadowFloat` = 시안 `--shadow-float` `rgba(0,0,0,.18)` | 기본값(Claude) | 명세 0절, 예외 #7 |
+| G12 | **피드를 올렸을 때 머리**: 피드를 내려 스크롤 위치가 (두 줄 머리 높이 − 한 줄 높이)를 넘으면 거리·운영시간 줄을 접고 `‹ <이름> ⋯` 한 줄(앱 높이 약 52 / 시안 40, 이름 앱 20 / 시안 15px 굵게, 배경 `theme.colors.cream`, 아래 은은한 그림자)을 맨 위에 붙인다. 맨 위로 돌아오면 두 줄로 펼친다. 한 줄 상태에서도 `‹`(G7)·`⋯`(G4)는 그대로 동작한다. 그림자 색은 D APP-0-P1 보완이 제공하는 `theme.colors.shadowSoft`(임시 `rgba(0,0,0,.15)`)를 쓴다. 사용처는 접힌 머리 아래·`‹` 글자 그림자. B는 공통 토큰 파일을 수정하지 않는다 | 확인 — 사용자: "어느 도서관인지 계속 보여서요" (아래 '정할 것'의 기본값과 같음) / 값 기본값(Claude) | 명세 결정 2 |
+| G13 | **게시물이 하나도 없을 때**: `#26` 결과 0개(LOCAL-2 머지 전 포함, G9)면 피드 자리 가운데에 세 줄 — `"아직 게시물이 없어요"`(굵게) / `"이 도서관의 첫 글을 올려 보세요"`(`theme.colors.textSub`) / 굵은 글자 링크 `"첫 글 올리기 →"`(글자 앱 18 / 시안 14px). 링크는 오른쪽 아래 둥근 `"+"`(LOCAL-1 명세 결정 1)와 같은 곳 `/posts/new?libraryId=<libraryId>`(core K15 및 이 계약서 LOCAL-1 C7 경로)로 이동만 한다. 로그인 안 했으면 이동하지 않고 LOCAL-1의 로그인 안내 창(`"로그인하면 글을 올릴 수 있어요"` + `"로그인하기"` / `"닫기"`, LOCAL-1 명세 예외 #4)을 띄운다. 가짜 게시물을 만들지 않는다 | 확인 — 사용자: "첫 글을 올려 보라고 해서요." | 명세 결정 3, 예외 #2·#4 |
+| G14 | **전환 세부**: 들어올 때 오른쪽에서 왼쪽으로 밀린다 — `Stack` 기본 push 전환(약 0.3초, 플랫폼 기본 시간을 그대로 쓰고 플랫폼별로 맞추지 않음, C4 분기 없음). 배경은 `theme.colors.cream`. 방문 멘트 카드(G3) 크기·자리: 화면 아래 가운데, 아래 끝에서 앱 약 112 / 시안 84px 위, 배경 `theme.colors.paper`, 모서리 `theme.radii.card`, 한 줄 굵은 작은 글자(앱 16 / 시안 12px), 그림자는 D APP-0-P1 보완의 `theme.colors.shadowFloat`(임시 `rgba(0,0,0,.18)`)를 쓴다 | 기본값(Claude) | 명세 0절, 예외 #7 |
 
-**세부 명세(VISIT-2)에서 정할 것 — D가 정하지 않음**: 머리 배치(이름·거리·오늘 운영시간·‹·⋯), 피드를 올렸을 때 머리 모양(기본값: 접혀서 `"‹ 이름"` 한 줄), 게시물이 하나도 없을 때 화면, 전환 세부(밀리는 방향·시간, 멘트 카드 크기). 브랜치 `spec/library-visit-VISIT-2`(닫힌 PR #72)의 머리 배치 후보 3개는 참고용.
+**기준선에서 열어 두었던 항목 — 아래 G11~G14로 결정 완료**: 머리 배치(이름·거리·오늘 운영시간·‹·⋯), 피드를 올렸을 때 머리 모양(기본값: 접혀서 `"‹ 이름"` 한 줄), 게시물이 하나도 없을 때 화면, 전환 세부(밀리는 방향·시간, 멘트 카드 크기). 브랜치 `spec/library-visit-VISIT-2`(닫힌 PR #72)의 머리 배치 후보 3개는 참고용.
 
-**세부 명세(VISIT-2)에서 정한 것 — B 수정본(검토 전)**: 머리 배치 = G11, 피드를 올렸을 때 머리 = G12(위 기본값 채택), 게시물이 하나도 없을 때 화면 = G13, 전환 세부 = G14. 명세 확인 목록 1~3은 `확인`, G14와 크기 값은 `기본값(Claude)`.
+**세부 명세(VISIT-2)에서 정한 것 — D+B 확정판**: 머리 배치 = G11, 피드를 올렸을 때 머리 = G12(위 기본값 채택), 게시물이 하나도 없을 때 화면 = G13, 전환 세부 = G14. 명세 확인 목록 1~3은 `확인`, G14와 크기 값은 `기본값(Claude)`.
 
 #### C2. 엔드포인트 / 주요 함수
 
@@ -333,14 +336,15 @@ B가 만드는 앱 부품(다른 기능이 쓰는 것):
 
 - `mobile/src/features/local-feed/DefaultLibraryGate.tsx`: `export function DefaultLibraryGate(): JSX.Element | null` — props 없음. 홈 탭(A)이 화면 맨 위에 놓는다. 이동하지 않을 때는 `null` 또는 G6의 한 줄 안내만 그린다.
 - `mobile/src/features/local-feed/visitMent.ts`: `pickVisitMent(result: VisitResult, libraryName: string, isDefault: boolean, today: string): { kind: "ment"; text: string } | { kind: "ask" } | null` — G3 규칙 한 곳.
-- (수정본) 세부 결정 G11~G14로 경로·함수·인증·연타 처리는 바뀌지 않는다. G13의 글쓰기 이동은 서버를 부르지 않고 LOCAL-1 경로로 이동만 한다(N/A: 새 엔드포인트 없음).
+- (D 확정판) 세부 결정 G11~G14로 경로·함수·인증·연타 처리는 바뀌지 않는다. G13의 글쓰기 이동은 서버를 부르지 않고 LOCAL-1 경로로 이동만 한다(N/A: 새 엔드포인트 없음).
 
 #### C3. 쓰는 필드와 화면 문구
 
 | 구분 | 필드/키 | 어디에 |
 | :--- | :--- | :--- |
 | #11 | `name`, `today.hours_text`, `today.is_closed`, `homepage` | 머리, ⋯ 메뉴 홈페이지 |
-| 경로 값 | `libraryId` | `/libraries/[libraryId]`. 숫자가 아니면 `"찾을 수 없어요."` + 홈으로 |
+| 경로 값 | `libraryId` | `/libraries/[libraryId]`. 양의 안전한 정수 문자열이 아니면 `"찾을 수 없어요."` + 홈으로, #11·recordVisit 호출 0번 |
+| 경로 값 | `distanceM?: string` | core K15. 0 이상의 안전한 정수 문자열 한 값만 허용. 배열·음수·소수·NaN·범위 초과·미전달은 거리 생략. 1,000m 미만은 `320m`, 이상은 소수 한 자리 `1.3km`. 거리 때문에 위치를 다시 묻지 않는다 |
 | 기기 | `localone:visits:v1`, `localone:default_library:v1` | core C3. `visits.ts` 함수로만 |
 | 화면 문구 | G3·G4·G5·G6 안의 글자 전부 | 그대로 |
 | 화면 문구 | 운영시간 없음 | `"정보 없음"` |
@@ -358,13 +362,13 @@ B가 만드는 앱 부품(다른 기능이 쓰는 것):
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | 화면 왼쪽 끝 밀어 돌아가기 | expo-router `Stack`의 `gestureEnabled: true` | 기본 제스처 | 기본 뒤로 + `gestureEnabled` | 브라우저 뒤로·`‹` | `mobile/app/libraries/[libraryId].tsx` 화면 옵션(분기 코드 없음) | 세 플랫폼에서 지도로 돌아감 |
 
-- (수정본) 세부 결정 G11~G14로 추가 분기 없음: 접히는 머리·빈 피드·멘트 카드 자리는 공통 코드이고, 전환은 위 `Stack` 기본 전환을 쓴다.
+- (D 확정판) 세부 결정 G11~G14로 추가 분기 없음: 접히는 머리·빈 피드·멘트 카드 자리는 공통 코드이고, 전환은 위 `Stack` 기본 전환을 쓴다.
 
 #### C5. 테이블
 
 해당 없음: 방문 기록·기본값은 기기(core C3).
 
-- (수정본) 세부 결정으로도 스키마 변경 없음. 새 마이그레이션을 설계하지 않는다.
+- (D 확정판) 세부 결정으로도 스키마 변경 없음. 새 마이그레이션을 설계하지 않는다.
 
 #### C6. 검증과 에러 처리
 
@@ -375,7 +379,7 @@ B가 만드는 앱 부품(다른 기능이 쓰는 것):
 | G-#3 | 같은 날 다시 들어옴 | 카드 없음 | `count` 그대로 |
 | G-#4 | 기본 도서관이 서버에서 사라짐(#11 404) | `DefaultLibraryGate`가 기본값을 끄고 홈에 그대로 | 기본값 삭제 |
 | G-#5 | 앱 시작 때 위치를 못 씀 | 풀지 않고 방문 페이지로 | 기본값 그대로 |
-| G-#6 | 기기 저장 실패 | 화면은 계속, 카드 없음 | — |
+| G-#6 | 방문 기록 저장 실패 | core APP-0의 `recordVisit`은 `counted:false`를 반환한다. 화면은 계속, 멘트·질문 카드 없음. 실패를 성공한 방문으로 표시하지 않는다 | 영속 기록에 증가 성공을 가정하지 않음. 재진입 시 재시도 가능 |
 | V-#1 | `#26` 실패·끊김(`ApiCallError`, 끊김은 `status 0`·`code "NETWORK"`, 서버 오류는 LOCAL-2 C6) | 피드 자리만 `"지금은 이 도서관 이야기를 불러올 수 없어요."` + `"새로고침"`(누르면 피드만 다시 부름). 불러오는 동안은 `"이야기를 불러오는 중…"` 작은 알약. 머리·`‹`·`⋯`·`"+"`는 그대로. LOCAL-2 머지 전에는 `#26`을 부르지 않으므로 LOCAL-2 연결 때 쓰는 행 | — |
 | V-#2 | 게시물 0개(`#26` `200` 빈 목록, LOCAL-2 머지 전 포함) | G13 안내. 머리·`"+"`는 그대로 | 가짜 게시물 없음 |
 | V-#3 | `‹` 두 번 빠르게, `‹`와 화면 왼쪽 끝 밀기가 겹침, ⋯ `"앱을 켜면 여기부터 열기"` 두 번(N/A: 기기 내 처리) | 지도 홈으로 한 번만 돌아간다. 기본값은 한 번만 바뀐다(저장이 진행 중이면 두 번째 누름 무시) | 기본값 하나(G4) |
@@ -383,19 +387,21 @@ B가 만드는 앱 부품(다른 기능이 쓰는 것):
 | V-#5 | 오늘 쉬는 날(`#11` `200`, `today.is_closed === true`) | 운영시간 자리에 굵은 `"오늘 휴관"`. `is_closed === null`이면 평소 줄(`hours_text` 또는 `"정보 없음"`) | — |
 | V-#6 | 거리를 넘겨받지 못함(앱 시작 때 기본 도서관으로 바로 열림, 지도 홈이 거리를 넘기지 않음 — N/A: 기기 내 처리) | 거리와 `" · "` 없이 운영시간만 | — |
 
-- (수정본) 명세 예외 연결: 예외 #1(도서관 정보) = G-#2 — `404` 밖의 모든 `ApiCallError`(끊김 `status 0`·`"NETWORK"` 포함), 예외 #1(피드) = V-#1, 예외 #1-1 = G-#1(`404 NOT_FOUND`, 경로 값이 숫자가 아님은 C3 경로 값 행), 예외 #2 = V-#2, 예외 #3 = V-#3·G-#3, 예외 #4 = V-#4, 예외 #5 = V-#5, 예외 #6 = V-#6, 예외 #7(처음 방문) = G3 ①(오류 아님). G-#4~#6은 명세 예외 표 밖의 기준선 행으로 그대로 둔다.
+- (D 확정판) 명세 예외 연결: 예외 #1(도서관 정보) = G-#2 — `404` 밖의 모든 `ApiCallError`(끊김 `status 0`·`"NETWORK"` 포함), 예외 #1(피드) = V-#1, 예외 #1-1 = G-#1(`404 NOT_FOUND`, 경로 값이 숫자가 아님은 C3 경로 값 행), 예외 #2 = V-#2, 예외 #3 = V-#3·G-#3, 예외 #4 = V-#4, 예외 #5 = V-#5, 예외 #6 = V-#6, 예외 #7(처음 방문) = G3 ①(오류 아님). G-#4~#6은 명세 예외 표 밖의 기준선 행으로 그대로 둔다.
 
 #### C7. 다른 기능과 닿는 곳과 `TODO(연결)` 가짜 값
 
 | 의존 대상 | 필요한 것 | 상대 머지 전 가짜 값 |
 | :--- | :--- | :--- |
-| D APP-0-P1 | `visits.ts`, `locate`, `openExternalUrl`, `publicApi` | core C7 |
+| D APP-0-P1 및 VISIT-2 선행 보완 | `visits.ts`, `locate`, `openExternalUrl`, `publicApi`, `theme.colors.shadowSoft`·`shadowFloat` | core C7. 방문 저장 실패는 `counted:false`인 가짜 결과, 그림자는 토큰 키를 참조하고 임의 색 하드코딩 금지. 실제 코드에는 아직 저장 실패 감지·그림자 키가 없으므로 D 보완 연결 후 통합 시험 |
+| A VISIT-1 | 핀/목록 이동의 선택 `distanceM` | A가 미연결이면 거리 생략(G1). 임의로 현재 위치를 조회하지 않음 |
+| B LOCAL-1-P2 | `/posts/new`, 로그인 안내 창 | 로그인 상태는 현재 `useAuth`로 판단. 비로그인은 방문 화면에서 LOCAL-1 문구를 그린다. 로그인 시 core 스텁으로 이동만 하며 글쓰기 제공·동작 완료는 LOCAL-1 연결 후 |
 | D APP-0-P2 | `/libraries/[libraryId]` 스텁 | 이 파트에서 교체 |
 | D LIB-0-P1 | #10·#11 | core LIB-0 C7 |
 | A VISIT-1 | 홈 탭에 `DefaultLibraryGate` 놓기 | A가 이 부품 머지 뒤 한 줄 연결(library-visit V17) |
 | B LOCAL-2 | 피드 | 머지 전에는 빈 피드 안내 |
 
-- (수정본) G13의 글쓰기 이동·로그인 안내 창은 이 계약서 LOCAL-1 절(같은 B 기능)의 `/posts/new?libraryId=` 경로와 화면을 쓴다. LOCAL-1-P2 머지 전에는 경로로 이동만 하고 그 화면은 core 스텁이다. 위 표(잠긴 칸)에는 행을 더하지 않았다 — PR 쟁점.
+- G13 로그인 안내 창의 문구·동작은 LOCAL-1 명세 예외 #4와 동일하게 유지한다. VISIT-2 기존 `VisitScreen.tsx` 안에서 처리하고 다른 Step 파일을 수정하지 않는다. `"로그인하기"`는 객체 경로 `{ pathname: "/login" }`, `"닫기"`는 창만 닫으며 자동 게시하지 않는다.
 
 ### 구현 계획
 
@@ -403,8 +409,8 @@ B가 만드는 앱 부품(다른 기능이 쓰는 것):
 
 | 파트 | 브랜치 | 수정/생성 허용 파일(전수) | 완료 시 확인할 항목 |
 | :--- | :--- | :--- | :--- |
-| `VISIT-2-P1` 방문 페이지 틀·방문 멘트 | `feat/local-feed-VISIT-2-part1` | `mobile/app/libraries/[libraryId].tsx`, `mobile/src/features/local-feed/VisitScreen.tsx`, `mobile/src/features/local-feed/VisitHeader.tsx`, `mobile/src/features/local-feed/visitMent.ts`, `mobile/src/features/local-feed/__tests__/visit.test.tsx` | G1~G3·G7~G10, G-#1~#3·#6 |
-| `VISIT-2-P2` 도서관 기본값·앱 시작 분기 | `feat/local-feed-VISIT-2-part2` | `mobile/src/features/local-feed/VisitScreen.tsx`, `mobile/src/features/local-feed/VisitMenu.tsx`, `mobile/src/features/local-feed/AskDefaultCard.tsx`, `mobile/src/features/local-feed/DefaultLibraryGate.tsx`, `mobile/src/features/local-feed/__tests__/default-library.test.tsx` | G4~G6, G-#4·#5 |
+| `VISIT-2-P1` 방문 페이지 틀·방문 멘트 | `feat/local-feed-VISIT-2` | `mobile/app/libraries/[libraryId].tsx`, `mobile/src/features/local-feed/VisitScreen.tsx`, `mobile/src/features/local-feed/VisitHeader.tsx`, `mobile/src/features/local-feed/visitMent.ts`, `mobile/src/features/local-feed/__tests__/visit.test.tsx` | G1~G3·G7~G10, G-#1~#3·#6 |
+| `VISIT-2-P2` 도서관 기본값·앱 시작 분기 | `feat/local-feed-VISIT-2` | `mobile/src/features/local-feed/VisitScreen.tsx`, `mobile/src/features/local-feed/VisitMenu.tsx`, `mobile/src/features/local-feed/AskDefaultCard.tsx`, `mobile/src/features/local-feed/DefaultLibraryGate.tsx`, `mobile/src/features/local-feed/__tests__/default-library.test.tsx` | G4~G6, G-#4·#5 |
 
 ##### 파트 머리말 — VISIT-2-P1 / VISIT-2-P2 (두 파트 공통 칸, 다른 칸만 따로)
 
@@ -412,27 +418,27 @@ B가 만드는 앱 부품(다른 기능이 쓰는 것):
 | --- | --- | --- |
 | 1. 태스크 ID | `VISIT-2-P1` | `VISIT-2-P2` |
 | 2. 담당 역할 | B | B |
-| 3. 기준선 버전 | B2 준비 | B2 준비 |
-| 4. 계약서 커밋 | `82fb574fb59d4a73beabcbf4b77fa200998a5852` (본문 커밋) | `82fb574fb59d4a73beabcbf4b77fa200998a5852` (본문 커밋) |
-| 5. 선행 태스크 | **`specs/local-feed/세부/VISIT-2.md` 머지**, `APP-0-P1`·`APP-0-P2`(전이면 core C7) | `VISIT-2-P1` 머지 |
+| 3. 기준선 버전 | B2 + M1 VISIT-2 D+B 확정판 | B2 + M1 VISIT-2 D+B 확정판 |
+| 4. 계약서 커밋 | `b0a1523899fe33e798af39227db273b8dfdde02a` (VISIT-2 발행 본문 커밋) | `b0a1523899fe33e798af39227db273b8dfdde02a` (VISIT-2 발행 본문 커밋) |
+| 5. 선행 태스크 | **#94의 고정 명세 승인·main 반영 + 이 계약 승인·team main 발행·본문 SHA 확인**, `APP-0-P1`·`APP-0-P2` 및 APP-0-P1 보완(전이면 C7, 실제 연결·완료는 제공 후) | 같은 PR 안 `VISIT-2-P1` 구현·검증·커밋·CI 확인 완료(별도 머지 없음) |
 | 6. 수정 허용 파일 | 위 표 5개 | 위 표 5개 |
 | 7. 금지된 결정 | 검색창 금지(G8). 방문 횟수 숫자 보이기 금지. 서버에 방문 보내기 금지 | 기본값 둘 이상 금지. 홈 화면 파일 수정 금지(A 파일) |
 | 8. 완료 조건 | G1~G3·G7~G10 + P5 시험 + 웹·Android | G4~G6 + P5 시험 + 웹·Android |
 | 9. 검증 명령 | `mobile`에서 `npm ci` → `npx tsc --noEmit` → `npx jest --runInBand src/features/local-feed` → `npx expo export --platform web` | 같음 |
 | 10. 보고 형식 | `../prompts/3_구현.md` 5단계 | 같음 |
 
-- (수정본, 검토 전) G11~G14는 `VISIT-2-P1`의 기존 허용 파일(`VisitScreen.tsx`·`VisitHeader.tsx`) 안에서 만든다. 파일·파트 추가 없음. `VISIT-2-P1` 완료 확인에 G11~G14·V-#1~#6을, `VISIT-2-P2` 완료 확인에 V-#3(⋯ 연타)을 더한다. 4칸 계약서 커밋은 D 발행 뒤 실제 본문 SHA로 기록하고, 5칸 선행에는 이 수정본의 승인·발행이 더해진다.
+- (D 확정판) G11~G14는 `VISIT-2-P1`의 기존 허용 파일(`VisitScreen.tsx`·`VisitHeader.tsx`) 안에서 만든다. 파일·파트 추가 없음. `VISIT-2-P1` 완료 확인에 G11~G14·V-#1~#6을, `VISIT-2-P2` 완료 확인에 V-#3(⋯ 연타)을 더한다. 4칸은 이 절의 실제 발행 본문 SHA다. 두 파트는 한 브랜치·한 PR에서 진행한다. 공통 보완은 D가 core의 한정 파일로 제공한다.
 
 #### P1·P3·P4
 
 - P1: `core.md` APP-0 C2(`visits.ts`·`locate`·`publicApi`·`theme`), `VISIT_LOCAL_D결정.md` 1.2·1.2-1 표. 새 라이브러리 없음.
-- P1(수정본, 코드 `main` `ff248ea66f7915d7e6d39a58ccfa0b0f2d6245ac`에서 확인): `mobile/src/lib/visits.ts:8` `VisitResult`, `:50` `recordVisit(libraryId: number, now = new Date()): Promise<VisitResult>`, `:77` `markDefaultAsked(libraryId: number): Promise<void>`, `:84` `getDefaultLibrary(): Promise<number | null>`, `:89` `setDefaultLibrary(libraryId: number | null): Promise<void>` / `mobile/src/lib/platform.ts:26` `locate(signal: AbortSignal): Promise<LocateResult>`, `:78` `openExternalUrl(url: string): Promise<boolean>` / `mobile/src/lib/latest.ts:6` `createLatestRunner()` / `mobile/src/lib/publicApi.ts:9` `Today`(`is_closed: boolean | null`, `hours_text: string | null`), `:74` `fetchLibrariesNearby(lat, lng, radiusKm?, signal?)`, `:81` `fetchLibrary(libraryId: number, signal?): Promise<LibraryDetail>` / `mobile/src/theme/tokens.ts:91-93` `ThemeColors`(`cream`·`paper`·`text`·`textSub` 포함), `:95-108` `Radii`(`card`). 그림자 색 토큰은 없다(G12·G14 임시 토큰 제안). 앞으로 만들 것: `/libraries/[libraryId]` 스텁(D APP-0-P2, 현재 `mobile/app`에는 `_layout.tsx`·`index.tsx`·`login.tsx`만), `/posts/new`·로그인 안내 창(B LOCAL-1-P2), `fetchLibraryPosts`(B LOCAL-2).
-- P3(수정본): 새 라이브러리 없음. 접히는 머리는 스크롤 위치 값(`onScroll`)으로 그린다.
+- P1(D 확정판, 코드 `main` `ff248ea66f7915d7e6d39a58ccfa0b0f2d6245ac`에서 확인): `mobile/src/lib/visits.ts:8` `VisitResult`, `:50` `recordVisit(libraryId: number, now = new Date()): Promise<VisitResult>`, `:77` `markDefaultAsked(libraryId: number): Promise<void>`, `:84` `getDefaultLibrary(): Promise<number | null>`, `:89` `setDefaultLibrary(libraryId: number | null): Promise<void>` / `mobile/src/lib/platform.ts:26` `locate(signal: AbortSignal): Promise<LocateResult>`, `:78` `openExternalUrl(url: string): Promise<boolean>` / `mobile/src/lib/latest.ts:6` `createLatestRunner()` / `mobile/src/lib/publicApi.ts:9` `Today`(`is_closed: boolean | null`, `hours_text: string | null`), `:74` `fetchLibrariesNearby(lat, lng, radiusKm?, signal?)`, `:81` `fetchLibrary(libraryId: number, signal?): Promise<LibraryDetail>` / `mobile/src/theme/tokens.ts:91-93` `ThemeColors`(`cream`·`paper`·`text`·`textSub` 포함), `:95-108` `Radii`(`card`). 이 revision에는 그림자 토큰이 없고 저장 실패도 호출자가 판별할 수 없다. D APP-0-P1 보완 계약이 `counted:false` 실패 반환과 그림자 키를 제공한다(아직 구현되지 않음). 앞으로 만들 것: `/libraries/[libraryId]` 스텁(D APP-0-P2, 현재 `mobile/app`에는 `_layout.tsx`·`index.tsx`·`login.tsx`만), `/posts/new`·로그인 안내 창(B LOCAL-1-P2), `fetchLibraryPosts`(B LOCAL-2).
+- P3(D 확정판): 새 라이브러리 없음. 접히는 머리는 스크롤 위치 값(`onScroll`)으로 그린다.
 - P4 골격(`visitMent.ts`):
 
 ```ts
 export function pickVisitMent(r: VisitResult, name: string, isDefault: boolean, today: string) {
-  if (!r.counted) return null;                                         // 같은 날 두 번째 (G-#3)
+  if (!r.counted) return null;                                         // 같은 날 재방문 또는 저장 실패 (G-#3·#6)
   if (r.isFirst) return { kind: "ment", text: `처음으로 ${name}에 방문했어요!` };
   if (r.record.count === 3 && !r.record.defaultAsked && !isDefault) return { kind: "ask" };   // 누적 우선 (C-58)
   const s = r.record.streakDays;
@@ -446,16 +452,18 @@ export function pickVisitMent(r: VisitResult, name: string, isDefault: boolean, 
 }
 ```
 
-- P4 골격 2(수정본, `VisitScreen.tsx` — 접히는 머리 G12와 피드 자리 G13·V-#1~#4):
+- P4 골격 2(D 확정판, `VisitScreen.tsx` — 접히는 머리 G12와 피드 자리 G13·V-#1~#4):
 
 ```ts
 const FOLD_AT = HEADER_TWO_LINES - HEADER_ONE_LINE;                  // 앱 115 - 52 (G11·G12)
 const libRunner = createLatestRunner(), feedRunner = createLatestRunner();   // 도서관을 바꿔 들어오면 늦은 응답 버림 (AC-RACE)
 let folded = false, backing = false;
 function onScroll(y: number) {
-  const next = y > FOLD_AT;
+  const next = folded ? y > 0 : y > FOLD_AT;             // 접힌 뒤에는 맨 위에서만 펼침
   if (next !== folded) folded = next;                                 // 값이 바뀔 때만 다시 그림
 }
+// 러너는 화면 생명주기 동안 유지하고 libraryId 변경·unmount 때 cancel(); ok만 반영, stale은 무변경.
+// #11 404 확인 뒤에는 recordVisit 금지, 그 밖의 결과는 진입당 한 번.
 // feed.kind: LOCAL-2 머지 전에는 #26을 부르지 않고 "empty"   // TODO(연결): B LOCAL-2 fetchLibraryPosts
 function renderFeed(feed) {
   switch (feed.kind) {
@@ -467,7 +475,7 @@ function renderFeed(feed) {
 }
 function openCompose() {                                              // 링크와 "+"가 같은 동작 (G13)
   if (!signedIn) return showLoginSheet();                            // LOCAL-1 로그인 안내 창, 이동 0번 (V-#4)
-  router.push(`/posts/new?libraryId=${libraryId}`);
+  router.push({ pathname: "/posts/new", params: { libraryId: String(libraryId) } });
 }
 function backOnce() {                                                // ‹ 연타·밀기 겹침 (V-#3)
   if (backing) return;
@@ -498,7 +506,7 @@ function backOnce() {                                                // ‹ 연�
 | VISIT-2-P1 | `header shows info missing when hours unknown` (G1) | `today.hours_text = null`, `is_closed = null` | 진입 | `"정보 없음"` | 운영시간 없음 문구 |
 | VISIT-2-P1 | `header shows closed today only when is_closed is true` (예외 #5, V-#5) | `is_closed = true` / `null` | 진입 | `true`면 `"오늘 휴관"`, `null`이면 평소 줄 | `is_closed === true`만 휴관 |
 | VISIT-2-P1 | `header folds to one line when feed scrolls and unfolds at top` (결정 2, G12) | 진입 | 스크롤 y > FOLD_AT → y = 0 | 한 줄 `‹ 이름 ⋯`(운영시간 글자 없음) → 두 줄로 돌아옴, 한 줄 상태에서 `‹`는 `router.back` 1번 | `folded` 판정·접힌 뒤 돌아가기 |
-| VISIT-2-P1 | `empty feed shows guide and first post link` (결정 3, 예외 #2, V-#2, G13) | 로그인, 피드 0개 | 진입 → `"첫 글 올리기 →"` | 안내 3줄, 게시물 카드 0개, `router.push("/posts/new?libraryId=101")` 1번 | 가짜 게시물 금지·링크 대상 |
+| VISIT-2-P1 | `empty feed shows guide and first post link` (결정 3, 예외 #2, V-#2, G13) | 로그인, 피드 0개 | 진입 → `"첫 글 올리기 →"` | 안내 3줄, 게시물 카드 0개, `router.push({pathname:"/posts/new", params:{libraryId:"101"}})` 1번 | 가짜 게시물 금지·링크 대상 |
 | VISIT-2-P1 | `first post link and plus ask login when signed out` (예외 #4, V-#4) | 로그아웃 | 링크·`"+"` 각각 누름 | 로그인 안내 창 문구, `router.push` 0번 | 로그인 판정 |
 | VISIT-2-P1 | `visit page renders signed out` (예외 #4, V-#4, G10) | 로그아웃 | 진입 | 머리·빈 피드 안내 보임, 로그인 안내 창은 누르기 전엔 없음 | 공개 읽기 |
 | VISIT-2-P1 | `library info failure shows retry and keeps visit counted` (예외 #1, G-#2) | #11 `ApiCallError` `status 0` | 진입 → `"↻ 새로고침"` | 실패 문구, `recordVisit(101)` 1번, 새로고침에 `fetchLibrary` 다시 1번 | 실패 시 방문 처리 |
@@ -508,9 +516,33 @@ function backOnce() {                                                // ‹ 연�
 | VISIT-2-P1 | `ment card shows once at bottom and hides` (G3, G14, 예외 #7) | 첫 방문, 가짜 타이머 | 진입 → 타이머 진행 | 카드 1개(아래 가운데 자리), 2.5초 뒤 0개 — 실제 시간 기다리기 대신 가짜 타이머 | 한 번만 표시 |
 | VISIT-2-P2 | `menu default toggle pressed twice changes once` (예외 #3, V-#3) | 저장 지연 | ⋯ `"앱을 켜면 여기부터 열기"` 두 번 | `setDefaultLibrary(101)` 1번 | 연타 가드 |
 
-- (수정본) P5 추가 행은 앞으로 구현할 시험 설계이고 실행하지 않았다. 공개 읽기(#10·#11)와 기기 동작이라 401/404(타인)/422/DB 시험은 N/A: 서버 쓰기 없음. #10·#11 서버 시험은 D LIB-0 소유, #26 서버 시험은 B LOCAL-2 소유.
+
+| 파트 | 테스트 이름 | 준비 | 실행 | 기대 단언 | 잡아야 할 버그 |
+| --- | --- | --- | --- | --- | --- |
+| VISIT-2-P1 | `storage failure hides ment and ask without blocking page` (G-#6) | D 보완 API 가짜 `counted:false`, 첫 방문·누적 세 번째 각각 | 진입 | 머리/피드 유지, 멘트·질문 0개, 성공 방문 표시 없음 | 저장 실패를 성공으로 오인 |
+| VISIT-2-P1 | `bad route id never fetches or records` | abc·0·-1·소수·배열·안전 정수 초과 | 진입 | 찾을 수 없음, fetchLibrary/recordVisit 0번 | 경로 검증 누락 |
+| VISIT-2-P1 | `distance route parsing and formatting` | 0·320·1300·미전달·배열·음수·소수·NaN·안전 정수 초과 | 머리 렌더 | 0m·320m·1.3km, 잘못된 값은 구분점까지 숨김, locate 0번 | 거리 계약 불일치 |
+| VISIT-2-P1 | `late error and unmount cannot update current header` (AC-RACE) | 101 성공/실패 지연, 102 선택 또는 unmount | 앞 요청 완료 | 102 유지, 앞 요청 오류 표시/멘트 없음, runner cancel 호출 | 오류 경합/화면 이탈 |
+| VISIT-2-P1 | `back gesture overlapping press navigates once` (V-#3) | Stack 전환 중 | edge gesture와 ‹ 겹침 | 한 번만 pop, 홈 이탈 없음 | 버튼 가드만 있고 제스처 누락 |
+| VISIT-2-P2 | `missing default and failed nearby lookup keep home usable` | 기본 101, #11 404 / #10 실패 / #10 빈 목록 | 앱 시작 | 404는 기본값 해제·홈 유지, #10 실패·0개는 기본값 보존 후 101 진입, 재조회·이동 루프 없음 | 미정 분기/데이터 삭제 |
+| VISIT-2-P2 | `ask no marks asked without changing default` | 세 번째 방문 | 아니요 | markDefaultAsked(101) 1번, setDefaultLibrary 0번, 카드 닫힘 | 거절 뒤 반복 질문 |
+| VISIT-2-P1 | `integration uses real visit adapter failure signal` (G-#6) | D 보완 연결 후 실제 visits + deviceStorage.setItem reject | 첫/세 번째 방문 | 화면 유지·카드 0개, counted:false | 가짜 반환만 검증하고 실제 불일치 생존 |
+
+- P5 추가 행은 앞으로 구현할 시험 설계이고 실행하지 않았다. 공개 읽기(#10·#11)와 기기 동작이라 401/404(타인)/422/DB 시험은 N/A: 서버 쓰기 없음. #10·#11 서버 시험은 D LIB-0 소유, #26 서버 시험은 B LOCAL-2 소유.
 
 ---
+
+### D 직접 확정한 연결·실패 규칙 (2026-11-17)
+
+- 쟁점 1: VISIT-2는 LOCAL-2 이전 #26을 호출하지 않는다. LOCAL-2 연결 뒤 loading/error/empty를 구분하고 기존 머리를 유지한다.
+- 쟁점 2: 거리 전달은 core K15의 선택 `distanceM`으로 확정했다. A V5가 #10의 `distance_m`을 숫자 문자열로 전달하고 없는 값은 생략한다. 기본 도서관 직접 진입은 거리 생략이다.
+- 쟁점 3: 그림자 두 키는 D APP-0-P1 보완에서 제공한다. 수치의 `기본값(Claude)` 표기는 유지한다.
+- 쟁점 4: C7에 LOCAL-1 의존과 미제공 시 동작을 명시했다. 새 공통 부품 export/남의 파일 편집을 허용하지 않는다.
+- 쟁점 5: Step 하나=브랜치 하나=PR 하나다. P2 선행은 같은 PR 안 P1의 검증·커밋·CI 확인이다.
+- 쟁점 6: C-58·C-61 및 상세 결정 1.2·1.2-1이 옛 A 명세보다 우선한다. 누적 질문·연속 멘트·정보 줄 오른쪽 ⋯를 유지한다.
+- G6의 #10 실패/빈 목록은 기본값 해제 근거가 아니므로 보존하고 기본 도서관으로 간다. #11 404일 때만 사라진 기본값을 해제한다. 이름이 없을 때 멘트는 이름을 지어내지 않고 생략한다.
+- 방문 기록은 #11 404를 배제한 뒤 한 번 처리한다. 재조회·리렌더에서 다시 세지 않는다. recordVisit 성공 여부와 API 성공 여부를 혼동하지 않는다.
+- 화면 이탈/도서관 변경은 러너 cancel과 카드 타이머 해제를 수행한다. 기본값 처리 중 중복 입력을 막고 finally에서 해제한다. 제스처 중복 복귀는 Stack 전환 상태도 확인한다.
 
 ## LOCAL-2 광장 피드·상세·도서 연결·이어 읽기·공감·북마크
 
