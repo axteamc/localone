@@ -103,6 +103,12 @@
 - [구현 중 변경] 마이그레이션 `0005_post_reactions_bookmarks.py`를 P2가 아닌 P1 커밋에 넣음 — P1의 공감 수(H8)·내 표시 시험(`test_feed_my_flags_signed_in_and_out`)이 두 표를 필요로 함. 파일은 LOCAL-2 담당 목록 안 — 계약 P2 표 `local-feed.md:712`
 - [구현 중 변경] `__tests__/visit.test.tsx`(VISIT-2, B 파일)에 `fetchLibraryPosts` 빈 응답 mock 추가 — VisitScreen 기본 피드가 #26을 부르게 되어 기존 빈 피드 시험이 실제 호출을 하지 않도록 — P2 표 P3 행 밖
 - [Claude가 정함] 공유 웹 기준 주소 `EXPO_PUBLIC_WEB_URL`(없으면 웹은 현재 origin, 앱은 `localone://posts/<id>`) — H11 "주소 기본값(Claude)" — `share.ts`
+- [구현 중 변경] 상세 경로에 `?libraryId=`(방문 중인 도서관)를 넘김 — H9 #14 `library_id`와 H14 "방문 중 도서관 유지"에 필요, 없으면 `post.library.id` — `mobile/app/posts/[postId].tsx`
+- [구현 중 변경] 내 글을 상세에서 내리면 `api.ts` `emitPostWithdrawn`으로 피드(LibraryFeed)가 카드를 감추고 "내렸어요" — LOCAL-1 F16 "피드로 돌아가 카드를 감추고"를 Stack 뒤 화면에서 지키려고
+- [Claude가 정함] 남의 글 상세 `⋯`는 "공유" 하나만, 내 글은 LOCAL-1 `PostMoreMenu` 재사용("게시물 내리기"만) — H14
+- [Claude가 정함] 상세 불러오기 실패(끊김) 문구 "지금은 게시물을 불러올 수 없어요." + "새로고침", 없는 글은 "찾을 수 없어요." + "홈으로" — C6 H-#3
+- [Claude가 정함] 대여 버튼 기준일 표시 "오늘 기준/어제 기준/M월 D일 기준", 기준일이 없거나 모름이면 "알 수 없음" — H9·H-#9
+- [처리 못 함] `mobile/src/__tests__/routes.test.tsx`(D) `/posts/[postId]` 스텁 단언 — 상세 연결로 suite 실패(AsyncStorage). #129에 수정안 댓글
 - [Claude가 정함] 피드 카드 비율 — 응답에 이미지 크기가 없어 사진·표지 3:4, 색 1:1(글자 있으면 4:5)로 고정해 2열에 번갈아 쌓음 — H4·H13
 
 ## 다음에 할 것
@@ -118,4 +124,4 @@
 | LOCAL-2-P1 | 완료 | `server/app/routers/feed.py:121-206`, `server/migrations/versions/0005_post_reactions_bookmarks.py` | `test_feed.py` 18 통과, 서버 전체 310 통과(`-W error`), 가드 제거 5종 확인 | P2 |
 | LOCAL-2-P2 | 완료 | `server/app/routers/reactions.py:17-85` | `test_reactions.py` 15 통과, 서버 전체 `-W error` 통과, 가드 제거 4종 확인 | P3 |
 | LOCAL-2-P3 | 완료 | `mobile/src/features/local-feed/PostCard.tsx`, `LibraryFeed.tsx`, `PostMenu.tsx`, `share.ts`, `VisitScreen.tsx`(기본 피드·스크롤 끝 다음 묶음) | `feed.test.tsx` 15 통과, 앱 전체 254 통과(`routes.test`는 변경 전과 같은 AsyncStorage 실패, #129), tsc 통과, 가드 제거 4종 확인 | P4 |
-| LOCAL-2-P4 | 진행 전 | | | |
+| LOCAL-2-P4 | 완료 | `mobile/app/posts/[postId].tsx`, `PostDetail.tsx`, `ReactionButton.tsx`, `SameBookPosts.tsx`, `api.ts`(`fetchPost`·`fetchBookPosts`·내림 알림) | `detail.test.tsx` 18 + `feed.test.tsx` 16 통과, 앱 277 통과(`routes.test` #129), 서버 325 통과, tsc·web export 통과, 가드 제거 5종 확인 | 끝 |

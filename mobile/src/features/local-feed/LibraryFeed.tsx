@@ -1,14 +1,15 @@
 // 방문 페이지 2열 메이슨리 피드(contracts/local-feed.md LOCAL-2 H1·H4·H10·H13).
 // 페이지 넘기기(next_cursor)는 VisitScreen이 스크롤 끝에서 한다. 여기서는 그리기·카드 메뉴만.
 import { useRouter } from "expo-router";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { LayoutChangeEvent, StyleSheet, useWindowDimensions, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
-import type { FeedPost } from "./api";
+import { onPostWithdrawn, type FeedPost } from "./api";
 import { cardHeightRatio, PostCard } from "./PostCard";
 import { LoginPrompt, PostMenu } from "./PostMenu";
 
 export const COLUMN_GAP = 12; // H13
+const WITHDRAWN_TEXT = "내렸어요"; // LOCAL-1 ComposeScreen TEXT.withdrawn과 같은 문구
 
 /** 짧은 쪽 열에 차례로 쌓는다(H13). 같은 입력이면 늘 같은 배치 */
 export function splitColumns<T extends Pick<FeedPost, "image_kind" | "overlay_text">>(items: T[]): [T[], T[]] {
@@ -64,14 +65,33 @@ export function LibraryFeed({ items, onNotice }: LibraryFeedProps) {
   const [changed, setChanged] = useState<Record<string, FeedPost>>({}); // 메뉴에서 바꾼 좋아요·북마크
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [login, setLogin] = useState(false);
-  const shown = useMemo(() => items.map((p) => changed[p.id] ?? p), [items, changed]);
+  const [hidden, setHidden] = useState<Set<string>>(() => new Set());
+  const shown = useMemo(
+    () => items.filter((p) => !hidden.has(p.id)).map((p) => changed[p.id] ?? p),
+    [items, changed, hidden]
+  );
+
+  // 상세에서 내린 글은 돌아왔을 때 바로 감추고 "내렸어요"(LOCAL-1 F16)
+  useEffect(
+    () =>
+      onPostWithdrawn((id) => {
+        setHidden((h) => new Set(h).add(id));
+        onNotice(WITHDRAWN_TEXT);
+      }),
+    [onNotice]
+  );
   const menuPost = menuFor ? shown.find((p) => p.id === menuFor) ?? null : null;
 
   return (
     <View testID="library-feed">
       <MasonryGrid
         items={shown}
-        onPress={(id) => router.push({ pathname: "/posts/[postId]", params: { postId: id } })}
+        onPress={(id) =>
+          router.push({
+            pathname: "/posts/[postId]",
+            params: { postId: id, libraryId: String(shown.find((p) => p.id === id)?.library_id ?? "") },
+          })
+        }
         onMenu={(post) => setMenuFor(post.id)}
       />
       {menuPost ? (

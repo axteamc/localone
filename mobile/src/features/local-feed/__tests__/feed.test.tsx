@@ -152,7 +152,15 @@ describe("LibraryFeed in VisitScreen", () => {
     await enterWith({ items: [post("p2"), post("p1")], next_cursor: null });
     expect(fetchLibraryPosts).toHaveBeenCalledWith(101, { cursor: null }, expect.anything());
     await fireEvent.press(screen.getByTestId("post-card-p2"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/posts/[postId]", params: { postId: "p2" } });
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/posts/[postId]", params: { postId: "p2", libraryId: "101" } });
+  });
+
+  test("post withdrawn on detail disappears from feed with notice", async () => {
+    await enterWith({ items: [post("p2"), post("p1")], next_cursor: null });
+    await act(async () => api.emitPostWithdrawn("p2"));
+    expect(screen.queryByTestId("post-card-p2")).toBeNull();
+    expect(screen.getByTestId("post-card-p1")).toBeTruthy();
+    expect(await screen.findByText("내렸어요")).toBeTruthy();
   });
 
   test("empty feed keeps VISIT-2 empty guide", async () => {

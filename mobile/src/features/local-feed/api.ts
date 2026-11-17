@@ -144,3 +144,33 @@ export function setReaction(postId: string, on: boolean): Promise<ReactionState>
 export function setBookmark(postId: string, on: boolean): Promise<BookmarkState> {
   return send<BookmarkState>(`posts/${encodeURIComponent(postId)}/bookmark`, { method: on ? "PUT" : "DELETE" });
 }
+
+/** #27 `GET /api/v1/posts/{post_id}` — 철회·숨김은 404 POST_NOT_AVAILABLE(H3) */
+export function fetchPost(postId: string, signal?: AbortSignal): Promise<Post> {
+  return send<Post>(`posts/${encodeURIComponent(postId)}`, { method: "GET" }, signal);
+}
+
+/** #28 `GET /api/v1/books/{isbn13}/posts` — 같은 책, 다른 도서관 포함(H7) */
+export function fetchBookPosts(
+  isbn13: string,
+  page: { cursor: string | null; exclude?: string; limit?: number },
+  signal?: AbortSignal
+): Promise<FeedPage> {
+  return send<FeedPage>(`books/${encodeURIComponent(isbn13)}/posts${pageQuery(page)}`, { method: "GET" }, signal);
+}
+
+// ─────────── 상세에서 내린 글을 피드에서 바로 감추기(LOCAL-1 F16 "피드로 돌아가 카드를 감추고 '내렸어요'") ───────────
+
+type WithdrawnListener = (postId: string) => void;
+const withdrawnListeners = new Set<WithdrawnListener>();
+
+export function onPostWithdrawn(listener: WithdrawnListener): () => void {
+  withdrawnListeners.add(listener);
+  return () => {
+    withdrawnListeners.delete(listener);
+  };
+}
+
+export function emitPostWithdrawn(postId: string): void {
+  withdrawnListeners.forEach((l) => l(postId));
+}

@@ -75,3 +75,49 @@
 - `routes.test.tsx`(D) `/libraries/[libraryId]` 스텁 단언 → #129에 수정안 댓글
 - 홈 탭에 `DefaultLibraryGate`를 놓는 것은 A(library-visit V17) — 놓기 전에는 앱 시작 분기가 화면에서 동작하지 않음
 - Android: 이 PC에 에뮬레이터·adb가 없어 미확인. 세 번째 방문 카드·앱 시작 분기는 화면에서 직접 보지 못함(날짜·위치가 필요), 자동 시험으로만 확인
+
+## LOCAL-2 (PR #136)
+
+- 기준: 02 LOCAL-03·04·05, 세부 명세 `specs/local-feed/세부/LOCAL-2.md` 예외 1~10, 계약 LOCAL-2 P5. 서버는 로컬 DB(5434) 실제 연결 시험, 앱은 가짜 응답 시험 + 로컬 서버(8001)·웹(8081) 화면 확인.
+
+### 1. 수용 기준 전수 점검
+
+| 요구사항 ID | AC | 준비 | 행동 | 기대 | 실제 | 증거 | 웹 | Android | iOS (D) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| LOCAL-03 | AC-FEED 최신순·공개만 | 공개 3·철회·숨김·다른 도서관 | #26 | 3개 최신순 | 일치 | `test_feed.py` `test_feed_latest_only_published` | 통과(서버) | — | — |
+| LOCAL-03 | AC-FEED 커서 | 같은 시각 5개 | limit=2로 끝까지 | 5개 한 번씩 | 일치 | `test_feed_cursor_no_dup_no_gap_on_ties` | 통과(서버) | — | — |
+| LOCAL-03 | AC-UI 2열·이미지만 | 데모 게시물 7개 | 방문 페이지 진입 | 2열 메이슨리, 제목·작성자·공감 수 없음 | 일치 | `feed.test.tsx` "post card renders image only…", `test_feed_item_has_no_author_or_count` · 화면 확인 | 통과 | 미확인 | 대기 |
+| LOCAL-03 | AC-FEED 내리면 이어짐 | next_cursor 있음 | 스크롤 끝 두 번 | 다음 묶음 1번, 겹침 없음 | 일치 | "library feed paginates with cursor once per scroll end" | 통과(jest) | 미확인 | 대기 |
+| LOCAL-03 | 길게 누르기 메뉴 | 책 있음/없음 | 길게 누르기·웹 호버 ⋯ | 아이콘 3개 + 책/저자 검색 또는 도서 없음 | 일치 | "compact menu with book…", "…without book…", "web hover shows dots…" · 화면 확인 | 통과 | 미확인 | 대기 |
+| LOCAL-03 | 인기순 | — | sort=popular | 422(Q-31 전) | 일치 | `test_feed_popular_sort_is_422` | 통과(서버) | — | — |
+| LOCAL-04 | 상세 구조 | 책 연결 글 | 상세 진입 | 이미지(‹만) → 액션 바(♡ 수·공유·⋯·저장) → 작성자 → 대여/구매 → 본문 | 일치 | `detail.test.tsx` "detail renders clean image top bar…" · 화면 확인 | 통과 | 미확인 | 대기 |
+| LOCAL-04 | 대여 우선 | #14 어제 대출 가능 | 상세 | 대여 버튼이 구매 버튼보다 위, 구매는 "준비 중이에요" | 일치 | 같은 시험, "loan button opens live check…" | 통과 | 미확인 | 대기 |
+| LOCAL-04 | 공감·북마크 | 로그인 | 두 번 빠르게 | 요청 1번, 다시 누르면 확인 없이 해제 | 일치 | "detail reaction and bookmark toggle…", `test_reaction_put_twice_one_row`, `test_bookmark_resave_updates_saved_at` | 통과 | 미확인 | 대기 |
+| LOCAL-04 | 공유 | 웹, navigator.share 없음 | 공유 | 클립보드 + "링크를 복사했어요" | 일치 | "web share copies link…" | 통과(jest) | 미확인 | 대기 |
+| LOCAL-05 | 같은 책 이어 읽기 | 같은 책 두 도서관 | 상세 아래 | "같은 책의 다른 글"이 "이 도서관의 다른 글"보다 위, 0개면 숨김 | 일치 | "detail shows same book posts first…", `test_same_book_posts_cross_library_exclude` | 통과 | 미확인 | 대기 |
+
+### 2. 명세서 예외 상황 점검
+
+| 예외 # | 확인한 방법 | 문구 일치 | 기록 무변경 | 결과 |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 피드 못 불러옴 | `visit.test.tsx` "feed loading, failure and empty are distinct" | 예 | — | 통과 |
+| 2 게시물 0개 | `feed.test.tsx` "empty feed keeps VISIT-2 empty guide" | 예 | 가짜 게시물 없음 | 통과 |
+| 3 없는 글 | `test_detail_unknown_is_not_found`, "unknown post shows not found" | 예 | — | 통과 |
+| 4 내려진 글 | `test_detail_withdrawn_is_post_not_available`, "detail of withdrawn post shows unavailable…" | 예 | 본문 노출 없음 | 통과 |
+| 5 연타 | `test_reaction_put_twice_one_row`(동시 4회), 앱 연타 시험 2종 | — | 행 1 | 통과 |
+| 6 로그인 없이 | `test_reaction_requires_login`, "signed out … login prompt" 2종 | 예 | 행 0, 요청 0번 | 통과 |
+| 7 탈퇴 중 | `test_reaction_while_withdrawing_is_403` | — | 행 0 | 통과 |
+| 8 소장 조회 실패 | "availability failure shows unknown…" | 예 | — | 통과 |
+| 9 공유 실패 | "web share failure shows retry message" | 예 | — | 통과 |
+| 10 예스24 | "compact menu without book…", "detail renders clean image…" | 예 | 외부 호출 0번 | 통과 |
+
+### 3. 명세서와 달라진 점
+
+- 상세 경로에 `?libraryId=`(방문 중인 도서관) 추가, 상세에서 내린 글을 피드가 바로 감춤 — 세부 명세 검토 메모 `[구현 중 변경]`
+- 02 LOCAL-03의 인기순 전환·LOCAL-04의 "도서 없음 구현 안 함"과 계약 H1(최신순만, Q-31)·H10(버튼 UI만, 2026-11-17 사용자 결정)이 다름 — 계약(D+B 확정판, 사용자 결정이 더 최근)을 따름
+
+### 4. 남은 문제
+
+- `routes.test.tsx`(D) `/posts/[postId]` 스텁 단언 → #129에 수정안 댓글
+- Android: 이 PC에 에뮬레이터·adb가 없어 미확인
+- 예스24 구매(M2), 인기순(Q-31), 북마크 모음(Q-56), 댓글(Q-57)
