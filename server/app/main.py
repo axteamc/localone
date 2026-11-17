@@ -115,6 +115,9 @@ def create_app(
 
     app.state.post_storage = build_post_storage(settings)
     app.include_router(posts_router)
+    from app.routers.feed import router as feed_router
+
+    app.include_router(feed_router)
     # ── [/local-feed-B] ──
 
     return app
