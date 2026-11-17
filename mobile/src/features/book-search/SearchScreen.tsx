@@ -320,6 +320,7 @@ function Results({
 }
 
 const c = theme.colors;
+const GRID_HALF_GAP = 5; // 2열 칸 사이 10의 반
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.cream },
   flex: { flex: 1 },
@@ -395,8 +396,10 @@ const styles = StyleSheet.create({
   },
   viewBtnText: { fontSize: 13, color: c.text },
   listPad: { paddingHorizontal: 16, paddingBottom: 24 },
-  gridRow: { gap: 10 },
-  gridCell: { flex: 1, marginBottom: 14 },
+  // 칸마다 정확히 반 폭(B11 2열). flex: 1이면 홀수 마지막·한 권 결과가 줄 전체로 늘어난다.
+  // 칸 사이 10은 양쪽 안쪽 여백 5로 나누고, 줄을 5씩 밖으로 당겨 바깥 끝은 그대로 둔다.
+  gridRow: { marginHorizontal: -GRID_HALF_GAP },
+  gridCell: { width: "50%", paddingHorizontal: GRID_HALF_GAP, marginBottom: 14 },
   gridCover: { width: "100%", aspectRatio: 3 / 4, marginBottom: 6 },
   row: {
     flexDirection: "row",
