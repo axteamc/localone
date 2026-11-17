@@ -13,6 +13,8 @@ export const SAVE_TEXT = { save: "저장", saved: "저장됨" } as const;
 type Common = {
   postId: string;
   signedIn: boolean;
+  /** 로그인 복원 중이면 누름을 무시한다(로그인한 사용자에게 로그인 안내가 뜨지 않게, 사후 검토 ①-5) */
+  authLoading?: boolean;
   onLoginNeeded(): void;
   onNotice(text: string): void;
 };
@@ -39,6 +41,7 @@ export function ReactionButton(
 ) {
   const { busy, run } = useOnce();
   const press = () => {
+    if (props.authLoading) return;
     if (!props.signedIn) {
       props.onLoginNeeded();
       return;
@@ -56,7 +59,7 @@ export function ReactionButton(
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={props.reacted ? `공감 취소, 공감 ${props.count}개` : `공감하기, 공감 ${props.count}개`}
-      accessibilityState={{ selected: props.reacted, busy }}
+      accessibilityState={{ selected: props.reacted, busy: busy || !!props.authLoading }}
       onPress={press}
       style={styles.action}
       testID="reaction-button"
@@ -70,6 +73,7 @@ export function ReactionButton(
 export function SaveButton(props: Common & { saved: boolean; onChange(saved: boolean): void }) {
   const { busy, run } = useOnce();
   const press = () => {
+    if (props.authLoading) return;
     if (!props.signedIn) {
       props.onLoginNeeded();
       return;
@@ -86,7 +90,7 @@ export function SaveButton(props: Common & { saved: boolean; onChange(saved: boo
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityState={{ selected: props.saved, busy }}
+      accessibilityState={{ selected: props.saved, busy: busy || !!props.authLoading }}
       onPress={press}
       style={[styles.save, props.saved && styles.saveOn]}
       testID="save-button"
