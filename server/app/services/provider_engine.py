@@ -248,7 +248,8 @@ class Data4LibraryClient:
 
     def _get(self, op: str, params: dict[str, Any]) -> dict[str, Any]:
         query = urlencode({"authKey": self._key, "format": "json", **params})
-        data = _http_get_json(f"{self._base}/{op}?{query}", {}, self._timeout)
+        # 정보나루는 Accept: application/json이면 406을 돌려준다(2026-11-18 실서버 확인). 형식은 format=json으로 고른다
+        data = _http_get_json(f"{self._base}/{op}?{query}", {"Accept": "*/*"}, self._timeout)
         response = data.get("response") if isinstance(data, dict) else None
         if not isinstance(response, dict) or "error" in response:
             raise ProviderError("정보나루 응답 형식이 다르거나 오류")
