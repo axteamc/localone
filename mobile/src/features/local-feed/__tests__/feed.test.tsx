@@ -234,6 +234,48 @@ describe("LibraryFeed in VisitScreen", () => {
     expect(await screen.findByLabelText(MENU_TEXT.bookmark)).toBeTruthy();
   });
 
+  test.each([
+    ["bookmark first", "bookmark"],
+    ["reaction first", "reaction"],
+  ] as const)("menu like and bookmark sent together keep both results (%s response)", async (_name, first) => {
+    // ①-1: 늦게 온 응답이 먼저 반영된 다른 필드를 되돌리지 않는다
+    const reaction = deferred<api.ReactionState>();
+    const bookmark = deferred<api.BookmarkState>();
+    setReaction.mockReturnValueOnce(reaction.promise);
+    setBookmark.mockReturnValueOnce(bookmark.promise);
+    await enterWith({ items: [post("p1")], next_cursor: null });
+    const menu = within(await openMenu("p1"));
+    await fireEvent.press(menu.getByLabelText(MENU_TEXT.like));
+    await fireEvent.press(menu.getByLabelText(MENU_TEXT.bookmark));
+    const resolveReaction = () => reaction.resolve({ post_id: "p1", reacted: true, reaction_count: 3 });
+    const resolveBookmark = () => bookmark.resolve({ post_id: "p1", bookmarked: true });
+    await act(async () => (first === "bookmark" ? resolveBookmark() : resolveReaction()));
+    await act(async () => (first === "bookmark" ? resolveReaction() : resolveBookmark()));
+    const after = within(screen.getByTestId("post-menu"));
+    expect(after.getByLabelText(MENU_TEXT.liked)).toBeTruthy();
+    expect(after.getByLabelText(MENU_TEXT.bookmarked)).toBeTruthy();
+  });
+
+  test("reaction and bookmark changed on detail show in mounted feed menu", async () => {
+    // ①-2: 메뉴에서 공감 → 상세에서 취소·저장 → 돌아온 피드 메뉴가 상세와 같다
+    setReaction.mockResolvedValueOnce({ post_id: "p1", reacted: true, reaction_count: 3 });
+    await enterWith({ items: [post("p1"), post("p2")], next_cursor: null });
+    await fireEvent.press(within(await openMenu("p1")).getByLabelText(MENU_TEXT.like));
+    expect(await screen.findByLabelText(MENU_TEXT.liked)).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText("메뉴 닫기"));
+    await act(async () => {
+      api.emitPostReaction("p1", { my_reaction: false });
+      api.emitPostReaction("p1", { my_bookmark: true });
+    });
+    const menu = within(await openMenu("p1"));
+    expect(menu.getByLabelText(MENU_TEXT.like)).toBeTruthy();
+    expect(menu.getByLabelText(MENU_TEXT.bookmarked)).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText("메뉴 닫기"));
+    const other = within(await openMenu("p2")); // 다른 카드는 그대로
+    expect(other.getByLabelText(MENU_TEXT.like)).toBeTruthy();
+    expect(other.getByLabelText(MENU_TEXT.bookmark)).toBeTruthy();
+  });
+
   test("signed out like or bookmark shows login prompt without request", async () => {
     setAuth("signedOut");
     await enterWith({ items: [post("p1")], next_cursor: null });

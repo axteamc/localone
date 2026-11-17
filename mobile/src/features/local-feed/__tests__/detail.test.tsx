@@ -255,6 +255,28 @@ describe("공감·저장 (H5·H6·H-#5·H-#6)", () => {
     expect(await bar.findByText("2")).toBeTruthy();
   });
 
+  test("detail reaction and bookmark changes are sent to feed as field patches", async () => {
+    // ①-2: 상세 변경을 피드가 받을 수 있게 바뀐 필드만 알린다. 실패하면 알리지 않는다
+    const heard: Array<[string, api.PostReactionPatch]> = [];
+    const off = api.onPostReaction((id, patch) => heard.push([id, patch]));
+    setReaction
+      .mockResolvedValueOnce({ post_id: "p1", reacted: true, reaction_count: 3 })
+      .mockRejectedValueOnce(new api.ApiCallError(503, "UPSTREAM", "", ""));
+    setBookmark.mockResolvedValueOnce({ post_id: "p1", bookmarked: true });
+    await enter();
+    await fireEvent.press(screen.getByTestId("reaction-button"));
+    await within(screen.getByTestId("detail-action-bar")).findByText("3");
+    await fireEvent.press(screen.getByTestId("save-button"));
+    await within(screen.getByTestId("detail-action-bar")).findByText(SAVE_TEXT.saved);
+    await fireEvent.press(screen.getByTestId("reaction-button"));
+    expect(await screen.findByText(MENU_TEXT.failed)).toBeTruthy();
+    off();
+    expect(heard).toEqual([
+      ["p1", { my_reaction: true }],
+      ["p1", { my_bookmark: true }],
+    ]);
+  });
+
   test("detail signed out reaction or bookmark shows login prompt", async () => {
     setAuth("signedOut");
     await enter();

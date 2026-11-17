@@ -174,3 +174,21 @@ export function onPostWithdrawn(listener: WithdrawnListener): () => void {
 export function emitPostWithdrawn(postId: string): void {
   withdrawnListeners.forEach((l) => l(postId));
 }
+
+// ─────────── 상세에서 바꾼 공감·북마크를 마운트된 피드 카드 메뉴에 맞추기(PR #141 사후 검토 ①-2) ───────────
+// 바뀐 필드만 보낸다. 피드가 언마운트돼 있던 동안의 변경은 다시 마운트될 때 서버 목록으로 새로 받는다.
+
+export type PostReactionPatch = Partial<Pick<FeedPost, "my_reaction" | "my_bookmark">>;
+type ReactionListener = (postId: string, patch: PostReactionPatch) => void;
+const reactionListeners = new Set<ReactionListener>();
+
+export function onPostReaction(listener: ReactionListener): () => void {
+  reactionListeners.add(listener);
+  return () => {
+    reactionListeners.delete(listener);
+  };
+}
+
+export function emitPostReaction(postId: string, patch: PostReactionPatch): void {
+  reactionListeners.forEach((l) => l(postId, patch));
+}
