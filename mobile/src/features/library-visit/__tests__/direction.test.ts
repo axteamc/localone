@@ -57,12 +57,24 @@ describe("direction", () => {
     expect(r.groups.map((g) => g.slot)).toEqual(["MAIN"]);
   });
 
-  test("two libraries split west and east by longitude", () => {
+  test("two libraries on opposite sides split west and east", () => {
     const r = groupLibrariesForFacade(C, [lib(1, C.lat, C.lng + 0.02), lib(2, C.lat + 0.01, C.lng - 0.02)]);
     expect(r.kind).toBe("dual");
     expect(r.groups.map((g) => [g.slot, g.items[0]!.lib.id])).toEqual([
       ["W", 2],
       ["E", 1],
+    ]);
+  });
+
+  test("two libraries on the same side use quadrants so slot and compass code agree (③-4)", () => {
+    const r = groupLibrariesForFacade(C, [
+      lib(1, C.lat + 0.01, C.lng + 0.01, { distance_m: 1000 }), // NE 042° 근처
+      lib(2, C.lat - 0.01, C.lng + 0.02, { distance_m: 2000 }), // SE
+    ]);
+    expect(r.kind).toBe("quad");
+    expect(r.groups.map((g) => [g.slot, g.items[0]!.lib.id])).toEqual([
+      ["NE", 1],
+      ["SE", 2],
     ]);
   });
 

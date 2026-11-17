@@ -19,6 +19,7 @@ const TEXT = {
   reload: "↻ 새로고침",
   error: "지금은 도서관을 불러올 수 없어요.",
   empty: "가까운 곳에서 도서관을 찾지 못했어요.",
+  noCoords: "이 지역 도서관은 위치 정보가 없어 여기에 놓지 못했어요.",
   widen: "더 넓게 찾기",
   backToCurrent: "현재 위치로",
   here: "현위치",
@@ -79,6 +80,13 @@ export function HomeScreen() {
             <Text style={styles.ghostText}>{TEXT.widen}</Text>
           </Pressable>
         ) : null}
+      </View>
+    ) : home.status === "ready" &&
+      home.libraries.length > 0 &&
+      home.libraries.every((l) => l.latitude == null || l.longitude == null) ? (
+      // 좌표가 하나도 없으면 블록이 0개라 빈 파사드만 남는다 — 말없이 비워 두지 않는다(사후 검토 ③-3)
+      <View style={styles.card}>
+        <Text style={styles.cardText}>{TEXT.noCoords}</Text>
       </View>
     ) : null;
 
@@ -187,7 +195,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.seamHairline,
     backgroundColor: theme.colors.fill1,
   },
-  findText: { fontSize: 12, fontWeight: "700", color: theme.colors.text },
+  findText: { fontSize: 12, fontWeight: "700", color: onFill(theme.colors.fill1) }, // 채움 위 글자색 자동(디자인_기준 §2, 사후 검토 ③-5)
   body: { flex: 1, overflow: "hidden" },
   card: { alignItems: "center", gap: 10, padding: 20 },
   cardText: { fontSize: 15, textAlign: "center", color: theme.colors.text },

@@ -7,6 +7,7 @@ import * as api from "../deps";
 import { quadLayout } from "../FacadeHome";
 import { HomeScreen } from "../HomeScreen";
 import { snapOffsets } from "../useHomeSheet";
+import { onFill, theme } from "../../../theme";
 
 const mockPush = jest.fn();
 
@@ -94,6 +95,22 @@ describe("VISIT-1 home facade", () => {
     expect(screen.queryByText("좌표없는도서관")).toBeNull();
   });
 
+  test("results with no coordinates at all show a notice instead of a blank facade (③-3)", async () => {
+    const noCoords = (id: number, name: string): api.LibrarySummary => ({
+      ...actual.FAKE_LIBRARIES[0]!, id, name, latitude: null, longitude: null,
+    });
+    m.fetchLibrariesNearby.mockResolvedValue(nearby([noCoords(104, "좌표없는도서관"), noCoords(105, "또없는도서관")]));
+    await render(<HomeScreen />);
+    expect(await screen.findByText("이 지역 도서관은 위치 정보가 없어 여기에 놓지 못했어요.")).toBeTruthy();
+    expect(screen.queryByText("좌표없는도서관")).toBeNull();
+  });
+
+  test("find button text color is chosen for its fill (③-5)", async () => {
+    await render(<HomeScreen />);
+    await screen.findByText("정독도서관");
+    expect(StyleSheet.flatten(screen.getByText("도서관 찾기").props.style).color).toBe(onFill(theme.colors.fill1));
+  });
+
   test("distance falls back to straight-line when the server gives none", async () => {
     m.fetchLibrariesNearby.mockResolvedValue(nearby([{ ...actual.FAKE_LIBRARIES[0]!, distance_m: null }]));
     await render(<HomeScreen />);
@@ -103,7 +120,7 @@ describe("VISIT-1 home facade", () => {
     expect(screen.getByText("0m")).toBeTruthy();
   });
 
-  test("two libraries sit west and east by longitude", async () => {
+  test("two libraries on opposite sides sit west and east", async () => {
     m.fetchLibrariesNearby.mockResolvedValue(nearby([actual.FAKE_LIBRARIES[0]!, actual.FAKE_LIBRARIES[1]!]));
     await render(<HomeScreen />);
     await screen.findByText("정독도서관");
