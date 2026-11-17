@@ -424,22 +424,30 @@ class ProviderEngine:
 
 
     async def get_book(self, isbn13: str) -> BookRecord:
-        """DB에 있으면 그대로, 없으면 제공자 조회. 키가 없고 캐시도 없으면 503."""
+        """기존 책의 누락된 소개·연도를 다음 조회 때 채운다(K21). 실패하면 기존 캐시 보존."""
         record = await self._db(lambda c: select_book(c, isbn13))
-        if record is not None:
+        if record is not None and record.description is not None and record.pub_year is not None:
             return record
         provider = self.providers.books
         if provider is None:
+            if record is not None:
+                return record
             raise ApiError(503, "PROVIDER_UNAVAILABLE", MSG_PROVIDER_UNAVAILABLE)
         try:
             info = await self._guarded_call(
                 "naver", policy.NAVER_DAILY_LIMIT, lambda: provider.lookup_isbn(isbn13)
             )
         except ProviderLimitReached:
+            if record is not None:
+                return record
             raise ApiError(429, "PROVIDER_LIMIT", MSG_PROVIDER_LIMIT) from None
         except ProviderError:
+            if record is not None:
+                return record
             raise ApiError(503, "PROVIDER_UNAVAILABLE", MSG_PROVIDER_UNAVAILABLE) from None
         if info is None:
+            if record is not None:
+                return record
             raise ApiError(404, "NOT_FOUND", MSG_NOT_FOUND)
         fetched_at = self.now_fn()
         return (await self._db(lambda c: upsert_books(c, [info], "naver", fetched_at, overwrite=True)))[0]
