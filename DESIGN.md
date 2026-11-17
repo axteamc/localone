@@ -22,14 +22,14 @@
 
 | 토큰 | 모던 | warm (M1 기본) | toffee | Oxford |
 | --- | --- | --- | --- | --- |
-| 배경 `bg` | #CDCDCB | #E1E1DE | #E4E2DB | #E3E5E8 |
-| 선반·시트 `surface2` | #BDBDBA | #D0CEC8 | #D5CFC4 | #D1D5DB |
-| 선반 진한색 `surface3` | #A8A8A5 | #BFBCB5 | #C2BBAD | #BCC2CC |
+| 배경 `bg` | #CDCDCB | #E1E1DE | #E4E2DB | #CDCDCB |
+| 선반·시트 `surface2` | #BDBDBA | #D0CEC8 | #D5CFC4 | #BDBDBA |
+| 선반 진한색 `surface3` | #A8A8A5 | #BFBCB5 | #C2BBAD | #A8A8A5 |
 | 채움1 `fill1` (대표색) | #FB5102 | #E9C970 | #6E5140 | #35557F |
-| 채움2 `fill2` | #F2F2EF | #EDC9A9 | #D2BE9E | #D2B48C |
-| 채움3 `fill3` | #9AA0B4 | #B3BFB5 | #AEA18B | #9DB0C9 |
-| 크림 `cream` | #E9E9E6 | #EFEFE7 | #EEEFED | #F3EFE7 |
-| 카드 `paper` (순백 아님) | #E6E6E4 | #EFF1F1 | #EEEFED | #F2F3F5 |
+| 채움2 `fill2` | #F2F2EF | #EDC9A9 | #C88A56 | #D2B48C |
+| 채움3 `fill3` | #9AA0B4 | #B3BFB5 | #7E8C7D | #7A93AC |
+| 크림 `cream` | #E9E9E6 | #EFEFE7 | #EEEFED | #E9E9E6 |
+| 카드 `paper` (순백 아님) | #E6E6E4 | #EFF1F1 | #EEEFED | #E6E6E4 |
 | 진한색 `ink-strong` (버튼·받침) | #1C1E2A | #2E333F | #332A27 | #002147 |
 
 - 본문 글자 #1D1D1F. 보조 글자 = `bg`를 50% 어둡게, 구분선 = `bg`를 13% 어둡게.
@@ -39,6 +39,9 @@
 - 웜 배경 #E1E1DE는 R < G ≈ B라 "붉은기가 도는 웜 뉴트럴"(취향 프로필)보다 중성 쪽이다. 사용자가 균형이 가장 좋다고 골랐다.
 - Oxford의 큰 면은 #002147보다 한 단계 밝은 #35557F, #002147은 버튼·받침에만 쓴다. 모던은 튀어도 된다.
 - 색 대비는 시안으로 사용자가 확정한다. 접근성(색약 등)은 확정 후 한 번 수치로 확인한다.
+- **2026-11-17 확정(홈 시안 C, 사용자 결정)**: toffee `fill2` #C88A56(캐러멜 앰버)·`fill3` #7E8C7D(올리브 세이지)로 분리해 배경 표면과 겹침을 없앴다. Oxford는 `bg`·`surface2`·`surface3`·`cream`·`paper`를 모던과 같은 무채색으로 통일하고 `fill3`를 #7A93AC로 조정했다. 시안은 외부(웹 Gemini)에서 확인해 확정했고 이 문서가 기록이다. 전체 근거는 [개정 통합본](개발산출물/명세/DESIGN_개정통합본_홈중심_조형시스템.md).
+- **파생 색(시안 C 파사드·릴리프)**: `mix(A,B,w)=A×w+B×(1-w)`. `panelFrosted=mix(paper,bg,.58)`, `panelLit=mix(paper,cream,.84)`, `seamHairline=mix(inkStrong,bg,.14)`, `rivetBase=mix(inkStrong,surface3,.34)`, `rivetShine=mix(paper,bg,.9)`, `reliefBottomMid=mix(inkStrong,surface2,.15)`, `reliefSideDark=mix(inkStrong,surface3,.26)`. 값의 원본은 `mobile/src/theme/tokens.ts`의 `DERIVE`와 `index.ts`의 `mix`다(통합본 표와 1~2 차이가 나면 코드 산식이 맞다). 조명·그림자(`seamHighlight`·`shadowAmbient`·`shadowCast`·`shadowDeep`)는 룩과 무관한 고정값이다.
+- **색 배정 85:10:5**: 화면의 85%는 무광 배경·블록 윗면, 10%는 구조(`inkStrong`·줄눈·두께면), 5%는 블록 왼쪽 스파인(`fill1~3`, 휴관 `pinClosed`). `inkStrong`으로 꽉 채우는 면은 중앙 + 기점과 하단 주 행동 버튼 1개뿐이다. 스파인은 휴관 우선, 가장 가까운 영업 중 도서관 `fill1`, 나머지 `fill2`·`fill3` 교대.
 
 ### 보류
 - 포인트(링크·선택 상태)에 쓸 색은 정하지 않았다. 링크용 파랑은 구식 느낌이라 쓰지 않기로 했다.
@@ -50,6 +53,7 @@
 | 카드 곡률 | 6px | 18px |
 | 모임 카드 곡률 | 6px | 위 70px · 아래 18px (아치) |
 | 도서관 아이콘 | 3px | 위 23px · 아래 6px (아치) |
+| 3D 돌출 블록 외곽 `radii.block` (시안 C) | 3px | 3px (모든 룩 같음) |
 | 알약(칩·모임 태그) | 6px | 18px |
 | 책 표지 | 2·4·4·2px | 5·9·9·5px |
 | 선반 아래 | 얇고 납작한 받침 | 도어 블록 3개 + 렌즈형 손잡이 |
