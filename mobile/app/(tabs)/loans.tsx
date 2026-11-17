@@ -4,7 +4,7 @@ import { useRouter } from "expo-router";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../src/auth/AuthProvider";
 import { LoanPlansSection } from "../../src/features/book-search/LoanPlansSection";
-import { theme } from "../../src/theme";
+import { theme, actionColors } from "../../src/theme";
 
 export const LOANS_LOGIN = "로그인하면 빌릴 예정과 내 대출을 볼 수 있어요";
 export const LOANS_SLOT = "빌린 책은 곧 여기에 표시돼요";
@@ -48,6 +48,7 @@ export default function LoansTabScreen() {
 }
 
 const c = theme.colors;
+const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.bg },
   center: { alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
@@ -58,10 +59,10 @@ const styles = StyleSheet.create({
   box: { backgroundColor: c.paper, borderRadius: theme.radii.card, padding: 16 },
   text: { fontSize: 15, color: c.text, lineHeight: 22, textAlign: "center" },
   darkBtn: {
-    backgroundColor: c.inkStrong,
+    ...ACT.primary,
     borderRadius: theme.radii.control,
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
-  darkBtnText: { fontSize: 14, color: c.paper, fontWeight: "700" },
+  darkBtnText: { fontSize: 14, ...ACT.primaryText, fontWeight: "700" },
 });

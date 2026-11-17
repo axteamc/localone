@@ -18,7 +18,7 @@ describe("APP-0-P1 theme", () => {
       rivetShine: "#EEEFEF", reliefBottomMid: "#B8B7B3", reliefSideDark: "#999896",
     });
     expect(theme.radii).toEqual({ card: 18, clubCardTop: 70, clubCardBottom: 18,
-      libraryIconTop: 23, libraryIconBottom: 6, pill: 18, bookCover: [5, 9, 9, 5], control: 9999, inner: 12, block: 3 });
+      libraryIconTop: 23, libraryIconBottom: 6, pill: 18, bookCover: [5, 9, 9, 5], control: 9999, inner: 12, block: 3, infoCard: 9 });
   });
   test("onFill picks higher contrast", () => {
     expect(onFill(theme.colors.fill1)).toBe("#1D1D1F");

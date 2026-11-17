@@ -1,6 +1,6 @@
 // "도서관 찾기" 창 (계약서 library-visit.md VISIT-1 V11·V13, 결정 1: 위에서 반쯤 내려오는 하얀 창)
 // 색은 theme 토큰만(창 paper, 테두리 divider, 덮개 shadowDeep, 글자 text·inkMuted). 배경이 없어 창이 투명하던 것 고침(시연 전 개선 S1 W-2)
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { BackHandler, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { LibrarySummary, Region } from "./deps";
 import { theme } from "../../theme";
@@ -29,6 +29,7 @@ export type FindLibrarySheetProps = {
 export function FindLibrarySheet(props: FindLibrarySheetProps) {
   const { onClose, onPickRegion, onPickLibrary } = props;
   const find = useFindLibrary();
+  const [focused, setFocused] = useState(false);
 
   // V13: Android 기기 뒤로 버튼은 창만 닫는다(다른 플랫폼에서는 부르지 않는 공통 API, C4)
   useEffect(() => {
@@ -75,7 +76,9 @@ export function FindLibrarySheet(props: FindLibrarySheetProps) {
             placeholder={TEXT.placeholder}
             placeholderTextColor={c.inkMuted}
             returnKeyType="search"
-            style={styles.input}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            style={[styles.input, focused && styles.inputFocus]}
           />
         </View>
         {find.status === "loading" ? <Text style={styles.guide}>{TEXT.loading}</Text> : null}
@@ -132,7 +135,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     fontSize: 15,
     color: c.text,
+    outlineWidth: 0, // 웹 기본 파란 포커스 테두리 제거(파랑 금지, S4 기본값)
   },
+  inputFocus: { borderColor: c.inkStrong, borderWidth: 1.5 },
   guide: { paddingVertical: 14, paddingHorizontal: 20, fontSize: 14, textAlign: "center", color: c.inkMuted },
   errorBox: { alignItems: "center", paddingBottom: 10 },
   button: { paddingVertical: 8, paddingHorizontal: 14, borderWidth: 1, borderColor: c.divider, borderRadius: 999 },

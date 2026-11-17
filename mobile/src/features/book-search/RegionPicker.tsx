@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { requestLocationPermission } from "../../lib/platform";
 import { REGIONS, searchRegions } from "../../lib/regions";
-import { theme } from "../../theme";
+import { theme, actionColors } from "../../theme";
 
 export const REGION_INTRO = "위치를 쓰지 않고 지역을 골라 찾을 수 있어요.";
 export const REGION_NO_MATCH = "일치하는 지역이 없어요. 시·군·구 이름으로 다시 입력해 주세요.";
@@ -70,16 +70,17 @@ export function RegionPicker({
 }
 
 const c = theme.colors;
+const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   box: { backgroundColor: c.paper, borderRadius: theme.radii.card, padding: 16, gap: 10 },
   intro: { fontSize: 15, color: c.text, lineHeight: 22 },
   locBtn: {
-    backgroundColor: c.inkStrong,
-    borderRadius: theme.radii.inner,
+    ...ACT.primary,
+    borderRadius: theme.radii.control,
     paddingVertical: 12,
     alignItems: "center",
   },
-  locBtnText: { color: c.paper, fontSize: 15, fontWeight: "700" },
+  locBtnText: { ...ACT.primaryText, fontSize: 15, fontWeight: "700" },
   input: {
     backgroundColor: c.paper,
     borderWidth: 1,

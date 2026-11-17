@@ -2,7 +2,7 @@
 import React, { useRef } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { markDefaultAsked, setDefaultLibrary } from "../../lib/visits";
-import { onFill, theme } from "../../theme";
+import { onFill, theme, actionColors } from "../../theme";
 
 const C = theme.colors;
 
@@ -49,6 +49,7 @@ export function AskDefaultCard({
   );
 }
 
+const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   card: {
     position: "absolute",
@@ -69,6 +70,6 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", justifyContent: "flex-end", gap: 8, marginTop: 6 },
   no: { paddingHorizontal: 14, paddingVertical: 10 },
   noText: { color: C.textSub, fontWeight: "700" },
-  yes: { backgroundColor: C.inkStrong, borderRadius: theme.radii.control, paddingHorizontal: 16, paddingVertical: 10 },
-  yesText: { color: onFill(C.inkStrong), fontWeight: "700" },
+  yes: { ...ACT.primary, borderRadius: theme.radii.control, paddingHorizontal: 16, paddingVertical: 10 },
+  yesText: { ...ACT.primaryText, fontWeight: "700" },
 });

@@ -1,7 +1,7 @@
 // 반경·지역 안에서 소장 도서관을 못 찾았을 때 안내(book-search.md LIB-2 A5·A12, V-2·V-3)
 // "없어요"라고 단정하지 않고 "찾지 못했어요"라고 쓴다(02 LIB-07).
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { theme } from "../../theme";
+import { theme, actionColors } from "../../theme";
 
 export const EMPTY_NEARBY =
   "내 주변 도서관에서 소장 도서를 찾지 못했어요. 시군구 전체 도서관에서 다시 찾아보거나 나중에 빌릴 책으로 저장해 보세요.";
@@ -42,16 +42,17 @@ export function EmptyAvailability({
 }
 
 const c = theme.colors;
+const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   box: { backgroundColor: c.paper, borderRadius: theme.radii.card, padding: 16, gap: 10 },
   text: { fontSize: 15, color: c.text, lineHeight: 22 },
   primary: {
-    backgroundColor: c.inkStrong,
-    borderRadius: theme.radii.inner,
+    ...ACT.primary,
+    borderRadius: theme.radii.control,
     paddingVertical: 14,
     alignItems: "center",
   },
-  primaryText: { color: c.paper, fontSize: 16, fontWeight: "700" },
+  primaryText: { ...ACT.primaryText, fontSize: 16, fontWeight: "700" },
   secondary: {
     borderWidth: 1,
     borderColor: c.divider,

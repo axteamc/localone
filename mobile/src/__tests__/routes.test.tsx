@@ -10,6 +10,7 @@ import LibraryDetailStubScreen from "../../app/libraries/[libraryId]";
 import PostDetailStubScreen from "../../app/posts/[postId]";
 import NewPostStubScreen from "../../app/posts/new";
 import type { SignInResult } from "../auth/platform";
+import { theme } from "../theme";
 import { useAuth } from "../auth/AuthProvider";
 
 const mockPush = jest.fn();
@@ -187,9 +188,10 @@ describe("APP-0-P2 routes and tabs", () => {
 
     expect(view.getByTestId("auth-provider")).toBeTruthy();
     expect(view.getByTestId("root-stack")).toBeTruthy();
-    expect(mockLastStackScreenOptions).toEqual({ title: "동네한권" });
+    expect(mockLastStackScreenOptions).toEqual({ title: "동네한권", headerStyle: { backgroundColor: theme.colors.cream } });
     expect(mockRecordedStackScreens).toEqual([
       { name: "(tabs)", options: { headerShown: false } },
+      { name: "login", options: { title: "" } },
     ]);
   });
 

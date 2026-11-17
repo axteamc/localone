@@ -4,7 +4,7 @@
 import { useRef, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { AvailabilityItem } from "../../lib/publicApi";
-import { theme } from "../../theme";
+import { theme, actionColors } from "../../theme";
 import { ApiCallError, saveLoanPlan, type LoanPlan } from "./api";
 import { distanceLabel, holdingText } from "./availabilityText";
 
@@ -108,6 +108,7 @@ export function SavePlanSheet({
 }
 
 const c = theme.colors;
+const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   scrim: { flex: 1, justifyContent: "flex-end", backgroundColor: c.shadowSoft },
   sheet: {
@@ -140,11 +141,11 @@ const styles = StyleSheet.create({
   name: { fontSize: 15, fontWeight: "700", color: c.text },
   meta: { fontSize: 13, color: c.textSub, marginTop: 2 },
   choose: {
-    backgroundColor: c.inkStrong,
+    ...ACT.secondary,
     borderRadius: theme.radii.control,
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
   dim: { opacity: 0.5 },
-  chooseText: { fontSize: 14, color: c.paper, fontWeight: "700" },
+  chooseText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "700" },
 });

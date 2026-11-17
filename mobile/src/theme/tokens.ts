@@ -133,6 +133,8 @@ export type Radii = {
   inner: number;
   /** 3D 돌출 블록 외곽. 모든 룩에서 3으로 같다(직육면체 매스감). */
   block: number;
+  /** 정보 카드(책 상세 소장 카드) 곡률. 2026-11-18 S4 D 결정(C-70): 아치 룩 9, modern 6. */
+  infoCard: number;
 };
 
 /** 디자인_기준.md §3 "형태 토큰". 모던은 직각 계열, 나머지 3룩은 아치 계열. */
@@ -147,6 +149,7 @@ const ARCH_RADII: Radii = {
   control: 9999,
   inner: 12,
   block: 3,
+  infoCard: 9,
 };
 
 const SQUARE_RADII: Radii = {
@@ -160,6 +163,7 @@ const SQUARE_RADII: Radii = {
   control: 9999,
   inner: 12,
   block: 3,
+  infoCard: 6,
 };
 
 export const LOOK_RADII: Record<LookPreset, Radii> = {

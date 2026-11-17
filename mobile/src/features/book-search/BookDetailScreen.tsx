@@ -6,7 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
 import { ApiCallError, fetchBook, type AvailabilityItem, type Book } from "../../lib/publicApi";
-import { theme } from "../../theme";
+import { theme, actionColors } from "../../theme";
 import { availabilitySummary, checkedAtLabel } from "./availabilityText";
 import { EmptyAvailability } from "./EmptyAvailability";
 import { LibraryAvailabilityCard } from "./LibraryAvailabilityCard";
@@ -287,10 +287,11 @@ function AvailabilitySection({
 }
 
 const c = theme.colors;
+const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   availability: { marginTop: 8, gap: 10 },
   availBusy: { marginVertical: 16 },
-  cards: { gap: 10 },
+  cards: { gap: 12 },
   scopeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   scopeBtn: {
     borderWidth: 1,
@@ -320,12 +321,12 @@ const styles = StyleSheet.create({
   sub: { fontSize: 14, color: c.textSub, marginTop: 4 },
   saveBtn: {
     marginTop: 16,
-    backgroundColor: c.inkStrong,
-    borderRadius: theme.radii.inner,
+    ...ACT.primary,
+    borderRadius: theme.radii.control,
     paddingVertical: 14,
     alignItems: "center",
   },
-  saveBtnText: { color: c.paper, fontSize: 16, fontWeight: "700" },
+  saveBtnText: { ...ACT.primaryText, fontSize: 16, fontWeight: "700" },
   note: {
     marginTop: 10,
     backgroundColor: c.paper,
@@ -347,10 +348,10 @@ const styles = StyleSheet.create({
   },
   stateText: { fontSize: 15, color: c.text, lineHeight: 22 },
   darkBtn: {
-    backgroundColor: c.inkStrong,
+    ...ACT.secondary,
     borderRadius: theme.radii.control,
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
-  darkBtnText: { fontSize: 14, color: c.paper, fontWeight: "700" },
+  darkBtnText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "700" },
 });
