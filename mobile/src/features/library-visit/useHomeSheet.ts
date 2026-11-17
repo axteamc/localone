@@ -7,8 +7,11 @@ export type SheetSnap = "half" | "full" | "peek";
 
 /** 내렸을 때 남는 높이(제목 한 줄) */
 export const PEEK_HEIGHT = 56;
-/** 평소 높이: 창이 놓인 영역(검색창 아래 ~ 하단 탭 위)을 지도와 창이 반반(결정 2 "지도와 창이 반반") */
+/** 평소 높이: 기본은 지도와 창이 반반. 작은 화면에서는 아래 최소 높이를 우선한다. */
 export const HALF_RATIO = 0.5;
+/** 큰 표지·두 줄 제목과 소식 진입부의 목표 높이. 지도 블록 자리도 함께 보장한다. */
+const MIN_HALF_HEIGHT = 320;
+const MIN_MAP_HEIGHT = 220;
 /** 손을 뗄 때 이 속도(px/ms) 이상이면 그 방향 다음 자리로 */
 export const FLING_VELOCITY = 0.5;
 /** 이만큼 움직여야 끌기로 본다(누름과 구분) */
@@ -17,7 +20,8 @@ const DRAG_SLOP = 6;
 /** 창 위쪽 끝의 자리(창이 놓인 영역의 맨 위에서 아래로 몇 px). 위에서부터 full → half → peek */
 export function snapOffsets(areaHeight: number): Record<SheetSnap, number> {
   const peek = Math.max(0, areaHeight - PEEK_HEIGHT);
-  const half = Math.min(peek, Math.round(areaHeight * HALF_RATIO));
+  const defaultHalf = Math.min(peek, Math.round(areaHeight * HALF_RATIO));
+  const half = Math.max(Math.min(defaultHalf, MIN_MAP_HEIGHT), Math.min(defaultHalf, areaHeight - MIN_HALF_HEIGHT));
   return { full: 0, half, peek };
 }
 
