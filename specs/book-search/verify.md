@@ -77,3 +77,49 @@
 
 - 웹 브라우저·Android 화면 확인 미실행: 로컬 서버·DB(Docker)가 없고, 이 PC에 에뮬레이터가 없음. `npx expo export --platform web`은 통과.
 - 반경은 AUTH-2 전까지 3(`TODO(연결): D(AUTH-2)`), `나중에 빌릴 책으로 저장`은 LIB-3(`TODO(연결): C LIB-3`).
+
+---
+
+# 도서 탐색 LIB-3 검증서
+
+- 기능: `book-search` LIB-3(빌릴 예정 저장·조회) · 담당: C · 대상 PR: #139(스택: #137 위) · 작성일: 2026-11-17
+- 기준: 계약서 `contracts/book-search.md` LIB-3 D+C 확정판(`11f0bfaa`) C1 N1~N10·C5·C6 L3-#1~#8·P5, 02 AC-PLAN
+- 서버 시험은 **로컬 격리 Postgres 17 컨테이너**에 마이그레이션(`0005`)을 올리고 실제 SQL로 돌렸다(원격·운영 DB 없음). 이 PC는 앱 제어 정책이 venv 실행 파일·psycopg DLL을 막아 서버 시험을 Linux 컨테이너(Python 3.12, `uv.lock` 그대로)에서 실행했다.
+- 화면 시험은 `book-search/api.ts`·core `lib/publicApi`·`lib/platform`을 목으로 바꿔 했다.
+
+## 1. 수용 기준 전수 점검
+
+| 요구사항 ID | AC | 준비 | 행동 | 기대 | 실제 (출력·화면) | 증거 (`파일:줄`·시험) | 웹 | Android | iOS (D) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| (LIB-3) | AC-PLAN | 같은 사람·책·도서관 | #17 두 번 + 동시 4번 | `201` 뒤 `200`, 같은 `id`, 활성 행 1 | 시험 통과 | `loan_plans.py` `INSERT … ON CONFLICT … DO NOTHING`, `test_save_same_plan_twice_one_row` | 해당 없음(서버) | 해당 없음 | 해당 없음 |
+| (LIB-3) | N2 | 도서관 101·102 | #17 | 행 2 / 해제 뒤 다시 저장은 새 `id` | 시험 통과 | `test_same_book_other_library_is_separate`, `test_release_then_save_again_creates_new` | — | — | — |
+| (LIB-3) | N4·L3-#6·#7 | 내 것·남의 것·`converted` | #18 | 두 번째도 `200 released`, 남의 것=없는 것 `404`, `converted` `409` | 시험 통과 | `release_tx`, `test_release_twice_is_200`, `test_release_other_users_plan_is_404_unchanged`, `test_release_converted_is_409` | — | — | — |
+| (LIB-3) | N5·H-ARCH-10 | 같은 `created_at` 5개 | `limit=2` 끝까지 | 5개 한 번씩, 최근 저장 위 | 시험 통과 | `test_list_cursor_no_dup_on_ties`, `test_list_newest_first`, `test_list_only_mine` | — | — | — |
+| (LIB-3) | N1·N7·N8 | 로그인 + 주변 2곳 | 저장 → `선택` 두 번 | 비로그인은 로그인 안내·창 없음, 로그인은 창, 요청 1번, 메모 안내, `예약`·`확보` 0 | 시험 통과 | `SavePlanSheet.tsx`, `plans.test.tsx` `save sheet opens only when signed in`, `save plan double tap sends once…` | 통과(목) | 미실행(에뮬레이터 없음) | 대기 |
+| (LIB-3) | N3·N7 | 소장 yes 0곳 / 0곳 | `나중에 빌릴 책으로 저장` | 지금 찾아본 도서관이 후보 / 없으면 안내 | 시험 통과 | `BookDetailScreen.tsx` `onSaveForLater`, `empty availability save button opens sheet`, `sheet without looked-up libraries…` | 통과(목) | 미실행 | 대기 |
+| (LIB-3) | N9 | 비로그인 / 로그인 + 2개 | `/loans` | 로그인 안내(#16 0번) / `내 대출` 아래 `빌릴 예정` 2건 | 시험 통과 | `app/(tabs)/loans.tsx`, `loans tab shows loans slot above planned list…` | 통과(목) | 미실행 | 대기 |
+| (LIB-3) | N10 | 2개 / 0개 / 실패 | `빼기`(지연 중 재클릭) / 진입 | 확인창 없이 1번, 끝나면 제거 / 빈 안내 + `책 찾아보기` / 다시 시도·더 보기 | 시험 통과 | `LoanPlansSection.tsx`, `release button removes item without confirm dialog`, `empty planned list guides to search`, `list failure shows retry and more button…` | 통과(목) | 미실행 | 대기 |
+| (LIB-3) | 실제 서버 연결 화면 | 로컬 서버 + 로그인 | 상세 저장 → `/loans` | 같은 화면 | 미실행 | 로그인(Supabase OAuth)을 이 PC에서 띄울 수 없음. 서버 동작은 실제 DB 시험으로 확인 | 미실행 | 미실행 | 대기 |
+
+## 2. 계약 예외(C6) 점검
+
+| 예외 # | 확인한 방법 | 화면 문구가 계약과 같은가 | 기록이 안 바뀌었나 | 결과 |
+| :--- | :--- | :--- | :--- | :--- |
+| L3-#1 로그인 안 함 | `test_requires_login`, `save 401 closes sheet and shows login prompt`, `loans tab … guards signed out` | 같음(S-9 / N9 문구) | 행 0 | 통과 |
+| L3-#2 형식 | `test_save_validation_is_422_no_row`(7가지), `test_list_validation_is_422`, `test_invalid_cursor_is_422_detail_cursor`, `test_release_invalid_plan_id_is_422` | — | 행 0, `detail` = 필드 | 통과 |
+| L3-#3 다시 저장·연타 | `test_save_same_plan_twice_one_row`, `save plan double tap…` | 같음(N8) | 행 1 | 통과 |
+| L3-#4 없는 도서관·책 | `test_unknown_library_is_404_detail_library_id`, `test_unknown_book_is_404_detail_isbn13` | 창 안 `저장하지 못했어요…` | 행 0, `detail` 보강 | 통과 |
+| L3-#5 제공자 실패 | `test_provider_failure_passes_through_no_row`, `save failure keeps sheet open for retry` | 같음(창 유지·다시 시도) | 행 0 | 통과 |
+| L3-#6 남의 것·없는 것 해제 | `test_release_other_users_plan_is_404_unchanged` | 목록 다시 읽기 | B 행 `planned` 그대로 | 통과 |
+| L3-#7 `converted` 해제 | `test_release_converted_is_409`, `release failure keeps item and shows message` | 같음 | 행 그대로, 카드 유지 | 통과 |
+| L3-#8 탈퇴 경합 | `test_save_while_withdrawing_is_403_no_row`(잠금 대기 관측) | — | 행 0 | 통과 |
+
+## 3. 계약과 달라진 점
+
+- 허용 파일 표 밖 시험 2곳: `__tests__/detail.test.tsx`(LIB-1 "준비 중이에요" 단언 → 창 열림), `src/__tests__/routes.test.tsx`(대출·반납 스텁 "준비 중이에요" → N9 로그인 안내, 빌릴 예정 구역 목). PR #139 검토 메모 `[계약 보완 필요]`.
+- `EmptyAvailability.tsx`는 고치지 않음 — 이미 `onSaveForLater` 속성을 받아, 연결은 `BookDetailScreen.tsx`에서만 함.
+
+## 4. 남은 문제
+
+- Android 미실행(에뮬레이터 없음), 웹·실제 서버 화면 미실행(로그인 필요). `npx expo export --platform web` 통과.
+- `내 대출` 구역은 `TODO(연결): C LOAN-1-P2` 안내 자리.
