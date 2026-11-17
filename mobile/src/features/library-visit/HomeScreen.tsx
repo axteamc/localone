@@ -228,7 +228,16 @@ export function HomeScreen() {
 
         {/* V15: 화면을 가리지 않는 작은 알약 */}
         {home.status === "loading" ? (
-          <View style={[styles.pillWrap, home.mode === "map" && dragCenter ? styles.pillBelow : null]} pointerEvents="none">
+          <View
+            style={[
+              styles.pillWrap,
+              home.mode === "map" && dragCenter ? styles.pillBelow : null,
+              // 목록 모드에서는 맨 위 "지도를 불러오지 못했어요" 줄과 겹치지 않게 그 줄 아래에
+              home.mode === "list" ? styles.pillBelowFailedRow : null,
+            ]}
+            pointerEvents="none"
+            testID="home-loading-pill"
+          >
             <Text style={styles.pill}>{TEXT.loading}</Text>
           </View>
         ) : null}
@@ -290,6 +299,7 @@ const styles = StyleSheet.create({
   button: { paddingVertical: 8, paddingHorizontal: 14, borderWidth: 1, borderRadius: 999 },
   pillWrap: { position: "absolute", top: 8, left: 0, right: 0, alignItems: "center" },
   pillBelow: { top: 52 },
+  pillBelowFailedRow: { top: 64 },
   dim: { opacity: 0.4 },
   hidden: { opacity: 0 },
   pill: { paddingVertical: 6, paddingHorizontal: 12, borderWidth: 1, borderRadius: 999, fontSize: 13 },

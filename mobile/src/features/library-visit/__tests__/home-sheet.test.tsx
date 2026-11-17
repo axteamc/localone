@@ -163,6 +163,19 @@ describe("VISIT-1b-P1 home sheet", () => {
     expect(popular().queryByText("책11")).toBeNull();
   });
 
+  test("broken cover url falls back to title cover", async () => {
+    await openHome();
+    // 가짜 첫 책은 cover_url이 있다. 그림을 못 받으면 빈칸이 아니라 제목 글자 표지로 바뀐다(C3)
+    const image = await popular().findByTestId("popular-book-cover-image");
+    const first = popular().getByLabelText("1위 소년이 온다");
+    expect(within(first).getAllByText("소년이 온다")).toHaveLength(1);
+    await act(async () => {
+      image.props.onError?.({ nativeEvent: { error: "load failed" } });
+    });
+    expect(popular().queryByTestId("popular-book-cover-image")).toBeNull();
+    expect(within(first).getAllByText("소년이 온다")).toHaveLength(2);
+  });
+
   test("book press opens book detail once", async () => {
     await openHome();
     const first = await popular().findByLabelText("1위 소년이 온다");
