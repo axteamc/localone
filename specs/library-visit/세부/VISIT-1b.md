@@ -132,6 +132,7 @@
 - [이해 확인] 30초 설명에 "모임"이 나옴 — M1 홈 하단 카드는 게시물만(B절, 02 LOCAL-03)이라 짚고 사용자 동의로 한 줄 설명에서 뺌 — team 기능_배정.md B절
 - [원문 반영] 원문에 없는데 넣은 것 — 방문한 도서관이 없을 때 "가까운 도서관 소식"으로 대신 보여 주기(사용자 결정 3), 창 세 군데 멈춤(사용자 결정 2). 원문에 있는데 뺀·바꾼 것 — O-7 "독서 기록"(내 최근 기록)은 READ(M2)로 미룸(C-61), O-7 "추천 서적"은 "이 동네 인기 도서"(많이 빌린 순)로 둠(C-61 예시 "인기 도서 목록")
 - [범위] 중심 요소 3개는 기능_배정.md A절 '기획에서 정할 것'의 VISIT-1b 세 줄을 그대로 옮김 — team 기능_배정.md A절
+- [구현 중 변경] (검증, 2026-11-17 Android) 인기 도서 표지 주소는 있는데 그림을 못 받으면(깨진 주소·끊김) 표지 자리가 빈칸으로 남음 — 그림 실패 시 C3 제목 글자 표지로 바꿈, 시험 `broken cover url falls back to title cover` 추가(되돌리면 실패 확인) — mobile/src/features/library-visit/PopularBooksRow.tsx:85-106
 
 ## 다음에 할 것
 
@@ -147,7 +148,7 @@
 | VISIT-1b-P1 하단 창·인기 도서 한 줄 | `feat/library-visit-VISIT-1b` | #122 | 완료 | `useHomeSheet.ts:18-31`(세 자리·붙기)·`:83-85`(끌기), `useHomeFeed.ts:64-97`(기준 도서관 W2)·`:99-111`(인기 칸·10권), `PopularBooksRow.tsx`(W1·W10·예외 #2-d), `HomeSheet.tsx:39-42`(W7·W8), `HomeScreen.tsx:238`(창 붙임) / `__tests__/home-sheet.test.tsx` 8개 통과, mobile 전체 154개 통과, tsc 통과, 웹 내보내기 성공 | `TODO(연결): C` 책 상세, `TODO(VISIT-1b-P2)` 소식 칸 |
 | VISIT-1b-P2 자주 가는·가까운 도서관 소식 | `feat/library-visit-VISIT-1b` | #122 | 완료 | `useHomeFeed.ts:146-224`(알약 게시물·가까운 곳 고르기·이어 받기·새로고침), `LibraryNewsSection.tsx`(W4·W5·예외 #2·#5), `HomeSheet.tsx:50-75`(W6·W8 게시물·이어 받기)·`:101`(C4 스크롤), `useHomeSheet.ts:87-91`(C4 2행) / `__tests__/home-news.test.tsx` 13개 통과(P5 10개 + C4 1개 + 예외 #2-c 2개), mobile 전체 168개 통과, tsc 통과 | `TODO(연결): B` `fetchLibraryPosts`·`PostCard`·`/posts/[postId]` |
 
-- **다음 세션 이어하기 메모**: VISIT-1b-P1·P2 구현 완료, PR #122 Ready·`needs-ios`(D 검토·iOS 확인 대기). 검증서 `specs/library-visit/verify.md`와 Android 에뮬레이터 확인은 D 이슈 #124대로 별도 PR. B LOCAL-2(#26·`PostCard`)·C 책 상세·B 게시물 상세가 머지되면 import만 바꾸는 연결 PR.
+- **다음 세션 이어하기 메모**: VISIT-1b-P1·P2 구현 완료, PR #122 Ready·`needs-ios`(D 검토·iOS 확인 대기). 검증서 `specs/library-visit/verify.md`·Android 에뮬레이터 확인은 D 이슈 #124대로 별도 PR(`docs/library-visit-verify`)에서 끝냄. B LOCAL-2(#26·`PostCard`)·C 책 상세·B 게시물 상세가 머지되면 import만 바꾸는 연결 PR.
 - [계약 보완 필요] `deps.ts`·`__fakes__/publicApi.ts` 수정 — P1 파일 목록 밖. 지도 홈 시험 3개가 `deps`를 `__fakes__`로 바꿔 끼우므로, 창이 쓰는 core 함수(`fetchRecommendations`·`getFrequentLibraries`)와 그 가짜(C7 방문 기록·#9 응답 그대로)를 두 파일에 더해야 기존 시험이 깨지지 않는다. `deps.ts`는 PR #115에서 D가 `[계약 보완]`으로 만든 파일 — mobile/src/features/library-visit/deps.ts, __fakes__/publicApi.ts
 - [계약 보완 필요] `useHomeSheet(areaHeight?)` 선택 인자 — C2는 `useHomeSheet()`. 창이 놓인 영역(검색창 아래~하단 탭 위) 높이를 알아야 세 자리를 맞출 수 있어 `HomeSheet`가 잰 높이를 넘긴다(없으면 화면 높이). 호환됨 — useHomeSheet.ts:44
 - [구현 중 변경] 창 빈 곳·손잡이를 누르면 창이 끌기를 받는다(`onStartShouldSetPanResponder`) — 웹 마우스는 움직임만으로 끌기를 넘겨받지 못해(react-native-web) C4 1행 '웹 마우스 끌기'가 안 됐음. 책·버튼은 더 안쪽이라 누름 그대로. 웹은 마우스 끌기 중 글자 선택이 끌기를 끊어 창에 `userSelect: "none"` — useHomeSheet.ts:83, HomeSheet.tsx:94·102

@@ -149,6 +149,7 @@
 - [Claude가 정함] 지역 결과를 지도에서 고르면 현재 위치를 알 때만 "moved"(모르면 "start" 유지) — V10 "위치 허용하기와 현재 위치로는 함께 뜨지 않음"을 계약 시그니처 안에서 지키려고 — `useHomeLibraries.ts` `movedOrigin`
 - [Claude가 정함] 지도가 스스로 옮긴 `onRegionChange`(중심과 1e-5도 이내)는 끌어 옮김으로 보지 않음 — `HomeScreen.tsx` `SAME_SPOT`
 - [Claude가 정함] 중심 요소에서 뺀 것 — 핀을 누른 뒤 전환·도서관 기본값·방문 멘트 카드(VISIT-2 범위), 임시 시작 위치(D 값) — D 결정 1.1
+- [구현 중 변경] (검증, 2026-11-17 Android) 목록 모드(지도 실패)에서 "도서관을 찾는 중…" 알약이 맨 위 "지도를 불러오지 못했어요 · 새로고침" 줄 위에 겹쳐 보임 — 목록 모드일 때 알약을 그 줄 아래(top 64)로 내림, 시험 `list mode loading pill sits below map failed row` 추가(되돌리면 실패 확인) — mobile/src/features/library-visit/HomeScreen.tsx:236·302
 
 ## 다음에 할 것
 

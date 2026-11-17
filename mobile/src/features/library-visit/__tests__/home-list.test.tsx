@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import React from "react";
+import { StyleSheet } from "react-native";
 import * as api from "../deps";
 import { HomeScreen } from "../HomeScreen";
 
@@ -140,6 +141,19 @@ describe("VISIT-1-P1 home list", () => {
     // 위쪽 검색창·"도서관 찾기"는 그대로
     expect(screen.getByText("책 제목·저자를 검색")).toBeTruthy();
     expect(screen.getByText("도서관 찾기")).toBeTruthy();
+  });
+
+  test("list mode loading pill sits below map failed row", async () => {
+    mockMapFails = true;
+    let resolve: (v: api.LibraryListResponse) => void = () => {};
+    m.fetchLibrariesInRegion.mockImplementation(() => new Promise((r) => (resolve = r)));
+    await render(<HomeScreen />);
+    await screen.findByText("지도를 불러오지 못했어요");
+    const pill = await screen.findByTestId("home-loading-pill");
+    // 목록 모드 맨 위 줄(top 0~)과 겹치지 않게 그 아래(top 64)에 뜬다
+    expect(StyleSheet.flatten(pill.props.style).top).toBe(64);
+    resolve(nearby(actual.FAKE_LIBRARIES));
+    await waitFor(() => expect(screen.queryByTestId("home-loading-pill")).toBeNull());
   });
 
   test("map error without location uses default start region and keeps allow button", async () => {
