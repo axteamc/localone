@@ -6,6 +6,7 @@ import * as WebBrowser from "expo-web-browser";
 import { AppState, AppStateStatus, Platform } from "react-native";
 import {
   AuthLikeClient,
+  authCallbackSystemPath,
   authStorage,
   isAppleSignInAvailable,
   NATIVE_REDIRECT_URI,
@@ -228,5 +229,37 @@ describe("platform OAuth adapter lifecycle (AUTH-1-P4)", () => {
     cleanup();
     expect(removeMock).toHaveBeenCalledTimes(1);
     addListenerSpy.mockRestore();
+  });
+});
+
+// C4 Google 행 네이티브 복귀 주소 처리(AUTH-1-P8, C-67): Android "Unmatched Route" 방지
+describe("native auth-callback system path (AUTH-1-P8)", () => {
+  test.each([
+    "localone:///auth-callback?code=abc",
+    "localone://auth-callback?code=abc",
+    "localone://auth-callback",
+    "localone:///auth-callback#code=abc",
+    "/auth-callback?code=abc",
+  ])("running app keeps the current screen for %s", (path) => {
+    expect(authCallbackSystemPath({ path, initial: false })).toBeNull();
+  });
+
+  test("cold start from the callback opens home", () => {
+    expect(authCallbackSystemPath({ path: "localone:///auth-callback?code=abc", initial: true })).toBe("/");
+  });
+
+  test.each(["localone:///books/9788936434120", "/libraries/30", "localone:///auth-callbackx", "/login"])(
+    "other paths pass through unchanged: %s",
+    (path) => {
+      expect(authCallbackSystemPath({ path, initial: false })).toBe(path);
+      expect(authCallbackSystemPath({ path, initial: true })).toBe(path);
+    }
+  );
+
+  test("+native-intent delegates to the platform helper", () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const intent = require("../../../app/+native-intent") as typeof import("../../../app/+native-intent");
+    expect(intent.redirectSystemPath({ path: "localone:///auth-callback?code=x", initial: false })).toBeNull();
+    expect(intent.redirectSystemPath({ path: "/libraries/30", initial: false })).toBe("/libraries/30");
   });
 });

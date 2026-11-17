@@ -9,7 +9,6 @@ import { useAuth } from "../../../auth/AuthProvider";
 import * as platform from "../../../lib/platform";
 import * as lib from "../../../lib/publicApi";
 import type { AvailabilityItem, AvailabilityResponse, Book } from "../../../lib/publicApi";
-import * as fakes from "../__fakes__/publicApi";
 import * as api from "../api";
 import type { LoanPlan } from "../api";
 import { BookDetailScreen, SAVED_NOTE } from "../BookDetailScreen";
@@ -41,12 +40,7 @@ jest.mock("../../../lib/platform", () => {
 
 jest.mock("../../../lib/publicApi", () => {
   const actual = jest.requireActual<typeof import("../../../lib/publicApi")>("../../../lib/publicApi");
-  return { ...actual, fetchAvailabilityNearby: jest.fn(), fetchAvailabilityInCity: jest.fn(), fetchLibrary: jest.fn() };
-});
-
-jest.mock("../__fakes__/publicApi", () => {
-  const actual = jest.requireActual<typeof import("../__fakes__/publicApi")>("../__fakes__/publicApi");
-  return { ...actual, fetchBook: jest.fn() };
+  return { ...actual, fetchBook: jest.fn(), fetchAvailabilityNearby: jest.fn(), fetchAvailabilityInCity: jest.fn(), fetchLibrary: jest.fn() };
 });
 
 jest.mock("../api", () => {
@@ -56,7 +50,7 @@ jest.mock("../api", () => {
 
 const locate = jest.mocked(platform.locate);
 const fetchAvailabilityNearby = jest.mocked(lib.fetchAvailabilityNearby);
-const fetchBook = jest.mocked(fakes.fetchBook);
+const fetchBook = jest.mocked(lib.fetchBook);
 const listLoanPlans = jest.mocked(api.listLoanPlans);
 const saveLoanPlan = jest.mocked(api.saveLoanPlan);
 const releaseLoanPlan = jest.mocked(api.releaseLoanPlan);

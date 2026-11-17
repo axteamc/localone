@@ -30,6 +30,22 @@ export interface AuthLikeClient {
 
 export const NATIVE_REDIRECT_URI = "localone://auth-callback";
 
+// 네이티브 복귀 주소 처리(C4 Google 행, C-67). Android는 Chrome 탭이 `localone:///auth-callback?code=…`로
+// 앱을 다시 열 때 Expo Router가 이 주소를 화면 경로로 열어 "Unmatched Route"를 띄운다.
+// 세션 교환은 `openAuthSessionAsync`가 돌려준 주소로 `startGoogleSignIn`이 하므로, 이 주소로는 화면을 바꾸지 않는다.
+// `mobile/app/+native-intent.tsx`의 `redirectSystemPath`가 이 함수를 부른다(웹에서는 그 파일이 실행되지 않음).
+const AUTH_CALLBACK_PATH = /^(?:[a-z][a-z0-9+.-]*:\/\/\/?|\/)?auth-callback(?:[/?#]|$)/i;
+
+export function isAuthCallbackPath(path: string): boolean {
+  return AUTH_CALLBACK_PATH.test(path.trim());
+}
+
+/** 켜진 앱: `null`(이동 없음) / 꺼진 앱이 이 주소로 열림: `/`(홈) / 그 밖의 주소: 그대로 */
+export function authCallbackSystemPath(event: { path: string; initial: boolean }): string | null {
+  if (!isAuthCallbackPath(event.path)) return event.path;
+  return event.initial ? "/" : null;
+}
+
 export function isWebPlatform(): boolean {
   return Platform.OS === "web";
 }

@@ -2,7 +2,8 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import React from "react";
-import { BackHandler } from "react-native";
+import { BackHandler, StyleSheet } from "react-native";
+import { theme } from "../../../theme";
 import * as api from "../deps";
 import { HomeScreen } from "../HomeScreen";
 
@@ -91,6 +92,15 @@ afterEach(() => {
 });
 
 describe("VISIT-1-P3 move and find", () => {
+  // 시연 전 개선 S1 W-2: 창 배경이 없어 뒤의 블록과 글자가 겹쳤다 → 토큰 paper로 막힌 창
+  test("find sheet is opaque paper over the board", async () => {
+    await openHome();
+    await openFind();
+    const style = StyleSheet.flatten(screen.getByTestId("find-sheet").props.style);
+    expect(style.backgroundColor).toBe(theme.colors.paper);
+    expect(style.borderColor).toBe(theme.colors.divider);
+  });
+
   test("find sheet searches regions and libraries", async () => {
     jest.useFakeTimers();
     await openHome();

@@ -6,8 +6,8 @@ import React from "react";
 import { StyleSheet } from "react-native";
 import { useAuth } from "../../../auth/AuthProvider";
 import { theme } from "../../../theme";
-import * as api from "../__fakes__/publicApi";
-import type { Book, BookSearchResponse } from "../__fakes__/publicApi";
+import * as api from "../../../lib/publicApi";
+import type { Book, BookSearchResponse } from "../../../lib/publicApi";
 import { BookDetailScreen } from "../BookDetailScreen";
 import * as recent from "../recentBooks";
 import { SearchScreen } from "../SearchScreen";
@@ -29,9 +29,9 @@ jest.mock("expo-router", () => {
 
 jest.mock("../../../auth/AuthProvider", () => ({ useAuth: jest.fn() }));
 
-jest.mock("../__fakes__/publicApi", () => {
-  const actual = jest.requireActual<typeof import("../__fakes__/publicApi")>(
-    "../__fakes__/publicApi"
+jest.mock("../../../lib/publicApi", () => {
+  const actual = jest.requireActual<typeof import("../../../lib/publicApi")>(
+    "../../../lib/publicApi"
   );
   return { ...actual, searchBooks: jest.fn(), fetchRecommendations: jest.fn(), fetchBook: jest.fn() };
 });

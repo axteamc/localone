@@ -7,7 +7,6 @@ import { useAuth } from "../../../auth/AuthProvider";
 import * as platform from "../../../lib/platform";
 import * as lib from "../../../lib/publicApi";
 import type { AvailabilityItem, AvailabilityResponse, Book } from "../../../lib/publicApi";
-import * as fakes from "../__fakes__/publicApi";
 import { BookDetailScreen } from "../BookDetailScreen";
 import { listRecentBooks } from "../recentBooks";
 import { SearchScreen } from "../SearchScreen";
@@ -38,6 +37,9 @@ jest.mock("../../../lib/publicApi", () => {
   const actual = jest.requireActual<typeof import("../../../lib/publicApi")>("../../../lib/publicApi");
   return {
     ...actual,
+    searchBooks: jest.fn(),
+    fetchRecommendations: jest.fn(),
+    fetchBook: jest.fn(),
     fetchAvailabilityNearby: jest.fn(),
     fetchAvailabilityInCity: jest.fn(),
     fetchLibrariesNearby: jest.fn(),
@@ -45,17 +47,12 @@ jest.mock("../../../lib/publicApi", () => {
   };
 });
 
-jest.mock("../__fakes__/publicApi", () => {
-  const actual = jest.requireActual<typeof import("../__fakes__/publicApi")>("../__fakes__/publicApi");
-  return { ...actual, searchBooks: jest.fn(), fetchRecommendations: jest.fn(), fetchBook: jest.fn() };
-});
-
 const locate = jest.mocked(platform.locate);
 const openExternalUrl = jest.mocked(platform.openExternalUrl);
 const fetchAvailabilityNearby = jest.mocked(lib.fetchAvailabilityNearby);
-const fetchBook = jest.mocked(fakes.fetchBook);
-const searchBooks = jest.mocked(fakes.searchBooks);
-const fetchRecommendations = jest.mocked(fakes.fetchRecommendations);
+const fetchBook = jest.mocked(lib.fetchBook);
+const searchBooks = jest.mocked(lib.searchBooks);
+const fetchRecommendations = jest.mocked(lib.fetchRecommendations);
 const mockedUseAuth = jest.mocked(useAuth);
 
 const HERE = { ok: true as const, lat: 37.58, lng: 126.98 };
