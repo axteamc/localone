@@ -4,7 +4,7 @@ import { act, fireEvent, render, renderHook, screen, waitFor, within } from "@te
 import React from "react";
 import { PanResponder, type PanResponderCallbacks, type PanResponderGestureState } from "react-native";
 import { useAuth } from "../../../auth/AuthProvider";
-import * as feedApi from "../__fakes__/localFeedApi";
+import * as feedApi from "../../local-feed/api";
 import * as api from "../deps";
 import { HomeScreen } from "../HomeScreen";
 import { snapOffsets, useHomeSheet } from "../useHomeSheet";
@@ -19,10 +19,8 @@ jest.mock("../../../auth/AuthProvider", () => ({
   useAuth: jest.fn(() => ({ status: "signedOut", session: null, user: null })),
 }));
 
-jest.mock("../__fakes__/localFeedApi", () => {
-  const actual = jest.requireActual("../__fakes__/localFeedApi") as typeof import("../__fakes__/localFeedApi");
-  return { ...actual, fetchLibraryPosts: jest.fn() };
-});
+// 실제 LOCAL-2 API(#26) 모듈에서 게시물 조회만 가짜로 바꾼다
+jest.mock("../../local-feed/api", () => ({ fetchLibraryPosts: jest.fn() }));
 
 jest.mock("../deps", () => {
   const actual = jest.requireActual("../__fakes__/publicApi") as typeof import("../__fakes__/publicApi");
@@ -40,7 +38,6 @@ jest.mock("../deps", () => {
 });
 
 const actual = jest.requireActual("../__fakes__/publicApi") as typeof import("../__fakes__/publicApi");
-const actualFeed = jest.requireActual("../__fakes__/localFeedApi") as typeof import("../__fakes__/localFeedApi");
 const m = api as unknown as {
   fetchLibrariesNearby: jest.Mock<typeof api.fetchLibrariesNearby>;
   fetchRecommendations: jest.Mock<typeof api.fetchRecommendations>;
@@ -53,7 +50,14 @@ const posts = (feedApi as unknown as { fetchLibraryPosts: jest.Mock<typeof feedA
 const mockedUseAuth = useAuth as unknown as jest.Mock<() => unknown>;
 
 const post = (n: number, libraryId = 101): feedApi.FeedPost => ({
-  ...actualFeed.FAKE_FEED_PAGE.items[0]!,
+  library_name: "정독도서관",
+  image_kind: "color",
+  image_url: null,
+  image_color: "fill2",
+  book: { isbn13: "9788936434120", title: "소년이 온다", author: "한강" },
+  published_at: "2026-11-15T19:20:00+09:00",
+  my_reaction: false,
+  my_bookmark: false,
   id: `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`,
   library_id: libraryId,
   overlay_text: `글${n}`,
@@ -155,7 +159,7 @@ describe("VISIT-1b-P2 library news", () => {
     await openHome();
     expect(await news().findByText("정독도서관에는 아직 게시물이 없어요.")).toBeTruthy();
     expect(news().getAllByTestId(/^news-pill-/)).toHaveLength(2); // 알약 그대로
-    expect(news().queryAllByTestId("post-card")).toHaveLength(0); // 가짜 게시물 없음
+    expect(news().queryAllByTestId(/^post-card-/)).toHaveLength(0); // 가짜 게시물 없음
   });
 
   test("nearby libraries all without posts", async () => {
@@ -224,7 +228,7 @@ describe("VISIT-1b-P2 library news", () => {
       await news().findByLabelText("글1");
       const view = {
         pills: news().getAllByTestId(/^news-pill-/).map((p) => p.props.testID),
-        cards: news().getAllByTestId("post-card").map((c) => c.props.accessibilityLabel),
+        cards: news().getAllByTestId(/^post-card-/).map((c) => c.props.accessibilityLabel),
       };
       await screen.unmount();
       return view;

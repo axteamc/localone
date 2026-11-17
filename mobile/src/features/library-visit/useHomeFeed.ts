@@ -9,8 +9,8 @@ import {
   type Book,
   type LibrarySummary,
 } from "./deps";
-// TODO(연결): B LOCAL-2-P1 — `fetchLibraryPosts`·`FeedPost`는 B `../local-feed/api`가 머지되면 import만 바꾼다
-import { fetchLibraryPosts, type FeedPost } from "./__fakes__/localFeedApi";
+// LOCAL-2-P1 #26: B의 실제 게시물 API(contracts/local-feed.md LOCAL-2 C2)
+import { fetchLibraryPosts, type FeedPost } from "../local-feed/api";
 import { formatDistance } from "./format";
 
 type Origin = "current" | "start" | "moved";
