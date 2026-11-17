@@ -5,13 +5,16 @@ export { KakaoMap, type KakaoMapProps, type LatLng, type MapMarker } from "../..
 export { locate, requestLocationPermission } from "../../lib/platform";
 export { DEFAULT_START, NEARBY_DEFAULT_RADIUS_KM } from "../../lib/policy";
 export {
+  fetchRecommendations,
   fetchLibrariesInRegion,
   fetchLibrariesNearby,
   fetchLibrary,
   searchLibrariesByName,
+  type Book,
   type LibraryListResponse,
   type LibrarySummary,
+  type RecommendationResponse,
   type Today,
 } from "../../lib/publicApi";
 export { searchRegions, type Region } from "../../lib/regions";
-export { getDefaultLibrary } from "../../lib/visits";
+export { getDefaultLibrary, getFrequentLibraries, type VisitRecord } from "../../lib/visits";

@@ -1,11 +1,14 @@
 // 지도 홈 (계약서 library-visit.md VISIT-1). P1: 홈 틀·위치·도서관 목록. P2: 지도·핀·묶음(LibraryMap).
 // P3: 보는 위치 바꾸기("이 지역에서 다시 찾기"·"현재 위치로")·도서관 찾기 창(FindLibrarySheet).
+// VISIT-1b: 지도 아래에서 올려 보는 홈 하단 창(HomeSheet). 지도 안내 카드·아래 가운데 버튼은 창 위쪽 끝에 붙어 함께 움직인다.
 // TODO(연결): D theme — 색은 core `theme.colors`가 머지된 뒤 넣는다(바탕 bg, 검색창 paper, 알약·버튼 fill1, 글자 text·inkMuted)
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { LatLng, LibrarySummary, Region } from "./deps";
+import { theme } from "../../theme";
 import { FindLibrarySheet } from "./FindLibrarySheet";
+import { HomeSheet } from "./HomeSheet";
 import { LibraryList } from "./LibraryList";
 import { LibraryMap } from "./LibraryMap";
 import { useHomeLibraries } from "./useHomeLibraries";
@@ -146,6 +149,18 @@ export function HomeScreen() {
       </View>
     ) : null;
 
+  // V7·V10: 지도 아래 가운데 — 위치를 못 쓰면 "위치 허용하기", 보는 위치가 현재 위치와 다르면 "현재 위치로"
+  const bottomButton =
+    home.origin === "start" ? (
+      <Pressable accessibilityRole="button" onPress={() => void home.allowLocation()} style={styles.button}>
+        <Text>{TEXT.allow}</Text>
+      </Pressable>
+    ) : showBack ? (
+      <Pressable accessibilityRole="button" onPress={backToCurrent} style={styles.button}>
+        <Text>{TEXT.backToCurrent}</Text>
+      </Pressable>
+    ) : null;
+
   return (
     <View style={styles.screen}>
       {/* V6: 검색창 본문과 오른쪽 "도서관 찾기"는 터치 영역을 따로 둔다. 찾기 창이 열려 있는 동안은 그 창의 입력칸이 이 자리를 대신한다(시안 후보 A) */}
@@ -181,7 +196,6 @@ export function HomeScreen() {
               onError={home.onMapError}
               onRegionChange={onRegionChange}
             />
-            {message ? <View style={styles.overlayCenter}>{message}</View> : null}
           </>
         ) : (
           <View style={styles.list}>
@@ -219,19 +233,22 @@ export function HomeScreen() {
           </View>
         ) : null}
 
-        {/* V7·V10: 지도 아래 가운데 — 위치를 못 쓰면 "위치 허용하기", 보는 위치가 현재 위치와 다르면 "현재 위치로" */}
-        {home.origin === "start" ? (
-          <View style={styles.bottomCenter}>
-            <Pressable accessibilityRole="button" onPress={() => void home.allowLocation()} style={styles.button}>
-              <Text>{TEXT.allow}</Text>
-            </Pressable>
-          </View>
-        ) : showBack ? (
-          <View style={styles.bottomCenter}>
-            <Pressable accessibilityRole="button" onPress={backToCurrent} style={styles.button}>
-              <Text>{TEXT.backToCurrent}</Text>
-            </Pressable>
-          </View>
+        {home.mode === "map" ? (
+          // VISIT-1b 결정 2: 지도 위에 반쯤 올라온 창. 지도 안내(예외 카드)와 아래 가운데 버튼은 창 위쪽 끝 바로 위에
+          <HomeSheet
+            nearby={home.libraries}
+            origin={home.origin}
+            above={
+              message || bottomButton ? (
+                <View style={styles.aboveSheet} pointerEvents="box-none">
+                  {message ? <View style={styles.messageCard}>{message}</View> : null}
+                  {bottomButton}
+                </View>
+              ) : null
+            }
+          />
+        ) : bottomButton ? (
+          <View style={styles.bottomCenter}>{bottomButton}</View>
         ) : null}
       </View>
 
@@ -259,7 +276,7 @@ const styles = StyleSheet.create({
   searchBody: { flex: 1, paddingVertical: 6, paddingLeft: 12 },
   findButton: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: 999, borderWidth: 1 },
   findText: { fontSize: 12 },
-  body: { flex: 1 },
+  body: { flex: 1, overflow: "hidden" },
   list: { flex: 1 },
   mapFailedRow: {
     flexDirection: "row",
@@ -268,7 +285,6 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingVertical: 8,
   },
-  overlayCenter: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, alignItems: "center", justifyContent: "center" },
   card: { alignItems: "center", gap: 10, padding: 20 },
   cardText: { fontSize: 15, textAlign: "center" },
   button: { paddingVertical: 8, paddingHorizontal: 14, borderWidth: 1, borderRadius: 999 },
@@ -277,5 +293,8 @@ const styles = StyleSheet.create({
   dim: { opacity: 0.4 },
   hidden: { opacity: 0 },
   pill: { paddingVertical: 6, paddingHorizontal: 12, borderWidth: 1, borderRadius: 999, fontSize: 13 },
+  aboveSheet: { alignItems: "center", gap: 8 },
+  // 지도 위에 뜨는 안내 카드는 바탕이 있어야 읽힌다(색·곡률 토큰)
+  messageCard: { backgroundColor: theme.colors.paper, borderRadius: theme.radii.card, marginHorizontal: 16 },
   bottomCenter: { position: "absolute", bottom: 24, left: 0, right: 0, alignItems: "center" },
 });
