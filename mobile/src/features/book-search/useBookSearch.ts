@@ -2,8 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createLatestRunner } from "../../lib/latest";
 import { SUGGEST_DEBOUNCE_MS, SUGGEST_MIN_CHARS } from "../../lib/policy";
-import type { Book } from "../../lib/publicApi";
-import { searchBooks } from "./__fakes__/publicApi"; // TODO(연결): D LIB-0-P2 — lib/publicApi
+import { searchBooks, type Book } from "../../lib/publicApi";
 
 export const QUERY_MAX_CHARS = 100; // 06 #7 q 1~100자(S-2)
 

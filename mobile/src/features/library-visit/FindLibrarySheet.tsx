@@ -1,9 +1,12 @@
 // "도서관 찾기" 창 (계약서 library-visit.md VISIT-1 V11·V13, 결정 1: 위에서 반쯤 내려오는 하얀 창)
-// TODO(연결): D theme — 색은 core `theme.colors`가 머지된 뒤 넣는다(창 paper, 입력칸 테두리 divider, 덮개 검정 30%, 글자 text·inkMuted)
+// 색은 theme 토큰만(창 paper, 테두리 divider, 덮개 shadowDeep, 글자 text·inkMuted). 배경이 없어 창이 투명하던 것 고침(시연 전 개선 S1 W-2)
 import React, { useEffect } from "react";
 import { BackHandler, FlatList, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import type { LibrarySummary, Region } from "./deps";
+import { theme } from "../../theme";
 import { useFindLibrary } from "./useFindLibrary";
+
+const c = theme.colors;
 
 const TEXT = {
   close: "‹",
@@ -50,7 +53,7 @@ export function FindLibrarySheet(props: FindLibrarySheetProps) {
       <View style={styles.errorBox}>
         <Text style={styles.guide}>{TEXT.error}</Text>
         <Pressable accessibilityRole="button" onPress={() => find.setQuery(find.query)} style={styles.button}>
-          <Text>{TEXT.reload}</Text>
+          <Text style={styles.buttonText}>{TEXT.reload}</Text>
         </Pressable>
       </View>
     );
@@ -70,6 +73,7 @@ export function FindLibrarySheet(props: FindLibrarySheetProps) {
             value={find.query}
             onChangeText={find.setQuery}
             placeholder={TEXT.placeholder}
+            placeholderTextColor={c.inkMuted}
             returnKeyType="search"
             style={styles.input}
           />
@@ -101,7 +105,7 @@ export function FindLibrarySheet(props: FindLibrarySheetProps) {
 
 const styles = StyleSheet.create({
   root: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
-  backdrop: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 },
+  backdrop: { position: "absolute", top: 0, right: 0, bottom: 0, left: 0, backgroundColor: c.shadowDeep },
   sheet: {
     position: "absolute",
     top: 0,
@@ -113,15 +117,27 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
     borderWidth: StyleSheet.hairlineWidth,
+    borderColor: c.divider,
+    backgroundColor: c.paper,
   },
   inputRow: { flexDirection: "row", alignItems: "center", marginHorizontal: 12, marginBottom: 6, gap: 6 },
   closeButton: { paddingHorizontal: 10, paddingVertical: 6 },
-  closeText: { fontSize: 22 },
-  input: { flex: 1, borderWidth: 1, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 12, fontSize: 15 },
-  guide: { paddingVertical: 14, paddingHorizontal: 20, fontSize: 14, textAlign: "center" },
+  closeText: { fontSize: 22, color: c.text },
+  input: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: c.divider,
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    fontSize: 15,
+    color: c.text,
+  },
+  guide: { paddingVertical: 14, paddingHorizontal: 20, fontSize: 14, textAlign: "center", color: c.inkMuted },
   errorBox: { alignItems: "center", paddingBottom: 10 },
-  button: { paddingVertical: 8, paddingHorizontal: 14, borderWidth: 1, borderRadius: 999 },
-  row: { paddingVertical: 12, paddingHorizontal: 20, borderBottomWidth: StyleSheet.hairlineWidth },
-  rowTitle: { fontSize: 15 },
-  rowSub: { fontSize: 12, marginTop: 2 },
+  button: { paddingVertical: 8, paddingHorizontal: 14, borderWidth: 1, borderColor: c.divider, borderRadius: 999 },
+  buttonText: { color: c.text },
+  row: { paddingVertical: 12, paddingHorizontal: 20, borderBottomWidth: StyleSheet.hairlineWidth, borderColor: c.divider },
+  rowTitle: { fontSize: 15, color: c.text },
+  rowSub: { fontSize: 12, marginTop: 2, color: c.inkMuted },
 });

@@ -1,6 +1,6 @@
 // VISIT-1 시안 C 홈 파사드 시험 (총정리 §2·§3): 방위 블록·"+N곳 전환"·개수별 배치·블록 눌러 방문 페이지
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, within } from "@testing-library/react-native";
 import React from "react";
 import { StyleSheet } from "react-native";
 import * as api from "../deps";
@@ -141,6 +141,19 @@ describe("VISIT-1 home facade", () => {
     // 한 바퀴 돌면 처음으로
     await fireEvent.press(screen.getByLabelText("같은 방향 도서관 1곳 더 보기"));
     expect(screen.getByText("종로도서관")).toBeTruthy();
+  });
+
+  // 시연 전 개선 S1 W-3: 웹에서 <button> 안 <button>이 되지 않게 "+N곳" 버튼은 블록 버튼 밖(형제)에 있다
+  test("+N pill is not nested inside the block button", async () => {
+    await render(<HomeScreen />);
+    await screen.findByText("정독도서관");
+    const block = screen.getByLabelText("종로도서관 1.3km");
+    expect(within(block).queryByLabelText("같은 방향 도서관 1곳 더 보기")).toBeNull();
+    // 같은 블록 자리 안에는 그대로 있다
+    const wrap = screen.getByTestId("facade-block-SW");
+    expect(within(wrap).getByLabelText("같은 방향 도서관 1곳 더 보기")).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText("같은 방향 도서관 1곳 더 보기"));
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   test("block press opens visit page without preview", async () => {

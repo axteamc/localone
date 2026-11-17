@@ -27,30 +27,37 @@ export function PostCard({ post, onPress, onMenu, width }: PostCardProps) {
   const bg = isColor && post.image_color ? C[post.image_color] : C.surface3;
   const textColor = isColor && post.image_color ? onFill(C[post.image_color]) : ON_FILL_LIGHT;
 
+  const height = Math.round(width * cardHeightRatio(post));
+  // 버튼 안 버튼 금지(웹 <button> 중첩 오류, 시연 전 개선 S1): ⋯는 카드 버튼의 형제로 겹쳐 두고,
+  // 마우스 올림은 둘을 감싼 상자에서 본다(⋯ 위로 옮겨도 사라지지 않게). 포인터 이벤트는 웹용, 네이티브는 길게 누르기
   return (
-    <Pressable
-      testID={`post-card-${post.id}`}
-      accessibilityRole="button"
-      accessibilityLabel={post.overlay_text ?? "게시물"}
-      accessibilityHint={onMenu ? "길게 누르면 메뉴가 열려요" : undefined}
-      onPress={() => onPress(post.id)}
-      onLongPress={onMenu ? () => onMenu(post) : undefined}
-      // 웹: 마우스를 올리면 ⋯ (RN Pressable 공통 API, C4)
-      onHoverIn={() => setHover(true)}
-      onHoverOut={() => setHover(false)}
-      style={[styles.card, { width, height: Math.round(width * cardHeightRatio(post)), backgroundColor: bg }]}
+    <View
+      testID={`post-box-${post.id}`}
+      style={{ width, height }}
+      onPointerEnter={() => setHover(true)}
+      onPointerLeave={() => setHover(false)}
     >
-      {!isColor && post.image_url ? (
-        <Image source={{ uri: post.image_url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-      ) : null}
-      {post.overlay_text ? (
-        <Text
-          numberOfLines={6}
-          style={[styles.overlay, { color: textColor }, isColor ? styles.mid : [styles.bottom, styles.shadow]]}
-        >
-          {post.overlay_text}
-        </Text>
-      ) : null}
+      <Pressable
+        testID={`post-card-${post.id}`}
+        accessibilityRole="button"
+        accessibilityLabel={post.overlay_text ?? "게시물"}
+        accessibilityHint={onMenu ? "길게 누르면 메뉴가 열려요" : undefined}
+        onPress={() => onPress(post.id)}
+        onLongPress={onMenu ? () => onMenu(post) : undefined}
+        style={[styles.card, { width, height, backgroundColor: bg }]}
+      >
+        {!isColor && post.image_url ? (
+          <Image source={{ uri: post.image_url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+        ) : null}
+        {post.overlay_text ? (
+          <Text
+            numberOfLines={6}
+            style={[styles.overlay, { color: textColor }, isColor ? styles.mid : [styles.bottom, styles.shadow]]}
+          >
+            {post.overlay_text}
+          </Text>
+        ) : null}
+      </Pressable>
       {onMenu && hover ? (
         <Pressable
           accessibilityRole="button"
@@ -61,7 +68,7 @@ export function PostCard({ post, onPress, onMenu, width }: PostCardProps) {
           <Text style={styles.dotsText}>⋯</Text>
         </Pressable>
       ) : null}
-    </Pressable>
+    </View>
   );
 }
 

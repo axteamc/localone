@@ -177,6 +177,41 @@ export function VisitScreen({
     [feedRunner, loadFeed]
   );
 
+  // 다른 화면(글쓰기·글 상세)에서 돌아오면 첫 묶음을 조용히 다시 받는다(시연 전 개선 S1 ③).
+  // 보이던 글은 그대로 두고, 성공하면 바꾼다. 실패하면 보이던 글을 지우지 않는다.
+  const refreshFeed = useCallback(
+    async (id: number) => {
+      const res = await feedRunner.run((signal) => loadFeed(id, signal, null));
+      if (res.status !== "ok") return;
+      moreCursor.current = null;
+      setFeed(
+        res.value.items.length
+          ? { kind: "items", items: res.value.items, nextCursor: res.value.next_cursor ?? null }
+          : { kind: "empty" }
+      );
+    },
+    [feedRunner, loadFeed]
+  );
+
+  // 처음 보일 때는 아래 "들어올 때" 효과가 받으므로, 한 번 가려졌다가(blur) 다시 보일 때(focus)만 다시 받는다
+  useEffect(() => {
+    if (libraryId === null) return;
+    const nav = navigation as unknown as { addListener?: (e: string, cb: () => void) => () => void };
+    let hidden = false;
+    const offBlur = nav.addListener?.("blur", () => {
+      hidden = true;
+    });
+    const offFocus = nav.addListener?.("focus", () => {
+      if (!hidden) return;
+      hidden = false;
+      void refreshFeed(libraryId);
+    });
+    return () => {
+      offBlur?.();
+      offFocus?.();
+    };
+  }, [navigation, libraryId, refreshFeed]);
+
   // 스크롤 끝: 다음 묶음을 이어 붙인다. 같은 커서는 한 번만(H13 중복 호출 방지)
   const loadMore = useCallback(async () => {
     const current = feedRef.current;

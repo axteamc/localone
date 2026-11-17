@@ -446,6 +446,40 @@ describe("피드 자리", () => {
     expect(loadFeed).toHaveBeenCalledTimes(2);
     expect(fetchLibrary).toHaveBeenCalledTimes(libCalls); // 피드만 다시
   });
+
+  // 시연 전 개선 S1 ③: 글을 올리고(router.back) 돌아오면 새로고침 없이 바로 보인다
+  test("returning to the page reloads the first feed page without clearing it", async () => {
+    const renderFeed = (items: unknown[]) => (
+      <Text>{items.map((p) => (p as { id: string }).id).join(",")}</Text>
+    );
+    const loadFeed = jest
+      .fn<(id: number, s: AbortSignal, c?: string | null) => Promise<{ items: unknown[]; next_cursor?: string | null }>>()
+      .mockResolvedValueOnce({ items: [{ id: "old" }], next_cursor: null })
+      .mockResolvedValueOnce({ items: [{ id: "new" }, { id: "old" }], next_cursor: null })
+      .mockRejectedValueOnce(network());
+    await enter({ loadFeed, renderFeed });
+    expect(await screen.findByText("old")).toBeTruthy();
+    expect(loadFeed).toHaveBeenCalledTimes(1);
+
+    // 처음 보일 때의 focus만으로는 다시 받지 않는다(두 번 받기 금지)
+    await act(async () => mockListeners.focus?.());
+    expect(loadFeed).toHaveBeenCalledTimes(1);
+
+    // 글쓰기로 가렸다가 돌아오면 첫 묶음을 다시 받는다
+    await act(async () => mockListeners.blur?.());
+    await act(async () => mockListeners.focus?.());
+    expect(await screen.findByText("new,old")).toBeTruthy();
+    expect(loadFeed).toHaveBeenCalledTimes(2);
+    expect(loadFeed.mock.calls[1]?.[0]).toBe(101);
+    expect(loadFeed.mock.calls[1]?.[2]).toBeNull();
+
+    // 다시 받기가 실패해도 보이던 글을 지우지 않는다
+    await act(async () => mockListeners.blur?.());
+    await act(async () => mockListeners.focus?.());
+    expect(loadFeed).toHaveBeenCalledTimes(3);
+    expect(screen.getByText("new,old")).toBeTruthy();
+    expect(screen.queryByText(VISIT_TEXT.feedFailed)).toBeNull();
+  });
 });
 
 describe("돌아가기", () => {

@@ -17,6 +17,10 @@ import { formatDistance } from "./format";
 import { snapOffsets } from "./useHomeSheet";
 
 const { colors: C, radii: R } = theme;
+const BLOCK_BORDER = 1; // styles.block borderWidth
+const BODY_PAD_V = 8;
+const BODY_PAD_H = 9;
+const PILL_H = 15; // "+N곳 ↻" 알약(글자 10 + 위아래 여백)
 const GRID_COLS = 4;
 const GRID_ROWS = 4;
 const TICKS = 41;
@@ -176,16 +180,6 @@ function ReliefLibraryBlock({ group, index, tone, selected, place, onOpen, onCyc
         <View style={styles.blockBody}>
           <View style={styles.blockHead}>
             <Text style={styles.code}>{item.code}</Text>
-            {count > 1 ? (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={`같은 방향 도서관 ${count - 1}곳 더 보기`}
-                onPress={() => onCycle(group.slot, count)}
-                style={styles.stackPill}
-              >
-                <Text style={styles.stackText}>{`+${count - 1}곳 ↻`}</Text>
-              </Pressable>
-            ) : null}
           </View>
           <Text numberOfLines={1} style={styles.name}>
             {item.lib.name}
@@ -203,6 +197,18 @@ function ReliefLibraryBlock({ group, index, tone, selected, place, onOpen, onCyc
           </View>
         </View>
       </Pressable>
+      {/* 버튼 안 버튼 금지(웹 <button> 중첩 오류, 시연 전 개선 S1 W-3): 블록 버튼의 형제로 두고 머리 줄 오른쪽에 겹친다 */}
+      {count > 1 ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`같은 방향 도서관 ${count - 1}곳 더 보기`}
+          onPress={() => onCycle(group.slot, count)}
+          style={styles.stackPill}
+          testID={`facade-cycle-${group.slot}`}
+        >
+          <Text style={styles.stackText}>{`+${count - 1}곳 ↻`}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
@@ -347,7 +353,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     backgroundColor: C.paper,
-    borderWidth: 1,
+    borderWidth: BLOCK_BORDER,
     borderColor: C.seamHairline,
     borderRadius: R.block,
     shadowColor: C.inkStrong,
@@ -371,10 +377,20 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: R.libraryIconBottom,
     borderBottomRightRadius: R.libraryIconBottom,
   },
-  blockBody: { flex: 1, paddingVertical: 8, paddingHorizontal: 9, justifyContent: "space-between" },
-  blockHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 4 },
+  blockBody: { flex: 1, paddingVertical: BODY_PAD_V, paddingHorizontal: BODY_PAD_H, justifyContent: "space-between" },
+  blockHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 4, minHeight: PILL_H },
   code: { fontSize: 10.5, fontWeight: "700", color: C.inkMuted },
-  stackPill: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: R.block, backgroundColor: C.inkStrong },
+  // 블록 테두리 1 + 몸통 여백만큼 안쪽, 머리 줄과 같은 높이(예전 머리 줄 안 자리와 같다)
+  stackPill: {
+    position: "absolute",
+    top: BLOCK_BORDER + BODY_PAD_V,
+    right: BLOCK_BORDER + BODY_PAD_H,
+    height: PILL_H,
+    justifyContent: "center",
+    paddingHorizontal: 6,
+    borderRadius: R.block,
+    backgroundColor: C.inkStrong,
+  },
   stackText: { fontSize: 10, fontWeight: "700", color: onFill(C.inkStrong) },
   name: { fontSize: 14, fontWeight: "700", color: C.text },
   area: { fontSize: 11, color: C.inkMuted },
