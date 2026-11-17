@@ -76,6 +76,7 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
 
   // 책 옆 버튼·빈 결과의 "나중에 빌릴 책으로 저장"이 같이 쓴다. 비로그인은 창을 열지 않는다(N7).
   const onSave = () => {
+    if (authStatus === "loading") return; // 로그인 복원 중에는 로그인 안내를 띄우지 않는다(사후 검토 ②-3, ①-5와 같은 정책)
     if (authStatus === "signedIn") {
       setSaveNote(null);
       setSheetOpen(true);

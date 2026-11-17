@@ -12,7 +12,7 @@ import * as fakes from "../__fakes__/publicApi";
 import { BookDetailScreen } from "../BookDetailScreen";
 import { EMPTY_CITY, EMPTY_NEARBY } from "../EmptyAvailability";
 import { LIMIT_UNCHECKED } from "../LibraryAvailabilityCard";
-import { REGION_INTRO, REGION_NO_MATCH } from "../RegionPicker";
+import { REGION_INTRO, REGION_LOCATION_DENIED, REGION_NO_MATCH } from "../RegionPicker";
 
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")
@@ -295,6 +295,17 @@ describe("위치 없이 지역 고르기", () => {
     expect(await screen.findByText("정독도서관")).toBeTruthy();
     expect(locate).toHaveBeenCalledTimes(2);
     expect(fetchAvailabilityNearby).toHaveBeenCalledTimes(1);
+  });
+
+  test("region picker tells the user when location is denied again (②-4)", async () => {
+    locate.mockResolvedValueOnce({ ok: false, reason: "timeout" });
+    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await screen.findByText(REGION_INTRO);
+    expect(screen.queryByText(REGION_LOCATION_DENIED)).toBeNull();
+    requestLocationPermission.mockResolvedValueOnce("denied");
+    await fireEvent.press(screen.getByText("위치 허용해서 주변 찾기"));
+    expect(await screen.findByText(REGION_LOCATION_DENIED)).toBeTruthy();
+    expect(screen.getByTestId("region-picker")).toBeTruthy();
   });
 
   test("region picker choose sends city request with code", async () => {
