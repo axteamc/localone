@@ -4,7 +4,7 @@
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import type { LatLng, LibrarySummary, Region } from "./__fakes__/publicApi"; // TODO(연결): D APP-0-P1
+import type { LatLng, LibrarySummary, Region } from "./deps";
 import { FindLibrarySheet } from "./FindLibrarySheet";
 import { LibraryList } from "./LibraryList";
 import { LibraryMap } from "./LibraryMap";
@@ -33,9 +33,21 @@ export function HomeScreen() {
   const [mapKey, setMapKey] = useState(0);
 
   // V5: 미리보기 없이 방문 페이지. TODO(연결): B — 방문 페이지가 머지되기 전에는 core 스텁 화면
+  // distanceM은 그 도서관의 distance_m이 0 이상 안전한 정수일 때만 넘기고, null·잘못된 값은 뺀다(core K15)
   const openLibrary = useCallback(
-    (id: number) => router.push({ pathname: "/libraries/[libraryId]", params: { libraryId: String(id) } }),
+    (lib: Pick<LibrarySummary, "id" | "distance_m">) => {
+      const d = lib.distance_m;
+      const distanceM = d != null && Number.isSafeInteger(d) && d >= 0 ? d : null;
+      router.push({
+        pathname: "/libraries/[libraryId]",
+        params: { libraryId: String(lib.id), ...(distanceM == null ? {} : { distanceM: String(distanceM) }) },
+      });
+    },
     [router]
+  );
+  const openLibraryById = useCallback(
+    (id: number) => openLibrary(home.libraries.find((l) => l.id === id) ?? { id, distance_m: null }),
+    [openLibrary, home.libraries]
   );
 
   const retryMap = useCallback(() => {
@@ -162,9 +174,10 @@ export function HomeScreen() {
             <LibraryMap
               key={mapKey}
               center={home.center}
+              viewSeq={home.viewSeq}
               libraries={home.libraries}
               selectedId={home.selectedId}
-              onLibraryPress={openLibrary}
+              onLibraryPress={openLibraryById}
               onError={home.onMapError}
               onRegionChange={onRegionChange}
             />
@@ -179,7 +192,7 @@ export function HomeScreen() {
                 <Text>{TEXT.reload}</Text>
               </Pressable>
             </View>
-            {message ?? <LibraryList libraries={home.libraries} onPress={(l) => openLibrary(l.id)} />}
+            {message ?? <LibraryList libraries={home.libraries} onPress={openLibrary} />}
           </View>
         )}
 

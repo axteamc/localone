@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import React from "react";
-import * as api from "../__fakes__/publicApi";
+import * as api from "../deps";
 import { HomeScreen } from "../HomeScreen";
 
 // 시험 환경(node)에서만 쓰는 모듈 — 앱 tsconfig에 node 타입이 없어 여기서만 선언한다
@@ -24,7 +24,7 @@ jest.mock("../../../auth/AuthProvider", () => ({
   useAuth: jest.fn(() => ({ status: "signedOut", session: null, user: null })),
 }));
 
-jest.mock("../__fakes__/publicApi", () => {
+jest.mock("../deps", () => {
   const actual = jest.requireActual("../__fakes__/publicApi") as typeof import("../__fakes__/publicApi");
   const ReactLib = require("react");
   const { Text, View } = require("react-native");
@@ -177,7 +177,7 @@ describe("VISIT-1-P1 home list", () => {
 
   test("network error shows reload and retries", async () => {
     m.fetchLibrariesNearby
-      .mockRejectedValueOnce(new api.ApiCallError(0, "NETWORK", "Network request failed"))
+      .mockRejectedValueOnce(new actual.ApiCallError(0, "NETWORK", "Network request failed"))
       .mockImplementation(actual.fetchLibrariesNearby);
     await render(<HomeScreen />);
     expect(await screen.findByText("지금은 도서관을 불러올 수 없어요.")).toBeTruthy();
@@ -205,7 +205,7 @@ describe("VISIT-1-P1 home list", () => {
     m.fetchLibrariesNearby.mockImplementation(() => new Promise((r) => (resolve = r)));
     await render(<HomeScreen />);
     expect(await screen.findByText("도서관을 찾는 중…")).toBeTruthy();
-    resolve(nearby(api.FAKE_LIBRARIES));
+    resolve(nearby(actual.FAKE_LIBRARIES));
     expect(await screen.findByText("정독도서관")).toBeTruthy();
     expect(screen.queryByText("도서관을 찾는 중…")).toBeNull();
   });

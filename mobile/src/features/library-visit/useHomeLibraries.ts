@@ -1,7 +1,6 @@
 // 지도 홈 상태 — 위치 → 주변 조회, 지도 실패는 목록 모드, 늦은 응답 폐기 (계약서 VISIT-1 C2·P4)
 // P1: 시작·위치 허용·더 넓게·목록 모드·새로고침. P3: 보는 위치 바꾸기(reloadHere·backToCurrent·showRegion·focusLibrary).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-// TODO(연결): D — core APP-0-P1·LIB-0-P1 머지 뒤 `../../lib/*`로 바꾼다
 import {
   createLatestRunner,
   DEFAULT_START,
@@ -14,7 +13,7 @@ import {
   requestLocationPermission,
   type LatLng,
   type LibrarySummary,
-} from "./__fakes__/publicApi";
+} from "./deps";
 
 export type HomeMode = "map" | "list";
 export type Origin = "current" | "start" | "moved";
@@ -23,6 +22,8 @@ export type HomeStatus = "loading" | "ready" | "empty" | "error";
 export type HomeLibraries = {
   mode: HomeMode;
   center: LatLng;
+  /** center를 다시 정할 때마다 바뀐다(같은 좌표여도). 지도는 이 값이 바뀌면 center로 옮긴다 */
+  viewSeq: number;
   origin: Origin;
   libraries: LibrarySummary[];
   status: HomeStatus;
@@ -54,7 +55,13 @@ export function averageCenter(libs: LibrarySummary[]): LatLng | null {
 export function useHomeLibraries(): HomeLibraries {
   const runner = useMemo(() => createLatestRunner(), []); // 한 화면에 하나
   const [mode, setMode] = useState<HomeMode>("map");
-  const [center, setCenter] = useState<LatLng>({ lat: DEFAULT_START.lat, lng: DEFAULT_START.lng });
+  const [center, setCenterState] = useState<LatLng>({ lat: DEFAULT_START.lat, lng: DEFAULT_START.lng });
+  // 보는 위치를 정할 때마다 는다. 끌어 옮긴 뒤 같은 좌표로 돌아갈 때(현재 위치로 등)도 지도가 다시 옮겨지게 한다
+  const [viewSeq, setViewSeq] = useState(0);
+  const setCenter = useCallback((at: LatLng) => {
+    setCenterState(at);
+    setViewSeq((n) => n + 1);
+  }, []);
   const [origin, setOrigin] = useState<Origin>("start");
   const [libraries, setLibraries] = useState<LibrarySummary[]>([]);
   const [status, setStatus] = useState<HomeStatus>("loading");
@@ -123,7 +130,7 @@ export function useHomeLibraries(): HomeLibraries {
       setLibraries(r.value.items);
       setStatus(r.value.items.length === 0 ? "empty" : "ready"); // 예외 #2
     },
-    [runner, loadRegion]
+    [runner, loadRegion, setCenter]
   );
 
   const start = useCallback(
@@ -199,7 +206,7 @@ export function useHomeLibraries(): HomeLibraries {
       setLibraries(r.value.items);
       setStatus(r.value.items.length ? "ready" : "empty");
     },
-    [runner, loadRegion, movedOrigin]
+    [runner, loadRegion, movedOrigin, setCenter]
   );
 
   // V12: 도서관 결과 — 지도 모드는 그 좌표로 옮기고 그 핀에 테두리, 목록 모드는 그 도서관의 시군구 목록. 방문 페이지로 가지 않는다
@@ -246,6 +253,7 @@ export function useHomeLibraries(): HomeLibraries {
   return {
     mode,
     center,
+    viewSeq,
     origin,
     libraries,
     status,
