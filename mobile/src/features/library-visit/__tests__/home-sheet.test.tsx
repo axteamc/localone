@@ -17,6 +17,11 @@ jest.mock("../../../auth/AuthProvider", () => ({
   useAuth: jest.fn(() => ({ status: "signedOut", session: null, user: null })),
 }));
 
+// 이 파일은 창·인기 도서만 본다. 소식(실제 LOCAL-2 #26)은 빈 결과로 둔다
+jest.mock("../../local-feed/api", () => ({
+  fetchLibraryPosts: jest.fn(async () => ({ items: [], next_cursor: null })),
+}));
+
 jest.mock("../deps", () => {
   const actual = jest.requireActual("../__fakes__/publicApi") as typeof import("../__fakes__/publicApi");
   const ReactLib = require("react");

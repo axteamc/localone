@@ -3,9 +3,8 @@
 import React, { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
 import { theme } from "../../theme";
-// TODO(연결): B LOCAL-2-P3 — B `../local-feed/PostCard`가 머지되면 import만 바꾼다
-import { PostCard } from "./__fakes__/PostCard";
-import type { FeedPost } from "./__fakes__/localFeedApi";
+import type { FeedPost } from "../local-feed/api";
+import { PostCard } from "../local-feed/PostCard";
 import type { HomeFeed } from "./useHomeFeed";
 
 const TEXT = {

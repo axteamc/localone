@@ -1,7 +1,7 @@
 // 홈 파사드(시안 C): 프로스티드 유리 격자 + 수평 스케일 룰러 + 중앙 + 기점 + 3D 컬러 스파인 블록 (VISIT-1 총정리 §2).
 // 지도는 쓰지 않는다. 색·곡률은 theme 토큰만 쓴다.
 import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View, type ViewStyle } from "react-native";
+import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type ViewStyle } from "react-native";
 import { onFill, theme } from "../../theme";
 import type { LatLng, LibrarySummary } from "./deps";
 import {
@@ -14,6 +14,7 @@ import {
   type SpineTone,
 } from "./direction";
 import { formatDistance } from "./format";
+import { snapOffsets } from "./useHomeSheet";
 
 const { colors: C, radii: R } = theme;
 const GRID_COLS = 4;
@@ -42,16 +43,51 @@ function spineColor(tone: SpineTone): string {
   return tone === "closed" ? C.pinClosed : C[tone];
 }
 
-/** 칸별 자리. 맨 아래는 홈 하단 창(HomeSheet)이 덮으므로 블록은 위쪽 절반에 모은다 */
+/** 칸별 자리. 맨 아래는 홈 하단 창(HomeSheet)이 덮으므로 블록은 위쪽 절반에 모은다.
+ *  네 칸(NW·NE·SW·SE) 세로 자리는 판 높이를 잰 뒤 quadLayout()이 px로 정한다(아래는 재기 전 자리) */
 const SLOT_STYLE: Record<FacadeSlot, ViewStyle> = {
   NW: { left: 16, width: "44%", top: "5%" },
   NE: { right: 22, width: "44%", top: "3%" },
-  SW: { left: 16, width: "44%", top: "52%" },
-  SE: { right: 22, width: "44%", top: "54%" },
+  SW: { left: 16, width: "44%", bottom: "52%" },
+  SE: { right: 22, width: "44%", bottom: "51%" },
   W: { left: 16, width: "44%", top: "14%" },
   E: { right: 22, width: "44%", top: "14%" },
   MAIN: { left: 28, right: 34, top: "8%" },
 };
+
+const BLOCK_H = 104;
+/** 작은 화면에서 줄일 수 있는 블록 높이 하한(코드·이름·거리 줄이 남는 높이) */
+const BLOCK_H_MIN = 64;
+/** 이보다 낮으면 지역 줄을 뺀다 */
+const BLOCK_H_FULL_TEXT = 90;
+const QUAD_TOP = 10; // 판 위 여백
+const QUAD_STAGGER = 6; // 같은 줄 두 블록의 어긋남
+const QUAD_BOTTOM = 6; // 남쪽 블록 아래 끝과 창 위쪽 끝 사이
+const QUAD_MID = 50; // 북·남 줄 사이(룰러 36 + 여유). 기점 매스(62)는 블록 밑에 조금 깔릴 수 있다
+
+export type QuadLayout = {
+  /** 하단 창이 평소 높이(half)일 때 창 위로 보이는 판 높이 */
+  visible: number;
+  blockH: number;
+  top: Record<"NW" | "NE" | "SW" | "SE", number>;
+  /** 룰러·기점의 세로 가운데 */
+  originY: number;
+};
+
+/**
+ * ③-2: 네 칸 배치의 세로 자리. 파사드와 하단 창은 같은 영역을 쓰므로, 처음 열린 홈(half)에서
+ * 남쪽 블록까지 창 위쪽 끝(snapOffsets(h).half) 위에 오게 한다. 자리가 모자라면 블록 높이를 줄인다.
+ */
+export function quadLayout(boardHeight: number): QuadLayout {
+  const visible = snapOffsets(boardHeight).half;
+  const fit = Math.floor((visible - QUAD_TOP - QUAD_STAGGER - QUAD_BOTTOM - QUAD_MID - QUAD_STAGGER) / 2);
+  const blockH = Math.max(BLOCK_H_MIN, Math.min(BLOCK_H, fit));
+  const SE = visible - QUAD_BOTTOM - blockH;
+  const SW = SE - QUAD_STAGGER;
+  const NE = QUAD_TOP;
+  const NW = NE + QUAD_STAGGER;
+  return { visible, blockH, top: { NW, NE, SW, SE }, originY: Math.round((NW + blockH + SW) / 2) };
+}
 
 function FacadeGrid() {
   const cells = useMemo(() => Array.from({ length: GRID_COLS * GRID_ROWS }, (_, i) => i), []);
@@ -69,11 +105,11 @@ function FacadeGrid() {
   );
 }
 
-function RulerTrack({ radiusKm }: { radiusKm: number }) {
+function RulerTrack({ radiusKm, y }: { radiusKm: number; y?: number }) {
   const half = radiusKm / 2;
   const third = (radiusKm / 6).toFixed(1);
   return (
-    <View style={styles.ruler} pointerEvents="none" testID="facade-ruler">
+    <View style={[styles.ruler, y != null ? { top: y } : null]} pointerEvents="none" testID="facade-ruler">
       <View style={styles.ticks}>
         {Array.from({ length: TICKS }, (_, i) => (
           <View key={i} style={[styles.tick, i % 5 === 0 ? styles.tickMajor : null]} />
@@ -89,9 +125,9 @@ function RulerTrack({ radiusKm }: { radiusKm: number }) {
   );
 }
 
-function OriginPlinth({ title, sub }: { title: string; sub: string }) {
+function OriginPlinth({ title, sub, y }: { title: string; sub: string; y?: number }) {
   return (
-    <View style={styles.plinthWrap} pointerEvents="none" testID="facade-origin">
+    <View style={[styles.plinthWrap, y != null ? { top: y } : null]} pointerEvents="none" testID="facade-origin">
       <View style={styles.plinthSide} />
       <View style={styles.plinth}>
         <View style={styles.cross}>
@@ -110,20 +146,24 @@ type BlockProps = {
   index: number;
   tone: SpineTone;
   selected: boolean;
+  /** 네 칸 배치에서 판 높이를 잰 뒤의 세로 자리·높이 */
+  place?: { top: number; height: number };
   onOpen(lib: LibrarySummary): void;
   onCycle(slot: FacadeSlot, count: number): void;
 };
 
-function ReliefLibraryBlock({ group, index, tone, selected, onOpen, onCycle }: BlockProps) {
+function ReliefLibraryBlock({ group, index, tone, selected, place, onOpen, onCycle }: BlockProps) {
   const item: FacadeItem = group.items[index % group.items.length] as FacadeItem;
   const count = group.items.length;
   const closed = item.lib.today.is_closed === true;
-  const sub = item.lib.area_label ?? item.lib.address ?? "";
+  const h = place?.height ?? BLOCK_H;
+  const sub = h >= BLOCK_H_FULL_TEXT ? item.lib.area_label ?? item.lib.address ?? "" : "";
+  const placed: ViewStyle | null = place ? { top: place.top, bottom: undefined, height: h } : null;
   return (
-    <View style={[styles.blockWrap, SLOT_STYLE[group.slot]]} testID={`facade-block-${group.slot}`}>
-      {count > 1 ? <View style={styles.slab} /> : null}
-      <View style={[styles.layer, { left: 3, top: 4, backgroundColor: C.surface3 }]} />
-      <View style={[styles.layer, { left: 6, top: 8, backgroundColor: C.reliefSideDark }]} />
+    <View style={[styles.blockWrap, SLOT_STYLE[group.slot], placed]} testID={`facade-block-${group.slot}`}>
+      {count > 1 ? <View style={[styles.slab, { height: h }]} /> : null}
+      <View style={[styles.layer, { left: 3, top: 4, height: h, backgroundColor: C.surface3 }]} />
+      <View style={[styles.layer, { left: 6, top: 8, height: h, backgroundColor: C.reliefSideDark }]} />
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${item.lib.name} ${formatDistance(item.distanceM)}`}
@@ -172,6 +212,9 @@ export function FacadeHome(props: FacadeHomeProps) {
   const layout = useMemo(() => groupLibrariesForFacade(center, libraries), [center, libraries]);
   const tones = useMemo(() => assignSpineTones(layout), [layout]);
   const [indices, setIndices] = useState<Partial<Record<FacadeSlot, number>>>({});
+  const [boardH, setBoardH] = useState(0);
+  const onLayout = (e: LayoutChangeEvent) => setBoardH(e.nativeEvent.layout.height);
+  const quad = layout.kind === "quad" && boardH > 0 ? quadLayout(boardH) : null;
 
   // 보는 위치나 목록이 바뀌면 전환해 둔 자리를 처음(가장 가까운 곳)으로 되돌린다
   useEffect(() => {
@@ -182,11 +225,11 @@ export function FacadeHome(props: FacadeHomeProps) {
     setIndices((prev) => ({ ...prev, [slot]: ((prev[slot] ?? 0) + 1) % count }));
 
   return (
-    <View style={styles.board} testID="facade-board">
+    <View style={styles.board} testID="facade-board" onLayout={onLayout}>
       <FacadeGrid />
       <View style={styles.axis} pointerEvents="none" />
-      <RulerTrack radiusKm={radiusKm} />
-      <OriginPlinth title={originTitle} sub={originSub} />
+      <RulerTrack radiusKm={radiusKm} y={quad?.originY} />
+      <OriginPlinth title={originTitle} sub={originSub} y={quad?.originY} />
       {layout.groups.map((g) => {
         const idx = indices[g.slot] ?? 0;
         const shown = g.items[idx % g.items.length] as FacadeItem;
@@ -197,6 +240,7 @@ export function FacadeHome(props: FacadeHomeProps) {
             index={idx}
             tone={tones.get(shown.lib.id) ?? "fill1"}
             selected={selectedId === shown.lib.id}
+            place={quad && g.slot in quad.top ? { top: quad.top[g.slot as keyof QuadLayout["top"]], height: quad.blockH } : undefined}
             onOpen={onLibraryPress}
             onCycle={cycle}
           />
@@ -207,8 +251,6 @@ export function FacadeHome(props: FacadeHomeProps) {
 }
 
 export type { FacadeKind };
-
-const BLOCK_H = 104;
 
 const styles = StyleSheet.create({
   board: { flex: 1, backgroundColor: C.panelFrosted, overflow: "hidden" },
