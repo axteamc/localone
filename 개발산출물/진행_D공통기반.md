@@ -1,6 +1,6 @@
 # D 공통 기반 진행
 
-상태: APP-0-P1 머지 완료(PR [#96](https://github.com/axteamc/localone/pull/96), `00f71a3`). **APP-0-P2 로컬 검증·게시 완료, PR [#109](https://github.com/axteamc/localone/pull/109) (`needs-ios`).** CI·iOS 확인 및 머지 대기. 사람 역할 D / AI 구현·자체 검증 담당. 2026-11-17 Windows.
+상태: **LIB-0-P1 구현·로컬 검증·PR [#111](https://github.com/axteamc/localone/pull/111) 게시, 리뷰 대기.** APP-0-P1 #96 및 P2 #109는 main 반영 확인(P2 merge `4393e3f`). 사람 역할 D / AI 구현·자체 검수. 2026-11-17 Windows. APP-0 이전 증거는 아래에 보존한다.
 
 ## 입력과 경계
 
@@ -15,9 +15,9 @@
 | 순서 | 파트 | 상태 |
 | --- | --- | --- |
 | 1 | APP-0-P1 | 머지 완료 (PR #96, `00f71a3`; 단 M1 VISIT-2 선행 보완 4파일 별도 대기) |
-| 2 | APP-0-P2 | 로컬 검증·게시 완료 (PR [#109](https://github.com/axteamc/localone/pull/109)) / CI·iOS D 확인 대기 |
+| 2 | APP-0-P2 | main 반영 확인(PR #109, `4393e3f`). 플랫폼 증거는 해당 결과 문서 참조 |
 | 3 | APP-0-P3 | 미착수; 카카오 JS 키 필요 |
-| 4 | LIB-0-P1 → P2 → P3 | 미착수 |
+| 4 | LIB-0-P1 → P2 → P3 | P1 구현·검증·PR #111 게시. P2·P3 미착수 |
 | 5 | SRV-0-P1 → P2 | 미착수 |
 
 제품 순서 원본은 `계획/상용_서비스_계획.md` §2다.
@@ -29,29 +29,27 @@
 - 실제 가드 제거 변이 3곳(독서 기록 탭 삽입, `distanceM` 검증 제거, `(tabs)` `headerShown: true`) 실패(exit 1) 확인 및 원복 후 전체 Jest 재통과.
 - 실행 증거·제한 원본은 [결과](결과/APP-0-P2_하단탭_경로스텁.md).
 
-## 다음 세션 시작 지시
+## LIB-0-P1 현재 기록
 
-- 권장 Effort: **중간** (PR #109 iOS/실기기 확인 후 머지 또는 `APP-0-P1 보완` / `APP-0-P3` / `LIB-0-P1` 중 선택 진행).
-
-```text
-GEMINI.md(또는 AGENTS.md), AI간_협업_구조.md, 개발산출물/진행_D공통기반.md를 읽고 이어서 한다.
-1) 먼저 git status와 origin/main 상태를 확인하고, PR #109(feat/core-APP-0-part2)의 CI·iOS 확인·머지 여부를 D에게 확인한다.
-2) 다음 작업(APP-0-P1 VISIT-2 선행 보완 4파일 / 카카오 JS 키 확인 후 APP-0-P3 / LIB-0-P1) 중 D가 지시한 파트를 최신 origin/main에서 착수한다.
-```
+- 이번 허용 범위: core LIB-0 P2 표의 P1 14파일 및 진행·결과·목록·인수인계 기록. 계약 Pre-flight·C1~C7·P1~P5를 전수 대조. 상세는 [결과](결과/LIB-0-P1_도서관조회_공공기반.md).
+- 전용 worktree `../libproject-core-LIB-0-part1`, 브랜치 `feat/core-LIB-0-part1`. 구현 `4da20f7`, 최신 main `ad56767` merge `6a1506c`. 기존 메인 작업 폴더 미커밋 변경을 보존했다.
+- 검증: 격리 PostgreSQL17 55434, Alembic -1/base 왕복, `pytest -W error` 148 passed, 가드 변이 5개 실패·원복. 앱 tsc·Jest 45·web export 통과.
+- GitHub CLI로 PR #111 생성. 연결 도구 PR 쓰기 권한 403으로 CLI fallback, 활성 gh 계정 전환 없음. 커밋·push·PR까지 허용, 직접 머지·배포·알림은 하지 않는다.
+- APP-0 기존 입력·검증 기록은 위에 보존했다. 이전 작업의 다음 범위/금지 목록을 이번 LIB-0 승인 범위로 오해하지 않는다.
 
 ## 재개 인계 (§7)
 
 ```text
-작업 ID / 목표: APP-0-P2 구현·로컬 검증·PR #109 게시 완료, CI·iOS 확인 및 머지 판단 대기
-사람 역할 / 기능 / AI 담당 역할: D / core / 구현·자체 검증 완료(독립 리뷰 아님)
-현재 단계 / 브랜치 / HEAD / PR: 리뷰 대기 / feat/core-APP-0-part2 / 코드 bb0fcbb + 별도 docs 커밋 / #109 (needs-ios)
-기존 미커밋 변경과 보존할 파일: 공유 worktree(docs/sync-artifacts-20261117) 미커밋 변경 및 ../team 보류 묶음 보존
-읽을 원문·승인 명세·계약: AGENTS.md/GEMINI.md → 필수 규칙, B2, core APP-0 C1~C7·P1~P5, 이 결과 §2~4
-수정 허용 파일 / 금지 범위: P2 12파일 + 진행/결과/목록/인수인계 기록. P3·LIB-0·SRV-0·직접 머지 금지
-완료 기준 / 현재 충족: P2 구현·로컬 검증·PR 게시 충족. iOS·실기기·웹 인터랙션·머지 미확인
-실행 명령·위치·결과: 결과 §3, mobile npm ci / tsc / Jest 45 / expo export web exit 0
-정적 검토 / 실행 검증 / 미검증: 결과 §2~4. 웹 조작·Android/iOS 실기기·운영 미실행
-명세와 달라진 점 / 결정 대기: team core.md(908eae4) C2에 맞춰 libraries/[libraryId] 선택 distanceM 검증 포함
-다음 담당자가 할 첫 행동: PR #109 CI 및 iOS 확인 후 D 머지 판단, 이후 후속 파트 착수
-허용된 Git 단계 / 외부 알림 여부 / 승인 근거: commit/push/PR·CI 확인까지 사용자 지시. 머지·외부 알림 미수행
+작업 ID / 목표: LIB-0-P1 리뷰 및 별도 머지 판단. P2·P3 자동 착수 금지
+사람 역할 / 기능 / AI 담당 역할: D / core / 구현·자체 검수 완료(독립 리뷰 아님)
+현재 단계 / 브랜치 / HEAD / PR: 리뷰 대기 / feat/core-LIB-0-part1 / 구현 4da20f7, main merge 6a1506c + 별도 docs 커밋(재개 시 실제 HEAD 확인) / #111
+기존 미커밋 변경과 보존할 파일: 기존 libproject 공유 폴더의 tracked 3·untracked 2파일, 다른 세션 및 team 변경 보존. 새 worktree에서만 진행
+읽을 원문·승인 명세·계약: AGENTS.md → 필수 규칙, B2, core LIB-0 Pre-flight·C1~C7·P1~P5, 이번 결과
+수정 허용 파일 / 금지 범위: P1 담당 파일·필요한 기록만. P2·P3·SRV-0·M2·team 변경·머지·배포 금지
+완료 기준 / 현재 충족: P1 코드·로컬 검증·자체 검수·PR 게시. 독립 리뷰·실제 제공자·운영은 미검증
+실행 명령·위치·결과: 결과 §3. server pytest -W error 148, Alembic -1/base 왕복; mobile tsc/Jest45/export 통과
+정적 검토 / 실행 검증 / 미검증: 결과 §2~4. 실제 Uvicorn 접근 로그·동시 예약 확인, 화면/실기기/운영 미검증
+명세와 달라진 점 / 결정 대기: 계약 필드·경로 변경 없음. 괄호 주소 정규화 및 422 detail 공통 등록은 결과 §4
+다음 담당자가 할 첫 행동: 전용 worktree에서 branch/HEAD/status/diff 및 PR #111 최신 head·CI를 확인하고 독립 리뷰
+허용된 Git 단계 / 외부 알림 여부 / 승인 근거: 사용자 2026-11-17 요청으로 commit/push/PR. 머지·배포·외부 알림 미수행
 ```
