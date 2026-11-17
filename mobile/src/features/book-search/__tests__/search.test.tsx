@@ -70,7 +70,7 @@ function book(n: number, extra: Partial<Book> = {}): Book {
     author: `저자 ${n}`,
     publisher: "창비",
     cover_url: null,
-    source: "naver",
+    source: "kakao",
     description: null,
     pub_year: 2014,
     ...extra,
@@ -78,7 +78,7 @@ function book(n: number, extra: Partial<Book> = {}): Book {
 }
 
 function page(items: Book[], next: number | null = null): BookSearchResponse {
-  return { items, next_start: next, source: "naver", fallback_reason: null };
+  return { items, next_start: next, source: "kakao", fallback_reason: null };
 }
 
 const REC: RecommendationResponse = {

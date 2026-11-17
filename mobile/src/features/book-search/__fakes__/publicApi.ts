@@ -58,7 +58,7 @@ const CATALOG: Book[] = [
     author,
     publisher,
     cover_url: null,
-    source: "naver" as const,
+    source: "kakao" as const,
     description: null,
     pub_year,
   })),
@@ -87,7 +87,7 @@ export async function searchBooks(
   );
   const items = hits.slice(start - 1, start - 1 + PAGE);
   const next = start - 1 + PAGE < hits.length ? start + PAGE : null;
-  return delay({ items, next_start: next, source: "naver", fallback_reason: null }, signal);
+  return delay({ items, next_start: next, source: "kakao", fallback_reason: null }, signal);
 }
 
 export async function fetchBook(isbn13: string, signal?: AbortSignal): Promise<Book> {

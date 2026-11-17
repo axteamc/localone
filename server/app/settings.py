@@ -26,9 +26,8 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     data4library_api_key: str = ""
     data4library_api_base_url: str = "http://data4library.kr/api"
-    naver_client_id: str = ""
-    naver_client_secret: str = ""
-    naver_api_base_url: str = "https://openapi.naver.com/v1/search"
+    kakao_rest_api_key: str = ""  # 카카오 책 검색(REST API 키). 지도용 JavaScript 키와 다르다
+    kakao_api_base_url: str = "https://dapi.kakao.com/v3/search"
     # 게시물 사진 저장소(local-feed LOCAL-1 F4). 키가 없으면 기기 메모리 저장소를 쓴다(시험·로컬)
     supabase_service_role_key: str = ""
     post_image_bucket: str = "post-images"

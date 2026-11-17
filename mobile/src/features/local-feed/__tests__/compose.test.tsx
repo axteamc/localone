@@ -58,7 +58,7 @@ function book(extra: Partial<Book> = {}): Book {
     author: "한강",
     publisher: "문학동네",
     cover_url: "https://img.test/cover.jpg",
-    source: "naver",
+    source: "kakao",
     description: null,
     pub_year: 2021,
     ...extra,
@@ -114,7 +114,7 @@ async function chooseColor() {
 }
 
 async function chooseBookCover(chosen: Book) {
-  searchBooks.mockResolvedValue({ items: [chosen], next_start: null, source: "naver", fallback_reason: null });
+  searchBooks.mockResolvedValue({ items: [chosen], next_start: null, source: "kakao", fallback_reason: null });
   await fireEvent.press(screen.getByText("책 표지"));
   await fireEvent.changeText(screen.getByLabelText("책 제목이나 저자"), "작별");
   await fireEvent.press(screen.getByText("찾기"));

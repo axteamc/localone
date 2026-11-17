@@ -82,7 +82,7 @@ function signedIn(userId: string | null) {
 const page = (items: Book[]): BookSearchResponse => ({
   items,
   next_start: null,
-  source: "naver",
+  source: "kakao",
   fallback_reason: null,
 });
 

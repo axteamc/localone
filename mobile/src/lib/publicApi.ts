@@ -3,7 +3,7 @@ import { NEARBY_DEFAULT_RADIUS_KM } from "./policy";
 
 export type Book = {
   isbn13: string; title: string; author: string | null; publisher: string | null;
-  cover_url: string | null; source: "naver" | "data4library" | "manual";
+  cover_url: string | null; source: "kakao" | "naver" | "data4library" | "manual";
   description: string | null; pub_year: number | null;
 };
 export type Today = { date: string; is_closed: boolean | null; hours_text: string | null; holiday_unchecked: boolean };
@@ -17,7 +17,7 @@ export type LibraryDetail = LibrarySummary & {
 export type LiveCheck = { url: string; kind: "isbn_search" | "homepage" };
 type FallbackReason = "not_configured" | "limit" | "provider_error" | "no_data" | null;
 export type BookSearchResponse = {
-  items: Book[]; next_start: number | null; source: "naver" | "cache"; fallback_reason: FallbackReason;
+  items: Book[]; next_start: number | null; source: "kakao" | "cache"; fallback_reason: FallbackReason;
 };
 export type RecommendationResponse = {
   kind: "popular"; scope: "national" | "library"; library_id: number | null; basis_label: string;

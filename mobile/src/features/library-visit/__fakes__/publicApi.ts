@@ -169,7 +169,7 @@ export type Book = {
   author: string | null;
   publisher: string | null;
   cover_url: string | null;
-  source: "naver" | "data4library" | "manual";
+  source: "kakao" | "naver" | "data4library" | "manual";
   description: string | null;
   pub_year: number | null;
 };

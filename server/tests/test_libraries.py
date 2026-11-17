@@ -243,7 +243,7 @@ def test_public_reference_columns_and_keys_match_contract(db_engine):
     "INSERT INTO books(title,source,description) VALUES('bad','manual',repeat('a',2001))",
     "INSERT INTO books(title,source,pub_year) VALUES('bad','manual',999)",
     "INSERT INTO books(title,source,pub_year) VALUES('bad','manual',3000)",
-    "INSERT INTO provider_daily_usage(provider,usage_date,call_count) VALUES('naver','2000-01-01',-1)",
+    "INSERT INTO provider_daily_usage(provider,usage_date,call_count) VALUES('kakao','2000-01-01',-1)",
     "INSERT INTO provider_daily_usage(provider,usage_date) VALUES('invalid','2000-01-01')",
 ])
 def test_public_reference_checks(db_engine, statement):
@@ -291,13 +291,13 @@ def test_reserve_provider_call_is_atomic(db_engine):
     def reserve(_):
         barrier.wait(timeout=5)
         with db_engine.begin() as conn:
-            return reserve_provider_call(conn, "naver", day, 2)
+            return reserve_provider_call(conn, "kakao", day, 2)
 
     with ThreadPoolExecutor(max_workers=5) as pool:
         assert sum(pool.map(reserve, range(5))) == 2
     with db_engine.begin() as conn:
-        assert conn.execute(text("SELECT call_count FROM provider_daily_usage WHERE provider='naver' AND usage_date=:d"), {"d": day}).scalar_one() == 2
-        assert not reserve_provider_call(conn, "naver", day, 2)
+        assert conn.execute(text("SELECT call_count FROM provider_daily_usage WHERE provider='kakao' AND usage_date=:d"), {"d": day}).scalar_one() == 2
+        assert not reserve_provider_call(conn, "kakao", day, 2)
         assert not reserve_provider_call(conn, "kakao", day, 0)
         assert not reserve_provider_call(conn, "yes24", day, -1)
         assert conn.execute(text("SELECT count(*) FROM provider_daily_usage WHERE usage_date=:d"), {"d": day}).scalar_one() == 1
