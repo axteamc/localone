@@ -1,6 +1,6 @@
 // 검색 진입 화면: 최근 본 도서 → 인기 도서(book-search.md LIB-1 B1·B2·B4·B10, S-6·S-10)
 import { useFocusEffect } from "expo-router";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
@@ -30,17 +30,31 @@ type Popular =
 export function SearchEntry({ onOpenBook }: { onOpenBook(isbn13: string): void }) {
   const { userId } = useAuth();
   const runner = useMemo(() => createLatestRunner(), []);
-  const [recent, setRecent] = useState<RecentBook[]>([]);
+  // 목록에 주인 계정을 붙여 둔다. 계정이 바뀌면 새로 읽기 전이라도 이전 계정 목록은 그리지 않는다(B4 계정 격리).
+  const [recentState, setRecentState] = useState<{ owner: string | null; books: RecentBook[] }>({
+    owner: userId,
+    books: [],
+  });
+  const recent = recentState.owner === userId ? recentState.books : [];
+  const currentUser = useRef(userId);
+  currentUser.current = userId;
+  const loadSeq = useRef(0); // 가장 마지막에 시작한 읽기만 화면에 반영한다
   const [popular, setPopular] = useState<Popular>({ kind: "loading" });
 
   const loadRecent = useCallback(async () => {
-    setRecent(await listRecentBooks(userId));
+    const seq = ++loadSeq.current;
+    const books = await listRecentBooks(userId);
+    if (seq !== loadSeq.current || currentUser.current !== userId) return; // 늦게 온 읽기·다른 계정 읽기는 버린다
+    setRecentState({ owner: userId, books });
   }, [userId]);
 
-  // 상세에서 돌아오면 최근 본 도서를 다시 읽는다
+  // 상세에서 돌아오면 최근 본 도서를 다시 읽는다. 포커스를 잃거나 계정이 바뀌면 진행 중인 읽기는 무효.
   useFocusEffect(
     useCallback(() => {
       void loadRecent();
+      return () => {
+        loadSeq.current++;
+      };
     }, [loadRecent])
   );
 
@@ -56,15 +70,24 @@ export function SearchEntry({ onOpenBook }: { onOpenBook(isbn13: string): void }
     return () => runner.cancel();
   }, [loadPopular, runner]);
 
+  const editRecent = (update: (books: RecentBook[]) => RecentBook[]) => {
+    loadSeq.current++; // 삭제 전에 시작된 읽기가 지운 책을 다시 그리지 않게 한다
+    setRecentState((prev) => (prev.owner === userId ? { owner: userId, books: update(prev.books) } : prev));
+  };
+
+  // 저장에 실패해도 화면은 계속 쓴다(S-6). 대신 기기에 남은 그대로 다시 읽어 보인다(계정이 그대로일 때만).
+  const reloadIfSameUser = () => {
+    if (currentUser.current === userId) void loadRecent();
+  };
+
   const remove = async (isbn13: string) => {
-    setRecent((prev) => prev.filter((b) => b.isbn13 !== isbn13));
-    // 저장에 실패해도 화면은 계속 쓴다(S-6). 대신 기기에 남은 그대로 다시 읽어 보인다.
-    await removeRecentBook(userId, isbn13).catch(() => loadRecent());
+    editRecent((books) => books.filter((b) => b.isbn13 !== isbn13));
+    await removeRecentBook(userId, isbn13).catch(reloadIfSameUser);
   };
 
   const clearAll = async () => {
-    setRecent([]);
-    await clearRecentBooks(userId).catch(() => loadRecent()); // S-6과 같음
+    editRecent(() => []);
+    await clearRecentBooks(userId).catch(reloadIfSameUser); // S-6과 같음
   };
 
   const ranked = popular.kind === "ready" ? popular.data.books.slice(0, POPULAR_SHOWN) : [];

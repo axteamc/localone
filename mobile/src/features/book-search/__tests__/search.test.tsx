@@ -480,6 +480,109 @@ describe("최근 본 도서 저장", () => {
   });
 });
 
+describe("최근 본 도서 계정 격리·경합 (PR #95 리뷰)", () => {
+  const USER_B = "00000000-0000-4000-8000-00000000000b";
+  const signedIn = (userId: string) =>
+    ({
+      status: "signedIn",
+      userId,
+      signInWithGoogle: jest.fn<() => Promise<never>>(),
+      signInWithApple: jest.fn<() => Promise<never>>(),
+    }) as unknown as ReturnType<typeof useAuth>;
+
+  /** 지정한 키의 getItem을 붙잡아 두고, 나머지는 실제 저장소로 보낸다. */
+  function holdReads(keys: string[]) {
+    // 저장소 모의 객체의 getItem은 이미 jest.fn이라 원래 구현을 꺼내 감싼다
+    const getItem = jest.mocked(AsyncStorage.getItem);
+    const real = getItem.getMockImplementation()!;
+    const held = new Map(keys.map((k) => [k, deferred<void>()]));
+    getItem.mockImplementation(async (key: string, ...rest) => {
+      const gate = held.get(key);
+      if (gate) await gate.promise;
+      return real(key, ...rest);
+    });
+    return {
+      release: (k: string) => held.get(k)!.resolve(),
+      restore: () => getItem.mockImplementation(real),
+    };
+  }
+
+  test("late read of previous account never shows after switch", async () => {
+    await pushRecentBook(USER_A, book(1, { title: "PRIVATE_A_HISTORY" }));
+    await pushRecentBook(USER_B, book(2, { title: "B_HISTORY" }));
+    const keyA = `recent_books:${USER_A}`;
+    const keyB = `recent_books:${USER_B}`;
+    const reads = holdReads([keyA, keyB]);
+    try {
+      mockedUseAuth.mockReturnValue(signedIn(USER_A));
+      await render(<SearchScreen />);
+      await screen.findByText("불편한 편의점");
+      mockedUseAuth.mockReturnValue(signedIn(USER_B));
+      await screen.rerender(<SearchScreen />);
+      await act(async () => reads.release(keyB)); // B 먼저 끝남
+      expect(await screen.findByText("B_HISTORY")).toBeTruthy();
+      await act(async () => reads.release(keyA)); // A가 늦게 끝남
+      expect(screen.queryByLabelText("PRIVATE_A_HISTORY 지우기")).toBeNull();
+      expect(screen.getByText("B_HISTORY")).toBeTruthy();
+    } finally {
+      reads.restore();
+    }
+  });
+
+  test("previous account list hides immediately on switch", async () => {
+    await pushRecentBook(USER_A, book(1, { title: "PRIVATE_A_HISTORY" }));
+    mockedUseAuth.mockReturnValue(signedIn(USER_A));
+    await render(<SearchScreen />);
+    await screen.findByLabelText("PRIVATE_A_HISTORY 지우기");
+    const reads = holdReads([`recent_books:${USER_B}`]); // B 읽기는 끝나지 않은 채로
+    try {
+      mockedUseAuth.mockReturnValue(signedIn(USER_B));
+      await screen.rerender(<SearchScreen />);
+      expect(screen.queryByLabelText("PRIVATE_A_HISTORY 지우기")).toBeNull();
+      expect(screen.queryByTestId("recent-section")).toBeNull();
+    } finally {
+      reads.release(`recent_books:${USER_B}`);
+      reads.restore();
+    }
+  });
+
+  test("review: concurrent removes are not undone", async () => {
+    for (const n of [1, 2, 3]) await pushRecentBook(null, book(n));
+    await Promise.all([removeRecentBook(null, book(1).isbn13), removeRecentBook(null, book(2).isbn13)]);
+    expect((await listRecentBooks(null)).map((b) => b.isbn13)).toEqual([book(3).isbn13]);
+  });
+
+  test("review: clear after in-flight push stays empty", async () => {
+    await pushRecentBook(null, book(1));
+    await Promise.all([pushRecentBook(null, book(2)), clearRecentBooks(null)]);
+    expect(await listRecentBooks(null)).toEqual([]);
+    expect(await AsyncStorage.getItem("recent_books:guest")).toBeNull();
+  });
+
+  test("review: concurrent removes from entry screen persist", async () => {
+    for (const n of [1, 2, 3]) await pushRecentBook(null, book(n));
+    await render(<SearchScreen />);
+    await screen.findByText("책 3");
+    await act(async () => {
+      fireEvent.press(screen.getByLabelText("책 1 지우기"));
+      fireEvent.press(screen.getByLabelText("책 2 지우기"));
+    });
+    await waitFor(async () =>
+      expect((await listRecentBooks(null)).map((b) => b.isbn13)).toEqual([book(3).isbn13])
+    );
+    expect(screen.queryByText("책 1")).toBeNull();
+    expect(screen.queryByText("책 2")).toBeNull();
+  });
+
+  test("failed write does not disturb queue for next write", async () => {
+    await pushRecentBook(null, book(1));
+    jest.mocked(AsyncStorage.setItem).mockRejectedValueOnce(new Error("disk")); // 한 번만 실패
+    await expect(pushRecentBook(null, book(2))).rejects.toThrow("disk");
+    await pushRecentBook(null, book(3));
+    expect((await listRecentBooks(null)).map((b) => b.isbn13)).toEqual([book(3).isbn13, book(1).isbn13]);
+  });
+});
+
 describe("색·곡률 토큰", () => {
   test("no hard-coded colors in book-search screens", () => {
     const dir = path.join(__dirname, "..");
