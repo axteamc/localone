@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>S4 디자인 시안</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* warm 룩 토큰(mobile/src/theme/tokens.ts·index.ts 계산값, 2026-11-18) */
+:root{
+  --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5; --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+  --cream:#EFEFE7; --paper:#EFF1F1; --ink:#2E333F; --text:#1D1D1F; --textSub:#71716F; --divider:#C4C4C1;
+  --inkMuted:#6B6B66; --loanAvailable:#5B8A5B; --panelFrosted:#E9EAE9; --seam:#C8C9C8;
+  --reliefMid:#B8B7B3; --reliefDark:#999896; --rivet:#8E8D8D;
+  --actionStrong:#313132; --rCardD:12px; --rCard:18px; --rBlock:3px; --rControl:9999px; --rInner:12px;
+  --page:#F6F6F3; --pageInk:#1D1D1F; --panel:#FFFFFF; --line:#DADAD6; --accent:#2E333F;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){ --page:#1B1C1F; --pageInk:#E8E8E6; --panel:#26282C; --line:#3A3C41; --accent:#E9C970; }
+}
+:root[data-theme="dark"]{ --page:#1B1C1F; --pageInk:#E8E8E6; --panel:#26282C; --line:#3A3C41; --accent:#E9C970; }
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--pageInk);font-family:"Noto Sans KR",system-ui,sans-serif;line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 16px 80px}
+h1{font-size:24px;margin:0 0 4px}
+h2{font-size:19px;margin:40px 0 6px;padding-top:12px;border-top:1px solid var(--line)}
+h3{font-size:15px;margin:18px 0 6px}
+.lead{color:var(--pageInk);opacity:.75;margin:0 0 12px;font-size:14px}
+.note{font-size:13px;opacity:.8}
+table{border-collapse:collapse;width:100%;font-size:13px;background:var(--panel)}
+th,td{border:1px solid var(--line);padding:6px 8px;text-align:left;vertical-align:top}
+th{font-weight:700;white-space:nowrap}
+.tblwrap{overflow-x:auto}
+.shots{display:flex;gap:10px;overflow-x:auto;padding:6px 0 10px}
+.shots figure{margin:0;flex:0 0 150px;font-size:12px;text-align:center}
+.shots img{width:150px;border:1px solid var(--line);border-radius:8px;display:block}
+.cands{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;margin-top:10px}
+.cand{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;position:relative}
+.cand.sel{outline:3px solid var(--accent);outline-offset:-1px}
+.cand h4{margin:0 0 4px;font-size:15px}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:1px 8px;border-radius:99px;background:var(--fill1);color:#1D1D1F;margin-left:6px;vertical-align:2px}
+.cand p,.cand li{font-size:13px;margin:4px 0}
+.cand ul{padding-left:18px;margin:4px 0}
+.k{font-weight:700}
+select{font:inherit;font-size:14px;padding:4px 8px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--pageInk)}
+.picker{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin:8px 0;font-size:14px}
+.spec td:first-child{white-space:nowrap;font-weight:700}
+.state{font-size:11px;font-weight:700;padding:1px 6px;border-radius:4px;background:var(--line)}
+
+/* ---------- 휴대폰 미리보기(앱 토큰만 사용) ---------- */
+.phone{width:280px;max-width:100%;margin:8px auto 10px;height:560px;overflow:hidden;border-radius:22px;border:6px solid #111;background:var(--cream);font-size:11px;color:var(--text);position:relative}
+.ph-head{height:40px;background:var(--cream);border-bottom:1px solid var(--divider);display:flex;align-items:center;padding:0 12px;font-weight:700;font-size:13px}
+.ph-body{padding:10px 12px}
+.book{display:flex;gap:10px;margin-bottom:10px}
+.cover{width:62px;height:88px;border-radius:5px 9px 9px 5px;background:linear-gradient(160deg,#3b3a2c,#1f1f18);position:relative}
+.cover:after{content:"";position:absolute;left:20px;top:22px;width:22px;height:40px;background:#E98B2A;border-radius:2px}
+.btitle{font-size:14px;font-weight:700}
+.bsub{color:var(--textSub)}
+.secT{font-weight:700;font-size:12px;margin:12px 0 6px}
+.chip{display:inline-block;border:1px solid var(--divider);border-radius:var(--rControl);padding:3px 9px;font-weight:500;margin-bottom:8px;background:var(--paper)}
+.card{position:relative;margin-bottom:10px}
+.card .face{position:relative;z-index:2;display:flex;gap:6px;padding:9px 10px}
+.card .l{flex:1;min-width:0}
+.card .r{display:flex;align-items:center}
+.cname{font-weight:700;font-size:12px;display:flex;justify-content:space-between;gap:6px}
+.cname span{font-weight:400;color:var(--textSub)}
+.st1{margin-top:3px}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--loanAvailable);margin-right:4px}
+.st2,.info{color:var(--textSub);font-size:10.5px}
+/* 질감 A: 홈 블록 그대로 */
+.texA .card .face{background:var(--paper);border:1px solid var(--seam);border-radius:var(--rBlock);box-shadow:6px 10px 12px rgba(46,51,63,.22)}
+.texA .card .layer1,.texA .card .layer2{position:absolute;inset:0;border-radius:var(--rBlock)}
+.texA .card .layer1{background:var(--surface3);transform:translate(3px,4px);z-index:1}
+.texA .card .layer2{background:var(--reliefDark);transform:translate(6px,8px);z-index:0}
+.texA .card{margin-right:8px;margin-bottom:16px}
+.texA .card .face:before{content:"";width:8px;margin:-9px 4px -9px -10px;background:var(--fill3);border-right:1px solid var(--seam);border-radius:2px 0 0 2px}
+/* 질감 B: 가벼운 릴리프 */
+.texB .card .face{background:var(--paper);border:1px solid var(--seam);border-radius:var(--rCard);box-shadow:0 1px 0 rgba(255,255,255,.68) inset, 0 6px 10px rgba(28,30,36,.14)}
+.texB .card .layer1{position:absolute;left:0;right:0;top:0;bottom:-3px;border-radius:var(--rCard);background:var(--reliefMid);z-index:1}
+.texB .card .layer2{display:none}
+.texB .card{margin-bottom:13px}
+/* 질감 C: 평평 + 줄눈 */
+.texC .card .face{background:var(--paper);border:1px solid var(--seam);border-radius:var(--rCard)}
+.texC .card .layer1,.texC .card .layer2{display:none}
+/* 질감 D(Astra): 무광 면 + 얇은 받침 2px, 그림자·하이라이트 없음 */
+.texD .card .face{background:var(--panelFrosted);border:1px solid var(--seam);border-radius:var(--rCardD)}
+.texD .card .layer1{position:absolute;left:0;right:0;top:0;bottom:-2px;border-radius:var(--rCardD);background:var(--reliefMid);z-index:1}
+.texD .card .layer2{display:none}
+.texD .card{margin-bottom:12px}
+/* 주 버튼 */
+.primary{display:flex;align-items:center;justify-content:center;height:36px;font-weight:700;font-size:12px;margin-bottom:4px;position:relative}
+.btnA .primary{background:var(--ink);color:#fff;border-radius:var(--rControl)}
+.btnB .primary{background:var(--fill1);color:var(--text);border-radius:var(--rControl);border:1px solid var(--seam)}
+.btnC .primary{background:var(--ink);color:#fff;border-radius:var(--rBlock);box-shadow:3px 4px 0 var(--reliefDark),6px 10px 12px rgba(46,51,63,.22);margin-right:6px}
+.live{font-weight:700;font-size:10.5px;white-space:nowrap}
+.btnA .live{border:1px solid var(--ink);color:var(--ink);border-radius:var(--rControl);padding:5px 9px}
+.btnB .live{border:1px solid var(--surface3);background:var(--cream);color:var(--text);border-radius:var(--rControl);padding:8px 11px}
+.st1 b{font-weight:500}.more{color:var(--textSub);font-size:10.5px;margin-top:2px}.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.btnC .live{color:var(--text);text-decoration:underline;text-underline-offset:3px;padding:5px 2px}
+.btnD .primary{background:var(--actionStrong);color:var(--paper);border-radius:var(--rControl);height:40px}
+.btnD .live{border:1px solid var(--seam);background:var(--panelFrosted);color:var(--text);border-radius:var(--rControl);padding:5px 9px}
+.btnNow .primary{background:var(--ink);color:#fff;border-radius:var(--rInner)}
+.btnNow .live{background:var(--ink);color:#fff;border-radius:var(--rControl);padding:6px 10px}
+.hint{font-size:11px;opacity:.7;text-align:center;margin-top:-4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>S4 디자인 감사 · 방향 시안</h1>
+<p class="lead">시연 전 개선 S4(2026-11-18 mac, D). 홈 화면의 질감·색감을 기준으로 다른 화면이 어긋난 곳을 모으고, 화면 인상을 크게 바꾸는 두 요소만 후보 3개씩 비교한다. 나머지는 <b>기본값(Claude)</b>으로 S5에서 바로 고친다. 미리보기 색은 warm 룩 토큰 값 그대로다.</p>
+
+<h2>1. 감사 — 웹 390×844 화면별 스크린샷</h2>
+<p class="note">Metro 8083(CI 없이 실행, 번들에 S2·S3 코드 확인), 위치 광주 북구, 로그아웃 상태. 원본: <code>개발산출물/시안/S4_감사_스크린샷/</code></p>
+<div class="shots">
+  <figure><img src="S4_감사_스크린샷/01_home.jpg" alt="홈"><figcaption>홈(기준)</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/02_find.jpg" alt="도서관 찾기"><figcaption>도서관 찾기</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/03_visit.jpg" alt="방문"><figcaption>방문</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/04_compose.jpg" alt="글쓰기"><figcaption>글쓰기(로그아웃)</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/05_post.jpg" alt="글 상세"><figcaption>글 상세</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/06_search.jpg" alt="책 검색"><figcaption>책 검색</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/07_search_q.jpg" alt="검색 결과"><figcaption>검색 결과</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/08_detail.jpg" alt="책 상세"><figcaption>책 상세·대출</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/09_loans.jpg" alt="대출 반납"><figcaption>대출·반납</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/10_me.jpg" alt="내 정보"><figcaption>내 정보</figcaption></figure>
+  <figure><img src="S4_감사_스크린샷/11_login.jpg" alt="로그인"><figcaption>로그인</figcaption></figure>
+</div>
+<p class="note">감사 표 전체는 <code>개발산출물/진행_시연전개선.md</code> S4 절. 요약: ① 머리 띠가 탭 화면은 <code>cream</code>, 책·검색·글쓰기·로그인은 순백 #FFFFFF ② 본문 바탕이 탭 화면 <code>bg</code> / 나머지 <code>cream</code> ③ 홈 블록만 줄눈·두께면·그림자가 있고 다른 카드는 평평 ④ 책 상세에 <code>inkStrong</code> 채움이 주 버튼 1 + "실시간 확인" 카드 수만큼(390×844에서 4개) ⑤ 입력칸 포커스 때 브라우저 기본 파란 테두리 ⑥ 상세 카드 상태 둘째 줄이 "·"로 시작 ⑦ 시작선 16/20/24/30이 섞임.</p>
+
+<h2>2. 중심 요소 ① 카드 질감</h2>
+<p class="lead">책 상세의 도서관 카드, 검색 결과, 빈 상태 카드처럼 "정보를 담은 면"이 홈 블록의 재료감(1px 줄눈 · 두께면 · 그림자)을 얼마나 가져올지. 화면을 열면 제일 먼저 보이는 차이다.</p>
+<div class="picker"><label>D 카드 곡률(D: "곡률 줄이기") <select id="pickRad">
+<option value="18">기준 18 (지금 radii.card)</option><option value="12">-33% · 12 (radii.inner와 같음)</option><option value="9" selected>-50% · 9 (D 채택)</option><option value="6">-67% · 6 (modern 룩 카드와 같음)</option></select></label>
+<span class="note">값이 바뀌면 카드 곡률만 바뀐다(받침·줄눈은 같은 곡률을 따름). 홈 블록은 3.</span></div>
+<div class="cands" id="tex"></div>
+
+<h2>3. 중심 요소 ② 주 버튼과 진한 채움</h2>
+<p class="lead">"빌릴 예정에 저장" 같은 주 행동과 "실시간 확인 ↗" 같은 카드 안 행동의 색·모양. 지금은 남색(<code>inkStrong</code>) 덩어리가 한 화면에 4개 이상 보인다(DESIGN.md "진한 채움은 주 행동 1개"와 어긋남).</p>
+<div class="cands" id="btn"></div>
+
+<h2>3-1. 중심 요소 ③ 카드 정보 줄이기</h2>
+<p class="lead">책 상세 도서관 카드 한 장에 이름·거리 / 소장 / 기준일·대출 / 주소 / 전화로 글이 5줄이다(D: "정보가 과다한 느낌"). 위 ①D·②B와 "실시간 ↗"을 적용한 모습으로 비교한다. 기준일은 늘 함께 보인다(DESIGN.md 문구 확정).</p>
+<div class="cands" id="info"></div>
+
+<h2>4. 명세</h2>
+<div class="picker">
+  <label>① 카드 질감 채택안 <select id="pickTex"></select></label>
+  <label>② 주 버튼 채택안 <select id="pickBtn"></select></label>
+  <label>③ 카드 정보 <select id="pickInfo"></select></label>
+  <span class="note">선택 상자를 바꾸면 위 미리보기의 다른 요소도 그 값으로 그려진다.</span>
+</div>
+<div class="tblwrap"><table class="spec" id="spec"></table></div>
+
+<h3>기본값(Claude) — S5에서 묻지 않고 고친다</h3>
+<div class="tblwrap"><table>
+<tr><th>항목</th><th>지금</th><th>바꿀 값</th><th>상태</th></tr>
+<tr><td>머리 띠 색</td><td>책·검색·글쓰기·로그인 #FFFFFF(순백), 탭 화면 cream</td><td>모두 <code>cream</code> + 아래 1px <code>divider</code>(탭 화면과 같게). 순백 금지 원칙</td><td><span class="state">기본값(Claude)</span></td></tr>
+<tr><td>본문 바탕</td><td>탭 화면(대출·내 정보) <code>bg</code>, 나머지 <code>cream</code></td><td>그대로 둔다(Astra 지적 반영: <code>bg</code> 자체는 오류 아님)</td><td><span class="state">기본값(Claude)</span></td></tr>
+<tr><td>좌우 시작선</td><td>16 · 20(글쓰기 안내) · 24(로그인) · 카드 안 30</td><td>화면 바깥 16, 카드 안 12(카드 테두리부터). 홈 검색창 10·하단 창 14도 16으로</td><td><span class="state">기본값(Claude)</span></td></tr>
+<tr><td>입력칸 포커스</td><td>브라우저 기본 파란 테두리(찾기 창·검색)</td><td>파란 테두리 끔 → <code>inkStrong</code> 1.5px 테두리. 링크용 파랑 금지 원칙</td><td><span class="state">기본값(Claude)</span></td></tr>
+<tr><td>상세 카드 상태 줄</td><td>좁은 칸에서 "소장 있음" / "· 어제(추정) 기준 · 대출 가능"으로 끊겨 둘째 줄이 "·"로 시작(S3 넘김)</td><td>상태를 두 줄로 나눠 그린다: 1줄 "● 소장 있음", 2줄 "어제(추정) 기준 · 대출 가능"(가운데 점은 둘째 줄 안에서만)</td><td><span class="state">기본값(Claude)</span></td></tr>
+<tr><td>글자 단계</td><td>10·10.5·11·12·13·14·15·16·18·19·24·26·30·32</td><td>11 · 13 · 15 · 18 · 24(큰 제목) 다섯 단계로 맞춤. 방문 페이지 도서관 이름 26 → 24</td><td><span class="state">기본값(Claude)</span></td></tr>
+<tr><td>로그인 색 값</td><td><code>app/login.tsx</code> <code>TOKENS</code>에 warm 색 직접 복사</td><td>테마 토큰(<code>useTheme</code>)으로 바꿈 — 룩 전환 가능</td><td><span class="state">기본값(Claude)</span></td></tr>
+<tr><td>로그인 머리</td><td>머리 "동네한권" + 본문 작은 "동네한권" 두 번</td><td>머리 글자를 비움(본문 제목만)</td><td><span class="state">기본값(Claude)</span></td></tr>
+<tr><td>컨트롤 곡률</td><td>검색 입력·버튼 18, "빌릴 예정에 저장" 12, 홈 검색창 6·버튼 4</td><td>컨트롤은 <code>radii.control</code>(완전한 필), 홈 파사드 안 검색창은 홈 기준이라 그대로</td><td><span class="state">기본값(Claude)</span></td></tr>
+</table></div>
+
+<h2>5. 고성능 AI(Astra) 검토 결과</h2>
+<p class="note">2026-11-18 받음. 원문: <code>개발산출물/결과/홈_인기도서_S4_디자인검토.md</code>(브랜치 <code>feat/home-popular-books</code> <code>15c4af9</code>). Claude가 거른 결과:</p>
+<div class="tblwrap"><table>
+<tr><th>Astra 말</th><th>Claude 판단</th><th>반영</th></tr>
+<tr><td>카드 D(무광 면+얇은 받침) 추천</td><td>받아들임. 새 토큰 <code>surfaceEdge</code>·<code>surfaceFoot</code>은 기존 <code>seamHairline</code>·<code>reliefBottomMid</code>와 거의 같아 기존 토큰으로 바꿈</td><td>①에 D 추가·추천</td></tr>
+<tr><td>버튼 D(중성 명도 <code>actionStrong</code>) 추천, B 비추천</td><td>후보로 받음. 추천은 B 유지 — 의견이 갈림(②의 추천 이유 참고)</td><td>②에 D 추가</td></tr>
+<tr><td>Oxford 남색·toffee 갈색이 금지색과 충돌</td><td><b>거름.</b> 확정된 룩 색이다. 파랑 금지는 링크용 파랑(DESIGN.md "보류")</td><td>없음</td></tr>
+<tr><td>시안 B 버튼 글자색 고정, B 그림자 .10 ≠ <code>shadowAmbient</code> .14</td><td>맞음. 그림자를 .14로 고침. 글자색은 앱에서 <code>onFill</code> 자동(warm에서 #1D1D1F)</td><td>시안 수정</td></tr>
+<tr><td>로그인 화면이 warm 색 값을 직접 복사(<code>app/login.tsx:15</code> <code>TOKENS</code>) → 룩 전환 불가</td><td>맞음(확인). 토큰 규칙 위반</td><td>기본값(Claude)에 추가</td></tr>
+<tr><td>방문 이름은 26(30은 뒤로가기 글자), 상세 카드 30 = 바깥 16 + 안 14, 검색 결과 표지 5/9/9/5</td><td>맞음. 감사 표를 바로잡음</td><td>진행 파일 감사 표</td></tr>
+<tr><td>로그인 세 막대를 중성 면으로</td><td><b>보류.</b> 확정 C-60 "주요 컬러 로고"를 바꾸는 제안</td><td>D가 원하면 따로</td></tr>
+<tr><td>"모든 본문을 cream으로 통일할 필요 없음", 대출·내 정보 <code>bg</code> 유지 가능</td><td>받아들임. 바탕 통일 기본값을 "머리 띠만 cream, 바탕은 그대로"로 줄임</td><td>기본값 표</td></tr>
+<tr><td>개선 11항목 + 공통 누름 반응, 기능 제안 3개</td><td>규칙과 부딪치지 않는 것은 S5 후보 목록으로. 기능 제안 3개는 <code>00</code> §5 "제안"</td><td>진행 파일 S4 절</td></tr>
+</table></div>
+<p class="note"><span class="state">결정 전</span></p>
+</div>
+
+<script>
+const TEX = {
+  A:{name:"A 홈 블록 그대로", rec:false,
+     desc:"홈 도서관 블록과 같은 재료: 곡률 3(<code>radii.block</code>), 1px 줄눈(<code>seamHairline</code>), 오른쪽 아래 두께면 2겹(<code>surface3</code>·<code>reliefSideDark</code>), 그림자 6·10·12 <code>inkStrong</code> 22%, 왼쪽 스파인(<code>fill1~3</code>).",
+     flow:"카드를 누르는 동작은 지금과 같다(카드 자체는 누르는 곳이 아님, 오른쪽 버튼만). 스크롤하면 블록이 층층이 쌓인 목록이 된다.",
+     see:"카드 6개가 모두 돌출 블록이라 목록이 꽉 차 보이고, 카드 사이 여백이 16으로 늘어 390×844에서 3장 → 2.5장 정도 보인다.",
+     gain:"홈과 완전히 같은 질감. 앱 전체가 하나의 조형 시스템으로 보인다.",
+     lose:"DESIGN.md 확정 \"카드 곡률 18\"을 바꿔야 한다. 긴 목록에서 무겁고, 스파인 색이 도서관 구분이 아닌 장식이 된다."},
+  B:{name:"B 가벼운 릴리프", rec:false,
+     desc:"곡률 18(<code>radii.card</code>)은 그대로 두고, 1px 줄눈 + 위쪽 안쪽 밝은 선(<code>seamHighlight</code>) + 아래로만 3px 두께면(<code>reliefBottomMid</code>) + 옅은 그림자(<code>shadowAmbient</code> 정도).",
+     flow:"누르는 동작은 지금과 같다. 홈에서 들어오면 \"같은 재료로 만든 얇은 판\"으로 이어진다.",
+     see:"카드 간격 13, 390×844에서 3장 보임(지금과 같음). 두께면이 아래쪽에만 있어 긴 목록에서도 무겁지 않다.",
+     gain:"확정 곡률을 지키면서 홈의 줄눈·두께감을 가져온다. 상세·검색·빈 상태에 같은 규칙 하나로 쓸 수 있다.",
+     lose:"홈 블록만큼 입체적이지는 않다. 파생 색을 그대로 쓰지만 그림자 하나(아래 두께면)를 새로 정의해야 한다."},
+  C:{name:"C 평평 + 줄눈만", rec:false,
+     desc:"지금 카드에 1px 줄눈(<code>seamHairline</code>)만 더한다. 그림자·두께면 없음.",
+     flow:"지금과 같다.",
+     see:"지금 화면과 거의 같고 카드 가장자리만 또렷해진다.",
+     gain:"가장 차분하고 변경이 작다. 성능·플랫폼 차이(그림자) 걱정이 없다.",
+     lose:"상세 카드에는 홈과의 연결이 약하다. 다만 사진·표지·검색 행처럼 내용 자체가 주인공인 곳에는 맞다(Astra 지적 — \"요청을 거의 못 채운다\"는 Claude 평가는 과했음)."},
+  D:{name:"D 무광 면 + 얇은 받침 (Astra)", rec:true,
+     desc:"카드 바탕 <code>panelFrosted</code>(홈 지도 판과 같은 면), 1px <code>seamHairline</code>, 아래 2px 받침 <code>reliefBottomMid</code>, 곡률 <code>radii.card</code>(modern 6). 그림자·하이라이트 없음. <b>정보 카드(소장 카드·빈 상태)에만</b> 받침을 주고 사진·표지·검색 행은 평평하게. Astra가 낸 새 토큰 <code>surfaceEdge</code>·<code>surfaceFoot</code>은 기존 <code>seamHairline</code>·<code>reliefBottomMid</code>와 채널마다 2~5 차이라 기존 토큰을 쓴다(Claude 거름).",
+     flow:"지금과 같다. 검색 행 → 책 상세, 소장 카드는 누르는 곳이 아니고 오른쪽 \"실시간 확인 ↗\"만 외부 사이트로.",
+     see:"카드 간격 12, 390×844에서 3장. 홈 지도 판과 같은 무광 회색 면에 아래쪽 얇은 선 하나라 가장 조용한 입체감.",
+     gain:"홈과 같은 재료(판 색·줄눈·두께면)를 쓰면서 역할별로 질감을 나눈다. 그림자가 없어 웹·iOS·Android에서 같은 모습. 새 토큰 없음.",
+     lose:"B보다 돌출감·광택이 약하다. 카드 바탕이 <code>paper</code>보다 한 단계 어두워져 화면 전체가 조금 무거워진다."},
+};
+const BTN = {
+  A:{name:"A 남색 주 버튼 하나 + 테두리 알약", rec:false,
+     desc:"주 행동(빌릴 예정에 저장·로그인)만 <code>inkStrong</code> 채움 필. 카드 안 \"실시간 확인 ↗\"·검색 버튼은 <code>inkStrong</code> 1px 테두리 필(채움 없음).",
+     flow:"\"빌릴 예정에 저장\" → 도서관 고르기 창(지금과 같음). \"실시간 확인 ↗\" → 도서관 사이트로 나감(지금과 같음).",
+     see:"상세 화면의 진한 덩어리가 4개 → 1개. 카드 버튼은 윤곽선만 보인다.",
+     gain:"DESIGN.md \"진한 채움은 주 행동 1개\"를 그대로 지킨다. 가장 작은 변경.",
+     lose:"주 버튼은 여전히 남색 덩어리다. 홈(노랑 \"도서관 찾기\")·방문(노랑 +)·글 상세(노랑 저장)와 주 행동 색이 다르다."},
+  B:{name:"B 주 버튼을 홈처럼 대표색(fill1)", rec:true,
+     desc:"주 행동을 <code>fill1</code>(warm 노랑) 채움 필 + 1px 줄눈, 글자색은 채움 대비로 자동. <code>inkStrong</code> 채움은 홈 기점·하단 바 같은 구조에만. \"실시간 확인 ↗\"은 <code>cream</code> 바탕 + <code>surface3</code> 테두리 필.",
+     flow:"동작은 A와 같다. 홈에서 \"도서관 찾기\"를 누르던 노랑이 상세의 \"빌릴 예정에 저장\"으로 이어진다.",
+     see:"상세 화면에 진한 남색 면이 없다. 노랑 주 버튼 1개, 카드 버튼은 밝은 필.",
+     gain:"홈·방문·글 상세에서 이미 쓰는 \"주 행동 = 대표색\"과 하나가 된다. 룩이 바뀌면 주 버튼도 그 도서관 색을 따른다.",
+     lose:"DESIGN.md \"inkStrong 꽉 채움 = 하단 주 행동 버튼\" 문장을 바꿔야 한다. toffee·Oxford 룩에서는 주 버튼이 짙은 갈색·남색이 된다(글자색 자동)."},
+  C:{name:"C 홈 기점처럼 돌출 블록 버튼", rec:false,
+     desc:"주 행동을 홈 \"현위치\" 기점과 같은 <code>inkStrong</code> 블록(곡률 3, 두께면 <code>reliefSideDark</code>, 그림자). 카드 안 \"실시간 확인 ↗\"은 굵은 글자 링크(배경 없음).",
+     flow:"동작은 A와 같다. 버튼이 눌리는 느낌(두께면이 줄어드는 눌림)을 S5에서 더한다.",
+     see:"주 버튼이 화면에서 가장 무겁고 입체적이다. 카드 안 행동은 글자만 보인다.",
+     gain:"홈 기점과 같은 조형. \"목록·카드 안 행동은 텍스트 링크\" 확정 규칙과 맞다.",
+     lose:"확정 \"컨트롤은 완전한 필\"과 충돌. 남색 덩어리 느낌은 더 커진다. 글자 링크는 누르는 곳으로 덜 보인다."},
+  D:{name:"D 중성 명도로 주 행동 하나 (Astra)", rec:false,
+     desc:"주 행동을 새 파생색 <code>actionStrong=mix(text,bg,.90)</code>(warm #313132) 채움 필, 글자 <code>paper</code>, 높이 48·15/700. 누르면 <code>actionPressed=mix(text,bg,.96)</code>, 100ms·복귀 140ms. \"실시간 확인 ↗\"은 <code>panelFrosted</code> + 1px 줄눈 필(높이 34, hitSlop 5).",
+     flow:"동작은 A와 같다. 누를 때 한 단계 어두워지는 반응이 붙는다.",
+     see:"warm에서는 지금 남색(#2E333F)과 거의 같은 짙은 회흑색 덩어리 1개. 카드 버튼은 밝은 무광 필.",
+     gain:"네 룩 모두 같은 중성 위계(룩마다 주 버튼 색이 달라지지 않음). 강조를 색이 아닌 명도로 한다는 원칙과 맞다.",
+     lose:"새 토큰 2개가 생긴다. warm에서 \"짙은 덩어리\" 인상은 지금과 거의 같다. 홈(노랑 \"도서관 찾기\")·방문 +·글 저장과 주 행동 색이 계속 다르다. 확정 \"inkStrong = 하단 주 행동\" 문장 변경 필요."},
+};
+const state = { tex:"D", btn:"B", info:"B", rad:9 };
+function phone(tex, btn, info){
+  info = info || state.info;
+  const L = [["광주광역시립무등도서관","5m","광주광역시 북구 면앙로 130","062-613-7753","북구"],
+             ["전남광주통합특별시 북구 중흥도서관","1.2km","전남광주통합특별시 북구 당뢰로 39","062-410-6860","북구"],
+             ["계림꿈나무도서관","2.1km","광주광역시 동구 경양로247번길 26","062-608-3920","동구"]];
+  const live = `<div class="r"><span class="live">실시간 ↗</span></div>`;
+  const card = ([n,d,addr,tel,area],idx)=>{
+    let body;
+    if (info==="now") body = `<div class="st1"><i class="dot"></i>소장 있음</div><div class="st2">어제(추정) 기준 · 대출 가능</div><div class="info">${addr}</div><div class="info">전화 ${tel}</div>`;
+    else if (info==="A") body = `<div class="st1"><i class="dot"></i><b>대출 가능</b> <span class="st2">· 어제(추정) 기준</span></div><div class="info ell">${addr} · ${tel}</div>`;
+    else if (info==="B") body = `<div class="st1"><i class="dot"></i><b>대출 가능</b> <span class="st2">· 어제(추정) 기준</span></div>` + (idx===0 ? `<div class="info">${addr}</div><div class="info">전화 ${tel}</div><div class="more">접기 ⌃</div>` : `<div class="more">주소·전화 ⌄</div>`);
+    else body = `<div class="st1"><i class="dot"></i><b>대출 가능</b> <span class="st2">· 어제(추정) 기준</span></div><div class="info">${area}</div>`;
+    return `<div class="card"><div class="layer2"></div><div class="layer1"></div><div class="face"><div class="l">
+    <div class="cname"><span style="color:var(--text);font-weight:700">${n}</span><span>${d}</span></div>${body}</div>${live}</div></div>`;
+  };
+  return `<div class="phone tex${tex} btn${btn}"><div class="ph-head">책</div><div class="ph-body">
+    <div class="book"><div class="cover"></div><div><div class="btitle">소년이 온다</div><div class="bsub">한강</div><div class="bsub">창비 · 2014</div></div></div>
+    <div class="primary">빌릴 예정에 저장</div>
+    <div class="secT">가까운 도서관</div><span class="chip">현재 도시 내 모든 도서관 검색</span>
+    ${L.map(card).join("")}
+  </div></div>`;
+}
+const INFO = {
+  A:{name:"A 상태 한 줄 + 주소·전화 한 줄", rec:true, note:"(Claude 추천이었음)",
+     desc:"상태를 \"● 대출 가능 · 어제(추정) 기준\" 한 줄로 합친다(대출 가능/불가가 보이면 \"소장 있음\"은 따로 쓰지 않음, 소장 없음·알 수 없음은 지금처럼). 주소와 전화를 한 줄에 붙이고 넘치면 말줄임. 카드 5줄 → 3줄.",
+     flow:"지금과 같다. 카드는 누르는 곳이 아니고 \"실시간 ↗\"만 도서관 사이트로.",
+     see:"카드 높이 약 142 → 96. 390×844에서 카드 3장 → 4~5장. 긴 주소는 \"…\"로 잘린다.",
+     gain:"확정된 정보(기준일·주소·전화 글자)를 하나도 빼지 않고 줄 수만 줄인다. 새 동작 없음.",
+     lose:"긴 주소·전화가 잘려 끝까지 못 볼 수 있다. 계약 A11 ②③ 문구·배치 변경 필요(D가 계약 먼저)."},
+  B:{name:"B 두 줄 + 누르면 주소·전화 펼침", rec:false,
+     desc:"카드에는 이름·거리와 상태 한 줄만. \"주소·전화 ⌄\"를 누르면 그 카드만 아래로 펼쳐 주소·전화가 보인다(첫 카드가 펼친 모습).",
+     flow:"\"주소·전화 ⌄\" → 그 카드 펼침 / \"접기 ⌃\" → 닫힘. \"실시간 ↗\" → 도서관 사이트.",
+     see:"접힌 카드 높이 약 80, 390×844에서 5장 이상. 펼치면 지금 카드와 비슷한 높이.",
+     gain:"가장 가볍고, 필요한 사람만 주소를 본다.",
+     lose:"주소를 보려면 한 번 더 눌러야 한다. 새 동작(펼침)과 시험이 생긴다. 계약 A2·A11 변경."},
+  C:{name:"C 주소 대신 동네 이름만", rec:false,
+     desc:"상태 한 줄 + 주소 대신 \"북구\" 같은 동네 이름(<code>area_label</code>, 응답에 이미 있음). 전화는 카드에서 뺀다(실시간 사이트에서 확인).",
+     flow:"지금과 같다.",
+     see:"카드 3줄, 글자가 가장 적다. 거리와 동네만으로 고른다.",
+     gain:"가장 깔끔하다. 서버·API 변경 없음.",
+     lose:"2026-11-17 D 확정 \"전화번호 글자로 표시\"를 되돌린다. 정확한 주소를 앱에서 못 본다. 계약 A2 변경."},
+};
+function candHTML(key, c, kind){
+  const p = kind==="tex" ? phone(key, state.btn) : kind==="btn" ? phone(state.tex, key) : phone(state.tex, state.btn, key);
+  const on = state[kind]===key;
+  return `<div class="cand ${on?"sel":""}"><h4>${c.name}${c.rec?'<span class="badge">추천</span>':""}</h4>${p}
+   <p>${c.desc}</p><p><span class="k">누르면 이렇게 이어져요:</span> ${c.flow}</p>
+   <p><span class="k">열어 보면:</span> ${c.see}</p>
+   <ul><li><span class="k">얻는 것:</span> ${c.gain}</li><li><span class="k">포기하는 것:</span> ${c.lose}</li></ul></div>`;
+}
+const REC = {
+  tex:"<b>D 결정: D로 하되 곡률 줄이기(2026-11-18).</b> 곡률 단계는 위 선택 상자. 당시 추천 이유 — D를 추천(Astra 후보, Claude 동의): B와 같은 방향이지만 그림자 없이 홈 지도 판의 무광 면과 줄눈만 가져와 더 차분하고 플랫폼 차이가 없다. 정보 카드에만 받침을 줘 사진·표지와 역할이 나뉜다. 차선은 B.",
+  btn:"<b>D 결정: B 승인(2026-11-18).</b> 당시 추천 이유 — B를 계속 추천(Astra는 D 추천 — 의견이 갈림): 홈·방문·글 상세가 이미 주 행동을 대표색으로 쓰고 있어, 상세·검색·로그인만 짙은 색인 것이 지금 가장 큰 어긋남이다. D는 warm에서 지금의 짙은 덩어리와 거의 같다. Astra가 B를 반대한 이유 중 \"Oxford 파랑\"은 확정된 룩 색(#002147·#35557F)이라 금지색이 아니다(DESIGN.md의 파랑 금지는 링크용 파랑). 룩마다 주 버튼 색이 바뀌는 것이 싫다면 D가 맞다."
+};
+function render(){
+  document.getElementById("tex").innerHTML = Object.entries(TEX).map(([k,c])=>candHTML(k,c,"tex")).join("") + `<p class="note">${REC.tex}</p>`;
+  document.documentElement.style.setProperty("--rCardD", state.rad+"px");
+  document.getElementById("info").innerHTML = Object.entries(INFO).map(([k,c])=>candHTML(k,c,"info")).join("") + `<p class="note">A를 추천: 확정된 정보를 빼지 않고 줄만 5 → 3으로 줄인다. B는 동작이 늘고, C는 D가 확정한 전화 표시를 되돌린다.</p>`;
+  document.getElementById("btn").innerHTML = Object.entries(BTN).map(([k,c])=>candHTML(k,c,"btn")).join("") + `<p class="note">${REC.btn}</p>`;
+  const others = (o,k)=>Object.keys(o).filter(x=>x!==k).map(x=>o[x].name).join(", ");
+  document.getElementById("spec").innerHTML = `<tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>값</th><th>유저 플로우</th><th>이유(D 말)</th><th>상태</th></tr>
+   <tr><td>① 카드 질감</td><td>${TEX[state.tex].name}</td><td>—</td><td>${others(TEX,state.tex)}</td><td>${TEX[state.tex].desc}</td><td>${TEX[state.tex].flow} · 카드 곡률 ${state.rad}px</td><td>"D로 하되 곡률 줄이기"(D, 2026-11-18)</td><td><span class="state">확인(D) · 곡률 9</span></td></tr>
+   <tr><td>② 주 버튼</td><td>${BTN[state.btn].name}</td><td>—</td><td>${others(BTN,state.btn)}</td><td>${BTN[state.btn].desc}</td><td>${BTN[state.btn].flow}</td><td>"B 승인"(D, 2026-11-18)</td><td><span class="state">확인(D)</span></td></tr>
+   <tr><td>③ 카드 정보 줄이기</td><td>${INFO[state.info].name}</td><td>—</td><td>${others(INFO,state.info)}</td><td>${INFO[state.info].desc}</td><td>${INFO[state.info].flow}</td><td>"카드 하나하나 정보(줄 글)이 과다한 느낌", "정보는 B"(D)</td><td><span class="state">확인(D)</span></td></tr>
+   <tr><td>실시간 버튼</td><td>"실시간 ↗", 높이 34 → 38, 글자 13 bold, 좌우 12, hitSlop 3(누르는 영역 44)</td><td>—</td><td>"실시간 확인 ↗"(너무 길어 본문이 두 줄로 밀림)</td><td>B 버튼 규칙의 카드 안 필(<code>cream</code> + <code>surface3</code> 테두리)</td><td>누르면 도서관 사이트(그대로)</td><td>"글자 수 줄이고 세로 크기 약간 늘리기는 확정"(D). D는 "실시간->"로 적음 — 외부 이동 표시(DESIGN.md 문구)라 ↗ 유지</td><td><span class="state">확인(D)</span></td></tr>`;
+}
+document.getElementById("pickRad").onchange=e=>{state.rad=+e.target.value; render();};
+for (const [id,o,k] of [["pickTex",TEX,"tex"],["pickBtn",BTN,"btn"],["pickInfo",INFO,"info"]]){
+  const s=document.getElementById(id);
+  s.innerHTML=Object.entries(o).map(([key,c])=>`<option value="${key}">${c.name}${c.rec?" (추천)":""}</option>`).join("");
+  s.value=state[k]; s.onchange=()=>{state[k]=s.value; render();};
+}
+render();
+</script>
+</body>
+</html>
