@@ -34,6 +34,7 @@
 - 이번 허용 범위: core LIB-0 P2 표의 P1 14파일 및 진행·결과·목록·인수인계 기록. 계약 Pre-flight·C1~C7·P1~P5를 전수 대조. 상세는 [결과](결과/LIB-0-P1_도서관조회_공공기반.md).
 - 전용 worktree `../libproject-core-LIB-0-part1`, 브랜치 `feat/core-LIB-0-part1`. 구현 `4da20f7`, 최신 main `dfa7f23`까지 merge `52dd694`. 기존 메인 작업 폴더 미커밋 변경을 보존했다.
 - 검증: 격리 PostgreSQL17 55434, Alembic -1/base 왕복, `pytest -W error` 148 passed, 가드 변이 5개 실패·원복. 앱 tsc·Jest 48·web export 통과.
+- CI: 제품 코드 동일한 `08ac02d`의 [44000415084](https://github.com/axteamc/localone/actions/runs/44000415084)에서 서버·앱·CI ok success(2026-11-17 11:06 KST). iOS는 PR 정책으로 skipped. 후속 CI 기록 전용 docs 커밋과 구별한다.
 - GitHub CLI로 PR #111 생성. 연결 도구 PR 쓰기 권한 403으로 CLI fallback, 활성 gh 계정 전환 없음. 커밋·push·PR까지 허용, 직접 머지·배포·알림은 하지 않는다.
 - APP-0 기존 입력·검증 기록은 위에 보존했다. 이전 작업의 다음 범위/금지 목록을 이번 LIB-0 승인 범위로 오해하지 않는다.
 

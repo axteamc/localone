@@ -54,8 +54,8 @@ DB는 이번 작업 전용 `localone-lib0-p1-db` (`postgres:17`, `127.0.0.1:5543
 
 | 변경한 가드 | 실패 검사 | 실제 결과 |
 | --- | --- | --- |
-| `provider_engine.py:310` 반경 조건 제거 | `test_nearby_default_radius_is_3km_sorted_by_distance` | 1 failed |
-| `libraries.py:132` 혼합 방식 거부 해제 | `test_list_validation_errors` | 3 failed / 12 passed |
+| `provider_engine.py:309` 반경 조건 제거 | `test_nearby_default_radius_is_3km_sorted_by_distance` | 1 failed |
+| `libraries.py:131` 혼합 방식 거부 해제 | `test_list_validation_errors` | 3 failed / 12 passed |
 | `provider_engine.py:294` LIKE 이스케이프 제거 | `test_search_by_name_escapes_wildcards` | 3 failed / 2 passed |
 | `provider_engine.py:105` 상한 `<`를 `<=`로 변경 | `test_reserve_provider_call_is_atomic` | 1 failed (예약 수·저장 count 상한) |
 | `library_privacy.py:10` 로그 쿼리 제거 해제 | `test_nfr05_access_log_never_keeps_coordinates` | 1 failed (좌표 노출) |
@@ -76,4 +76,4 @@ DB는 이번 작업 전용 `localone-lib0-p1-db` (`postgres:17`, `127.0.0.1:5543
 
 CI 결과와 최종 게시 상태는 PR의 최신 head를 기준으로 확인한다. 본 문서는 로컬 검증 증거이며 독립 리뷰·배포 증거가 아니다.
 
-첫 게시 `6a1506c`의 CI 실행 `43999922977`은 success였다. 이후 문서·main #110 반영 head의 CI는 PR 최신 checks를 별도로 확인한다.
+첫 게시 `6a1506c`의 CI 실행 `43999922977`은 success였다. main #110 반영 `08ac02d24d9ee31d04431a3419256ceb7f79c457`의 [CI 44000415084](https://github.com/axteamc/localone/actions/runs/44000415084)도 서버 시험·앱 점검·CI ok 모두 success(2026-11-17 11:06 KST), iOS job은 PR 정책으로 skipped다. 이후 이 CI 기록·줄 번호 보정만 담은 docs 커밋은 제품 코드 변경이 없으며 최신 PR checks와 구별한다.
