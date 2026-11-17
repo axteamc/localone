@@ -1,4 +1,4 @@
-// 도서관 카드: 머리 줄 → 상태 줄 → 정보 줄 → 실시간 확인(book-search.md LIB-2 A2·A3·A11·A14, V-1·V-7·V-8)
+// 도서관 카드: 머리 줄 → 상태 줄·정보 줄(왼쪽) + 작은 실시간 확인(오른쪽)(book-search.md LIB-2 A2·A3·A11·A14, V-1·V-7·V-8)
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { openExternalUrl } from "../../lib/platform";
@@ -73,42 +73,56 @@ export function LibraryAvailabilityCard({
         )}
       </View>
 
-      <View style={styles.statusRow}>
-        <View style={[styles.dot, { backgroundColor: line.dot }]} />
-        {line.parts.map((p, i) => (
-          <View key={p} style={styles.statusPart}>
-            {i > 0 && <Text style={styles.statusText}>·</Text>}
-            <Text style={styles.statusText}>{p}</Text>
+      <View style={styles.body}>
+        <View style={styles.bodyMain}>
+          <View style={styles.statusRow}>
+            <View style={[styles.dot, { backgroundColor: line.dot }]} />
+            {line.parts.map((p, i) => (
+              <View key={p} style={styles.statusPart}>
+                {i > 0 && <Text style={styles.statusText}>·</Text>}
+                <Text style={styles.statusText}>{p}</Text>
+              </View>
+            ))}
+            {line.retry && (
+              <Pressable accessibilityRole="button" onPress={onRetry} hitSlop={8}>
+                <Text style={styles.retry}>다시 시도</Text>
+              </Pressable>
+            )}
           </View>
-        ))}
-        {line.retry && (
-          <Pressable accessibilityRole="button" onPress={onRetry} hitSlop={8}>
-            <Text style={styles.retry}>다시 시도</Text>
+
+          {(!!lib.address || !!lib.tel) && (
+            <View style={styles.info}>
+              {!!lib.address && <Text style={styles.infoText}>{lib.address}</Text>}
+              {/* 전화는 글자로만 보인다. 눌러서 걸지 않는다(A2). */}
+              {!!lib.tel && (
+                <Text selectable style={styles.infoText}>
+                  {`전화 ${lib.tel}`}
+                </Text>
+              )}
+            </View>
+          )}
+        </View>
+
+        {/* A11 ④: 오른쪽 작은 버튼(2026-11-18 D 결정, C-69). 높이 34 + hitSlop 5 → 누르는 영역 44 */}
+        {live !== null && (
+          <Pressable
+            testID={`live-check-${lib.id}`}
+            accessibilityRole="button"
+            onPress={() => void openLive()}
+            hitSlop={LIVE_HIT_SLOP}
+            style={styles.liveBtn}
+          >
+            <Text style={styles.liveBtnText}>실시간 확인 ↗</Text>
           </Pressable>
         )}
       </View>
-
-      {(!!lib.address || !!lib.tel) && (
-        <View style={styles.info}>
-          {!!lib.address && <Text style={styles.infoText}>{lib.address}</Text>}
-          {/* 전화는 글자로만 보인다. 눌러서 걸지 않는다(A2). */}
-          {!!lib.tel && (
-            <Text selectable style={styles.infoText}>
-              {`전화 ${lib.tel}`}
-            </Text>
-          )}
-        </View>
-      )}
-
-      {live !== null && (
-        <Pressable accessibilityRole="button" onPress={() => void openLive()} style={styles.liveBtn}>
-          <Text style={styles.liveBtnText}>실시간 확인 ↗</Text>
-        </Pressable>
-      )}
       {openFailed && <Text style={styles.meta}>{OPEN_FAILED}</Text>}
     </View>
   );
 }
+
+/** 버튼 높이 34 + 위아래 5 = 44(A11 ④ 누르는 영역 44×44 이상) */
+export const LIVE_HIT_SLOP = { top: 5, bottom: 5, left: 5, right: 5 } as const;
 
 const c = theme.colors;
 const styles = StyleSheet.create({
@@ -124,12 +138,16 @@ const styles = StyleSheet.create({
   retry: { fontSize: 14, color: c.inkStrong, fontWeight: "700", textDecorationLine: "underline" },
   info: { gap: 2 },
   infoText: { fontSize: 13, color: c.inkSoft, lineHeight: 19 },
+  body: { flexDirection: "row", alignItems: "center", gap: 10 },
+  bodyMain: { flex: 1, minWidth: 0, gap: 8 },
   liveBtn: {
-    marginTop: 4,
+    flexShrink: 0,
+    height: 34,
+    paddingHorizontal: 12,
     backgroundColor: c.inkStrong,
-    borderRadius: theme.radii.inner,
-    paddingVertical: 12,
+    borderRadius: theme.radii.control,
     alignItems: "center",
+    justifyContent: "center",
   },
-  liveBtnText: { color: c.paper, fontSize: 15, fontWeight: "700" },
+  liveBtnText: { color: c.paper, fontSize: 13, fontWeight: "700" },
 });

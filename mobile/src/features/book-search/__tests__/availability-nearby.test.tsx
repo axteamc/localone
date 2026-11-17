@@ -1,8 +1,9 @@
 // LIB-2-P1 내 주변 소장·대출 목록 (book-search.md LIB-2 P5)
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import React from "react";
+import { StyleSheet } from "react-native";
 import { useAuth } from "../../../auth/AuthProvider";
 import * as platform from "../../../lib/platform";
 import * as lib from "../../../lib/publicApi";
@@ -238,6 +239,32 @@ describe("내 주변 소장·대출 목록", () => {
     await render(<BookDetailScreen isbn13={BOY.isbn13} />);
     await fireEvent.press(await screen.findByText("실시간 확인 ↗"));
     expect(await screen.findByText("주소를 열지 못했어요.")).toBeTruthy(); // V-8
+  });
+
+  test("live check sits on the card right beside status and info", async () => {
+    const live = { url: "https://lib.example.org/s?isbn=1", kind: "isbn_search" as const };
+    fetchAvailabilityNearby.mockResolvedValueOnce(
+      resp([
+        lib1(1, "가", { live_check: live }, { tel: "02-2011-5799" }),
+        // A14 limit 카드: "다시 시도"와 버튼이 함께 있다
+        lib1(2, "나", { holding: "unknown", loanable: "unknown", fallback_reason: "limit", live_check: live }),
+      ])
+    );
+    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    for (const id of [1, 2]) {
+      const btn = await screen.findByTestId(`live-check-${id}`);
+      // 버튼과 상태·정보 줄이 같은 가로 줄(A11 ④). 정보 줄 아래 바닥 버튼이 아니다(C-69)
+      const row = btn.parent!;
+      expect(StyleSheet.flatten(row.props.style)).toMatchObject({ flexDirection: "row" });
+      expect(within(row).getByText(`서울 종로구 ${id}`)).toBeTruthy();
+      // 다시 시도는 왼쪽 칸에 있고 버튼 안에 없다(A14)
+      expect(within(btn).queryByText("다시 시도")).toBeNull();
+      // 높이 34 + hitSlop → 누르는 영역 44 이상
+      const style = StyleSheet.flatten(btn.props.style);
+      const slop = btn.props.hitSlop as { top: number; bottom: number };
+      expect((style.height as number) + slop.top + slop.bottom).toBeGreaterThanOrEqual(44);
+    }
+    expect(within(screen.getByTestId("library-2")).getByText("다시 시도")).toBeTruthy();
   });
 
   test("retry refetches same scope", async () => {
