@@ -2,8 +2,11 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import React from "react";
+import { StyleSheet } from "react-native";
 import * as api from "../deps";
+import { quadLayout } from "../FacadeHome";
 import { HomeScreen } from "../HomeScreen";
+import { snapOffsets } from "../useHomeSheet";
 
 const mockPush = jest.fn();
 
@@ -153,5 +156,57 @@ describe("VISIT-1 home facade", () => {
     expect(mockPush).toHaveBeenNthCalledWith(1, { pathname: "/libraries/[libraryId]", params: { libraryId: "201" } });
     expect(mockPush).toHaveBeenNthCalledWith(2, { pathname: "/libraries/[libraryId]", params: { libraryId: "202" } });
     expect(mockPush).toHaveBeenNthCalledWith(3, { pathname: "/libraries/[libraryId]", params: { libraryId: "203" } });
+  });
+
+  // ③-2: 파사드와 하단 창은 같은 영역. 처음 열린 홈(half)에서 남쪽 블록도 창 위쪽 끝 위에 있어야 보이고 눌린다.
+  // 판 높이 650·450은 웹 390×844·375×667에서 잰 값(PR 141 사후 검토 §4.7)
+  test.each([650, 450, 400])("south blocks stay above the half sheet (board %ipx)", async (boardH) => {
+    // 기준점(37.5815, 126.9831) 둘레 네 방향에 한 곳씩 → 네 칸 배치
+    const base = actual.FAKE_LIBRARIES[0]!;
+    const at = (id: number, name: string, dLat: number, dLng: number): api.LibrarySummary => ({
+      ...base,
+      id,
+      name,
+      latitude: 37.5815 + dLat,
+      longitude: 126.9831 + dLng,
+    });
+    m.fetchLibrariesNearby.mockResolvedValue(
+      nearby([
+        at(301, "북서도서관", 0.005, -0.006),
+        at(302, "북동도서관", 0.006, 0.005),
+        at(303, "남서도서관", -0.005, -0.006),
+        at(304, "남동도서관", -0.006, 0.005),
+      ])
+    );
+    await render(<HomeScreen />);
+    await screen.findByText("남서도서관");
+    await fireEvent(screen.getByTestId("facade-board"), "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: boardH } },
+    });
+    const half = snapOffsets(boardH).half;
+    const box = (slot: string) => {
+      const st = StyleSheet.flatten(screen.getByTestId(`facade-block-${slot}`).props.style);
+      return { top: st.top as number, bottom: (st.top as number) + (st.height as number) };
+    };
+    expect(screen.getByTestId("facade-block-SW")).toHaveTextContent(/남서도서관/);
+    expect(screen.getByTestId("facade-block-SE")).toHaveTextContent(/남동도서관/);
+    for (const slot of ["SW", "SE"]) {
+      expect(typeof box(slot).top).toBe("number");
+      expect(box(slot).bottom).toBeLessThanOrEqual(half);
+    }
+    // 북쪽 블록과 같은 줄에서 겹치지 않는다
+    expect(box("NW").bottom).toBeLessThan(box("SW").top);
+    expect(box("NE").bottom).toBeLessThan(box("SE").top);
+  });
+
+  test("quad layout keeps full blocks on tall boards and shrinks them on short ones", () => {
+    const tall = quadLayout(650);
+    expect(tall.blockH).toBe(104);
+    expect(tall.top.SE + tall.blockH).toBeLessThanOrEqual(snapOffsets(650).half);
+    const short = quadLayout(450);
+    expect(short.blockH).toBeLessThan(104);
+    expect(short.top.SE + short.blockH).toBeLessThanOrEqual(snapOffsets(450).half);
+    expect(short.top.NE + short.blockH).toBeLessThan(short.originY);
+    expect(short.originY).toBeLessThan(short.top.SW);
   });
 });
