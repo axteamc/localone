@@ -154,6 +154,29 @@ def test_data4library_popular_parser(monkeypatch):
     assert result[0].title == "이식" and result[0].description == "소개" and result[0].pub_year == 2014
 
 
+def test_data4library_request_does_not_ask_for_application_json(monkeypatch):
+    # 정보나루 실서버는 Accept: application/json에 406을 준다. 실제로 나가는 머리글을 본다
+    sent = []
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def read(self, size):
+            return b'{"response": {"docs": []}}'
+
+    def fake_urlopen(request, timeout):
+        sent.append(request.get_header("Accept"))
+        return FakeResponse()
+
+    monkeypatch.setattr(pe.urllib.request, "urlopen", fake_urlopen)
+    pe.Data4LibraryClient("key", "https://example.test", 5).popular(None, NOW.date(), NOW.date(), 20)
+    assert sent == ["*/*"]
+
+
 def test_normalization_and_quiet_lookup(reference_db):
     assert pe.normalize_isbn("8936434128 9788936434120") == "9788936434120"
     assert pe.normalize_isbn("8936434128") == "9788936434120"
