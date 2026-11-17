@@ -1,7 +1,7 @@
 # APP-0-P3 카카오 지도 어댑터 결과
 
 2026-11-17 Windows / 사람 D / AI 구현·자체 검증 담당.
-상태: **로컬 구현·검증 완료, PR 게시 및 CI 대기.**
+상태: **로컬 구현·검증 완료, PR [#114](https://github.com/axteamc/localone/pull/114) (`needs-ios`). CI 대기.**
 
 ## 1. 기준과 범위
 
