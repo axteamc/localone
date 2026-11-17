@@ -42,6 +42,11 @@ jest.mock("../../../lib/publicApi", () => ({
   ...jest.requireActual<object>("../../../lib/publicApi"),
   fetchLibrary: jest.fn(),
 }));
+// LOCAL-2부터 기본 피드는 #26(fetchLibraryPosts). 이 파일의 시험은 빈 피드를 기준으로 본다
+jest.mock("../api", () => ({
+  ...jest.requireActual<object>("../api"),
+  fetchLibraryPosts: jest.fn(async () => ({ items: [], next_cursor: null })),
+}));
 jest.mock("../../../lib/visits", () => ({
   recordVisit: jest.fn(),
   getDefaultLibrary: jest.fn(),
