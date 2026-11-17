@@ -87,6 +87,7 @@ export const DERIVE = { textSubDarken: 0.5, dividerDarken: 0.13 } as const;
 export const SEMANTIC_COLORS = {
   pinClosed: "#78736C", inkMuted: "#6B6B66", loanAvailable: "#5B8A5B",
   loanOut: "#B27A3D", loanUnknown: "#9A9A98", inkSoft: "#4D4D4B",
+  shadowSoft: "rgba(0,0,0,.15)", shadowFloat: "rgba(0,0,0,.18)",
 };
 export type ThemeColors = BaseColors & typeof SEMANTIC_COLORS & {
   text: string; textSub: string; divider: string;
