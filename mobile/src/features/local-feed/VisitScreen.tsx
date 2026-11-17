@@ -35,6 +35,7 @@ export const VISIT_TEXT = {
   feedLoading: "이야기를 불러오는 중…",
   feedFailed: "지금은 이 도서관 이야기를 불러올 수 없어요.",
   feedRetry: "새로고침",
+  moreFailed: "다음 이야기를 불러오지 못했어요. 다시 내려 보세요.",
   emptyTitle: "아직 게시물이 없어요",
   emptySub: "이 도서관의 첫 글을 올려 보세요",
   emptyLink: "첫 글 올리기 →",
@@ -187,6 +188,7 @@ export function VisitScreen({
     if (res.status === "stale") return;
     if (res.status === "error") {
       moreCursor.current = null; // 다음 스크롤에서 다시 시도
+      showNotice(VISIT_TEXT.moreFailed); // 말없이 멈추지 않게(사후 검토 ①-4)
       return;
     }
     setFeed((prev) => {
@@ -195,7 +197,7 @@ export function VisitScreen({
       const added = res.value.items.filter((p) => !seen.has((p as { id?: string }).id));
       return { kind: "items", items: [...prev.items, ...added], nextCursor: res.value.next_cursor ?? null };
     });
-  }, [feedRunner, libraryId, loadFeed]);
+  }, [feedRunner, libraryId, loadFeed, showNotice]);
 
   // 들어올 때: #11 → (404가 아니면) 방문 한 번 기록 → 멘트. 피드는 따로.
   useEffect(() => {

@@ -108,6 +108,7 @@ export function LibraryFeed({ items, onNotice }: LibraryFeedProps) {
         <PostMenu
           post={menuPost}
           signedIn={status === "signedIn"}
+          authLoading={status === "loading"}
           onClose={() => setMenuFor(null)}
           onChange={patch}
           onNotice={onNotice}

@@ -101,7 +101,7 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-function setAuth(status: "signedIn" | "signedOut") {
+function setAuth(status: "signedIn" | "signedOut" | "loading") {
   mockedUseAuth.mockReturnValue({ status } as unknown as ReturnType<typeof useAuth>);
 }
 
@@ -178,6 +178,15 @@ describe("상세 구조와 대여/구매 (H9·H14)", () => {
     fetchAvailabilityAt.mockClear();
     await enter(post({ id: "p9" }), null);
     expect(fetchAvailabilityAt).toHaveBeenCalledWith("9788936434120", 101, expect.anything());
+  });
+
+  test("loan line of another library's post does not borrow the post library name (①-3)", async () => {
+    fetchAvailabilityAt.mockRejectedValueOnce(new publicApi.ApiCallError(0, "NETWORK", "x", ""));
+    await enter(post(), 102); // 방문 102, 게시물 101(정독도서관)
+    expect(await screen.findByText(DETAIL_TEXT.unknown)).toBeTruthy();
+    expect(screen.queryByText("정독도서관 · 알 수 없음")).toBeNull();
+    expect(loanLine(null, null)).toBe(DETAIL_TEXT.checking);
+    expect(loanLine(null, "failed")).toBe(DETAIL_TEXT.unknown);
   });
 
   test("post without book has no loan box", async () => {
@@ -288,6 +297,16 @@ describe("공감·저장 (H5·H6·H-#5·H-#6)", () => {
     expect(await screen.findByText(MENU_TEXT.loginNeeded)).toBeTruthy();
     await fireEvent.press(screen.getByText(MENU_TEXT.login));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/login" });
+    expect(setReaction).not.toHaveBeenCalled();
+    expect(setBookmark).not.toHaveBeenCalled();
+  });
+
+  test("detail reaction or bookmark while auth is restoring shows no login prompt (①-5)", async () => {
+    setAuth("loading");
+    await enter();
+    await fireEvent.press(screen.getByTestId("reaction-button"));
+    await fireEvent.press(screen.getByTestId("save-button"));
+    expect(screen.queryByText(MENU_TEXT.loginNeeded)).toBeNull();
     expect(setReaction).not.toHaveBeenCalled();
     expect(setBookmark).not.toHaveBeenCalled();
   });
