@@ -211,11 +211,11 @@ describe("상세 화면", () => {
     expect(screen.getByText("소년이 온다")).toBeTruthy(); // 상세 그대로
   });
 
-  test("save while logged in shows preparing", async () => {
+  test("save while logged in opens plan sheet", async () => {
     signedIn(USER_A);
     await render(<BookDetailScreen isbn13={BOY.isbn13} />);
     await fireEvent.press(await screen.findByTestId("save-plan"));
-    expect(screen.getByText("준비 중이에요")).toBeTruthy();
+    expect(screen.getByText("어느 도서관에서 빌릴 예정인가요?")).toBeTruthy(); // LIB-3 N7
     expect(screen.queryByText("로그인하면 빌릴 예정을 저장할 수 있어요")).toBeNull();
     // 로그인했으면 계정 키에 남는다
     expect((await recent.listRecentBooks(USER_A)).map((b) => b.isbn13)).toEqual([BOY.isbn13]);

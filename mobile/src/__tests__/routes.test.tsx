@@ -20,6 +20,9 @@ const mockRecordedTabScreens: Array<{ name: string; options?: { title?: string }
 const mockRecordedStackScreens: Array<{ name: string; options?: { headerShown?: boolean } }> = [];
 let mockLastStackScreenOptions: { title?: string } | undefined;
 
+// LIB-3: 대출·반납 탭의 빌릴 예정 구역은 plans.test.tsx에서 본다(서버 호출 모듈을 읽지 않게)
+jest.mock("../features/book-search/LoanPlansSection", () => ({ LoanPlansSection: () => null }));
+
 const mockComposeScreen = jest.fn<(props: { libraryId: number; isbn13?: string | null }) => void>();
 const mockVisitScreen = jest.fn<(props: { libraryId: number | null; distanceM: number | null }) => void>();
 
@@ -163,7 +166,7 @@ describe("APP-0-P2 routes and tabs", () => {
 
     const loans = await render(<LoansTabScreen />);
     expect(loans.getByText("대출·반납")).toBeTruthy();
-    expect(loans.getByText("준비 중이에요")).toBeTruthy();
+    expect(loans.getByText("로그인하면 빌릴 예정과 내 대출을 볼 수 있어요")).toBeTruthy(); // LIB-3 N9
 
     const meSignedOut = await render(<MeTabScreen />);
     expect(meSignedOut.getByText("내 정보")).toBeTruthy();
