@@ -55,7 +55,7 @@ def test_search_fallback_three_causes(reference_db, monkeypatch, mode, reason):
     seed_book(reference_db)
     fake = FakeBookSearch(error=pe.ProviderError("offline"))
     if mode == "limit":
-        monkeypatch.setattr(policy, "NAVER_DAILY_LIMIT", 0)
+        monkeypatch.setattr(policy, "KAKAO_DAILY_LIMIT", 0)
     result = run(engine(reference_db, None if mode == "missing" else fake).search_books("이식", 1))
     assert result.source == "cache" and result.fallback_reason == reason
     assert result.items[0].isbn13 == isbn()
@@ -66,7 +66,7 @@ def test_search_fallback_three_causes(reference_db, monkeypatch, mode, reason):
 def test_empty_fallback_is_not_success(reference_db, monkeypatch, mode, status):
     fake = FakeBookSearch(error=pe.ProviderError("offline"))
     if mode == "limit":
-        monkeypatch.setattr(policy, "NAVER_DAILY_LIMIT", 0)
+        monkeypatch.setattr(policy, "KAKAO_DAILY_LIMIT", 0)
     service = engine(reference_db, None if mode == "missing" else fake)
     for call in (service.search_books("이식", 1), service.get_book(isbn())):
         with pytest.raises(ApiError) as error:
@@ -92,18 +92,39 @@ def test_search_pages_and_repeated_upsert(reference_db):
         assert conn.execute(text("SELECT count(*) FROM books WHERE isbn13 LIKE '97800000%'")).scalar_one() == 25
 
 
-@pytest.mark.parametrize("raw,expected", [("20140519", 2014), ("2014", 2014), ("", None), ("abcd", None), ("9999", None)])
-def test_naver_description_year_and_update(reference_db, monkeypatch, raw, expected):
+@pytest.mark.parametrize("raw,expected", [
+    ("2014-05-19T00:00:00.000+09:00", 2014), ("2014", 2014), ("", None), ("abcd", None), ("9999", None)])
+def test_kakao_description_year_and_update(reference_db, monkeypatch, raw, expected):
     seed_book(reference_db)
-    monkeypatch.setattr(pe, "_http_get_json", lambda *args: {"total": 1, "items": [{
-        "isbn": isbn(), "title": "<b>이식</b>", "description": " <b>" + "가" * 2500 + "</b> ",
-        "pubdate": raw, "image": "http://example.test/cover", "author": "A^B"}]})
-    service = engine(reference_db, pe.NaverBookClient("id", "secret", "https://example.test", 5))
+    monkeypatch.setattr(pe, "_http_get_json", lambda *args: {
+        "meta": {"total_count": 1, "pageable_count": 1, "is_end": True}, "documents": [{
+            "isbn": "8936434128 " + isbn(), "title": "<b>이식</b>", "contents": " <b>" + "가" * 2500 + "</b> ",
+            "datetime": raw, "thumbnail": "http://example.test/cover", "authors": ["A", "B"]}]})
+    service = engine(reference_db, pe.KakaoBookClient("rest-key", "https://example.test", 5))
     result = run(service.search_books("이식", 1)).items[0]
     assert result.description == "가" * 2000 and result.pub_year == expected
     assert result.cover_url == "https://example.test/cover" and result.author == "A, B"
+    assert result.source == "kakao"
     with reference_db.connect() as conn:
         assert pe.select_book(conn, isbn()) == result
+
+
+def test_kakao_request_paging_and_empty_cover(monkeypatch):
+    sent = []
+
+    def fake_get(url, headers, timeout):
+        sent.append((url, headers))
+        return {"meta": {"total_count": 99, "pageable_count": 45, "is_end": True},
+                "documents": [{"isbn": isbn(), "title": "표지 없음", "thumbnail": "", "authors": []}]}
+
+    monkeypatch.setattr(pe, "_http_get_json", fake_get)
+    client = pe.KakaoBookClient("rest-key", "https://example.test/v3/search", 5)
+    page = client.search("이식", 41, 20)
+    assert "page=3" in sent[0][0] and "size=20" in sent[0][0] and sent[0][0].startswith("https://example.test/v3/search/book?")
+    assert sent[0][1] == {"Authorization": "KakaoAK rest-key"}
+    assert page.total == 45 and page.items[0].cover_url is None and page.items[0].author is None
+    assert client.lookup_isbn(isbn()).title == "표지 없음" and "target=isbn" in sent[1][0]
+    assert client.search("이식", 1001, 20) == pe.SearchPage(items=[], total=0) and len(sent) == 2
 
 
 def test_popular_refresh_and_library_fallback(reference_db):
@@ -152,6 +173,29 @@ def test_data4library_popular_parser(monkeypatch):
         "isbn13": isbn(), "bookname": "<b>이식</b>", "publication_year": "2014", "description": " <b>소개</b> "}}]}})
     result = pe.Data4LibraryClient("key", "https://example.test", 5).popular(None, NOW.date(), NOW.date(), 20)
     assert result[0].title == "이식" and result[0].description == "소개" and result[0].pub_year == 2014
+
+
+def test_data4library_request_does_not_ask_for_application_json(monkeypatch):
+    # 정보나루 실서버는 Accept: application/json에 406을 준다. 실제로 나가는 머리글을 본다
+    sent = []
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc):
+            return False
+
+        def read(self, size):
+            return b'{"response": {"docs": []}}'
+
+    def fake_urlopen(request, timeout):
+        sent.append(request.get_header("Accept"))
+        return FakeResponse()
+
+    monkeypatch.setattr(pe.urllib.request, "urlopen", fake_urlopen)
+    pe.Data4LibraryClient("key", "https://example.test", 5).popular(None, NOW.date(), NOW.date(), 20)
+    assert sent == ["*/*"]
 
 
 def test_normalization_and_quiet_lookup(reference_db):
@@ -322,5 +366,5 @@ def test_detail_fills_missing_metadata_without_duplicate(reference_db):
 def test_detail_enrichment_failure_preserves_cache(reference_db, monkeypatch, cause):
     cached = seed_book(reference_db)
     fake = FakeBookSearch(error=pe.ProviderError("offline")) if cause == "error" else FakeBookSearch([])
-    if cause == "limit": monkeypatch.setattr(policy, "NAVER_DAILY_LIMIT", 0)
+    if cause == "limit": monkeypatch.setattr(policy, "KAKAO_DAILY_LIMIT", 0)
     assert run(engine(reference_db, None if cause == "missing" else fake).get_book(isbn())) == cached
