@@ -21,6 +21,7 @@ const mockRecordedStackScreens: Array<{ name: string; options?: { headerShown?: 
 let mockLastStackScreenOptions: { title?: string } | undefined;
 
 const mockComposeScreen = jest.fn<(props: { libraryId: number; isbn13?: string | null }) => void>();
+const mockVisitScreen = jest.fn<(props: { libraryId: number | null; distanceM: number | null }) => void>();
 
 jest.mock("../features/library-visit/HomeScreen", () => {
   const ReactLib = require("react");
@@ -35,6 +36,17 @@ jest.mock("../features/local-feed/ComposeScreen", () => {
     ComposeScreen: (props: { libraryId: number; isbn13?: string | null }) => {
       mockComposeScreen(props);
       return ReactLib.createElement(View, { testID: "local-feed-compose" });
+    },
+  };
+});
+
+jest.mock("../features/local-feed/VisitScreen", () => {
+  const ReactLib = require("react");
+  const { View } = require("react-native");
+  return {
+    VisitScreen: (props: { libraryId: number | null; distanceM: number | null }) => {
+      mockVisitScreen(props);
+      return ReactLib.createElement(View, { testID: "local-feed-visit" });
     },
   };
 });
@@ -171,12 +183,19 @@ describe("APP-0-P2 routes and tabs", () => {
 
     mockUseLocalSearchParams.mockReturnValue({ libraryId: "101" });
     const lib = await render(<LibraryDetailStubScreen />);
-    expect(lib.getByText("libraryId: 101")).toBeTruthy();
-    expect(lib.getByText("준비 중이에요")).toBeTruthy();
+    expect(lib.getByTestId("local-feed-visit")).toBeTruthy();
+    expect(mockVisitScreen).toHaveBeenLastCalledWith({
+      libraryId: 101,
+      distanceM: null,
+    });
 
     mockUseLocalSearchParams.mockReturnValue({ libraryId: "101", distanceM: "420" });
     const libWithDistance = await render(<LibraryDetailStubScreen />);
-    expect(libWithDistance.getByText("libraryId: 101 · distanceM: 420")).toBeTruthy();
+    expect(libWithDistance.getByTestId("local-feed-visit")).toBeTruthy();
+    expect(mockVisitScreen).toHaveBeenLastCalledWith({
+      libraryId: 101,
+      distanceM: 420,
+    });
 
     for (const invalidDistance of ["-1", "12.5", "abc", ["100", "200"]]) {
       mockUseLocalSearchParams.mockReturnValue({
@@ -184,8 +203,11 @@ describe("APP-0-P2 routes and tabs", () => {
         distanceM: invalidDistance,
       });
       const libInvalidDist = await render(<LibraryDetailStubScreen />);
-      expect(libInvalidDist.getByText("libraryId: 101")).toBeTruthy();
-      expect(libInvalidDist.queryByText(/distanceM/)).toBeNull();
+      expect(libInvalidDist.getByTestId("local-feed-visit")).toBeTruthy();
+      expect(mockVisitScreen).toHaveBeenLastCalledWith({
+        libraryId: 101,
+        distanceM: null,
+      });
     }
 
     mockUseLocalSearchParams.mockReturnValue({

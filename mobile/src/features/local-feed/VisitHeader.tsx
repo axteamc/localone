@@ -48,15 +48,16 @@ export type VisitHeaderProps = {
   today: Today | null;
   onBack: () => void;
   more: React.ReactNode; // ⋯ 버튼(메뉴는 VISIT-2-P2 VisitMenu)
+  folded?: boolean;
 };
 
 /** 두 줄 머리: ‹ / 이름 / "거리 · 오늘 운영시간" + ⋯ */
-export function VisitHeader({ name, distanceM, today, onBack, more }: VisitHeaderProps) {
+export function VisitHeader({ name, distanceM, today, onBack, more, folded = false }: VisitHeaderProps) {
   const closed = today?.is_closed === true;
   const hours = today?.hours_text ?? "정보 없음";
   return (
     <View style={styles.two} testID="visit-header-two">
-      <BackButton onBack={onBack} size={30} />
+      {folded ? <View style={styles.back} /> : <BackButton onBack={onBack} size={30} />}
       <Text style={styles.name} numberOfLines={1}>
         {name}
       </Text>
@@ -65,7 +66,7 @@ export function VisitHeader({ name, distanceM, today, onBack, more }: VisitHeade
           {distanceM !== null ? `${formatDistance(distanceM)} · ` : ""}
           {closed ? <Text style={styles.closed}>오늘 휴관</Text> : hours}
         </Text>
-        {more}
+        {folded ? <View style={styles.moreSpace} /> : more}
       </View>
     </View>
   );
@@ -98,6 +99,7 @@ const styles = StyleSheet.create({
   infoRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 36 },
   info: { flex: 1, fontSize: 16, color: C.textSub },
   closed: { fontWeight: "800", color: C.text },
+  moreSpace: { minWidth: 44, minHeight: 36 },
   one: {
     position: "absolute",
     top: 0,

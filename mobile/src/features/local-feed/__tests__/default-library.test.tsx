@@ -243,4 +243,28 @@ describe("앱 시작 분기", () => {
     await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1));
     expect(setDefaultLibrary).not.toHaveBeenCalled();
   });
+
+  test("gate keeps default and opens library when nearby lookup fails", async () => {
+    storedDefault = 101;
+    fetchLibrariesNearby.mockRejectedValue(new publicApi.ApiCallError(0, "NETWORK", "서버에 연결하지 못했어요.", ""));
+    await render(<DefaultLibraryGate />);
+    await waitFor(() => expect(mockPush).toHaveBeenCalledTimes(1));
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/libraries/[libraryId]",
+      params: { libraryId: "101" },
+    });
+    expect(setDefaultLibrary).not.toHaveBeenCalled();
+    expect(fetchLibrariesNearby).toHaveBeenCalledTimes(1);
+  });
+
+  test("gate releases default silently when library info lookup fails with non-404", async () => {
+    storedDefault = 101;
+    fetchLibrary.mockRejectedValue(new publicApi.ApiCallError(503, "PROVIDER_UNAVAILABLE", "불러오지 못했어요.", ""));
+    fetchLibrariesNearby.mockResolvedValue(nearby([102, 500]));
+    await render(<DefaultLibraryGate />);
+    await waitFor(() => expect(setDefaultLibrary).toHaveBeenCalledWith(null));
+    expect(screen.queryByTestId("gate-notice")).toBeNull();
+    expect(screen.queryByText(/기본 도서관/)).toBeNull();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
 });

@@ -5,6 +5,8 @@ import React from "react";
 import { Text } from "react-native";
 import LibraryVisitRoute from "../../../../app/libraries/[libraryId]";
 import { useAuth } from "../../../auth/AuthProvider";
+import { deviceStorage } from "../../../lib/platform";
+import { STORAGE_KEYS } from "../../../lib/policy";
 import * as publicApi from "../../../lib/publicApi";
 import type { LibraryDetail, Today } from "../../../lib/publicApi";
 import * as visits from "../../../lib/visits";
@@ -12,6 +14,8 @@ import type { VisitRecord, VisitResult } from "../../../lib/visits";
 import { formatDistance, parseDistanceM } from "../VisitHeader";
 import { VISIT_TEXT, VisitScreen } from "../VisitScreen";
 import { pickVisitMent } from "../visitMent";
+
+const realVisits = jest.requireActual<typeof import("../../../lib/visits")>("../../../lib/visits");
 
 const mockBack = jest.fn();
 const mockReplace = jest.fn();
@@ -205,10 +209,19 @@ describe("들어올 때", () => {
   });
 
   test("library info failure shows retry and keeps visit counted", async () => {
+    jest.useFakeTimers();
     fetchLibrary.mockRejectedValueOnce(network());
-    await enter();
+    recordVisit.mockResolvedValue(visit({ isFirst: true }));
+    const askCard = jest.fn(() => <Text>질문</Text>);
+    await enter({ askCard });
     expect(await screen.findByText(VISIT_TEXT.libFailed)).toBeTruthy();
     await waitFor(() => expect(recordVisit).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      jest.advanceTimersByTime(500);
+    });
+    expect(screen.queryByTestId("visit-ment")).toBeNull(); // #11 실패 시 가짜 도서관 이름으로 멘트를 띄우지 않는다
+    expect(screen.queryByText(/이 도서관에 방문했어요/)).toBeNull();
+    expect(askCard).not.toHaveBeenCalled();
     expect(fetchLibrary).toHaveBeenCalledTimes(1);
     await fireEvent.press(screen.getByText(VISIT_TEXT.libRetry));
     expect(await screen.findByText("정독도서관")).toBeTruthy();
@@ -236,6 +249,60 @@ describe("들어올 때", () => {
       expect(askCard).not.toHaveBeenCalled();
       jest.useRealTimers();
     }
+  });
+
+  test("integration uses real visit adapter failure signal (G-#6)", async () => {
+    recordVisit.mockImplementation((id) => realVisits.recordVisit(id, new Date("2026-11-17T03:00:00Z")));
+    getDefaultLibrary.mockImplementation(() => realVisits.getDefaultLibrary());
+
+    // 1) 첫 방문 시 setItem reject → counted:false, 화면 유지·카드 0개
+    await deviceStorage.removeItem(STORAGE_KEYS.visits);
+    const setItemSpy = jest.spyOn(deviceStorage, "setItem").mockRejectedValue(new Error("storage full"));
+    jest.useFakeTimers();
+    const askCard = jest.fn(() => <Text>질문</Text>);
+    const firstResult = await realVisits.recordVisit(201, new Date("2026-11-17T03:00:00Z"));
+    expect(firstResult.counted).toBe(false);
+
+    const view1 = await render(<VisitScreen libraryId={101} distanceM={null} askCard={askCard} />);
+    await waitFor(() => expect(recordVisit).toHaveBeenCalledWith(101));
+    await act(async () => {
+      jest.advanceTimersByTime(3000);
+    });
+    expect(screen.getByText("정독도서관")).toBeTruthy();
+    expect(screen.getByText(VISIT_TEXT.emptyTitle)).toBeTruthy();
+    expect(screen.queryByTestId("visit-ment")).toBeNull();
+    expect(askCard).not.toHaveBeenCalled();
+    await view1.unmount();
+    jest.useRealTimers();
+
+    // 2) 누적 세 번째 방문 시 setItem reject → counted:false, 질문 카드 0개
+    setItemSpy.mockRestore();
+    await deviceStorage.setItem(
+      STORAGE_KEYS.visits,
+      JSON.stringify({
+        "101": {
+          libraryId: 101,
+          count: 2,
+          firstVisitedOn: "2026-11-10",
+          lastVisitedOn: "2026-11-15",
+          streakDays: 2,
+          defaultAsked: false,
+        },
+      }),
+    );
+    const setItemSpy2 = jest.spyOn(deviceStorage, "setItem").mockRejectedValue(new Error("storage full"));
+    jest.useFakeTimers();
+    const view2 = await render(<VisitScreen libraryId={101} distanceM={null} askCard={askCard} />);
+    await waitFor(() => expect(recordVisit).toHaveBeenCalledTimes(2));
+    await act(async () => {
+      jest.advanceTimersByTime(3000);
+    });
+    expect(screen.getByText("정독도서관")).toBeTruthy();
+    expect(screen.queryByTestId("visit-ment")).toBeNull();
+    expect(askCard).not.toHaveBeenCalled();
+    await view2.unmount();
+    setItemSpy2.mockRestore();
+    await deviceStorage.removeItem(STORAGE_KEYS.visits);
   });
 
   test("no search bar on visit page", async () => {
@@ -293,12 +360,16 @@ describe("머리", () => {
     const one = screen.getByTestId("visit-header-one");
     expect(within(one).getByText("정독도서관")).toBeTruthy();
     expect(within(one).queryByText(/09:00/)).toBeNull();
+    expect(screen.getAllByLabelText("지도 홈으로 돌아가기")).toHaveLength(1);
+    expect(screen.getAllByLabelText("도서관 메뉴")).toHaveLength(1);
     await fireEvent.scroll(scroll, { nativeEvent: { contentOffset: { y: 30 } } });
     expect(screen.getByTestId("visit-header-one")).toBeTruthy(); // 접힌 뒤에는 맨 위에서만 펼침
     await fireEvent.press(within(screen.getByTestId("visit-header-one")).getByLabelText("지도 홈으로 돌아가기"));
     expect(mockBack).toHaveBeenCalledTimes(1);
     await fireEvent.scroll(scroll, { nativeEvent: { contentOffset: { y: 0 } } });
     expect(screen.queryByTestId("visit-header-one")).toBeNull();
+    expect(screen.getAllByLabelText("지도 홈으로 돌아가기")).toHaveLength(1);
+    expect(screen.getAllByLabelText("도서관 메뉴")).toHaveLength(1);
   });
 
   test("distance route parsing and formatting", async () => {
@@ -442,5 +513,20 @@ describe("늦은 응답", () => {
     await second.unmount();
     await act(async () => late.resolve(lib(103, "남산도서관")));
     expect(recordVisit).not.toHaveBeenCalled();
+  });
+
+  test("libraryId change resets folded header and handles null transition", async () => {
+    fetchLibrary.mockImplementation(async (id) => lib(id, id === 101 ? "정독도서관" : "종로도서관"));
+    const view = await render(<VisitScreen libraryId={101} distanceM={null} />);
+    await screen.findByText("정독도서관");
+    await fireEvent.scroll(screen.getByTestId("visit-scroll"), { nativeEvent: { contentOffset: { y: 200 } } });
+    expect(screen.getByTestId("visit-header-one")).toBeTruthy();
+
+    await view.rerender(<VisitScreen libraryId={102} distanceM={null} />);
+    await screen.findByText("종로도서관");
+    expect(screen.queryByTestId("visit-header-one")).toBeNull();
+
+    await view.rerender(<VisitScreen libraryId={null} distanceM={null} />);
+    expect(screen.getByText(VISIT_TEXT.notFound)).toBeTruthy();
   });
 });
