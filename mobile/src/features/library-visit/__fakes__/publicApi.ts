@@ -142,6 +142,10 @@ export async function requestLocationPermission(): Promise<"granted" | "denied">
 export async function getDefaultLibrary(): Promise<number | null> {
   return null;
 }
+export async function getLastRegion(): Promise<string | null> {
+  return null;
+}
+export async function setLastRegion(_code: string): Promise<void> {}
 
 export type VisitRecord = {
   libraryId: number;

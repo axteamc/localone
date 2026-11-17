@@ -106,4 +106,17 @@ export function setDefaultLibrary(libraryId: number | null): Promise<void> {
     );
   });
 }
+// core K18·C3 (C-68): 위치를 못 쓸 때의 시작점. 지역 코드만 두고 좌표는 두지 않는다.
+const regionCode = (v: unknown): v is string => typeof v === "string" && /^[0-9]{5}$/.test(v);
+export async function getLastRegion(): Promise<string | null> {
+  await writes;
+  const value = await readJson(STORAGE_KEYS.lastRegion);
+  return object(value) && regionCode(value.code) && dateString(value.setOn) ? value.code : null;
+}
+export function setLastRegion(code: string): Promise<void> {
+  if (!regionCode(code)) return Promise.resolve();
+  return serial(async () => {
+    await write(STORAGE_KEYS.lastRegion, { code, setOn: seoulDate(new Date()) });
+  });
+}
 // TODO(연결): D(AUTH-2) registerSignOutCleanup. C3 device visits/default are retained.
