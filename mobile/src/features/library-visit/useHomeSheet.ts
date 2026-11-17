@@ -39,9 +39,9 @@ export type HomeSheetState = {
 
 /**
  * areaHeight: 창이 놓인 영역(검색창 아래 ~ 하단 탭 위)의 높이. 재기 전에는 화면 높이로 둔다.
- * TODO(VISIT-1b-P2): full에서 게시물 목록이 맨 위일 때만 아래로 끌기(C4 2행). 지금은 full이면 손잡이 줄에서만 내린다.
+ * isListAtTop: 창 안 목록이 맨 위인지. full에서는 목록이 맨 위일 때만 아래로 끌어 창을 내린다(C4 2행).
  */
-export function useHomeSheet(areaHeight?: number): HomeSheetState {
+export function useHomeSheet(areaHeight?: number, isListAtTop?: () => boolean): HomeSheetState {
   const { height: screenHeight } = useWindowDimensions();
   const area = areaHeight && areaHeight > 0 ? areaHeight : screenHeight;
   const offsets = useMemo(() => snapOffsets(area), [area]);
@@ -54,6 +54,8 @@ export function useHomeSheet(areaHeight?: number): HomeSheetState {
   const snapRef = useRef<SheetSnap>(snap);
   snapRef.current = snap;
   const startY = useRef(offsets.half);
+  const atTopRef = useRef(isListAtTop);
+  atTopRef.current = isListAtTop;
 
   const animateTo = useCallback(
     (s: SheetSnap) => {
@@ -81,9 +83,12 @@ export function useHomeSheet(areaHeight?: number): HomeSheetState {
         // 책·버튼처럼 누를 수 있는 것은 더 안쪽이라 먼저 받는다(누름 그대로). 휴대폰에서 안쪽 목록이 스크롤을 시작하면
         // 스크롤이 이 끌기를 넘겨받는다(아래 onPanResponderTerminate)
         onStartShouldSetPanResponder: () => true,
-        // C4: full이 아니면 끌기가 먼저(안쪽 스크롤보다), full이면 안쪽 스크롤에 맡긴다
-        onMoveShouldSetPanResponderCapture: (_e, g) =>
-          snapRef.current !== "full" && Math.abs(g.dy) > DRAG_SLOP && Math.abs(g.dy) > Math.abs(g.dx),
+        // C4: full이 아니면 끌기가 먼저(안쪽 스크롤보다). full이면 안쪽 스크롤에 맡기고, 목록이 맨 위에서 아래로 끌 때만 창을 내린다
+        onMoveShouldSetPanResponderCapture: (_e, g) => {
+          if (Math.abs(g.dy) <= DRAG_SLOP || Math.abs(g.dy) <= Math.abs(g.dx)) return false;
+          if (snapRef.current !== "full") return true;
+          return g.dy > 0 && (atTopRef.current?.() ?? true);
+        },
         onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dy) > DRAG_SLOP && Math.abs(g.dy) > Math.abs(g.dx),
         onPanResponderGrant: () => {
           translateY.stopAnimation((v) => {

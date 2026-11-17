@@ -144,10 +144,10 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 (대기/진행/검토요청/완료) | 구현 근거 (`파일:줄`) 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| VISIT-1b-P1 하단 창·인기 도서 한 줄 | `feat/library-visit-VISIT-1b` | (Draft) | 완료 | `useHomeSheet.ts:18-31`(세 자리·붙기)·`:83-85`(끌기), `useHomeFeed.ts:64-97`(기준 도서관 W2)·`:99-111`(인기 칸·10권), `PopularBooksRow.tsx`(W1·W10·예외 #2-d), `HomeSheet.tsx:39-42`(W7·W8), `HomeScreen.tsx:238`(창 붙임) / `__tests__/home-sheet.test.tsx` 8개 통과, mobile 전체 154개 통과, tsc 통과, 웹 내보내기 성공 | `TODO(연결): C` 책 상세, `TODO(VISIT-1b-P2)` 소식 칸 |
-| VISIT-1b-P2 자주 가는·가까운 도서관 소식 | `feat/library-visit-VISIT-1b` | (같은 PR) | 대기 | - | B LOCAL-2-P1·P3 미머지면 C7 가짜 |
+| VISIT-1b-P1 하단 창·인기 도서 한 줄 | `feat/library-visit-VISIT-1b` | #122 | 완료 | `useHomeSheet.ts:18-31`(세 자리·붙기)·`:83-85`(끌기), `useHomeFeed.ts:64-97`(기준 도서관 W2)·`:99-111`(인기 칸·10권), `PopularBooksRow.tsx`(W1·W10·예외 #2-d), `HomeSheet.tsx:39-42`(W7·W8), `HomeScreen.tsx:238`(창 붙임) / `__tests__/home-sheet.test.tsx` 8개 통과, mobile 전체 154개 통과, tsc 통과, 웹 내보내기 성공 | `TODO(연결): C` 책 상세, `TODO(VISIT-1b-P2)` 소식 칸 |
+| VISIT-1b-P2 자주 가는·가까운 도서관 소식 | `feat/library-visit-VISIT-1b` | #122 | 완료 | `useHomeFeed.ts:146-224`(알약 게시물·가까운 곳 고르기·이어 받기·새로고침), `LibraryNewsSection.tsx`(W4·W5·예외 #2·#5), `HomeSheet.tsx:50-75`(W6·W8 게시물·이어 받기)·`:101`(C4 스크롤), `useHomeSheet.ts:87-91`(C4 2행) / `__tests__/home-news.test.tsx` 11개 통과(P5 10개 + C4 1개), mobile 전체 165개 통과, tsc 통과 | `TODO(연결): B` `fetchLibraryPosts`·`PostCard`·`/posts/[postId]` |
 
-- **다음 세션 이어하기 메모**: VISIT-1b-P1(하단 창·인기 도서) 구현 완료. 다음은 같은 브랜치 `feat/library-visit-VISIT-1b`에서 VISIT-1b-P2(소식 칸: `LibraryNewsSection.tsx`, `__fakes__/PostCard.tsx`·`localFeedApi.ts`, `home-news.test.tsx`). P2에서 C4 2행(full이고 목록이 맨 위일 때만 아래로 끌기)을 게시물 목록에 맞춰 마무리한다.
+- **다음 세션 이어하기 메모**: VISIT-1b-P1·P2 구현 완료(PR #122). 남은 것: `specs/library-visit/verify.md`, PR Ready·`needs-ios`. B LOCAL-2(#26·`PostCard`)·C 책 상세·B 게시물 상세가 머지되면 import만 바꾸는 연결 PR.
 - [계약 보완 필요] `deps.ts`·`__fakes__/publicApi.ts` 수정 — P1 파일 목록 밖. 지도 홈 시험 3개가 `deps`를 `__fakes__`로 바꿔 끼우므로, 창이 쓰는 core 함수(`fetchRecommendations`·`getFrequentLibraries`)와 그 가짜(C7 방문 기록·#9 응답 그대로)를 두 파일에 더해야 기존 시험이 깨지지 않는다. `deps.ts`는 PR #115에서 D가 `[계약 보완]`으로 만든 파일 — mobile/src/features/library-visit/deps.ts, __fakes__/publicApi.ts
 - [계약 보완 필요] `useHomeSheet(areaHeight?)` 선택 인자 — C2는 `useHomeSheet()`. 창이 놓인 영역(검색창 아래~하단 탭 위) 높이를 알아야 세 자리를 맞출 수 있어 `HomeSheet`가 잰 높이를 넘긴다(없으면 화면 높이). 호환됨 — useHomeSheet.ts:44
 - [구현 중 변경] 창 빈 곳·손잡이를 누르면 창이 끌기를 받는다(`onStartShouldSetPanResponder`) — 웹 마우스는 움직임만으로 끌기를 넘겨받지 못해(react-native-web) C4 1행 '웹 마우스 끌기'가 안 됐음. 책·버튼은 더 안쪽이라 누름 그대로. 웹은 마우스 끌기 중 글자 선택이 끌기를 끊어 창에 `userSelect: "none"` — useHomeSheet.ts:83, HomeSheet.tsx:94·102
@@ -155,3 +155,9 @@
 - [Claude가 정함] 인기 칸 불러오는 중 모습 — 문구 없이 빈 표지 5개(계약 C3에 불러오는 중 문구가 없음) — PopularBooksRow.tsx
 - [남김] 첫 화면에서 단골이 없으면 주변 조회가 끝나기 전에 전국 인기 도서를 한 번 묻고, 주변 결과가 오면 가까운 도서관 기준으로 다시 묻는다(앞 응답은 러너가 버림). 단골이 있으면 한 번만 묻는다(시험 `popular uses first frequent library`)
 - [계약 보완 필요] 창 평소 높이 '화면의 50%' → '검색창 아래~하단 탭 위 영역을 지도와 창이 반반' — 하단 탭이 붙으면 화면의 50%로는 창 422px·지도 247px(390×844)로 창이 훨씬 커져 결정 2 "지도와 창이 반반"과 달라짐. 두 화면을 나란히 보여 주자 사용자가 "밑에 올라온게 반반이 적당한거같아"로 반반을 고름(2026-11-17). 계약 W3 숫자 문구 수정 필요 — mobile/src/features/library-visit/useHomeSheet.ts:18-22
+- [계약 보완 필요] 지도 홈 시험 3개(`home-map`·`home-list`·`home-move`)에 `HomeSheet` 가짜 한 줄 — P2 파일 목록 밖. 소식 칸 알약에 도서관 이름이 떠서 지도 핀 글자를 하나만 찾던 단언이 겹침. 지도 시험은 지도·목록만 보고, 창 위에 붙는 안내·버튼(above)은 그대로 그림. 창은 `home-sheet`·`home-news`가 봄 — __tests__/home-map.test.tsx 외 2개
+- [계약 보완 필요] `useHomeSheet(areaHeight?, isListAtTop?)` 두 번째 선택 인자 — C4 2행 "full이고 목록이 맨 위일 때만 아래로 끌기"를 하려면 창이 안쪽 목록 위치를 알아야 함. 반쯤·내림에서는 안쪽 스크롤을 끄고(`scrollEnabled`) 끌기만 — useHomeSheet.ts:44·87-91, HomeSheet.tsx:101
+- [Claude가 정함] 가까운 도서관 소식(결정 3)은 앞에서부터 게시물이 있는 도서관을 켠다. 셋 다 없으면 알약은 그대로 두고 켜진 알약 없이 "가까운 도서관에도 아직 게시물이 없어요."(예외 #2-c). 사용자가 게시물 없는 가까운 알약을 누르면 "<이름>에는 아직 게시물이 없어요." — useHomeFeed.ts:162, LibraryNewsSection.tsx
+- [Claude가 정함] "지금 보는 지역 기준"·동 이름 캡션은 보는 위치가 현재 위치가 아닐 때(위치 못 씀 또는 지도를 옮김) — P4 골격의 `origin === "current"` 조건 그대로 — useHomeFeed.ts `resolveNews`, HomeSheet.tsx `areaBased`
+- [Claude가 정함] 이어 받기가 실패하면 보던 게시물은 그대로 두고 다음에 다시 내릴 때 또 시도(실패 문구 없음) — useHomeFeed.ts:199
+- [남김] 넓은 웹 창에서는 2열 카드가 아주 커짐(1280px 창에서 카드 한 장 약 620px 너비). 카드 비율·간격은 B의 LOCAL-2 세부 명세에서 정하므로 가짜 카드(비율 1.25)로 두고, 창 안 최대 너비를 둘지는 B `PostCard` 연결 때 함께 정할 것

@@ -9,6 +9,8 @@ import {
   type Book,
   type LibrarySummary,
 } from "./deps";
+// TODO(연결): B LOCAL-2-P1 — `fetchLibraryPosts`·`FeedPost`는 B `../local-feed/api`가 머지되면 import만 바꾼다
+import { fetchLibraryPosts, type FeedPost } from "./__fakes__/localFeedApi";
 import { formatDistance } from "./format";
 
 type Origin = "current" | "start" | "moved";
@@ -17,11 +19,10 @@ type SectionStatus = "loading" | "ready" | "empty" | "error";
 /** 인기 도서는 앞 10권만 보인다(W1) */
 export const POPULAR_MAX = 10;
 const PILL_MAX = 3;
+/** 게시물은 20개씩 받는다(W6) */
+export const POSTS_PAGE = 20;
 
 export type NewsPill = { libraryId: number; name: string; caption: string | null };
-
-// TODO(연결): B LOCAL-2-P1 — `FeedPost`는 P2에서 B `local-feed` 모양으로 바꾼다
-type FeedPost = { id: string };
 
 export type HomeFeed = {
   popular: { status: SectionStatus; basisLabel: string | null; books: Book[] };
@@ -46,6 +47,17 @@ export function useHomeFeed(nearby: LibrarySummary[], origin: Origin): HomeFeed 
   const [popular, setPopular] = useState<HomeFeed["popular"]>({ status: "loading", basisLabel: null, books: [] });
   const [base, setBase] = useState<NewsBase | null>(null); // null = 아직 방문 기록을 읽는 중
   const [activeId, setActiveId] = useState<number | null>(null);
+  const activeRef = useRef<number | null>(null);
+  const newsRunner = useMemo(() => createLatestRunner(), []);
+  const [news, setNews] = useState<{ status: SectionStatus; posts: FeedPost[]; cursor: string | null }>({
+    status: "loading",
+    posts: [],
+    cursor: null,
+  });
+  const setActive = useCallback((id: number | null) => {
+    activeRef.current = id;
+    setActiveId(id);
+  }, []);
 
   // C2: 단골 알약 이름(#11)은 도서관마다 한 번만 묻는다. 실패(없어진 도서관 등)는 null로 기억해 그 알약을 뺀다
   const namesRef = useRef(new Map<number, Promise<string | null>>());
@@ -89,7 +101,6 @@ export function useHomeFeed(nearby: LibrarySummary[], origin: Origin): HomeFeed 
     void resolveNews(nearby, origin).then((next) => {
       if (mine !== resolveSeq.current) return;
       setBase(next);
-      setActiveId((cur) => (cur != null && next.pills.some((p) => p.libraryId === cur) ? cur : next.pills[0]?.libraryId ?? null));
     });
   }, [nearby, origin, resolveNews]);
 
@@ -119,16 +130,96 @@ export function useHomeFeed(nearby: LibrarySummary[], origin: Origin): HomeFeed 
     void loadPopular(basisId);
   }, [basisId, loadPopular]);
 
-  useEffect(() => () => popularRunner.cancel(), [popularRunner]);
+  useEffect(
+    () => () => {
+      popularRunner.cancel();
+      newsRunner.cancel();
+    },
+    [popularRunner, newsRunner]
+  );
 
   const reloadPopular = useCallback(() => {
     if (basisId !== undefined) void loadPopular(basisId);
   }, [basisId, loadPopular]);
 
-  // TODO(VISIT-1b-P2): 게시물(#26)·알약 바꾸기·이어 받기·소식 새로고침
-  const selectPill = useCallback((id: number) => setActiveId(id), []);
-  const loadMore = useCallback(() => {}, []);
-  const reloadNews = useCallback(() => {}, []);
+  // W6·W8: 알약 하나의 게시물 첫 쪽. 알약을 바꾸면 앞 요청은 러너가 버린다(마지막에 누른 도서관만 보임)
+  const selectPill = useCallback(
+    async (libraryId: number) => {
+      setActive(libraryId);
+      setNews({ status: "loading", posts: [], cursor: null });
+      const r = await newsRunner.run((s) => fetchLibraryPosts(libraryId, { cursor: null, limit: POSTS_PAGE }, s));
+      if (r.status === "stale") return;
+      if (r.status === "error") {
+        setNews({ status: "error", posts: [], cursor: null }); // W10: 소식 칸만
+        return;
+      }
+      setNews({ status: r.value.items.length ? "ready" : "empty", posts: r.value.items, cursor: r.value.next_cursor });
+    },
+    [newsRunner, setActive]
+  );
+
+  // W5·결정 3: 가까운 도서관은 앞에서부터 게시물이 있는 곳을 켠다. 셋 다 없으면 알약은 그대로, 켜진 알약 없이 예외 #2-c
+  const openNearby = useCallback(
+    async (pills: NewsPill[]) => {
+      setNews({ status: "loading", posts: [], cursor: null });
+      const r = await newsRunner.run(async (s) => {
+        for (const p of pills) {
+          const page = await fetchLibraryPosts(p.libraryId, { cursor: null, limit: POSTS_PAGE }, s);
+          if (page.items.length > 0) return { libraryId: p.libraryId as number | null, page };
+        }
+        return { libraryId: null, page: { items: [] as FeedPost[], next_cursor: null } };
+      });
+      if (r.status === "stale") return;
+      if (r.status === "error") {
+        setActive(pills[0]?.libraryId ?? null);
+        setNews({ status: "error", posts: [], cursor: null });
+        return;
+      }
+      setActive(r.value.libraryId);
+      const { items, next_cursor } = r.value.page;
+      setNews({ status: items.length ? "ready" : "empty", posts: items, cursor: next_cursor });
+    },
+    [newsRunner, setActive]
+  );
+
+  // 알약 목록이 정해지거나 바뀌면 소식을 연다. 켜진 알약이 그대로 남아 있으면 다시 부르지 않는다
+  const baseKindRef = useRef<NewsBase["kind"] | null>(null);
+  useEffect(() => {
+    if (base === null) return;
+    const sameKind = baseKindRef.current === base.kind;
+    baseKindRef.current = base.kind;
+    const cur = activeRef.current;
+    if (sameKind && cur != null && base.pills.some((p) => p.libraryId === cur)) return;
+    if (base.kind === "frequent") void selectPill(base.pills[0]!.libraryId); // W4: 첫째가 켜짐
+    else void openNearby(base.pills);
+  }, [base, selectPill, openNearby]);
+
+  // 아래로 끝까지 내리면 next_cursor로 이어 받는다(W6). 알약을 바꾸면 이어 받던 것은 버린다
+  const loadingMore = useRef(false);
+  const loadMore = useCallback(async () => {
+    const libraryId = activeRef.current;
+    const cursor = news.cursor;
+    if (news.status !== "ready" || cursor == null || libraryId == null || loadingMore.current) return;
+    loadingMore.current = true;
+    const r = await newsRunner.run((s) => fetchLibraryPosts(libraryId, { cursor, limit: POSTS_PAGE }, s));
+    loadingMore.current = false;
+    if (r.status !== "ok" || activeRef.current !== libraryId) return; // 이어 받기 실패는 보던 게시물을 지우지 않는다
+    setNews((n) => ({ status: "ready", posts: [...n.posts, ...r.value.items], cursor: r.value.next_cursor }));
+  }, [news.cursor, news.status, newsRunner]);
+
+  const reloadNews = useCallback(() => {
+    const cur = activeRef.current;
+    if (cur != null) void selectPill(cur);
+    else if (base) void openNearby(base.pills);
+  }, [base, selectPill, openNearby]);
+
+  const pressPill = useCallback(
+    (id: number) => {
+      if (id === activeRef.current && news.status === "ready") return;
+      void selectPill(id);
+    },
+    [news.status, selectPill]
+  );
 
   return {
     popular,
@@ -136,12 +227,12 @@ export function useHomeFeed(nearby: LibrarySummary[], origin: Origin): HomeFeed 
       kind: base?.kind ?? "nearby",
       pills: base?.pills ?? [],
       activeId,
-      status: "loading",
-      posts: [],
-      hasMore: false,
+      status: base === null ? "loading" : news.status,
+      posts: news.posts,
+      hasMore: news.cursor != null,
     },
-    selectPill,
-    loadMore,
+    selectPill: pressPill,
+    loadMore: () => void loadMore(),
     reloadPopular,
     reloadNews,
   };
