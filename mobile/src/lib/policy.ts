@@ -12,4 +12,5 @@ export const STORAGE_KEYS = {
   recentBooks: (userId: string | null) => `recent_books:${userId ?? "guest"}`,
   visits: "localone:visits:v1",
   defaultLibrary: "localone:default_library:v1",
+  lastRegion: "localone:last_region:v1",
 } as const;

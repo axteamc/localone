@@ -17,4 +17,4 @@ export {
   type Today,
 } from "../../lib/publicApi";
 export { searchRegions, type Region } from "../../lib/regions";
-export { getDefaultLibrary, getFrequentLibraries, type VisitRecord } from "../../lib/visits";
+export { getDefaultLibrary, getFrequentLibraries, getLastRegion, setLastRegion, type VisitRecord } from "../../lib/visits";

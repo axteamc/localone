@@ -8,9 +8,11 @@ import {
   fetchLibrariesNearby,
   fetchLibrary,
   getDefaultLibrary,
+  getLastRegion,
   locate,
   NEARBY_DEFAULT_RADIUS_KM,
   requestLocationPermission,
+  setLastRegion,
   type LatLng,
   type LibrarySummary,
 } from "./deps";
@@ -43,13 +45,18 @@ export type HomeLibraries = {
 // TODO(연결): D(AUTH-2) nearby_radius_km — 로그인했으면 내 설정 반경, 지금은 3 고정 (V2)
 const BASE_RADIUS = NEARBY_DEFAULT_RADIUS_KM as 3;
 
-/** V12 지역 결과: 좌표가 있는 도서관들의 평균 자리. 하나도 없으면 null */
+const median = (xs: number[]): number => {
+  const s = [...xs].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2;
+};
+
+/** V12 지역 결과: 좌표가 있는 도서관들의 가운데 자리(위도·경도 각각 중앙값). 하나도 없으면 null.
+ *  평균은 좌표가 잘못 들어간 도서관 하나(예: 광주 북구인데 서울 좌표)에 기점이 수십 km 끌려가서 중앙값을 쓴다(C-68) */
 export function averageCenter(libs: LibrarySummary[]): LatLng | null {
   const pts = libs.filter((l) => l.latitude != null && l.longitude != null);
   if (pts.length === 0) return null;
-  const lat = pts.reduce((s, l) => s + (l.latitude as number), 0) / pts.length;
-  const lng = pts.reduce((s, l) => s + (l.longitude as number), 0) / pts.length;
-  return { lat, lng };
+  return { lat: median(pts.map((l) => l.latitude as number)), lng: median(pts.map((l) => l.longitude as number)) };
 }
 
 export function useHomeLibraries(): HomeLibraries {
@@ -141,17 +148,33 @@ export function useHomeLibraries(): HomeLibraries {
         currentRef.current = { lat: loc.lat, lng: loc.lng };
         return load(currentRef.current, "current", BASE_RADIUS);
       }
-      // V7: 기본 도서관이 있으면 그 좌표, 없으면 임시 시작 위치
+      // V7: ① 기본 도서관 좌표 ② 마지막으로 고른 지역(좌표 평균, C-68) ③ 임시 시작 위치
       const defId = await getDefaultLibrary();
       const def = defId != null ? await fetchLibrary(defId).catch(() => null) : null;
       if (!aliveRef.current) return;
-      const at =
-        def?.latitude != null && def.longitude != null
-          ? { lat: def.latitude, lng: def.longitude }
-          : { lat: DEFAULT_START.lat, lng: DEFAULT_START.lng };
-      return load(at, "start", BASE_RADIUS);
+      if (def?.latitude != null && def.longitude != null) {
+        return load({ lat: def.latitude, lng: def.longitude }, "start", BASE_RADIUS);
+      }
+      const lastRegion = await getLastRegion();
+      if (!aliveRef.current) return;
+      if (lastRegion) {
+        setStatus("loading");
+        const r = await runner.run((s) => fetchLibrariesInRegion(lastRegion, s));
+        if (!aliveRef.current || r.status === "stale") return;
+        const mid = r.status === "ok" ? averageCenter(r.value.items) : null;
+        if (r.status === "ok" && mid) {
+          startingRef.current = false;
+          searchedRef.current = mid;
+          setCenter(mid);
+          setOrigin("start");
+          setLibraries(r.value.items);
+          setStatus("ready");
+          return;
+        }
+      }
+      return load({ lat: DEFAULT_START.lat, lng: DEFAULT_START.lng }, "start", BASE_RADIUS);
     },
-    [load]
+    [load, runner, setCenter]
   );
 
   useEffect(() => {
@@ -187,6 +210,7 @@ export function useHomeLibraries(): HomeLibraries {
   const showRegion = useCallback(
     async (code: string) => {
       setSelectedId(null);
+      void setLastRegion(code); // V7(C-68): 위치를 못 쓸 때 다음 시작점. 코드만 둔다
       if (modeRef.current === "list") {
         await loadRegion(code);
         return;
@@ -212,6 +236,7 @@ export function useHomeLibraries(): HomeLibraries {
   // V12: 도서관 결과 — 지도 모드는 그 좌표로 옮기고 그 핀에 테두리, 목록 모드는 그 도서관의 시군구 목록. 방문 페이지로 가지 않는다
   const focusLibrary = useCallback(
     (lib: LibrarySummary) => {
+      if (lib.dtl_region_code) void setLastRegion(lib.dtl_region_code); // V7(C-68)
       if (modeRef.current === "list") {
         if (lib.dtl_region_code) void loadRegion(lib.dtl_region_code);
         return;
