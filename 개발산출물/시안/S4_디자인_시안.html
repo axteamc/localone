@@ -13,7 +13,7 @@
   --cream:#EFEFE7; --paper:#EFF1F1; --ink:#2E333F; --text:#1D1D1F; --textSub:#71716F; --divider:#C4C4C1;
   --inkMuted:#6B6B66; --loanAvailable:#5B8A5B; --panelFrosted:#E9EAE9; --seam:#C8C9C8;
   --reliefMid:#B8B7B3; --reliefDark:#999896; --rivet:#8E8D8D;
-  --actionStrong:#313132; --rCard:18px; --rBlock:3px; --rControl:9999px; --rInner:12px;
+  --actionStrong:#313132; --rCardD:12px; --rCard:18px; --rBlock:3px; --rControl:9999px; --rInner:12px;
   --page:#F6F6F3; --pageInk:#1D1D1F; --panel:#FFFFFF; --line:#DADAD6; --accent:#2E333F;
 }
 @media (prefers-color-scheme: dark){
@@ -84,8 +84,8 @@ select{font:inherit;font-size:14px;padding:4px 8px;border-radius:8px;border:1px 
 .texC .card .face{background:var(--paper);border:1px solid var(--seam);border-radius:var(--rCard)}
 .texC .card .layer1,.texC .card .layer2{display:none}
 /* 질감 D(Astra): 무광 면 + 얇은 받침 2px, 그림자·하이라이트 없음 */
-.texD .card .face{background:var(--panelFrosted);border:1px solid var(--seam);border-radius:var(--rCard)}
-.texD .card .layer1{position:absolute;left:0;right:0;top:0;bottom:-2px;border-radius:var(--rCard);background:var(--reliefMid);z-index:1}
+.texD .card .face{background:var(--panelFrosted);border:1px solid var(--seam);border-radius:var(--rCardD)}
+.texD .card .layer1{position:absolute;left:0;right:0;top:0;bottom:-2px;border-radius:var(--rCardD);background:var(--reliefMid);z-index:1}
 .texD .card .layer2{display:none}
 .texD .card{margin-bottom:12px}
 /* 주 버튼 */
@@ -95,7 +95,8 @@ select{font:inherit;font-size:14px;padding:4px 8px;border-radius:8px;border:1px 
 .btnC .primary{background:var(--ink);color:#fff;border-radius:var(--rBlock);box-shadow:3px 4px 0 var(--reliefDark),6px 10px 12px rgba(46,51,63,.22);margin-right:6px}
 .live{font-weight:700;font-size:10.5px;white-space:nowrap}
 .btnA .live{border:1px solid var(--ink);color:var(--ink);border-radius:var(--rControl);padding:5px 9px}
-.btnB .live{border:1px solid var(--surface3);background:var(--cream);color:var(--text);border-radius:var(--rControl);padding:5px 9px}
+.btnB .live{border:1px solid var(--surface3);background:var(--cream);color:var(--text);border-radius:var(--rControl);padding:8px 11px}
+.st1 b{font-weight:500}.more{color:var(--textSub);font-size:10.5px;margin-top:2px}.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .btnC .live{color:var(--text);text-decoration:underline;text-underline-offset:3px;padding:5px 2px}
 .btnD .primary{background:var(--actionStrong);color:var(--paper);border-radius:var(--rControl);height:40px}
 .btnD .live{border:1px solid var(--seam);background:var(--panelFrosted);color:var(--text);border-radius:var(--rControl);padding:5px 9px}
@@ -128,16 +129,24 @@ select{font:inherit;font-size:14px;padding:4px 8px;border-radius:8px;border:1px 
 
 <h2>2. 중심 요소 ① 카드 질감</h2>
 <p class="lead">책 상세의 도서관 카드, 검색 결과, 빈 상태 카드처럼 "정보를 담은 면"이 홈 블록의 재료감(1px 줄눈 · 두께면 · 그림자)을 얼마나 가져올지. 화면을 열면 제일 먼저 보이는 차이다.</p>
+<div class="picker"><label>D 카드 곡률(D: "곡률 줄이기") <select id="pickRad">
+<option value="18">기준 18 (지금 radii.card)</option><option value="12" selected>-33% · 12 (radii.inner와 같음, 임시)</option><option value="9">-50% · 9</option><option value="6">-67% · 6 (modern 룩 카드와 같음)</option></select></label>
+<span class="note">값이 바뀌면 카드 곡률만 바뀐다(받침·줄눈은 같은 곡률을 따름). 홈 블록은 3.</span></div>
 <div class="cands" id="tex"></div>
 
 <h2>3. 중심 요소 ② 주 버튼과 진한 채움</h2>
 <p class="lead">"빌릴 예정에 저장" 같은 주 행동과 "실시간 확인 ↗" 같은 카드 안 행동의 색·모양. 지금은 남색(<code>inkStrong</code>) 덩어리가 한 화면에 4개 이상 보인다(DESIGN.md "진한 채움은 주 행동 1개"와 어긋남).</p>
 <div class="cands" id="btn"></div>
 
+<h2>3-1. 중심 요소 ③ 카드 정보 줄이기</h2>
+<p class="lead">책 상세 도서관 카드 한 장에 이름·거리 / 소장 / 기준일·대출 / 주소 / 전화로 글이 5줄이다(D: "정보가 과다한 느낌"). 위 ①D·②B와 "실시간 ↗"을 적용한 모습으로 비교한다. 기준일은 늘 함께 보인다(DESIGN.md 문구 확정).</p>
+<div class="cands" id="info"></div>
+
 <h2>4. 명세</h2>
 <div class="picker">
   <label>① 카드 질감 채택안 <select id="pickTex"></select></label>
   <label>② 주 버튼 채택안 <select id="pickBtn"></select></label>
+  <label>③ 카드 정보 <select id="pickInfo"></select></label>
   <span class="note">선택 상자를 바꾸면 위 미리보기의 다른 요소도 그 값으로 그려진다.</span>
 </div>
 <div class="tblwrap"><table class="spec" id="spec"></table></div>
@@ -226,42 +235,75 @@ const BTN = {
      gain:"네 룩 모두 같은 중성 위계(룩마다 주 버튼 색이 달라지지 않음). 강조를 색이 아닌 명도로 한다는 원칙과 맞다.",
      lose:"새 토큰 2개가 생긴다. warm에서 \"짙은 덩어리\" 인상은 지금과 거의 같다. 홈(노랑 \"도서관 찾기\")·방문 +·글 저장과 주 행동 색이 계속 다르다. 확정 \"inkStrong = 하단 주 행동\" 문장 변경 필요."},
 };
-const state = { tex:"D", btn:"B" };
-function phone(tex, btn){
-  const card = (n,d,addr)=>`<div class="card"><div class="layer2"></div><div class="layer1"></div><div class="face"><div class="l">
-    <div class="cname">${n}<span>${d}</span></div><div class="st1"><i class="dot"></i>소장 있음</div>
-    <div class="st2">어제(추정) 기준 · 대출 가능</div><div class="info">${addr}</div></div>
-    <div class="r"><span class="live">실시간 확인 ↗</span></div></div></div>`;
+const state = { tex:"D", btn:"B", info:"A", rad:12 };
+function phone(tex, btn, info){
+  info = info || state.info;
+  const L = [["광주광역시립무등도서관","5m","광주광역시 북구 면앙로 130","062-613-7753","북구"],
+             ["전남광주통합특별시 북구 중흥도서관","1.2km","전남광주통합특별시 북구 당뢰로 39","062-410-6860","북구"],
+             ["계림꿈나무도서관","2.1km","광주광역시 동구 경양로247번길 26","062-608-3920","동구"]];
+  const live = `<div class="r"><span class="live">실시간 ↗</span></div>`;
+  const card = ([n,d,addr,tel,area],idx)=>{
+    let body;
+    if (info==="now") body = `<div class="st1"><i class="dot"></i>소장 있음</div><div class="st2">어제(추정) 기준 · 대출 가능</div><div class="info">${addr}</div><div class="info">전화 ${tel}</div>`;
+    else if (info==="A") body = `<div class="st1"><i class="dot"></i><b>대출 가능</b> <span class="st2">· 어제(추정) 기준</span></div><div class="info ell">${addr} · ${tel}</div>`;
+    else if (info==="B") body = `<div class="st1"><i class="dot"></i><b>대출 가능</b> <span class="st2">· 어제(추정) 기준</span></div>` + (idx===0 ? `<div class="info">${addr}</div><div class="info">전화 ${tel}</div><div class="more">접기 ⌃</div>` : `<div class="more">주소·전화 ⌄</div>`);
+    else body = `<div class="st1"><i class="dot"></i><b>대출 가능</b> <span class="st2">· 어제(추정) 기준</span></div><div class="info">${area}</div>`;
+    return `<div class="card"><div class="layer2"></div><div class="layer1"></div><div class="face"><div class="l">
+    <div class="cname"><span style="color:var(--text);font-weight:700">${n}</span><span>${d}</span></div>${body}</div>${live}</div></div>`;
+  };
   return `<div class="phone tex${tex} btn${btn}"><div class="ph-head">책</div><div class="ph-body">
     <div class="book"><div class="cover"></div><div><div class="btitle">소년이 온다</div><div class="bsub">한강</div><div class="bsub">창비 · 2014</div></div></div>
     <div class="primary">빌릴 예정에 저장</div>
     <div class="secT">가까운 도서관</div><span class="chip">현재 도시 내 모든 도서관 검색</span>
-    ${card("광주광역시립무등도서관","5m","광주광역시 북구 면앙로 130")}
-    ${card("북구 중흥도서관","1.2km","광주광역시 북구 당뢰로 39")}
-    ${card("계림꿈나무도서관","2.1km","광주광역시 동구 경양로247번길 26")}
+    ${L.map(card).join("")}
   </div></div>`;
 }
+const INFO = {
+  A:{name:"A 상태 한 줄 + 주소·전화 한 줄", rec:true,
+     desc:"상태를 \"● 대출 가능 · 어제(추정) 기준\" 한 줄로 합친다(대출 가능/불가가 보이면 \"소장 있음\"은 따로 쓰지 않음, 소장 없음·알 수 없음은 지금처럼). 주소와 전화를 한 줄에 붙이고 넘치면 말줄임. 카드 5줄 → 3줄.",
+     flow:"지금과 같다. 카드는 누르는 곳이 아니고 \"실시간 ↗\"만 도서관 사이트로.",
+     see:"카드 높이 약 142 → 96. 390×844에서 카드 3장 → 4~5장. 긴 주소는 \"…\"로 잘린다.",
+     gain:"확정된 정보(기준일·주소·전화 글자)를 하나도 빼지 않고 줄 수만 줄인다. 새 동작 없음.",
+     lose:"긴 주소·전화가 잘려 끝까지 못 볼 수 있다. 계약 A11 ②③ 문구·배치 변경 필요(D가 계약 먼저)."},
+  B:{name:"B 두 줄 + 누르면 주소·전화 펼침", rec:false,
+     desc:"카드에는 이름·거리와 상태 한 줄만. \"주소·전화 ⌄\"를 누르면 그 카드만 아래로 펼쳐 주소·전화가 보인다(첫 카드가 펼친 모습).",
+     flow:"\"주소·전화 ⌄\" → 그 카드 펼침 / \"접기 ⌃\" → 닫힘. \"실시간 ↗\" → 도서관 사이트.",
+     see:"접힌 카드 높이 약 80, 390×844에서 5장 이상. 펼치면 지금 카드와 비슷한 높이.",
+     gain:"가장 가볍고, 필요한 사람만 주소를 본다.",
+     lose:"주소를 보려면 한 번 더 눌러야 한다. 새 동작(펼침)과 시험이 생긴다. 계약 A2·A11 변경."},
+  C:{name:"C 주소 대신 동네 이름만", rec:false,
+     desc:"상태 한 줄 + 주소 대신 \"북구\" 같은 동네 이름(<code>area_label</code>, 응답에 이미 있음). 전화는 카드에서 뺀다(실시간 사이트에서 확인).",
+     flow:"지금과 같다.",
+     see:"카드 3줄, 글자가 가장 적다. 거리와 동네만으로 고른다.",
+     gain:"가장 깔끔하다. 서버·API 변경 없음.",
+     lose:"2026-11-17 D 확정 \"전화번호 글자로 표시\"를 되돌린다. 정확한 주소를 앱에서 못 본다. 계약 A2 변경."},
+};
 function candHTML(key, c, kind){
-  const p = kind==="tex" ? phone(key, state.btn) : phone(state.tex, key);
-  const on = (kind==="tex"?state.tex:state.btn)===key;
+  const p = kind==="tex" ? phone(key, state.btn) : kind==="btn" ? phone(state.tex, key) : phone(state.tex, state.btn, key);
+  const on = state[kind]===key;
   return `<div class="cand ${on?"sel":""}"><h4>${c.name}${c.rec?'<span class="badge">추천</span>':""}</h4>${p}
    <p>${c.desc}</p><p><span class="k">누르면 이렇게 이어져요:</span> ${c.flow}</p>
    <p><span class="k">열어 보면:</span> ${c.see}</p>
    <ul><li><span class="k">얻는 것:</span> ${c.gain}</li><li><span class="k">포기하는 것:</span> ${c.lose}</li></ul></div>`;
 }
 const REC = {
-  tex:"D를 추천(Astra 후보, Claude 동의): B와 같은 방향이지만 그림자 없이 홈 지도 판의 무광 면과 줄눈만 가져와 더 차분하고 플랫폼 차이가 없다. 정보 카드에만 받침을 줘 사진·표지와 역할이 나뉜다. 차선은 B.",
-  btn:"B를 계속 추천(Astra는 D 추천 — 의견이 갈림): 홈·방문·글 상세가 이미 주 행동을 대표색으로 쓰고 있어, 상세·검색·로그인만 짙은 색인 것이 지금 가장 큰 어긋남이다. D는 warm에서 지금의 짙은 덩어리와 거의 같다. Astra가 B를 반대한 이유 중 \"Oxford 파랑\"은 확정된 룩 색(#002147·#35557F)이라 금지색이 아니다(DESIGN.md의 파랑 금지는 링크용 파랑). 룩마다 주 버튼 색이 바뀌는 것이 싫다면 D가 맞다."
+  tex:"<b>D 결정: D로 하되 곡률 줄이기(2026-11-18).</b> 곡률 단계는 위 선택 상자. 당시 추천 이유 — D를 추천(Astra 후보, Claude 동의): B와 같은 방향이지만 그림자 없이 홈 지도 판의 무광 면과 줄눈만 가져와 더 차분하고 플랫폼 차이가 없다. 정보 카드에만 받침을 줘 사진·표지와 역할이 나뉜다. 차선은 B.",
+  btn:"<b>D 결정: B 승인(2026-11-18).</b> 당시 추천 이유 — B를 계속 추천(Astra는 D 추천 — 의견이 갈림): 홈·방문·글 상세가 이미 주 행동을 대표색으로 쓰고 있어, 상세·검색·로그인만 짙은 색인 것이 지금 가장 큰 어긋남이다. D는 warm에서 지금의 짙은 덩어리와 거의 같다. Astra가 B를 반대한 이유 중 \"Oxford 파랑\"은 확정된 룩 색(#002147·#35557F)이라 금지색이 아니다(DESIGN.md의 파랑 금지는 링크용 파랑). 룩마다 주 버튼 색이 바뀌는 것이 싫다면 D가 맞다."
 };
 function render(){
   document.getElementById("tex").innerHTML = Object.entries(TEX).map(([k,c])=>candHTML(k,c,"tex")).join("") + `<p class="note">${REC.tex}</p>`;
+  document.documentElement.style.setProperty("--rCardD", state.rad+"px");
+  document.getElementById("info").innerHTML = Object.entries(INFO).map(([k,c])=>candHTML(k,c,"info")).join("") + `<p class="note">A를 추천: 확정된 정보를 빼지 않고 줄만 5 → 3으로 줄인다. B는 동작이 늘고, C는 D가 확정한 전화 표시를 되돌린다.</p>`;
   document.getElementById("btn").innerHTML = Object.entries(BTN).map(([k,c])=>candHTML(k,c,"btn")).join("") + `<p class="note">${REC.btn}</p>`;
   const others = (o,k)=>Object.keys(o).filter(x=>x!==k).map(x=>o[x].name).join(", ");
   document.getElementById("spec").innerHTML = `<tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>값</th><th>유저 플로우</th><th>이유(D 말)</th><th>상태</th></tr>
-   <tr><td>① 카드 질감</td><td>${TEX[state.tex].name}</td><td>—</td><td>${others(TEX,state.tex)}</td><td>${TEX[state.tex].desc}</td><td>${TEX[state.tex].flow}</td><td>—</td><td><span class="state">결정 전</span></td></tr>
-   <tr><td>② 주 버튼</td><td>${BTN[state.btn].name}</td><td>—</td><td>${others(BTN,state.btn)}</td><td>${BTN[state.btn].desc}</td><td>${BTN[state.btn].flow}</td><td>—</td><td><span class="state">결정 전</span></td></tr>`;
+   <tr><td>① 카드 질감</td><td>${TEX[state.tex].name}</td><td>—</td><td>${others(TEX,state.tex)}</td><td>${TEX[state.tex].desc}</td><td>${TEX[state.tex].flow} · 카드 곡률 ${state.rad}px</td><td>"D로 하되 곡률 줄이기"(D, 2026-11-18)</td><td><span class="state">확인(D) · 곡률 단계 결정 전(임시 12)</span></td></tr>
+   <tr><td>② 주 버튼</td><td>${BTN[state.btn].name}</td><td>—</td><td>${others(BTN,state.btn)}</td><td>${BTN[state.btn].desc}</td><td>${BTN[state.btn].flow}</td><td>"B 승인"(D, 2026-11-18)</td><td><span class="state">확인(D)</span></td></tr>
+   <tr><td>③ 카드 정보 줄이기</td><td>${INFO[state.info].name}</td><td>—</td><td>${others(INFO,state.info)}</td><td>${INFO[state.info].desc}</td><td>${INFO[state.info].flow}</td><td>"카드 하나하나 정보(줄 글)이 과다한 느낌"(D)</td><td><span class="state">결정 전(임시: 추천안)</span></td></tr>
+   <tr><td>실시간 버튼</td><td>"실시간 ↗", 높이 34 → 38, 글자 13 bold, 좌우 12, hitSlop 3(누르는 영역 44)</td><td>—</td><td>"실시간 확인 ↗"(너무 길어 본문이 두 줄로 밀림)</td><td>B 버튼 규칙의 카드 안 필(<code>cream</code> + <code>surface3</code> 테두리)</td><td>누르면 도서관 사이트(그대로)</td><td>"글자 수 줄이고 세로 크기 약간 늘리기는 확정"(D). D는 "실시간->"로 적음 — 외부 이동 표시(DESIGN.md 문구)라 ↗ 유지</td><td><span class="state">확인(D)</span></td></tr>`;
 }
-for (const [id,o,k] of [["pickTex",TEX,"tex"],["pickBtn",BTN,"btn"]]){
+document.getElementById("pickRad").onchange=e=>{state.rad=+e.target.value; render();};
+for (const [id,o,k] of [["pickTex",TEX,"tex"],["pickBtn",BTN,"btn"],["pickInfo",INFO,"info"]]){
   const s=document.getElementById(id);
   s.innerHTML=Object.entries(o).map(([key,c])=>`<option value="${key}">${c.name}${c.rec?" (추천)":""}</option>`).join("");
   s.value=state[k]; s.onchange=()=>{state[k]=s.value; render();};
