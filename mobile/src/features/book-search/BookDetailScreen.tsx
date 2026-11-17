@@ -5,9 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
-import { ApiCallError, type AvailabilityItem, type Book } from "../../lib/publicApi";
+import { ApiCallError, fetchBook, type AvailabilityItem, type Book } from "../../lib/publicApi";
 import { theme } from "../../theme";
-import { fetchBook } from "./__fakes__/publicApi"; // detail.test.tsx 호환상 LIB-2에서 유지(book-search.md LIB-2 C7)
 import { availabilitySummary, checkedAtLabel } from "./availabilityText";
 import { EmptyAvailability } from "./EmptyAvailability";
 import { LibraryAvailabilityCard } from "./LibraryAvailabilityCard";

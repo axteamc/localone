@@ -8,7 +8,6 @@ import * as platform from "../../../lib/platform";
 import * as lib from "../../../lib/publicApi";
 import type { AvailabilityItem, AvailabilityResponse, Book, LibraryDetail } from "../../../lib/publicApi";
 import { searchRegions } from "../../../lib/regions";
-import * as fakes from "../__fakes__/publicApi";
 import { BookDetailScreen } from "../BookDetailScreen";
 import { EMPTY_CITY, EMPTY_NEARBY } from "../EmptyAvailability";
 import { LIMIT_UNCHECKED } from "../LibraryAvailabilityCard";
@@ -35,16 +34,12 @@ jest.mock("../../../lib/publicApi", () => {
   const actual = jest.requireActual<typeof import("../../../lib/publicApi")>("../../../lib/publicApi");
   return {
     ...actual,
+    fetchBook: jest.fn(),
     fetchAvailabilityNearby: jest.fn(),
     fetchAvailabilityInCity: jest.fn(),
     fetchLibrariesNearby: jest.fn(),
     fetchLibrary: jest.fn(),
   };
-});
-
-jest.mock("../__fakes__/publicApi", () => {
-  const actual = jest.requireActual<typeof import("../__fakes__/publicApi")>("../__fakes__/publicApi");
-  return { ...actual, fetchBook: jest.fn() };
 });
 
 const locate = jest.mocked(platform.locate);
@@ -53,7 +48,7 @@ const fetchAvailabilityNearby = jest.mocked(lib.fetchAvailabilityNearby);
 const fetchAvailabilityInCity = jest.mocked(lib.fetchAvailabilityInCity);
 const fetchLibrariesNearby = jest.mocked(lib.fetchLibrariesNearby);
 const fetchLibrary = jest.mocked(lib.fetchLibrary);
-const fetchBook = jest.mocked(fakes.fetchBook);
+const fetchBook = jest.mocked(lib.fetchBook);
 
 const HERE = { ok: true as const, lat: 37.58, lng: 126.98 };
 const CITY_BTN = "현재 도시 내 모든 도서관 검색";

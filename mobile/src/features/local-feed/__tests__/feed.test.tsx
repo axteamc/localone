@@ -124,7 +124,7 @@ describe("PostCard", () => {
 
   test("card without onMenu has no menu on long press or hover (A home sheet)", async () => {
     await render(<PostCard post={post("p1")} onPress={jest.fn()} width={160} />);
-    await fireEvent(screen.getByTestId("post-card-p1"), "hoverIn");
+    await fireEvent(screen.getByTestId("post-box-p1"), "pointerEnter");
     expect(screen.queryByLabelText("카드 메뉴")).toBeNull();
   });
 
@@ -132,9 +132,19 @@ describe("PostCard", () => {
     const onMenu = jest.fn();
     await render(<PostCard post={post("p1")} onPress={jest.fn()} onMenu={onMenu} width={160} />);
     expect(screen.queryByLabelText("카드 메뉴")).toBeNull();
-    await fireEvent(screen.getByTestId("post-card-p1"), "hoverIn");
+    await fireEvent(screen.getByTestId("post-box-p1"), "pointerEnter");
     await fireEvent.press(screen.getByLabelText("카드 메뉴"));
     expect(onMenu).toHaveBeenCalledWith(expect.objectContaining({ id: "p1" }));
+  });
+
+  // 시연 전 개선 S1: 웹 <button> 안 <button> 금지 — ⋯는 카드 버튼 밖(형제), 상자를 벗어나면 숨는다
+  test("dots button is not nested inside the card button", async () => {
+    await render(<PostCard post={post("p1")} onPress={jest.fn()} onMenu={jest.fn()} width={160} />);
+    await fireEvent(screen.getByTestId("post-box-p1"), "pointerEnter");
+    expect(within(screen.getByTestId("post-card-p1")).queryByLabelText("카드 메뉴")).toBeNull();
+    expect(within(screen.getByTestId("post-box-p1")).getByLabelText("카드 메뉴")).toBeTruthy();
+    await fireEvent(screen.getByTestId("post-box-p1"), "pointerLeave");
+    expect(screen.queryByLabelText("카드 메뉴")).toBeNull();
   });
 
   test("masonry puts the next card in the shorter column", () => {

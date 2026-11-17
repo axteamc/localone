@@ -5,8 +5,8 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-
 import React from "react";
 import { StyleSheet } from "react-native";
 import { useAuth } from "../../../auth/AuthProvider";
-import * as api from "../__fakes__/publicApi";
-import type { Book, BookSearchResponse, RecommendationResponse } from "../__fakes__/publicApi";
+import * as api from "../../../lib/publicApi";
+import type { Book, BookSearchResponse, RecommendationResponse } from "../../../lib/publicApi";
 import {
   clearRecentBooks,
   listRecentBooks,
@@ -43,9 +43,9 @@ jest.mock("expo-router", () => {
 
 jest.mock("../../../auth/AuthProvider", () => ({ useAuth: jest.fn() }));
 
-jest.mock("../__fakes__/publicApi", () => {
-  const actual = jest.requireActual<typeof import("../__fakes__/publicApi")>(
-    "../__fakes__/publicApi"
+jest.mock("../../../lib/publicApi", () => {
+  const actual = jest.requireActual<typeof import("../../../lib/publicApi")>(
+    "../../../lib/publicApi"
   );
   return {
     ...actual,
