@@ -25,6 +25,19 @@ jest.mock("../features/book-search/LoanPlansSection", () => ({ LoanPlansSection:
 
 const mockComposeScreen = jest.fn<(props: { libraryId: number; isbn13?: string | null }) => void>();
 const mockVisitScreen = jest.fn<(props: { libraryId: number | null; distanceM: number | null }) => void>();
+const mockPostDetail = jest.fn<(props: { postId: string; visitLibraryId: number | null }) => void>();
+
+// LOCAL-2: 게시물 상세는 실제 화면이 붙었다. 이 시험은 경로가 넘기는 값만 본다(화면은 local-feed 시험에서)
+jest.mock("../features/local-feed/PostDetail", () => {
+  const ReactLib = require("react");
+  const { View } = require("react-native");
+  return {
+    PostDetail: (props: { postId: string; visitLibraryId: number | null }) => {
+      mockPostDetail(props);
+      return ReactLib.createElement(View, { testID: "local-feed-post-detail" });
+    },
+  };
+});
 
 jest.mock("../features/library-visit/HomeScreen", () => {
   const ReactLib = require("react");
@@ -217,8 +230,31 @@ describe("APP-0-P2 routes and tabs", () => {
       postId: "00000000-0000-4000-8000-000000000001",
     });
     const post = await render(<PostDetailStubScreen />);
-    expect(post.getByText("postId: 00000000-0000-4000-8000-000000000001")).toBeTruthy();
-    expect(post.getByText("준비 중이에요")).toBeTruthy();
+    expect(post.getByTestId("local-feed-post-detail")).toBeTruthy();
+    expect(mockPostDetail).toHaveBeenLastCalledWith({
+      postId: "00000000-0000-4000-8000-000000000001",
+      visitLibraryId: null,
+    });
+
+    // 방문 중인 도서관(libraryId)이 양의 정수면 함께 넘기고, 아니면 null
+    mockUseLocalSearchParams.mockReturnValue({
+      postId: "00000000-0000-4000-8000-000000000001",
+      libraryId: "101",
+    });
+    await render(<PostDetailStubScreen />);
+    expect(mockPostDetail).toHaveBeenLastCalledWith({
+      postId: "00000000-0000-4000-8000-000000000001",
+      visitLibraryId: 101,
+    });
+    mockUseLocalSearchParams.mockReturnValue({
+      postId: "00000000-0000-4000-8000-000000000001",
+      libraryId: "abc",
+    });
+    await render(<PostDetailStubScreen />);
+    expect(mockPostDetail).toHaveBeenLastCalledWith({
+      postId: "00000000-0000-4000-8000-000000000001",
+      visitLibraryId: null,
+    });
 
     mockUseLocalSearchParams.mockReturnValue({
       libraryId: "101",
