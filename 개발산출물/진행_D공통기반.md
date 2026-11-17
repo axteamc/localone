@@ -1,6 +1,6 @@
 # D 공통 기반 진행
 
-상태: APP-0-P1 머지 완료(PR [#96](https://github.com/axteamc/localone/pull/96), `00f71a3`). APP-0-P2 머지 완료(PR [#109](https://github.com/axteamc/localone/pull/109), `4393e3f`; `main` push CI `43998844366` iOS 빌드 점검 진행 중, 실기기 `needs-ios` 미확인). **APP-0-P1 VISIT-2 선행 보완 4파일 로컬 구현·검증 완료, PR 게시 중.** 사람 역할 D / AI 구현·자체 검증 담당. 2026-11-17 Windows.
+상태: APP-0-P1 머지 완료(PR [#96](https://github.com/axteamc/localone/pull/96), `00f71a3`). APP-0-P2 머지 완료(PR [#109](https://github.com/axteamc/localone/pull/109), `4393e3f`; `main` push CI `43998844366` iOS 빌드 점검 진행 중, 실기기 `needs-ios` 미확인). **APP-0-P1 VISIT-2 선행 보완 4파일 로컬 구현·검증·게시 완료, PR [#110](https://github.com/axteamc/localone/pull/110).** 사람 역할 D / AI 구현·자체 검증 담당. 2026-11-17 Windows.
 
 ## 입력과 경계
 
@@ -14,7 +14,7 @@
 
 | 순서 | 파트 | 상태 |
 | --- | --- | --- |
-| 1 | APP-0-P1 (+ VISIT-2 선행 보완) | 본편 머지 완료(PR #96, `00f71a3`) / **VISIT-2 선행 보완 4파일 구현·로컬 검증 완료** |
+| 1 | APP-0-P1 (+ VISIT-2 선행 보완) | 본편 머지 완료(PR #96, `00f71a3`) / **VISIT-2 선행 보완 PR [#110](https://github.com/axteamc/localone/pull/110) 게시·CI 대기** |
 | 2 | APP-0-P2 | 머지 완료 (PR [#109](https://github.com/axteamc/localone/pull/109), `4393e3f`; `main` iOS 빌드 진행 중, 실기기 `needs-ios` 확인 대기) |
 | 3 | APP-0-P3 | 미착수; `EXPO_PUBLIC_KAKAO_JS_KEY` 키 없음 확인(발급·도메인 확인 필요) |
 | 4 | LIB-0-P1 → P2 → P3 | 별도 worktree `../libproject-core-LIB-0-part1`에 P1 미커밋 작업물 존재 |
@@ -44,7 +44,7 @@ GEMINI.md(또는 AGENTS.md), AI간_협업_구조.md, 개발산출물/진행_D공
 ```text
 작업 ID / 목표: APP-0-P1 VISIT-2 선행 보완 4파일 구현·검증·PR 게시, D 머지 및 후속 파트 선택 대기
 사람 역할 / 기능 / AI 담당 역할: D / core / 구현·자체 검증 완료(독립 리뷰 아님)
-현재 단계 / 브랜치 / HEAD / PR: 게시 중 / feat/core-APP-0-part1-visit2 / 코드 739d54a + 별도 docs 커밋 / 게시 후 PR 번호 기록
+현재 단계 / 브랜치 / HEAD / PR: 리뷰 대기 / feat/core-APP-0-part1-visit2 / 코드 739d54a + 별도 docs 커밋 / #110
 기존 미커밋 변경과 보존할 파일: 공유 worktree(docs/sync-artifacts-20261117), ../libproject-core-LIB-0-part1 및 ../team 보류 묶음 보존
 읽을 원문·승인 명세·계약: GEMINI.md/AGENTS.md → 필수 규칙, B2, core APP-0 C1~C7·P1~P5·APP-0-P1 보완, 이 결과 §2~4
 수정 허용 파일 / 금지 범위: 보완 4파일 + 진행/결과/목록/인수인계 기록. P3·LIB-0·SRV-0·직접 머지 금지
