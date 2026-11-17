@@ -95,3 +95,52 @@ export function withdrawPost(
 ): Promise<{ id: string; status: "withdrawn" }> {
   return send(`posts/${encodeURIComponent(postId)}/withdraw`, { method: "POST" }, signal);
 }
+
+// ─────────── LOCAL-2 (contracts/local-feed.md LOCAL-2 C2·C3) ───────────
+
+/** 피드 카드 한 장(#26·#28). 작성자·공감 수·본문은 없다(H4) */
+export type FeedPost = {
+  id: string;
+  library_id: number;
+  library_name: string;
+  image_kind: ImageKind;
+  image_url: string | null;
+  image_color: ColorToken | null;
+  overlay_text: string | null;
+  book: { isbn13: string; title: string; author: string | null } | null;
+  published_at: string;
+  my_reaction: boolean;
+  my_bookmark: boolean;
+};
+
+export type FeedPage = { items: FeedPost[]; next_cursor: string | null };
+export type ReactionState = { post_id: string; reacted: boolean; reaction_count: number };
+export type BookmarkState = { post_id: string; bookmarked: boolean };
+
+function pageQuery(page: { cursor: string | null; limit?: number; exclude?: string }): string {
+  const q = new URLSearchParams();
+  if (page.cursor) q.set("cursor", page.cursor);
+  if (page.limit !== undefined) q.set("limit", String(page.limit));
+  if (page.exclude) q.set("exclude", page.exclude);
+  const s = q.toString();
+  return s ? `?${s}` : "";
+}
+
+/** #26 `GET /api/v1/libraries/{library_id}/posts` — 최신순만(H1) */
+export function fetchLibraryPosts(
+  libraryId: number,
+  page: { cursor: string | null; limit?: number },
+  signal?: AbortSignal
+): Promise<FeedPage> {
+  return send<FeedPage>(`libraries/${libraryId}/posts${pageQuery(page)}`, { method: "GET" }, signal);
+}
+
+/** #29 `PUT|DELETE /api/v1/posts/{post_id}/reaction` — 몇 번 보내도 결과가 같다(H5) */
+export function setReaction(postId: string, on: boolean): Promise<ReactionState> {
+  return send<ReactionState>(`posts/${encodeURIComponent(postId)}/reaction`, { method: on ? "PUT" : "DELETE" });
+}
+
+/** #30 `PUT|DELETE /api/v1/posts/{post_id}/bookmark` — 해제는 확인 창 없이(H6) */
+export function setBookmark(postId: string, on: boolean): Promise<BookmarkState> {
+  return send<BookmarkState>(`posts/${encodeURIComponent(postId)}/bookmark`, { method: on ? "PUT" : "DELETE" });
+}

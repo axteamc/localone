@@ -101,6 +101,8 @@
 
 - [Claude가 정함] D 결정 시안 HTML이 레포 어느 브랜치에도 없음 — 계약서 H9·H10·H14 문장을 시안 대신 기준으로 구현 — `../team/contracts/local-feed.md:566`
 - [구현 중 변경] 마이그레이션 `0005_post_reactions_bookmarks.py`를 P2가 아닌 P1 커밋에 넣음 — P1의 공감 수(H8)·내 표시 시험(`test_feed_my_flags_signed_in_and_out`)이 두 표를 필요로 함. 파일은 LOCAL-2 담당 목록 안 — 계약 P2 표 `local-feed.md:712`
+- [구현 중 변경] `__tests__/visit.test.tsx`(VISIT-2, B 파일)에 `fetchLibraryPosts` 빈 응답 mock 추가 — VisitScreen 기본 피드가 #26을 부르게 되어 기존 빈 피드 시험이 실제 호출을 하지 않도록 — P2 표 P3 행 밖
+- [Claude가 정함] 공유 웹 기준 주소 `EXPO_PUBLIC_WEB_URL`(없으면 웹은 현재 origin, 앱은 `localone://posts/<id>`) — H11 "주소 기본값(Claude)" — `share.ts`
 - [Claude가 정함] 피드 카드 비율 — 응답에 이미지 크기가 없어 사진·표지 3:4, 색 1:1(글자 있으면 4:5)로 고정해 2열에 번갈아 쌓음 — H4·H13
 
 ## 다음에 할 것
@@ -115,5 +117,5 @@
 | :--- | :--- | :--- | :--- | :--- |
 | LOCAL-2-P1 | 완료 | `server/app/routers/feed.py:121-206`, `server/migrations/versions/0005_post_reactions_bookmarks.py` | `test_feed.py` 18 통과, 서버 전체 310 통과(`-W error`), 가드 제거 5종 확인 | P2 |
 | LOCAL-2-P2 | 완료 | `server/app/routers/reactions.py:17-85` | `test_reactions.py` 15 통과, 서버 전체 `-W error` 통과, 가드 제거 4종 확인 | P3 |
-| LOCAL-2-P3 | 진행 전 | | | |
+| LOCAL-2-P3 | 완료 | `mobile/src/features/local-feed/PostCard.tsx`, `LibraryFeed.tsx`, `PostMenu.tsx`, `share.ts`, `VisitScreen.tsx`(기본 피드·스크롤 끝 다음 묶음) | `feed.test.tsx` 15 통과, 앱 전체 254 통과(`routes.test`는 변경 전과 같은 AsyncStorage 실패, #129), tsc 통과, 가드 제거 4종 확인 | P4 |
 | LOCAL-2-P4 | 진행 전 | | | |

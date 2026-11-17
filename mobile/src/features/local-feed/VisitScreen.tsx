@@ -17,6 +17,8 @@ import { getDefaultLibrary, recordVisit } from "../../lib/visits";
 import { onFill, theme } from "../../theme";
 import { FOLD_AT, VisitHeader, VisitHeaderFolded } from "./VisitHeader";
 import { AskDefaultCard } from "./AskDefaultCard";
+import { fetchLibraryPosts, type FeedPost } from "./api";
+import { LibraryFeed } from "./LibraryFeed";
 import { VisitMenu } from "./VisitMenu";
 import { pickVisitMent } from "./visitMent";
 
@@ -41,8 +43,17 @@ export const VISIT_TEXT = {
   close: "닫기",
 } as const;
 
-/** 피드 불러오기(#26). LOCAL-2 전에는 없음 → 빈 피드 안내(G9·V-#2) */
-export type FeedLoader = (libraryId: number, signal: AbortSignal) => Promise<{ items: unknown[] }>;
+/** 피드 불러오기(#26). cursor가 있으면 다음 묶음(LOCAL-2 H2·H13) */
+export type FeedLoader = (
+  libraryId: number,
+  signal: AbortSignal,
+  cursor?: string | null
+) => Promise<{ items: unknown[]; next_cursor?: string | null }>;
+
+const defaultLoadFeed: FeedLoader = (libraryId, signal, cursor) =>
+  fetchLibraryPosts(libraryId, { cursor: cursor ?? null }, signal);
+
+const END_REACHED_PX = 600; // 바닥에서 이만큼 남으면 다음 묶음
 
 type LibState =
   | { kind: "loading" }
@@ -50,23 +61,37 @@ type LibState =
   | { kind: "error" }
   | { kind: "notFound" };
 
-type FeedState = { kind: "loading" } | { kind: "error" } | { kind: "empty" } | { kind: "items"; items: unknown[] };
+type FeedState =
+  | { kind: "loading" }
+  | { kind: "error" }
+  | { kind: "empty" }
+  | { kind: "items"; items: unknown[]; nextCursor: string | null };
 
 export type VisitScreenProps = {
   libraryId: number | null;
   distanceM: number | null;
-  loadFeed?: FeedLoader; // TODO(연결): B LOCAL-2 fetchLibraryPosts
-  renderFeed?: (items: unknown[]) => React.ReactNode;
+  loadFeed?: FeedLoader; // 기본: fetchLibraryPosts(#26)
+  renderFeed?: (items: unknown[]) => React.ReactNode; // 기본: LibraryFeed(2열 메이슨리)
   more?: (lib: LibraryDetail) => React.ReactNode; // 기본: VisitMenu (시험에서 바꿔 끼움)
   askCard?: (lib: LibraryDetail, close: () => void) => React.ReactNode; // 기본: AskDefaultCard
 };
 
-export function VisitScreen({ libraryId, distanceM, loadFeed, renderFeed, more, askCard }: VisitScreenProps) {
+export function VisitScreen({
+  libraryId,
+  distanceM,
+  loadFeed = defaultLoadFeed,
+  renderFeed,
+  more,
+  askCard,
+}: VisitScreenProps) {
   const router = useRouter();
   const navigation = useNavigation();
   const { status } = useAuth();
   const [lib, setLib] = useState<LibState>(libraryId === null ? { kind: "notFound" } : { kind: "loading" });
-  const [feed, setFeed] = useState<FeedState>(loadFeed ? { kind: "loading" } : { kind: "empty" });
+  const [feed, setFeed] = useState<FeedState>({ kind: "loading" });
+  const feedRef = useRef<FeedState>(feed);
+  feedRef.current = feed;
+  const moreCursor = useRef<string | null>(null); // 지금 받는 중이거나 받은 커서(같은 커서 두 번 요청 금지)
   const [folded, setFolded] = useState(false);
   const [ment, setMent] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
@@ -136,18 +161,41 @@ export function VisitScreen({ libraryId, distanceM, loadFeed, renderFeed, more, 
 
   const loadFeedOnly = useCallback(
     async (id: number) => {
-      if (!loadFeed) {
-        setFeed({ kind: "empty" });
-        return;
-      }
+      moreCursor.current = null;
       setFeed({ kind: "loading" });
-      const res = await feedRunner.run((signal) => loadFeed(id, signal));
+      const res = await feedRunner.run((signal) => loadFeed(id, signal, null));
       if (res.status === "stale") return;
       if (res.status === "error") setFeed({ kind: "error" });
-      else setFeed(res.value.items.length ? { kind: "items", items: res.value.items } : { kind: "empty" });
+      else
+        setFeed(
+          res.value.items.length
+            ? { kind: "items", items: res.value.items, nextCursor: res.value.next_cursor ?? null }
+            : { kind: "empty" }
+        );
     },
     [feedRunner, loadFeed]
   );
+
+  // 스크롤 끝: 다음 묶음을 이어 붙인다. 같은 커서는 한 번만(H13 중복 호출 방지)
+  const loadMore = useCallback(async () => {
+    const current = feedRef.current;
+    if (libraryId === null || current.kind !== "items" || current.nextCursor === null) return;
+    const cursor = current.nextCursor;
+    if (moreCursor.current === cursor) return;
+    moreCursor.current = cursor;
+    const res = await feedRunner.run((signal) => loadFeed(libraryId, signal, cursor));
+    if (res.status === "stale") return;
+    if (res.status === "error") {
+      moreCursor.current = null; // 다음 스크롤에서 다시 시도
+      return;
+    }
+    setFeed((prev) => {
+      if (prev.kind !== "items" || prev.nextCursor !== cursor) return prev;
+      const seen = new Set(prev.items.map((p) => (p as { id?: string }).id));
+      const added = res.value.items.filter((p) => !seen.has((p as { id?: string }).id));
+      return { kind: "items", items: [...prev.items, ...added], nextCursor: res.value.next_cursor ?? null };
+    });
+  }, [feedRunner, libraryId, loadFeed]);
 
   // 들어올 때: #11 → (404가 아니면) 방문 한 번 기록 → 멘트. 피드는 따로.
   useEffect(() => {
@@ -191,7 +239,11 @@ export function VisitScreen({ libraryId, distanceM, loadFeed, renderFeed, more, 
   };
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const y = e.nativeEvent.contentOffset.y;
+    const { contentOffset, layoutMeasurement, contentSize } = e.nativeEvent;
+    const y = contentOffset.y;
+    if (layoutMeasurement && contentSize && y + layoutMeasurement.height >= contentSize.height - END_REACHED_PX) {
+      void loadMore();
+    }
     const next = foldedRef.current ? y > 0 : y > FOLD_AT; // 접힌 뒤에는 맨 위에서만 펼침
     if (next !== foldedRef.current) {
       foldedRef.current = next;
@@ -256,7 +308,7 @@ export function VisitScreen({ libraryId, distanceM, loadFeed, renderFeed, more, 
             more={moreNode}
           />
         )}
-        <View style={styles.feed} testID="visit-feed">
+        <View style={[styles.feed, feed.kind === "items" && styles.feedItems]} testID="visit-feed">
           {feed.kind === "loading" ? (
             <View style={styles.pill}>
               <Text style={styles.pillText}>{VISIT_TEXT.feedLoading}</Text>
@@ -281,7 +333,7 @@ export function VisitScreen({ libraryId, distanceM, loadFeed, renderFeed, more, 
               </Pressable>
             </View>
           ) : (
-            renderFeed?.(feed.items) ?? null
+            renderFeed?.(feed.items) ?? <LibraryFeed items={feed.items as FeedPost[]} onNotice={showNotice} />
           )}
         </View>
         {/* M2 책장(오늘의 서가)이 이 아래에 붙는다(G9). 지금은 아무것도 그리지 않는다 */}
@@ -344,6 +396,7 @@ const styles = StyleSheet.create({
   backText: { fontSize: 30, fontWeight: "800", color: C.text },
   moreSpace: { width: 44 },
   feed: { flexGrow: 1, minHeight: 360, justifyContent: "center", paddingHorizontal: 12, paddingTop: 12 },
+  feedItems: { justifyContent: "flex-start" },
   pill: {
     alignSelf: "center",
     backgroundColor: C.paper,
