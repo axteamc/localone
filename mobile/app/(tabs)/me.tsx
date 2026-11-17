@@ -2,7 +2,7 @@
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../src/auth/AuthProvider";
-import { onFill, theme } from "../../src/theme";
+import { onFill, theme, actionColors } from "../../src/theme";
 
 export default function MeTabScreen() {
   const router = useRouter();
@@ -27,6 +27,7 @@ export default function MeTabScreen() {
   );
 }
 
+const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -59,10 +60,10 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 20,
     borderRadius: theme.radii.control,
-    backgroundColor: theme.colors.inkStrong,
+    ...ACT.primary,
   },
   buttonText: {
-    color: onFill(theme.colors.inkStrong),
+    ...ACT.primaryText,
     fontSize: 16,
     fontWeight: "600",
   },

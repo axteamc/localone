@@ -10,7 +10,8 @@
     "start": "expo start",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "export:web": "expo export --platform web"
+    "export:web": "expo export --platform web",
+    "e2e:web": "node e2e/screen-check.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~58.0.17",
@@ -41,6 +42,7 @@
     "@testing-library/react-native": "^14.1.0",
     "@types/react": "~19.3.0",
     "jest-expo": "^58.0.14",
+    "playwright": "^1.51.1",
     "typescript": "~6.0.3"
   }
 }

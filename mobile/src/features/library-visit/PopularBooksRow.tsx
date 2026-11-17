@@ -19,8 +19,8 @@ export type PopularBooksRowProps = {
   onReload(): void;
 };
 
-const COVER_W = 58;
-const COVER_H = 82;
+const COVER_W = 92;
+const COVER_H = 132;
 const LOADING_SLOTS = 5;
 
 export function PopularBooksRow(props: PopularBooksRowProps) {
@@ -108,11 +108,11 @@ const c = theme.colors;
 const [tl, tr, br, bl] = theme.radii.bookCover;
 
 const styles = StyleSheet.create({
-  head: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginTop: 10, marginBottom: 6 },
+  head: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginTop: 6, marginBottom: 6 },
   title: { fontSize: 15, fontWeight: "700", color: c.text },
   basis: { flexShrink: 1, fontSize: 12, color: c.textSub },
-  row: { gap: 10, paddingBottom: 4 },
-  book: { width: COVER_W },
+  row: { gap: 12, paddingBottom: 2 },
+  book: { width: COVER_W, minHeight: COVER_H + 4 + 36 },
   cover: {
     width: COVER_W,
     height: COVER_H,
@@ -124,10 +124,14 @@ const styles = StyleSheet.create({
   },
   coverImage: { width: "100%", height: "100%" },
   coverEmpty: { backgroundColor: c.surface2 },
-  coverText: { padding: 5, justifyContent: "center" },
-  coverTitle: { fontSize: 10, color: c.text },
-  rank: { position: "absolute", left: 4, top: 2, fontSize: 13, fontWeight: "700", color: c.text },
-  bookTitle: { marginTop: 4, fontSize: 11, lineHeight: 14, color: c.text },
+  coverText: { padding: 8, justifyContent: "center" },
+  coverTitle: { fontSize: 13, lineHeight: 18, color: c.text },
+  rank: {
+    position: "absolute", left: 4, top: 4, minWidth: 24, paddingHorizontal: 3,
+    fontSize: 18, lineHeight: 24, fontWeight: "700", textAlign: "center",
+    color: c.text, backgroundColor: c.paper, borderRadius: tl,
+  },
+  bookTitle: { marginTop: 4, fontSize: 13, lineHeight: 18, color: c.text },
   message: { alignItems: "flex-start", gap: 8, paddingVertical: 8 },
   messageText: { fontSize: 13, color: c.textSub },
   reload: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: theme.radii.pill, backgroundColor: c.surface2 },

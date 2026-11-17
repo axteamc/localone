@@ -95,7 +95,7 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
     textShadowOffset: { width: 0, height: 1 },
   },
-  name: { fontSize: 26, fontWeight: "800", color: C.text },
+  name: { fontSize: 24, fontWeight: "800", color: C.text },
   infoRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 36 },
   info: { flex: 1, fontSize: 16, color: C.textSub },
   closed: { fontWeight: "800", color: C.text },

@@ -5,7 +5,7 @@ import { useRouter } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { LibrarySummary, Region } from "./deps";
-import { onFill, theme } from "../../theme";
+import { onFill, theme, actionColors } from "../../theme";
 import { FacadeHome } from "./FacadeHome";
 import { FindLibrarySheet } from "./FindLibrarySheet";
 import { HomeSheet } from "./HomeSheet";
@@ -174,6 +174,7 @@ export function HomeScreen() {
   );
 }
 
+const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.bg },
   // 건축 프레임 바: 파사드 상단 줄눈에 맞물리는 직각 가까운 모서리 + 1px 줄눈선 + 오른쪽 마이크로 베벨 "도서관 찾기" 태그
@@ -209,9 +210,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
     borderRadius: theme.radii.control,
-    backgroundColor: theme.colors.inkStrong,
+    ...ACT.primary,
   },
-  buttonText: { fontWeight: "700", color: onFill(theme.colors.inkStrong) },
+  buttonText: { fontWeight: "700", ...ACT.primaryText },
   ghostButton: {
     paddingVertical: 8,
     paddingHorizontal: 14,
