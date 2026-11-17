@@ -40,3 +40,38 @@
 
 - `mobile/src/__tests__/routes.test.tsx`(D 담당)가 `/posts/new` 스텁 단언으로 실패 → 이슈 #129
 - Android: 이 PC에 에뮬레이터·adb가 없어 미확인. 웹: `expo export --platform web` 성공, 시험용 화면을 브라우저로 띄워 보여 줌(가짜 로그인·가짜 응답). 실제 로그인·Supabase 저장소 연결은 키가 없어 미실행
+
+## VISIT-2 (PR #132)
+
+### 1. 수용 기준 전수 점검
+
+| 요구사항 ID | AC | 준비 | 행동 | 기대 | 실제 | 증거 | 웹 | Android | iOS (D) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| VISIT-02 | 방문 페이지 머리 | #11 정독도서관, 거리 320 | 진입 | 이름 / "320m · 운영시간" + ⋯ | 일치 | `visit.test.tsx` "header shows name…" · 로컬 서버로 화면 띄움 | 통과 | 미확인 | 대기 |
+| VISIT-02 | 방문 기록 하루 한 번·멘트 | 기록 없음 | 진입 | recordVisit 1번, 첫 방문 멘트 2.5초 | 일치 | "visit records once…", "ment card shows once…", "pickVisitMent table" | 통과(jest) · 화면에서 첫 방문 멘트 확인 | 미확인 | 대기 |
+| VISIT-03 | 도서관 기본값 켜고 끄기 | — | ⋯ → 켜기 → 끄기 | 기기에 하나 | 일치 | `default-library.test.tsx` "menu toggles…", "…pressed twice changes once" | 통과(jest) | 미확인 | 대기 |
+| VISIT-03 | 앱 시작 분기 | 기본 101 | 반경 안 / 다른 도서관만 / 위치 없음 / 사라짐 | 열기 / 풀기+안내 / 열기 / 끄기 | 일치 | "gate opens…", "gate releases…", "gate keeps default when location unavailable", "gate clears default when library vanished" | 통과(jest) | 미확인 | 대기 |
+| — | AC-RACE | 101 지연, 102로 바꿈 | 101 늦게 도착 | 102 유지, 101 기록 없음 | 일치 | "late library response…", "late error and unmount…" | 통과(jest) | — | — |
+
+### 2. 명세서 예외 상황 점검
+
+| 예외 # | 확인한 방법 | 문구 일치 | 기록 무변경 | 결과 |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 끊김(도서관 정보·피드) | "library info failure…", "feed loading, failure and empty are distinct" | 예 | 방문은 셈(G-#2), 새로고침은 다시 세지 않음 | 통과 |
+| 1-1 없는 도서관 | "unknown library…", "bad route id…" | 예 | recordVisit 0번 | 통과 |
+| 2 게시물 0개 | "empty feed shows guide…" · 화면 확인 | 예 | 가짜 게시물 없음 | 통과 |
+| 3 연타 | "back pressed twice…", "back gesture overlapping press…", "menu default toggle pressed twice…" | — | 기본값 한 번만 | 통과 |
+| 4 로그인 안 함 | "first post link and plus ask login…", "visit page renders signed out" · 화면 확인 | 예 | 이동 0번 | 통과 |
+| 5 쉬는 날 | "header shows closed today…" | 예 | — | 통과 |
+| 6 거리 없음 | "header hides distance…", "distance route parsing…" | 예 | — | 통과 |
+| 7 처음 방문 | "visit records once…" · 화면 확인 | 예 | — | 통과 |
+
+### 3. 명세서와 달라진 점
+
+- 없음(⋯ 안내 문구·주변 조회 실패 처리 등 정해지지 않은 세부는 명세 검토 메모 `[Claude가 정함]`)
+
+### 4. 남은 문제
+
+- `routes.test.tsx`(D) `/libraries/[libraryId]` 스텁 단언 → #129에 수정안 댓글
+- 홈 탭에 `DefaultLibraryGate`를 놓는 것은 A(library-visit V17) — 놓기 전에는 앱 시작 분기가 화면에서 동작하지 않음
+- Android: 이 PC에 에뮬레이터·adb가 없어 미확인. 세 번째 방문 카드·앱 시작 분기는 화면에서 직접 보지 못함(날짜·위치가 필요), 자동 시험으로만 확인
