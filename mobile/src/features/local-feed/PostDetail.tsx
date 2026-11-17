@@ -60,16 +60,20 @@ export function basisLabel(dataDate: string | null, now = new Date()): string | 
   return m ? `${Number(m[1])}월 ${Number(m[2])}일 기준` : null;
 }
 
-/** 대여 버튼 상태 줄(H9). 실패·모름은 "알 수 없음"(H-#9, 대출 불가로 단정 금지) */
-export function loanLine(libraryName: string, item: AvailabilityItem | null | "failed", now = new Date()): string {
-  if (item === null) return `${libraryName} · ${DETAIL_TEXT.checking}`;
-  if (item === "failed") return `${libraryName} · ${DETAIL_TEXT.unknown}`;
+/**
+ * 대여 버튼 상태 줄(H9). 실패·모름은 "알 수 없음"(H-#9, 대출 불가로 단정 금지).
+ * libraryName은 조회하는 도서관 이름이다. 모르면(방문 도서관이 게시물 도서관과 다름) null — 이름 없이 상태만 쓴다(사후 검토 ①-3).
+ */
+export function loanLine(libraryName: string | null, item: AvailabilityItem | null | "failed", now = new Date()): string {
+  const withName = (name: string | null, text: string) => (name ? `${name} · ${text}` : text);
+  if (item === null) return withName(libraryName, DETAIL_TEXT.checking);
+  if (item === "failed") return withName(libraryName, DETAIL_TEXT.unknown);
   const name = item.library.name || libraryName;
-  if (item.holding === "no") return `${name} · ${DETAIL_TEXT.notHeld}`;
+  if (item.holding === "no") return withName(name, DETAIL_TEXT.notHeld);
   const basis = basisLabel(item.data_date, now);
-  if (item.loanable === "yes" && basis) return `${name} · ${basis} 대출 가능`;
-  if (item.loanable === "no" && basis) return `${name} · ${basis} · 대출 중`;
-  return `${name} · ${DETAIL_TEXT.unknown}`;
+  if (item.loanable === "yes" && basis) return withName(name, `${basis} 대출 가능`);
+  if (item.loanable === "no" && basis) return withName(name, `${basis} · 대출 중`);
+  return withName(name, DETAIL_TEXT.unknown);
 }
 
 export type PostDetailProps = {
@@ -82,6 +86,7 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
   const router = useRouter();
   const { status } = useAuth();
   const signedIn = status === "signedIn";
+  const authLoading = status === "loading"; // 복원 중에는 로그인 안내를 띄우지 않는다(①-5)
   const { width } = useWindowDimensions();
   const wide = width >= WIDE_AT;
   const [state, setState] = useState<State>({ kind: "loading" });
@@ -218,6 +223,7 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
           <ReactionButton
             postId={post.id}
             signedIn={signedIn}
+            authLoading={authLoading}
             reacted={post.my_reaction}
             count={post.reaction_count}
             onChange={(reacted, count) => {
@@ -268,6 +274,7 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
         <SaveButton
           postId={post.id}
           signedIn={signedIn}
+          authLoading={authLoading}
           saved={post.my_bookmark}
           onChange={(saved) => {
             update({ my_bookmark: saved });
@@ -295,7 +302,7 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
             <Text style={styles.loanTitle} numberOfLines={2}>
               {post.book.author ? `${post.book.title} · ${post.book.author}` : post.book.title}
             </Text>
-            <Text style={styles.loanStatus}>{loanLine(post.library.name, loan)}</Text>
+            <Text style={styles.loanStatus}>{loanLine(visitLibraryId === null || visitLibraryId === post.library.id ? post.library.name : null, loan)}</Text>
             <Text style={styles.loanCta}>
               {loan !== null && loan !== "failed" && loan.live_check ? DETAIL_TEXT.liveCheck : DETAIL_TEXT.bookDetail}
             </Text>

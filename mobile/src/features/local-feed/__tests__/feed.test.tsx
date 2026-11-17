@@ -13,7 +13,7 @@ import { splitColumns } from "../LibraryFeed";
 import { PostCard } from "../PostCard";
 import { MENU_TEXT } from "../PostMenu";
 import { SHARE_TEXT } from "../share";
-import { VisitScreen } from "../VisitScreen";
+import { VISIT_TEXT, VisitScreen } from "../VisitScreen";
 
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
@@ -75,7 +75,7 @@ function deferred<T>() {
   return { promise, resolve };
 }
 
-function setAuth(status: "signedIn" | "signedOut") {
+function setAuth(status: "signedIn" | "signedOut" | "loading") {
   mockedUseAuth.mockReturnValue({ status } as unknown as ReturnType<typeof useAuth>);
 }
 
@@ -287,6 +287,28 @@ describe("LibraryFeed in VisitScreen", () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/login" });
     expect(setReaction).not.toHaveBeenCalled();
     expect(setBookmark).not.toHaveBeenCalled();
+  });
+
+  test("menu like or bookmark while auth is restoring shows no login prompt (①-5)", async () => {
+    setAuth("loading");
+    await enterWith({ items: [post("p1")], next_cursor: null });
+    const menu = await openMenu("p1");
+    await fireEvent.press(within(menu).getByLabelText(MENU_TEXT.like));
+    await fireEvent.press(within(menu).getByLabelText(MENU_TEXT.bookmark));
+    expect(screen.queryByText(MENU_TEXT.loginNeeded)).toBeNull();
+    expect(setReaction).not.toHaveBeenCalled();
+    expect(setBookmark).not.toHaveBeenCalled();
+  });
+
+  test("next page failure tells the user and retries on the next scroll end (①-4)", async () => {
+    await enterWith({ items: [post("p2")], next_cursor: "c1" });
+    fetchLibraryPosts.mockRejectedValueOnce(new publicApi.ApiCallError(0, "NETWORK", "x", ""));
+    await scrollToEnd();
+    expect(await screen.findByText(VISIT_TEXT.moreFailed)).toBeTruthy();
+    fetchLibraryPosts.mockResolvedValueOnce({ items: [post("p1")], next_cursor: null });
+    await scrollToEnd();
+    expect(await screen.findByTestId("post-card-p1")).toBeTruthy();
+    expect(fetchLibraryPosts).toHaveBeenCalledTimes(3);
   });
 
   test("library feed paginates with cursor once per scroll end", async () => {

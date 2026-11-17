@@ -210,6 +210,28 @@ describe("LIB-3-P2 담기 창(N7·N8)", () => {
     expect(screen.getByText(SAVED_NOTE)).toBeTruthy();
   });
 
+  test("failure of a save closed mid-request is not shown on next open (②-2)", async () => {
+    const d = deferred<LoanPlan>();
+    saveLoanPlan.mockReturnValueOnce(d.promise);
+    await openSheet();
+    await fireEvent.press(within(screen.getByTestId("plan-candidate-1")).getByText("선택"));
+    await fireEvent.press(screen.getByText("닫기"));
+    await act(async () => d.reject(new api.ApiCallError(503, "PROVIDER_UNAVAILABLE", "x", "")));
+    await fireEvent.press(screen.getByTestId("save-plan"));
+    await screen.findByTestId("save-plan-sheet");
+    expect(screen.queryByText(SAVE_FAILED)).toBeNull();
+  });
+
+  test("save button while auth is restoring shows no login prompt (②-3)", async () => {
+    jest.mocked(useAuth).mockReturnValue({
+      status: "loading", userId: null, signInWithGoogle: jest.fn(), signInWithApple: jest.fn(),
+    } as unknown as ReturnType<typeof useAuth>);
+    await openDetail();
+    await fireEvent.press(screen.getByTestId("save-plan"));
+    expect(screen.queryByText("로그인하면 빌릴 예정을 저장할 수 있어요")).toBeNull();
+    expect(screen.queryByTestId("save-plan-sheet")).toBeNull();
+  });
+
   test("save 401 closes sheet and shows login prompt", async () => {
     saveLoanPlan.mockRejectedValueOnce(new api.ApiCallError(401, "AUTH_REQUIRED", "x", ""));
     await openSheet();
@@ -296,6 +318,19 @@ describe("LIB-3-P2 대출·반납 탭 빌릴 예정(N9·N10)", () => {
     await fireEvent.press(screen.getByText("빼기"));
     expect(await screen.findByText(RELEASE_CONFLICT)).toBeTruthy();
     expect(screen.getByTestId("plan-p1")).toBeTruthy();
+  });
+
+  test("releasing every visible plan loads the next page instead of the empty guide (②-1)", async () => {
+    signedIn();
+    listLoanPlans.mockResolvedValueOnce({ items: [plan("p1", "첫 책")], next_cursor: "c1" });
+    listLoanPlans.mockResolvedValueOnce({ items: [plan("p2", "둘째 책")], next_cursor: null });
+    releaseLoanPlan.mockResolvedValueOnce({ id: "p1", status: "released" });
+    await render(<LoansTabScreen />);
+    await fireEvent.press(await screen.findByText("빼기"));
+    expect(await screen.findByTestId("plan-p2")).toBeTruthy();
+    expect(listLoanPlans.mock.calls[1]?.[0]).toEqual({ cursor: "c1" });
+    expect(screen.queryByText(PLANS_EMPTY)).toBeNull();
+    expect(screen.queryByText("더 보기")).toBeNull();
   });
 
   test("empty planned list guides to search", async () => {

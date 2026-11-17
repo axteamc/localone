@@ -64,7 +64,8 @@ function validDistance(d: number | null): number | null {
 const byDistance = (a: FacadeItem, b: FacadeItem) => a.distanceM - b.distanceM || a.lib.id - b.lib.id;
 
 /**
- * 좌표 있는 도서관만 골라 개수에 따라 배치한다: 0=empty, 1=single, 2=dual(경도 서→W·동→E), 3+=quad(사분면).
+ * 좌표 있는 도서관만 골라 개수에 따라 배치한다: 0=empty, 1=single, 2=dual(서쪽 반·동쪽 반에 하나씩일 때 W·E), 3+=quad(사분면).
+ * 두 곳이 같은 쪽 반(둘 다 동쪽 등)이면 dual 대신 quad 규칙을 쓴다 — 칸 자리와 블록의 방위 글자가 어긋나지 않게(사후 검토 ③-4).
  * 같은 칸 안은 거리 오름차순(동률이면 id). 첫 항목이 대표로 보인다.
  */
 export function groupLibrariesForFacade(center: LatLng, libs: LibrarySummary[]): FacadeLayout {
@@ -86,17 +87,21 @@ export function groupLibrariesForFacade(center: LatLng, libs: LibrarySummary[]):
   const only = items[0] as FacadeItem;
   if (items.length === 1) return { kind: "single", groups: [{ slot: "MAIN", items: [only] }] };
   if (items.length === 2) {
-    const [west, east] = [...items].sort((a, b) => (a.lib.longitude as number) - (b.lib.longitude as number)) as [
-      FacadeItem,
-      FacadeItem,
-    ];
-    return {
-      kind: "dual",
-      groups: [
-        { slot: "W", items: [west] },
-        { slot: "E", items: [east] },
-      ],
+    const isEast = (it: FacadeItem) => {
+      const q = quadrantOf(it.bearingDeg);
+      return q === "NE" || q === "SE";
     };
+    const east = items.find(isEast);
+    const west = items.find((it) => !isEast(it));
+    if (east && west) {
+      return {
+        kind: "dual",
+        groups: [
+          { slot: "W", items: [west] },
+          { slot: "E", items: [east] },
+        ],
+      };
+    }
   }
   const groups: FacadeGroup[] = [];
   for (const slot of ["NW", "NE", "SW", "SE"] as const) {

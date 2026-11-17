@@ -61,18 +61,21 @@ export function LoginPrompt({ onClose }: { onClose: () => void }) {
 export type PostMenuProps = {
   post: FeedPost;
   signedIn: boolean;
+  /** 로그인 복원 중이면 공감·북마크 누름을 무시한다(①-5) */
+  authLoading?: boolean;
   onClose(): void;
   onChange(postId: string, patch: PostReactionPatch): void;
   onNotice(text: string): void;
   onLoginNeeded(): void;
 };
 
-export function PostMenu({ post, signedIn, onClose, onChange, onNotice, onLoginNeeded }: PostMenuProps) {
+export function PostMenu({ post, signedIn, authLoading, onClose, onChange, onNotice, onLoginNeeded }: PostMenuProps) {
   const router = useRouter();
   const busy = useRef({ reaction: false, bookmark: false, share: false });
   const [, rerender] = useState(0);
 
   const toggle = async (kind: "reaction" | "bookmark") => {
+    if (authLoading) return;
     if (!signedIn) {
       onClose();
       onLoginNeeded(); // 서버 요청 0번

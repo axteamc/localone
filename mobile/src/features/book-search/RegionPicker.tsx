@@ -7,6 +7,7 @@ import { theme } from "../../theme";
 
 export const REGION_INTRO = "위치를 쓰지 않고 지역을 골라 찾을 수 있어요.";
 export const REGION_NO_MATCH = "일치하는 지역이 없어요. 시·군·구 이름으로 다시 입력해 주세요.";
+export const REGION_LOCATION_DENIED = "위치 권한이 꺼져 있어요. 휴대폰 설정에서 켜거나 아래에서 지역을 골라 주세요.";
 export const REGION_PLACEHOLDER = "시·도 또는 시·군·구 이름 입력 (예: 종로구, 광주)";
 
 export function RegionPicker({
@@ -18,10 +19,13 @@ export function RegionPicker({
   onLocationAllowed(): void;
 }) {
   const [q, setQ] = useState("");
+  const [denied, setDenied] = useState(false);
   const regions = useMemo(() => (q.trim() ? searchRegions(q, 20) : REGIONS.slice(0, 10)), [q]);
 
   const allowLocation = async () => {
-    if ((await requestLocationPermission()) === "granted") onLocationAllowed();
+    const granted = (await requestLocationPermission()) === "granted";
+    setDenied(!granted); // 거부·창이 더 안 뜸이면 아무 반응 없이 끝내지 않는다(사후 검토 ②-4)
+    if (granted) onLocationAllowed();
   };
 
   return (
@@ -30,6 +34,11 @@ export function RegionPicker({
       <Pressable accessibilityRole="button" onPress={() => void allowLocation()} style={styles.locBtn}>
         <Text style={styles.locBtnText}>위치 허용해서 주변 찾기</Text>
       </Pressable>
+      {denied && (
+        <Text style={styles.denied} accessibilityLiveRegion="polite">
+          {REGION_LOCATION_DENIED}
+        </Text>
+      )}
       <TextInput
         testID="region-input"
         value={q}
@@ -82,6 +91,7 @@ const styles = StyleSheet.create({
     color: c.text,
   },
   noMatch: { fontSize: 14, color: c.textSub, lineHeight: 20 },
+  denied: { fontSize: 14, color: c.textSub, lineHeight: 20 },
   row: {
     minHeight: 44,
     justifyContent: "center",

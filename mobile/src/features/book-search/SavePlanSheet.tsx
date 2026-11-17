@@ -31,10 +31,12 @@ export function SavePlanSheet({
   const [pendingId, setPendingId] = useState<number | null>(null);
   const [failed, setFailed] = useState(false);
   const busy = useRef(false); // 연타해도 한 번만 보낸다(L3-#3)
+  const openSeq = useRef(0); // 닫을 때마다 올린다 — 닫은 뒤 끝난 요청의 실패 문구를 다음 열림에 남기지 않는다(사후 검토 ②-2)
 
   const choose = async (libraryId: number) => {
     if (busy.current) return;
     busy.current = true;
+    const seq = openSeq.current;
     setPendingId(libraryId);
     setFailed(false);
     try {
@@ -42,7 +44,7 @@ export function SavePlanSheet({
       onSaved(plan);
     } catch (e) {
       if (e instanceof ApiCallError && e.status === 401) onLoginRequired();
-      else setFailed(true); // 시트는 열어 둔다(N8)
+      else if (seq === openSeq.current) setFailed(true); // 시트는 열어 둔다(N8). 이미 닫았으면 남기지 않는다
     } finally {
       busy.current = false;
       setPendingId(null);
@@ -50,6 +52,7 @@ export function SavePlanSheet({
   };
 
   const close = () => {
+    openSeq.current += 1;
     setFailed(false);
     onClose();
   };
