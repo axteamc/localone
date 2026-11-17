@@ -1,5 +1,5 @@
 // "이 동네 인기 도서" 옆으로 넘기는 한 줄 (계약서 library-visit.md VISIT-1b W1·W2·W7·W10, 예외 #1·#2-d)
-import React from "react";
+import React, { useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { theme } from "../../theme";
 import type { Book } from "./deps";
@@ -67,16 +67,7 @@ export function PopularBooksRow(props: PopularBooksRowProps) {
                   style={styles.book}
                 >
                   <View style={styles.cover}>
-                    {b.cover_url ? (
-                      <Image source={{ uri: b.cover_url }} style={styles.coverImage} resizeMode="cover" />
-                    ) : (
-                      // C3: 표지가 없으면 제목 글자 표지(surface2 바탕)
-                      <View style={[styles.coverImage, styles.coverEmpty, styles.coverText]}>
-                        <Text style={styles.coverTitle} numberOfLines={4}>
-                          {b.title}
-                        </Text>
-                      </View>
-                    )}
+                    <BookCover book={b} />
                     <Text style={styles.rank}>{i + 1}</Text>
                   </View>
                   <Text style={styles.bookTitle} numberOfLines={2}>
@@ -86,6 +77,29 @@ export function PopularBooksRow(props: PopularBooksRowProps) {
               ))}
         </ScrollView>
       )}
+    </View>
+  );
+}
+
+// C3: 표지가 없으면 제목 글자 표지(surface2 바탕). 주소는 있는데 그림을 못 받아도(깨진 주소·끊김) 같은 글자 표지로 바꾼다
+function BookCover({ book }: { book: Book }) {
+  const [failed, setFailed] = useState(false);
+  if (book.cover_url && !failed) {
+    return (
+      <Image
+        source={{ uri: book.cover_url }}
+        style={styles.coverImage}
+        resizeMode="cover"
+        testID="popular-book-cover-image"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  return (
+    <View style={[styles.coverImage, styles.coverEmpty, styles.coverText]}>
+      <Text style={styles.coverTitle} numberOfLines={4}>
+        {book.title}
+      </Text>
     </View>
   );
 }
