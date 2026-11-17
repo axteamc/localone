@@ -7,7 +7,7 @@ from datetime import timedelta
 
 # ── 외부 제공자 하루 호출 상한(서울 날짜 기준, provider_daily_usage) ──
 DATA4LIBRARY_DAILY_LIMIT = 21_000  # 05 §3.1 `확정`: 정보나루 일 30,000의 70%
-NAVER_DAILY_LIMIT = 17_500  # 02 §9 "LIB-0 조회 엔진 수치" 기본값(Claude): 제공자 한도 25,000의 70%
+KAKAO_DAILY_LIMIT = 17_500  # 기본값(Claude): 카카오 책 검색 한도는 공식 문서에서 미확인(2026-11-18). 네이버 때 값 유지
 
 # ── 외부 호출 ──
 PROVIDER_TIMEOUT_SECONDS = 5.0  # 05 §3.1 availability_observations: "시간 초과 5초"
@@ -17,7 +17,8 @@ AVAILABILITY_MAX_CALLS_PER_REQUEST = 40  # 02 §9 "LIB-0 조회 엔진 수치": 
 
 # ── 도서 검색(06 #7) ──
 SEARCH_PAGE_SIZE = 20  # 06 §1 `확정`: 20건씩 "더 보기"
-SEARCH_MAX_START = 1000  # 네이버 검색 start 상한(1~1000)
+SEARCH_MAX_START = 1000  # 06 #7 start 상한(1~1000). 카카오는 page 50까지라 그 뒤 start는 빈 결과
+KAKAO_MAX_PAGE = 50  # 카카오 책 검색 page 상한(공식 문서 1~50)
 SEARCH_QUERY_MAX_CHARS = 100  # 02 §9 "LIB-0 조회 엔진 수치"
 
 # ── 인기 도서·추천(06 #9) ──

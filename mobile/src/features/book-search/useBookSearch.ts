@@ -27,14 +27,14 @@ export function useBookSearch(initialQuery?: string): {
   loadMore(): void;
   hasMore: boolean;
   retry(): void;
-  source: "naver" | "cache" | null;
+  source: "kakao" | "cache" | null;
 } {
   const runner = useMemo(() => createLatestRunner(), []);
   const [query, setQuery] = useState("");
   const [items, setItems] = useState<Book[]>([]);
   const [status, setStatus] = useState<SearchStatus>("idle");
   const [nextStart, setNextStart] = useState<number | null>(null);
-  const [source, setSource] = useState<"naver" | "cache" | null>(null);
+  const [source, setSource] = useState<"kakao" | "cache" | null>(null);
   // 같은 요청을 두 번 보내지 않게 하는 표시(S-8, "같은 start 두 번 금지")
   const inflight = useRef<string | null>(null);
   const lastStart = useRef(1);

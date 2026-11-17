@@ -42,9 +42,9 @@ def test_search_with_provider_and_detail_saves_once(client, reference_db):
     assert len(fake.calls) == 1
     assert first.json() == {"isbn13": isbn(), "title": "이식 도서 000", "author": None,
                             "publisher": None, "cover_url": "https://example.test/cover",
-                            "source": "naver", "description": "소개", "pub_year": 2014}
+                            "source": "kakao", "description": "소개", "pub_year": 2014}
     response = client.get("/api/v1/books/search?q=이식")
-    assert response.status_code == 200 and response.json()["source"] == "naver"
+    assert response.status_code == 200 and response.json()["source"] == "kakao"
     with reference_db.connect() as conn:
         assert conn.execute(text("SELECT count(*) FROM books WHERE isbn13=:i"), {"i": isbn()}).scalar_one() == 1
 
@@ -64,7 +64,7 @@ def test_search_validation(client, reference_db, query, field):
 @pytest.mark.parametrize("mode,status,code", [("failure", 503, "PROVIDER_UNAVAILABLE"), ("missing", 503, "PROVIDER_UNAVAILABLE"), ("limit", 429, "PROVIDER_LIMIT")])
 def test_search_failure_without_cache(client, reference_db, monkeypatch, mode, status, code):
     fake = FakeBookSearch(error=pe.ProviderError("offline"))
-    if mode == "limit": monkeypatch.setattr(policy, "NAVER_DAILY_LIMIT", 0)
+    if mode == "limit": monkeypatch.setattr(policy, "KAKAO_DAILY_LIMIT", 0)
     client.app.state.provider_engine = engine(reference_db, None if mode == "missing" else fake)
     response = client.get("/api/v1/books/search?q=이식")
     assert response.status_code == status and response.json()["error"]["code"] == code

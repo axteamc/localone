@@ -345,7 +345,7 @@ describe("내 주변 소장·대출 목록", () => {
 describe("상세에서만 조회", () => {
   test("search results never call availability", async () => {
     // A10: /search 결과는 #12를 자동으로 부르지 않는다(실제 core 함수 기준)
-    searchBooks.mockResolvedValue({ items: [BOY, STORE], next_start: null, source: "naver", fallback_reason: null });
+    searchBooks.mockResolvedValue({ items: [BOY, STORE], next_start: null, source: "kakao", fallback_reason: null });
     fetchRecommendations.mockResolvedValue({
       kind: "popular",
       scope: "national",

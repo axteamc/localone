@@ -338,11 +338,10 @@ class Data4LibraryClient:
 def build_providers(settings: Settings) -> Providers:
     """키가 있는 제공자만 만든다. 없으면 None(시드·캐시 Fallback)."""
     books = None
-    if settings.naver_client_id and settings.naver_client_secret:
-        books = NaverBookClient(
-            settings.naver_client_id,
-            settings.naver_client_secret,
-            settings.naver_api_base_url,
+    if settings.kakao_rest_api_key:
+        books = KakaoBookClient(
+            settings.kakao_rest_api_key,
+            settings.kakao_api_base_url,
             policy.PROVIDER_TIMEOUT_SECONDS,
         )
     library_data = None
@@ -401,7 +400,7 @@ class ProviderEngine:
         else:
             try:
                 page = await self._guarded_call(
-                    "naver", policy.NAVER_DAILY_LIMIT, lambda: provider.search(query, start, size)
+                    "kakao", policy.KAKAO_DAILY_LIMIT, lambda: provider.search(query, start, size)
                 )
             except ProviderLimitReached:
                 reason = "limit"
@@ -410,11 +409,11 @@ class ProviderEngine:
             else:
                 fetched_at = self.now_fn()
                 records = await self._db(
-                    lambda c: upsert_books(c, page.items, "naver", fetched_at, overwrite=True)
+                    lambda c: upsert_books(c, page.items, "kakao", fetched_at, overwrite=True)
                 )
                 following = start + size
                 has_more = following <= min(page.total, policy.SEARCH_MAX_START)
-                return SearchResult(records, following if has_more else None, "naver", None)
+                return SearchResult(records, following if has_more else None, "kakao", None)
 
         records, has_more = await self._db(lambda c: search_cached_books(c, query, start, size))
         if not records and reason == "limit":
@@ -436,7 +435,7 @@ class ProviderEngine:
             raise ApiError(503, "PROVIDER_UNAVAILABLE", MSG_PROVIDER_UNAVAILABLE)
         try:
             info = await self._guarded_call(
-                "naver", policy.NAVER_DAILY_LIMIT, lambda: provider.lookup_isbn(isbn13)
+                "kakao", policy.KAKAO_DAILY_LIMIT, lambda: provider.lookup_isbn(isbn13)
             )
         except ProviderLimitReached:
             if record is not None:
@@ -451,7 +450,7 @@ class ProviderEngine:
                 return record
             raise ApiError(404, "NOT_FOUND", MSG_NOT_FOUND)
         fetched_at = self.now_fn()
-        return (await self._db(lambda c: upsert_books(c, [info], "naver", fetched_at, overwrite=True)))[0]
+        return (await self._db(lambda c: upsert_books(c, [info], "kakao", fetched_at, overwrite=True)))[0]
 
 
     async def find_book_quietly(self, isbn13: str) -> BookRecord | None:
@@ -720,51 +719,61 @@ class BookSearchProvider(Protocol):
     def lookup_isbn(self, isbn13: str) -> BookInfo | None: ...
 
 
-def _naver_item(item: Any) -> BookInfo | None:
+def _kakao_item(item: Any) -> BookInfo | None:
     if not isinstance(item, dict):
         return None
-    isbn13 = normalize_isbn(item.get("isbn"))
+    isbn13 = normalize_isbn(item.get("isbn"))  # "ISBN10 ISBN13"처럼 공백으로 이어서 온다
     title = _clean_book_text(item.get("title"))
     if not isbn13 or not title:
         return None  # 상세·소장 조회 대상이 될 수 없는 항목은 뺀다
-    author = _clean_book_text(item.get("author"))
+    authors = item.get("authors")
+    names = [a for a in (_clean_book_text(x) for x in authors) if a] if isinstance(authors, list) else []
+    published = item.get("datetime")
     return BookInfo(
         isbn13=isbn13,
         title=title,
-        author=author.replace("^", ", ") if author else None,
+        author=", ".join(names) or None,
         publisher=_clean_book_text(item.get("publisher")),
-        cover_url=https_cover(item.get("image")),
-        description=_description(item.get("description")),
-        pub_year=_pub_year(item.get("pubdate")),
+        cover_url=https_cover(item.get("thumbnail")),  # 표지가 없으면 빈 문자열로 온다
+        description=_description(item.get("contents")),
+        pub_year=_pub_year(published[:4]) if isinstance(published, str) else None,  # ISO 8601 앞 4자리
     )
 
 
-class NaverBookClient:
-    """네이버 책 검색 API. 키는 헤더로만 보낸다."""
+class KakaoBookClient:
+    """카카오(다음) 책 검색 API. REST API 키는 헤더로만 보낸다."""
 
-    def __init__(self, client_id: str, client_secret: str, base_url: str, timeout: float):
-        self._headers = {"X-Naver-Client-Id": client_id, "X-Naver-Client-Secret": client_secret}
+    def __init__(self, rest_api_key: str, base_url: str, timeout: float):
+        self._headers = {"Authorization": f"KakaoAK {rest_api_key}"}
         self._base = base_url.rstrip("/")
         self._timeout = timeout
 
-    def _get(self, path: str, params: dict[str, Any]) -> dict[str, Any]:
-        data = _http_get_json(f"{self._base}/{path}?{urlencode(params)}", self._headers, self._timeout)
-        if not isinstance(data, dict) or not isinstance(data.get("items"), list):
-            raise ProviderError("네이버 응답 형식이 달라요")
+    def _get(self, params: dict[str, Any]) -> dict[str, Any]:
+        data = _http_get_json(f"{self._base}/book?{urlencode(params)}", self._headers, self._timeout)
+        if not isinstance(data, dict) or not isinstance(data.get("documents"), list) \
+                or not isinstance(data.get("meta"), dict):
+            raise ProviderError("카카오 응답 형식이 달라요")
         return data
 
     def search(self, query: str, start: int, display: int) -> SearchPage:
-        data = self._get("book.json", {"query": query, "start": start, "display": display})
-        total = data.get("total")
-        if not isinstance(total, int) or total < 0:
-            raise ProviderError("네이버 total이 없어요")
-        items = [b for b in (_naver_item(i) for i in data["items"]) if b is not None]
+        # 우리 start(1, 21, 41…)를 카카오 page(1~50)로 바꾼다
+        page = (start - 1) // display + 1
+        if page > policy.KAKAO_MAX_PAGE:
+            return SearchPage(items=[], total=0)
+        data = self._get({"query": query, "page": page, "size": display})
+        meta = data["meta"]
+        pageable = meta.get("pageable_count")
+        if not isinstance(pageable, int) or pageable < 0:
+            raise ProviderError("카카오 pageable_count가 없어요")
+        items = [b for b in (_kakao_item(i) for i in data["documents"]) if b is not None]
+        # is_end면 이 쪽이 마지막이다(뒤 쪽을 더 부르지 않게 total을 이 쪽 끝으로 맞춘다)
+        total = min(pageable, start + display - 1) if meta.get("is_end") is True else pageable
         return SearchPage(items=items, total=total)
 
     def lookup_isbn(self, isbn13: str) -> BookInfo | None:
-        data = self._get("book_adv.json", {"d_isbn": isbn13, "display": 10})
-        for item in data["items"]:
-            book = _naver_item(item)
+        data = self._get({"query": isbn13, "target": "isbn", "size": 10})
+        for item in data["documents"]:
+            book = _kakao_item(item)
             if book is not None and book.isbn13 == isbn13:
                 return book
         return None
@@ -890,7 +899,7 @@ def search_cached_books(conn: Connection, query: str, start: int, size: int) -> 
 class SearchResult:
     items: list[BookRecord]
     next_start: int | None
-    source: Literal["naver", "cache"]
+    source: Literal["kakao", "cache"]
     fallback_reason: FallbackReason | None
 
 
