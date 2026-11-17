@@ -24,11 +24,15 @@ async function readJson(key: string): Promise<unknown> {
   try { const raw = await deviceStorage.getItem(key); return raw === null ? null : JSON.parse(raw); }
   catch { return null; } // Unavailable/corrupt storage is empty on read; never repair here.
 }
-async function write(key: string, value: unknown): Promise<void> {
+async function write(key: string, value: unknown): Promise<boolean> {
   try {
     if (value === null) await deviceStorage.removeItem(key);
     else await deviceStorage.setItem(key, JSON.stringify(value));
-  } catch { /* C3: persistence failure must not block the current screen. */ }
+    return true;
+  } catch {
+    /* C3 / G-#6: persistence failure must not block the screen, but write callers can detect failure. */
+    return false;
+  }
 }
 function validRecord(v: unknown, key: string): v is VisitRecord {
   return object(v) && positiveInt(v.libraryId) && String(v.libraryId) === key
@@ -61,7 +65,15 @@ export function recordVisit(libraryId: number, now = new Date()): Promise<VisitR
       lastVisitedOn: today, streakDays: prev?.lastVisitedOn === yesterday ? prev.streakDays + 1 : 1,
       defaultAsked: prev?.defaultAsked ?? false,
     };
-    await write(STORAGE_KEYS.visits, { ...all, [String(libraryId)]: record });
+    const saved = await write(STORAGE_KEYS.visits, { ...all, [String(libraryId)]: record });
+    if (!saved) {
+      return {
+        counted: false,
+        record: prev ?? record,
+        isFirst: false,
+        previousVisitedOn: prev?.lastVisitedOn ?? null,
+      };
+    }
     return { counted: true, record, isFirst: prev === null, previousVisitedOn: prev?.lastVisitedOn ?? null };
   });
 }
@@ -87,7 +99,11 @@ export async function getDefaultLibrary(): Promise<number | null> {
   return object(value) && positiveInt(value.libraryId) && dateString(value.setOn) ? value.libraryId : null;
 }
 export function setDefaultLibrary(libraryId: number | null): Promise<void> {
-  return serial(() => write(STORAGE_KEYS.defaultLibrary,
-    libraryId === null ? null : { libraryId, setOn: seoulDate(new Date()) }));
+  return serial(async () => {
+    await write(
+      STORAGE_KEYS.defaultLibrary,
+      libraryId === null ? null : { libraryId, setOn: seoulDate(new Date()) },
+    );
+  });
 }
 // TODO(연결): D(AUTH-2) registerSignOutCleanup. C3 device visits/default are retained.

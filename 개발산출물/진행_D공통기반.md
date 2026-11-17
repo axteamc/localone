@@ -1,33 +1,33 @@
 # D 공통 기반 진행
 
-상태: **LIB-0-P1 구현·로컬 검증·PR [#111](https://github.com/axteamc/localone/pull/111) 게시, 리뷰 대기.** APP-0-P1 #96 및 P2 #109는 main 반영 확인(P2 merge `4393e3f`). 사람 역할 D / AI 구현·자체 검수. 2026-11-17 Windows. APP-0 이전 증거는 아래에 보존한다.
+상태: **LIB-0-P1 구현·로컬 검증·PR [#111](https://github.com/axteamc/localone/pull/111) 게시, 리뷰 대기.** APP-0-P1 #96·P2 #109·VISIT-2 선행 보완 #110은 main 반영 확인. 사람 역할 D / AI 구현·자체 검수. 2026-11-17 Windows. APP-0 이전 기록은 아래에 보존하며 이번 허용 범위는 LIB-0-P1 현재 기록을 따른다.
 
-## 입력과 경계
+## APP-0 이전 입력과 경계 (보존)
 
-- B2: [기준선 §0](기준선.md), team `3361a5f` / `908eae4`(VISIT-2 보완 포함), `.team_docs/contracts/core.md` APP-0 C1~C7·P1~P5.
-- PR #96(`00f71a3`)·PR #102(`71a9e67`) 머지 반영된 `origin/main` `71a9e6780907279dd8d63a63af3c5b0e5daf9242`에서 격리 worktree(`../libproject-app0-p2`)로 `feat/core-APP-0-part2` 생성.
-- APP-0-P2 허용: core APP-0 P2 표의 12파일(`_layout.tsx`, `(tabs)/_layout.tsx`, `(tabs)/index.tsx`, `(tabs)/loans.tsx`, `(tabs)/me.tsx`, `libraries/[libraryId].tsx`, `posts/[postId].tsx`, `posts/new.tsx`, `search.tsx`, `books/[isbn13].tsx`, `index.tsx` 삭제, `src/__tests__/routes.test.tsx`), 이 진행·결과·인수인계 기록과 목록 등록.
-- 보존: 공유 worktree `C:\seokhunchoi_Ax_Fullstack\libproject`(`docs/sync-artifacts-20261117`)의 미커밋 작업과 `../team` 보류 묶음.
+- B2: [기준선 §0](기준선.md), team `3361a5f` / `908eae4`(VISIT-2 보완 포함), `.team_docs/contracts/core.md` APP-0 C1~C7·P1~P5·`APP-0-P1 보완(VISIT-2 선행)`(본문 SHA `b0a1523899fe33e798af39227db273b8dfdde02a`).
+- PR #96(`00f71a3`)·PR #102(`71a9e67`)·PR #109(`4393e3f`)·PR #94(`ad56767`) 머지 반영된 `origin/main` `ad5676704009047934fb0c66cc14a695e5510781`에서 격리 worktree(`../libproject-app0-p1-visit2`)로 `feat/core-APP-0-part1-visit2` 생성.
+- APP-0-P1 VISIT-2 선행 보완 허용: `mobile/src/lib/visits.ts`, `mobile/src/lib/__tests__/lib.test.ts`, `mobile/src/theme/tokens.ts`, `mobile/src/theme/__tests__/theme.test.ts` (4파일), 이 진행·결과·인수인계 기록과 목록 등록.
+- 보존: 공유 worktree `C:\seokhunchoi_Ax_Fullstack\libproject`(`docs/sync-artifacts-20261117`), `../libproject-core-LIB-0-part1`(`feat/core-LIB-0-part1`) 및 `../team` 보류 묶음.
 - Git: `Hunseokc`로 commit/push/PR·CI 확인, 종료 시 `choise-hun` 복구. 직접 머지 금지.
 
 ## 순서
 
 | 순서 | 파트 | 상태 |
 | --- | --- | --- |
-| 1 | APP-0-P1 | 머지 완료 (PR #96, `00f71a3`; 단 M1 VISIT-2 선행 보완 4파일 별도 대기) |
-| 2 | APP-0-P2 | main 반영 확인(PR #109, `4393e3f`). 플랫폼 증거는 해당 결과 문서 참조 |
-| 3 | APP-0-P3 | 미착수; 카카오 JS 키 필요 |
-| 4 | LIB-0-P1 → P2 → P3 | P1 구현·검증·PR #111 게시. P2·P3 미착수 |
+| 1 | APP-0-P1 (+ VISIT-2 선행 보완) | 본편 머지 완료(PR #96, `00f71a3`) / **VISIT-2 선행 보완 #110 main 반영(`dfa7f23`)** |
+| 2 | APP-0-P2 | 머지 완료 (PR [#109](https://github.com/axteamc/localone/pull/109), `4393e3f`; `main` iOS 빌드 진행 중, 실기기 `needs-ios` 확인 대기) |
+| 3 | APP-0-P3 | 미착수; `EXPO_PUBLIC_KAKAO_JS_KEY` 키 없음 확인(발급·도메인 확인 필요) |
+| 4 | LIB-0-P1 → P2 → P3 | P1 PR #111 게시·검증 완료 / P2·P3 미착수 |
 | 5 | SRV-0-P1 → P2 | 미착수 |
 
 제품 순서 원본은 `계획/상용_서비스_계획.md` §2다.
 
 ## 검증과 다음 행동
 
-- APP-0-P2 구현 코드 `bb0fcbb77d606aa27ce35af1951660e92e448ed6` (`Owner: D`). 허용 12파일 집합 일치, `#RRGGBB` 0건, UTF-8/LF 확인.
-- `mobile` 검증: `npm ci` exit 0 (1,094 packages) → `npx tsc --noEmit` exit 0 → `npx jest --runInBand` exit 0 (7 suites / 45 tests passed) → `npx expo export --platform web` exit 0 (870 modules, `Exported: dist`).
-- 실제 가드 제거 변이 3곳(독서 기록 탭 삽입, `distanceM` 검증 제거, `(tabs)` `headerShown: true`) 실패(exit 1) 확인 및 원복 후 전체 Jest 재통과.
-- 실행 증거·제한 원본은 [결과](결과/APP-0-P2_하단탭_경로스텁.md).
+- APP-0-P1 VISIT-2 선행 보완 코드 `739d54a0aff132ec90b7fc82c25bef187cb719d5` (`Owner: D`). 허용 4파일 집합 일치, UTF-8/LF 확인.
+- `mobile` 검증: `npm ci` exit 0 (1,094 packages) → `npx tsc --noEmit` exit 0 → `npx jest --runInBand src/lib/__tests__/lib.test.ts src/theme/__tests__/theme.test.ts` exit 0 (2 suites / 31 tests) → `npx jest --runInBand` exit 0 (7 suites / 48 tests passed) → `npx expo export --platform web` exit 0 (870 modules, `Exported: dist`).
+- 실제 가드 제거 변이 3곳(`write()` catch 반환값, `recordVisit()` `!saved` 분기, `shadowFloat` 토큰 값) 실패(exit 1) 확인 및 원복 후 전체 Jest 재통과(7 suites / 48 tests).
+- 실행 증거·제한 원본은 [결과](결과/APP-0-P1_VISIT2_선행보완.md).
 
 ## LIB-0-P1 현재 기록
 

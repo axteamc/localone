@@ -127,8 +127,50 @@ describe("visits and persistence", () => {
     jest.mocked(AsyncStorage.getItem).mockRejectedValue(new Error("read"));
     jest.mocked(AsyncStorage.setItem).mockRejectedValue(new Error("quota"));
     jest.mocked(AsyncStorage.removeItem).mockRejectedValue(new Error("unavailable"));
-    expect((await recordVisit(1, day1)).counted).toBe(true);
+    await expect(recordVisit(1, day1)).resolves.toMatchObject({
+      counted: false,
+      isFirst: false,
+      previousVisitedOn: null,
+    });
     await expect(setDefaultLibrary(null)).resolves.toBeUndefined();
+  });
+  test("failed first visit is not counted", async () => {
+    jest.mocked(AsyncStorage.setItem).mockRejectedValueOnce(new Error("quota"));
+    const result = await recordVisit(101, day1);
+    expect(result).toMatchObject({
+      counted: false,
+      isFirst: false,
+      previousVisitedOn: null,
+      record: { libraryId: 101, count: 1, firstVisitedOn: "2026-11-16", lastVisitedOn: "2026-11-16" },
+    });
+    expect(store.get(STORAGE_KEYS.visits)).toBeUndefined();
+    expect(await getVisitRecord(101)).toBeNull();
+  });
+  test("failed later visit returns prior record and queue recovers", async () => {
+    await recordVisit(101, day1);
+    await recordVisit(101, day2);
+    const day3 = new Date("2026-11-18T00:00:00Z");
+    jest.mocked(AsyncStorage.setItem).mockRejectedValueOnce(new Error("quota"));
+    const [failed, retried] = await Promise.all([recordVisit(101, day3), recordVisit(101, day3)]);
+    expect(failed).toEqual({
+      counted: false,
+      isFirst: false,
+      previousVisitedOn: "2026-11-17",
+      record: {
+        libraryId: 101, count: 2, firstVisitedOn: "2026-11-16",
+        lastVisitedOn: "2026-11-17", streakDays: 2, defaultAsked: false,
+      },
+    });
+    expect(retried).toEqual({
+      counted: true,
+      isFirst: false,
+      previousVisitedOn: "2026-11-17",
+      record: {
+        libraryId: 101, count: 3, firstVisitedOn: "2026-11-16",
+        lastVisitedOn: "2026-11-18", streakDays: 3, defaultAsked: false,
+      },
+    });
+    expect((await getVisitRecord(101))?.count).toBe(3);
   });
   test("storage keys are exact", () => {
     expect(STORAGE_KEYS.recentBooks("user-a")).toBe("recent_books:user-a");
