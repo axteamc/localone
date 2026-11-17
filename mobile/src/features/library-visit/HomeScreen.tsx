@@ -21,6 +21,7 @@ const TEXT = {
   empty: "가까운 곳에서 도서관을 찾지 못했어요.",
   noCoords: "이 지역 도서관은 위치 정보가 없어 여기에 놓지 못했어요.",
   widen: "더 넓게 찾기",
+  pickRegion: "지역 골라 시작",
   backToCurrent: "현재 위치로",
   here: "현위치",
   start: "임시 시작점",
@@ -75,7 +76,12 @@ export function HomeScreen() {
     ) : home.status === "empty" ? (
       <View style={styles.card}>
         <Text style={styles.cardText}>{TEXT.empty}</Text>
-        {home.radiusKm === 3 ? (
+        {home.origin === "start" ? (
+          // V7(C-68): 임시 시작점 주변이 비면 넓히기보다 지역을 고르게 한다(위치 없는 노트북 등)
+          <Pressable accessibilityRole="button" onPress={() => setFindOpen(true)} style={styles.ghostButton}>
+            <Text style={styles.ghostText}>{TEXT.pickRegion}</Text>
+          </Pressable>
+        ) : home.radiusKm === 3 ? (
           <Pressable accessibilityRole="button" onPress={home.widen} style={styles.ghostButton}>
             <Text style={styles.ghostText}>{TEXT.widen}</Text>
           </Pressable>

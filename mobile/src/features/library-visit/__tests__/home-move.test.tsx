@@ -6,6 +6,7 @@ import { BackHandler, StyleSheet } from "react-native";
 import { theme } from "../../../theme";
 import * as api from "../deps";
 import { HomeScreen } from "../HomeScreen";
+import { averageCenter } from "../useHomeLibraries";
 
 const mockPush = jest.fn();
 
@@ -32,6 +33,8 @@ jest.mock("../deps", () => {
     searchLibrariesByName: jest.fn(),
     locate: jest.fn(),
     getDefaultLibrary: jest.fn(),
+    getLastRegion: jest.fn(),
+    setLastRegion: jest.fn(),
   };
 });
 
@@ -42,6 +45,8 @@ const m = api as unknown as {
   searchLibrariesByName: jest.Mock<typeof api.searchLibrariesByName>;
   locate: jest.Mock<typeof api.locate>;
   getDefaultLibrary: jest.Mock<typeof api.getDefaultLibrary>;
+  getLastRegion: jest.Mock<typeof api.getLastRegion>;
+  setLastRegion: jest.Mock<typeof api.setLastRegion>;
 };
 
 const CURRENT = { lat: 37.5815, lng: 126.9831 };
@@ -82,6 +87,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   m.locate.mockResolvedValue({ ok: true, ...CURRENT });
   m.getDefaultLibrary.mockResolvedValue(null);
+  m.getLastRegion.mockResolvedValue(null);
+  m.setLastRegion.mockResolvedValue(undefined);
   m.fetchLibrariesNearby.mockImplementation(actual.fetchLibrariesNearby);
   m.fetchLibrariesInRegion.mockImplementation(actual.fetchLibrariesInRegion);
   m.searchLibrariesByName.mockImplementation(actual.searchLibrariesByName);
@@ -149,6 +156,61 @@ describe("VISIT-1-P3 move and find", () => {
     expect(screen.queryByText("정독도서관")).toBeNull();
     expect(screen.getByText("이동한 지역")).toBeTruthy();
     expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  test("find region result is remembered as the next start region", async () => {
+    jest.useFakeTimers();
+    await openHome();
+    await openFind();
+    await typeAndWait("용산");
+    await fireEvent.press(await screen.findByText("서울 용산구"));
+    await waitFor(() => expect(m.setLastRegion).toHaveBeenCalledWith("11030"));
+  });
+
+  // 시연 전 개선 S2(C-68): 위치를 못 쓰고 기본 도서관이 없으면 마지막으로 고른 지역에서 시작한다
+  test("last region is used when location denied and no default", async () => {
+    m.locate.mockResolvedValue({ ok: false, reason: "denied" });
+    m.getLastRegion.mockResolvedValue("11030");
+    await render(<HomeScreen />);
+    await waitFor(() => expect(screen.getByTestId("facade-block-MAIN")).toHaveTextContent(/남산도서관/));
+    expect(m.fetchLibrariesInRegion).toHaveBeenCalledWith("11030", expect.anything());
+    expect(m.fetchLibrariesNearby).not.toHaveBeenCalled();
+    expect(screen.getByText("임시 시작점")).toBeTruthy();
+    expect(screen.getByText("위치 허용하기")).toBeTruthy();
+  });
+
+  test("region center ignores one library with a far-off coordinate", () => {
+    const at = (id: number, latitude: number | null, longitude: number | null) => ({ ...lib(id, `L${id}`), latitude, longitude });
+    // 광주 북구 실제 데이터: 6곳은 광주, 1곳만 서울 좌표로 잘못 들어가 있다
+    const c = averageCenter([at(1, 35.17, 126.92), at(2, 35.2, 126.86), at(3, 35.18, 126.87), at(4, 37.6, 127.02), at(5, 35.21, 126.89), at(6, null, null)]);
+    expect(c!.lat).toBeCloseTo(35.2, 2); // 평균이면 35.67(약 50km 북쪽)
+    expect(c!.lng).toBeCloseTo(126.89, 2);
+    expect(averageCenter([at(7, null, null)])).toBeNull();
+  });
+
+  test("last region falls back to default start when it has no libraries", async () => {
+    m.locate.mockResolvedValue({ ok: false, reason: "denied" });
+    m.getLastRegion.mockResolvedValue("99999");
+    m.fetchLibrariesInRegion.mockResolvedValue({ mode: "region", radius_km: null, dtl_region: "99999", q: null, items: [] });
+    await render(<HomeScreen />);
+    await waitFor(() =>
+      expect(m.fetchLibrariesNearby).toHaveBeenCalledWith(api.DEFAULT_START.lat, api.DEFAULT_START.lng, 3, expect.anything())
+    );
+  });
+
+  test("empty start offers region pick and remembers it", async () => {
+    jest.useFakeTimers();
+    m.locate.mockResolvedValue({ ok: false, reason: "denied" });
+    m.fetchLibrariesNearby.mockResolvedValue(nearby([]));
+    await render(<HomeScreen />);
+    await fireEvent.press(await screen.findByText("지역 골라 시작"));
+    expect(screen.queryByText("더 넓게 찾기")).toBeNull();
+    expect(screen.getByTestId("find-sheet-input")).toBeTruthy();
+    await typeAndWait("용산");
+    await fireEvent.press(await screen.findByText("서울 용산구"));
+    await waitFor(() => expect(screen.getByTestId("facade-block-MAIN")).toHaveTextContent(/남산도서관/));
+    expect(m.setLastRegion).toHaveBeenCalledWith("11030");
+    expect(screen.getByText("임시 시작점")).toBeTruthy();
   });
 
   test("back to current restores current location", async () => {

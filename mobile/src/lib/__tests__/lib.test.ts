@@ -8,7 +8,7 @@ import { deviceStorage, locate, requestLocationPermission, openExternalUrl } fro
 import { DEFAULT_START, STORAGE_KEYS } from "../policy";
 import { REGIONS, searchRegions } from "../regions";
 import * as api from "../publicApi";
-import { recordVisit, getVisitRecord, getFrequentLibraries, markDefaultAsked, getDefaultLibrary, setDefaultLibrary } from "../visits";
+import { recordVisit, getVisitRecord, getFrequentLibraries, markDefaultAsked, getDefaultLibrary, setDefaultLibrary, getLastRegion, setLastRegion } from "../visits";
 
 jest.mock("../../auth/apiFetch", () => ({ apiFetch: jest.fn() }));
 jest.mock("@react-native-async-storage/async-storage", () => ({
@@ -123,6 +123,14 @@ describe("visits and persistence", () => {
     expect(await getDefaultLibrary()).toBeNull();
     expect(store.get(STORAGE_KEYS.defaultLibrary)).toBe('{"libraryId":1}');
   });
+  test("last region keeps only a 5-digit code (C-68)", async () => {
+    expect(await getLastRegion()).toBeNull();
+    await setLastRegion("24040"); expect(await getLastRegion()).toBe("24040");
+    expect(JSON.parse(store.get(STORAGE_KEYS.lastRegion)!)).toEqual({ code: "24040", setOn: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) });
+    await setLastRegion("광주"); expect(await getLastRegion()).toBe("24040");
+    store.set(STORAGE_KEYS.lastRegion, '{"code":"abc","setOn":"2026-11-18"}');
+    expect(await getLastRegion()).toBeNull();
+  });
   test("storage failure does not block the visit screen", async () => {
     jest.mocked(AsyncStorage.getItem).mockRejectedValue(new Error("read"));
     jest.mocked(AsyncStorage.setItem).mockRejectedValue(new Error("quota"));
@@ -177,6 +185,7 @@ describe("visits and persistence", () => {
     expect(STORAGE_KEYS.recentBooks(null)).toBe("recent_books:guest");
     expect(STORAGE_KEYS.visits).toBe("localone:visits:v1");
     expect(STORAGE_KEYS.defaultLibrary).toBe("localone:default_library:v1");
+    expect(STORAGE_KEYS.lastRegion).toBe("localone:last_region:v1");
   });
   test("web storage persists through the common adapter", async () => {
     os("web");
