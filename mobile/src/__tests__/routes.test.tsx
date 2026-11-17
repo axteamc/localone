@@ -19,6 +19,7 @@ const mockUseLocalSearchParams = jest.fn<() => Record<string, string | string[] 
 const mockRecordedTabScreens: Array<{ name: string; options?: { title?: string } }> = [];
 const mockRecordedStackScreens: Array<{ name: string; options?: { headerShown?: boolean } }> = [];
 let mockLastStackScreenOptions: { title?: string } | undefined;
+let mockLastTabsScreenOptions: Record<string, unknown> | undefined;
 
 // LIB-3: 대출·반납 탭의 빌릴 예정 구역은 plans.test.tsx에서 본다(서버 호출 모듈을 읽지 않게)
 jest.mock("../features/book-search/LoanPlansSection", () => ({ LoanPlansSection: () => null }));
@@ -71,7 +72,14 @@ jest.mock("expo-router", () => {
   const ReactLib = require("react");
   const { Text, View } = require("react-native");
 
-  function MockTabs({ children }: { children: React.ReactNode }) {
+  function MockTabs({
+    children,
+    screenOptions,
+  }: {
+    children: React.ReactNode;
+    screenOptions?: Record<string, unknown>;
+  }) {
+    mockLastTabsScreenOptions = screenOptions;
     return ReactLib.createElement(View, { testID: "tabs-container" }, children);
   }
   MockTabs.Screen = function MockTabsScreen(props: {
@@ -159,6 +167,19 @@ describe("APP-0-P2 routes and tabs", () => {
     expect(view.getByTestId("tab-loans").props.children).toBe("대출·반납");
     expect(view.getByTestId("tab-me").props.children).toBe("내 정보");
     expect(view.queryByText(/독서\s*기록/)).toBeNull();
+  });
+
+  test("tabs hide the missing-icon glyph and center labels (#128)", async () => {
+    await render(<TabsLayout />);
+
+    expect(mockLastTabsScreenOptions).toMatchObject({
+      tabBarIconStyle: { display: "none" },
+      tabBarLabelPosition: "beside-icon",
+      tabBarLabelStyle: { marginStart: 0, marginEnd: 0 },
+    });
+    for (const screen of mockRecordedTabScreens) {
+      expect(screen.options).not.toHaveProperty("tabBarIcon");
+    }
   });
 
   test("root layout wraps stack in AuthProvider and hides tabs header", async () => {
