@@ -149,7 +149,7 @@
 
 - **다음 세션 이어하기 메모**: VISIT-1b-P1(하단 창·인기 도서) 구현 완료. 다음은 같은 브랜치 `feat/library-visit-VISIT-1b`에서 VISIT-1b-P2(소식 칸: `LibraryNewsSection.tsx`, `__fakes__/PostCard.tsx`·`localFeedApi.ts`, `home-news.test.tsx`). P2에서 C4 2행(full이고 목록이 맨 위일 때만 아래로 끌기)을 게시물 목록에 맞춰 마무리한다.
 - [계약 보완 필요] `deps.ts`·`__fakes__/publicApi.ts` 수정 — P1 파일 목록 밖. 지도 홈 시험 3개가 `deps`를 `__fakes__`로 바꿔 끼우므로, 창이 쓰는 core 함수(`fetchRecommendations`·`getFrequentLibraries`)와 그 가짜(C7 방문 기록·#9 응답 그대로)를 두 파일에 더해야 기존 시험이 깨지지 않는다. `deps.ts`는 PR #115에서 D가 `[계약 보완]`으로 만든 파일 — mobile/src/features/library-visit/deps.ts, __fakes__/publicApi.ts
-- [계약 보완 필요] `useHomeSheet(areaHeight?)` 선택 인자 — C2는 `useHomeSheet()`. 창이 놓인 영역(검색창 아래~하단 탭 위) 높이를 알아야 세 자리를 맞출 수 있어 `HomeSheet`가 잰 높이를 넘긴다(없으면 화면 높이). 호환됨 — useHomeSheet.ts:41
+- [계약 보완 필요] `useHomeSheet(areaHeight?)` 선택 인자 — C2는 `useHomeSheet()`. 창이 놓인 영역(검색창 아래~하단 탭 위) 높이를 알아야 세 자리를 맞출 수 있어 `HomeSheet`가 잰 높이를 넘긴다(없으면 화면 높이). 호환됨 — useHomeSheet.ts:44
 - [구현 중 변경] 창 빈 곳·손잡이를 누르면 창이 끌기를 받는다(`onStartShouldSetPanResponder`) — 웹 마우스는 움직임만으로 끌기를 넘겨받지 못해(react-native-web) C4 1행 '웹 마우스 끌기'가 안 됐음. 책·버튼은 더 안쪽이라 누름 그대로. 웹은 마우스 끌기 중 글자 선택이 끌기를 끊어 창에 `userSelect: "none"` — useHomeSheet.ts:83, HomeSheet.tsx:94·102
 - [Claude가 정함] 지도 안내 카드(예외 문구)·"위치 허용하기"/"현재 위치로"를 창 위쪽 끝 바로 위에 붙여 함께 움직이게 함 — 창이 반쯤이면 지도 아래쪽 가운데가 창에 가려지기 때문. 목록 모드(지도 실패)에서는 창을 띄우지 않고 예전 자리 그대로 — HomeScreen.tsx:238, HomeSheet.tsx `above`
 - [Claude가 정함] 인기 칸 불러오는 중 모습 — 문구 없이 빈 표지 5개(계약 C3에 불러오는 중 문구가 없음) — PopularBooksRow.tsx
