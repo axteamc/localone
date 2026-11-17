@@ -29,12 +29,6 @@ jest.mock("../deps", () => {
     fetchLibrary: jest.fn(),
     locate: jest.fn(),
     getDefaultLibrary: jest.fn(),
-    KakaoMap: (props: api.KakaoMapProps) =>
-      ReactLib.createElement(
-        View,
-        { testID: "kakao-map" },
-        props.markers.map((mk: api.MapMarker) => ReactLib.createElement(Text, { key: mk.id }, mk.title))
-      ),
   };
 });
 
@@ -195,7 +189,7 @@ describe("VISIT-1b-P1 home sheet", () => {
     // 다른 칸·지도는 그대로
     expect(screen.queryByText("소식을 불러오지 못했어요.")).toBeNull();
     expect(screen.queryByText("지금은 도서관을 불러올 수 없어요.")).toBeNull();
-    expect(within(screen.getByTestId("kakao-map")).getByText("정독도서관")).toBeTruthy();
+    expect(within(screen.getByTestId("facade-board")).getByText("정독도서관")).toBeTruthy();
     // 새로고침하면 그 칸만 다시 묻는다
     const calls = m.fetchRecommendations.mock.calls.length;
     await fireEvent.press(popular().getByText("↻ 새로고침"));

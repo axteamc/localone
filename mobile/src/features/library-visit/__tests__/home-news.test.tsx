@@ -36,12 +36,6 @@ jest.mock("../deps", () => {
     fetchLibrary: jest.fn(),
     locate: jest.fn(),
     getDefaultLibrary: jest.fn(),
-    KakaoMap: (props: api.KakaoMapProps) =>
-      ReactLib.createElement(
-        View,
-        { testID: "kakao-map" },
-        props.markers.map((mk: api.MapMarker) => ReactLib.createElement(Text, { key: mk.id }, mk.title))
-      ),
   };
 });
 

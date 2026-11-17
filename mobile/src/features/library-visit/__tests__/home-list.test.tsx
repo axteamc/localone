@@ -2,7 +2,6 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import React from "react";
-import { StyleSheet } from "react-native";
 import * as api from "../deps";
 import { HomeScreen } from "../HomeScreen";
 
@@ -15,8 +14,6 @@ const fs = require("fs") as {
 const path = require("path") as { resolve(...p: string[]): string; join(...p: string[]): string };
 
 const mockPush = jest.fn();
-let mockMapFails = false;
-
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn() }),
 }));
@@ -25,7 +22,7 @@ jest.mock("../../../auth/AuthProvider", () => ({
   useAuth: jest.fn(() => ({ status: "signedOut", session: null, user: null })),
 }));
 
-// 지도 홈 시험은 지도·목록 동작만 본다. 하단 창(VISIT-1b)은 home-sheet·home-news 시험이 따로 본다.
+// 홈 시험은 파사드 블록과 위치·예외 동작만 본다. 하단 창(VISIT-1b)은 home-sheet·home-news 시험이 따로 본다.
 // 창 위쪽 끝에 붙는 안내·버튼(above)만 그대로 그린다
 jest.mock("../HomeSheet", () => ({
   HomeSheet: (p: { above?: unknown }) => p.above ?? null,
@@ -33,8 +30,6 @@ jest.mock("../HomeSheet", () => ({
 
 jest.mock("../deps", () => {
   const actual = jest.requireActual("../__fakes__/publicApi") as typeof import("../__fakes__/publicApi");
-  const ReactLib = require("react");
-  const { Text, View } = require("react-native");
   return {
     ...actual,
     fetchLibrariesNearby: jest.fn(),
@@ -43,17 +38,6 @@ jest.mock("../deps", () => {
     locate: jest.fn(),
     getDefaultLibrary: jest.fn(),
     requestLocationPermission: jest.fn(),
-    // 지도 가짜: 받은 핀 이름을 글자로 그린다. mockMapFails면 바로 onError("no_key")
-    KakaoMap: (props: { markers: { id: number; title: string }[]; onError(r: string): void }) => {
-      ReactLib.useEffect(() => {
-        if (mockMapFails) props.onError("no_key");
-      }, []);
-      return ReactLib.createElement(
-        View,
-        { testID: "kakao-map" },
-        props.markers.map((m) => ReactLib.createElement(Text, { key: m.id }, m.title))
-      );
-    },
   };
 });
 
@@ -77,8 +61,7 @@ const nearby = (items: api.LibrarySummary[], radius: 3 | 5 = 3): api.LibraryList
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockMapFails = false;
-  m.locate.mockResolvedValue({ ok: true, lat: 37.5815, lng: 126.9831 });
+    m.locate.mockResolvedValue({ ok: true, lat: 37.5815, lng: 126.9831 });
   m.getDefaultLibrary.mockResolvedValue(null);
   m.fetchLibrary.mockImplementation(actual.fetchLibrary);
   m.fetchLibrariesNearby.mockImplementation(actual.fetchLibrariesNearby);
@@ -90,8 +73,12 @@ describe("VISIT-1-P1 home list", () => {
   test("starts at current location and lists nearby", async () => {
     await render(<HomeScreen />);
     expect(await screen.findByText("정독도서관")).toBeTruthy();
+    // 종로·남산은 같은 남서 방향이라 가까운 종로가 먼저 보이고 남산은 "+1곳"으로 넘겨 본다
     expect(screen.getByText("종로도서관")).toBeTruthy();
+    expect(screen.queryByText("남산도서관")).toBeNull();
+    await fireEvent.press(screen.getByLabelText("같은 방향 도서관 1곳 더 보기"));
     expect(screen.getByText("남산도서관")).toBeTruthy();
+    expect(screen.queryByText("종로도서관")).toBeNull();
     expect(m.fetchLibrariesNearby).toHaveBeenCalledTimes(1);
     expect(m.fetchLibrariesNearby).toHaveBeenCalledWith(37.5815, 126.9831, 3, expect.anything());
     expect(screen.queryByText("위치 허용하기")).toBeNull();
@@ -128,59 +115,6 @@ describe("VISIT-1-P1 home list", () => {
     );
     expect(m.requestLocationPermission).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.queryByText("위치 허용하기")).toBeNull());
-  });
-
-  test("map error switches to region list", async () => {
-    mockMapFails = true;
-    await render(<HomeScreen />);
-    expect(await screen.findByText("정독도서관 · 화동 · 09:00~22:00")).toBeTruthy();
-    expect(screen.getByText("종로도서관 · 사직동 · 휴관")).toBeTruthy();
-    expect(screen.getByText("지도를 불러오지 못했어요")).toBeTruthy();
-    expect(m.fetchLibrariesInRegion).toHaveBeenCalledWith("11010", expect.anything());
-    expect(m.fetchLibrariesNearby).toHaveBeenCalledTimes(1);
-    // 위쪽 검색창·"도서관 찾기"는 그대로
-    expect(screen.getByText("책 제목·저자를 검색")).toBeTruthy();
-    expect(screen.getByText("도서관 찾기")).toBeTruthy();
-  });
-
-  test("list mode loading pill sits below map failed row", async () => {
-    mockMapFails = true;
-    let resolve: (v: api.LibraryListResponse) => void = () => {};
-    m.fetchLibrariesInRegion.mockImplementation(() => new Promise((r) => (resolve = r)));
-    await render(<HomeScreen />);
-    await screen.findByText("지도를 불러오지 못했어요");
-    const pill = await screen.findByTestId("home-loading-pill");
-    // 목록 모드 맨 위 줄(top 0~)과 겹치지 않게 그 아래(top 64)에 뜬다
-    expect(StyleSheet.flatten(pill.props.style).top).toBe(64);
-    resolve(nearby(actual.FAKE_LIBRARIES));
-    await waitFor(() => expect(screen.queryByTestId("home-loading-pill")).toBeNull());
-  });
-
-  test("map error without location uses default start region and keeps allow button", async () => {
-    mockMapFails = true;
-    m.locate.mockResolvedValue({ ok: false, reason: "denied" });
-    m.fetchLibrariesNearby.mockResolvedValue(nearby([]));
-    await render(<HomeScreen />);
-    await waitFor(() => expect(m.fetchLibrariesInRegion).toHaveBeenCalledWith("11020", expect.anything()));
-    expect(screen.getByText("지도를 불러오지 못했어요")).toBeTruthy();
-    expect(screen.getByText("위치 허용하기")).toBeTruthy();
-  });
-
-  test("list row press opens visit page", async () => {
-    mockMapFails = true;
-    await render(<HomeScreen />);
-    await fireEvent.press(await screen.findByText("정독도서관 · 화동 · 09:00~22:00"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/libraries/[libraryId]", params: { libraryId: "101" } });
-  });
-
-  test("reload in list mode rebuilds map and returns to map home", async () => {
-    mockMapFails = true;
-    await render(<HomeScreen />);
-    await screen.findByText("정독도서관 · 화동 · 09:00~22:00");
-    mockMapFails = false;
-    await fireEvent.press(screen.getByText("↻ 새로고침"));
-    expect(await screen.findByTestId("kakao-map")).toBeTruthy();
-    expect(screen.queryByText("지도를 불러오지 못했어요")).toBeNull();
   });
 
   test("search bar opens book search", async () => {
