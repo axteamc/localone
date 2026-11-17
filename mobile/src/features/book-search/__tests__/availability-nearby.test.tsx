@@ -147,6 +147,8 @@ function allTexts(): string[] {
 
 beforeEach(async () => {
   jest.clearAllMocks();
+  // clearAllMocks는 남은 mockResolvedValueOnce를 지우지 않아 다음 시험으로 샌다
+  for (const m of [locate, openExternalUrl, fetchAvailabilityNearby, fetchBook, searchBooks, fetchRecommendations]) m.mockReset();
   await AsyncStorage.clear();
   auth("signedOut", null);
   locate.mockResolvedValue(HERE);

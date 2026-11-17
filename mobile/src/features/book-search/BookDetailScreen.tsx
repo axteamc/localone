@@ -8,9 +8,11 @@ import { createLatestRunner } from "../../lib/latest";
 import { ApiCallError, type Book } from "../../lib/publicApi";
 import { theme } from "../../theme";
 import { fetchBook } from "./__fakes__/publicApi"; // detail.test.tsx 호환상 LIB-2에서 유지(book-search.md LIB-2 C7)
-import { checkedAtLabel } from "./availabilityText";
+import { availabilitySummary, checkedAtLabel } from "./availabilityText";
+import { EmptyAvailability } from "./EmptyAvailability";
 import { LibraryAvailabilityCard } from "./LibraryAvailabilityCard";
 import { pushRecentBook } from "./recentBooks";
+import { RegionPicker } from "./RegionPicker";
 import { BookCover, SEARCH_FAILED } from "./SearchScreen";
 import { useAvailability } from "./useAvailability";
 
@@ -160,15 +162,69 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
 
 function AvailabilitySection({ isbn13 }: { isbn13: string }) {
   const a = useAvailability(isbn13);
+  const [picking, setPicking] = useState(false); // "지역 다시 고르기"(A12)
+  useEffect(() => setPicking(false), [isbn13]);
   const today = a.checkedAt?.slice(0, 10) ?? "";
   const footer = a.checkedAt ? checkedAtLabel(a.checkedAt) : null;
   const busy = a.status === "locating" || a.status === "loading";
+  const city = a.scope === "city";
+  const summary = availabilitySummary(a.items);
+  const showPicker = a.status === "need_region" || picking;
+
+  const chooseRegion = (code: string) => {
+    setPicking(false);
+    a.chooseRegion(code);
+  };
+  const nearbyAgain = () => {
+    setPicking(false);
+    a.reloadNearby?.();
+  };
 
   return (
     <View testID="availability" style={styles.availability}>
-      <Text style={styles.section}>가까운 도서관</Text>
+      <Text style={styles.section}>
+        {city ? "도시 전체 도서관" : "가까운 도서관"}
+        {city && a.selectedRegionLabel ? ` · ${a.selectedRegionLabel}` : ""}
+      </Text>
+      {/* A4: 도시 전체 버튼은 구역 머리에 늘 보인다. 도시 전체 모드에서는 내 주변 다시 보기도 함께 */}
+      <View style={styles.scopeRow}>
+        <Pressable
+          testID="search-city"
+          accessibilityRole="button"
+          onPress={() => {
+            setPicking(false);
+            a.searchCity();
+          }}
+          style={styles.scopeBtn}
+        >
+          <Text style={styles.scopeBtnText}>현재 도시 내 모든 도서관 검색</Text>
+        </Pressable>
+        {city && (
+          <Pressable accessibilityRole="button" onPress={nearbyAgain} style={styles.scopeBtn}>
+            <Text style={styles.scopeBtnText}>내 주변 다시 보기</Text>
+          </Pressable>
+        )}
+      </View>
 
       {busy && <ActivityIndicator accessibilityLabel="도서관 찾는 중" style={styles.availBusy} />}
+
+      {!busy && showPicker && <RegionPicker onChoose={chooseRegion} onLocationAllowed={nearbyAgain} />}
+
+      {!busy && !showPicker && a.status === "empty" && (
+        <EmptyAvailability
+          scope={a.scope}
+          onSearchCity={() => a.searchCity()}
+          // TODO(연결): C LIB-3 — 지금 찾아본 가까운 도서관 중에서 골라 빌릴 예정에 저장(결정 12)
+          onSaveForLater={() => undefined}
+          onPickRegion={() => setPicking(true)}
+        />
+      )}
+
+      {!busy && !showPicker && city && summary.unknown > 0 && (
+        <Text style={styles.summary}>
+          {`총 ${summary.total}곳 중 확인 ${summary.checked}곳 · 미확인 ${summary.unknown}곳`}
+        </Text>
+      )}
 
       {a.status === "error" && (
         <View style={styles.stateBoxInline}>
@@ -179,7 +235,8 @@ function AvailabilitySection({ isbn13 }: { isbn13: string }) {
         </View>
       )}
 
-      {!busy && a.status !== "error" && a.items.length > 0 && (
+      {/* V-3: 빈 결과 안내가 있어도 카드 목록은 그 아래 그대로 */}
+      {!busy && !showPicker && a.status !== "error" && a.items.length > 0 && (
         <View testID="availability-list" style={styles.cards}>
           {a.items.map((item) => (
             <LibraryAvailabilityCard key={item.library.id} item={item} today={today} onRetry={a.retry} />
@@ -193,9 +250,20 @@ function AvailabilitySection({ isbn13 }: { isbn13: string }) {
 
 const c = theme.colors;
 const styles = StyleSheet.create({
-  availability: { marginTop: 8 },
+  availability: { marginTop: 8, gap: 10 },
   availBusy: { marginVertical: 16 },
   cards: { gap: 10 },
+  scopeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  scopeBtn: {
+    borderWidth: 1,
+    borderColor: c.divider,
+    backgroundColor: c.paper,
+    borderRadius: theme.radii.control,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+  },
+  scopeBtnText: { fontSize: 14, color: c.text, fontWeight: "600" },
+  summary: { fontSize: 13, color: c.textSub },
   footer: { fontSize: 12, color: c.textSub, marginTop: 2 },
   stateBoxInline: {
     backgroundColor: c.paper,
