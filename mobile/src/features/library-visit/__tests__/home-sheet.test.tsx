@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react-native";
 import React from "react";
-import { Dimensions, PanResponder, type PanResponderCallbacks, type PanResponderGestureState } from "react-native";
+import { PanResponder, type PanResponderCallbacks, type PanResponderGestureState } from "react-native";
 import * as api from "../deps";
 import { HomeScreen } from "../HomeScreen";
 import { snapOffsets, useHomeSheet } from "../useHomeSheet";
@@ -87,7 +87,7 @@ describe("VISIT-1b-P1 home sheet", () => {
       return create(c);
     });
     const AREA = 700;
-    const o = snapOffsets(AREA, Dimensions.get("window").height);
+    const o = snapOffsets(AREA);
     const { result } = await renderHook(() => useHomeSheet(AREA));
     const e = {} as never;
     const g = (dy: number, vy: number) => ({ dx: 0, dy, vx: 0, vy }) as PanResponderGestureState;
@@ -101,6 +101,7 @@ describe("VISIT-1b-P1 home sheet", () => {
     };
 
     expect(result.current.snap).toBe("half"); // 결정 2: 평소 반쯤
+    expect(o.half).toBe(AREA / 2); // 지도와 창이 반반(사용자 확인 2026-11-17)
     expect(o.full).toBeLessThan(o.half);
     expect(o.half).toBeLessThan(o.peek);
     expect(o.peek).toBe(AREA - 56); // 내림 = 제목 한 줄 56px

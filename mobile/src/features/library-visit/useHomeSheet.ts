@@ -7,7 +7,7 @@ export type SheetSnap = "half" | "full" | "peek";
 
 /** 내렸을 때 남는 높이(제목 한 줄) */
 export const PEEK_HEIGHT = 56;
-/** 평소 높이: 화면의 50% */
+/** 평소 높이: 창이 놓인 영역(검색창 아래 ~ 하단 탭 위)을 지도와 창이 반반(결정 2 "지도와 창이 반반") */
 export const HALF_RATIO = 0.5;
 /** 손을 뗄 때 이 속도(px/ms) 이상이면 그 방향 다음 자리로 */
 export const FLING_VELOCITY = 0.5;
@@ -15,9 +15,9 @@ export const FLING_VELOCITY = 0.5;
 const DRAG_SLOP = 6;
 
 /** 창 위쪽 끝의 자리(창이 놓인 영역의 맨 위에서 아래로 몇 px). 위에서부터 full → half → peek */
-export function snapOffsets(areaHeight: number, screenHeight: number): Record<SheetSnap, number> {
+export function snapOffsets(areaHeight: number): Record<SheetSnap, number> {
   const peek = Math.max(0, areaHeight - PEEK_HEIGHT);
-  const half = Math.min(peek, Math.max(0, areaHeight - screenHeight * HALF_RATIO));
+  const half = Math.min(peek, Math.round(areaHeight * HALF_RATIO));
   return { full: 0, half, peek };
 }
 
@@ -44,7 +44,7 @@ export type HomeSheetState = {
 export function useHomeSheet(areaHeight?: number): HomeSheetState {
   const { height: screenHeight } = useWindowDimensions();
   const area = areaHeight && areaHeight > 0 ? areaHeight : screenHeight;
-  const offsets = useMemo(() => snapOffsets(area, screenHeight), [area, screenHeight]);
+  const offsets = useMemo(() => snapOffsets(area), [area]);
 
   const [snap, setSnap] = useState<SheetSnap>("half");
   const translateY = useRef(new Animated.Value(offsets.half)).current;
