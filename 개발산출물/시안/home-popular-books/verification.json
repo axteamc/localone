@@ -1,0 +1,144 @@
+[
+  {
+    "viewport": "390x844",
+    "visibleBooks": 3.5434782608695654,
+    "book": {
+      "x": 14,
+      "y": 507,
+      "width": 92,
+      "height": 172
+    },
+    "news": {
+      "x": 14,
+      "y": 699,
+      "width": 111.078125,
+      "height": 18
+    },
+    "tabTop": 796,
+    "titles": [
+      {
+        "height": 18,
+        "font": "13px",
+        "line": "18px"
+      },
+      {
+        "height": 18,
+        "font": "13px",
+        "line": "18px"
+      },
+      {
+        "height": 36,
+        "font": "13px",
+        "line": "18px"
+      },
+      {
+        "height": 18,
+        "font": "13px",
+        "line": "18px"
+      },
+      {
+        "height": 36,
+        "font": "13px",
+        "line": "18px"
+      },
+      {
+        "height": 36,
+        "font": "13px",
+        "line": "18px"
+      },
+      {
+        "height": 18,
+        "font": "13px",
+        "line": "18px"
+      },
+      {
+        "height": 36,
+        "font": "13px",
+        "line": "18px"
+      },
+      {
+        "height": 36,
+        "font": "13px",
+        "line": "18px"
+      },
+      {
+        "height": 36,
+        "font": "13px",
+        "line": "18px"
+      }
+    ],
+    "scrolledToLast": true,
+    "errors": []
+  },
+  {
+    "viewport": "375x667",
+    "visibleBooks": 3.380434782608696,
+    "book": {
+      "x": 14,
+      "y": 391,
+      "width": 92,
+      "height": 172
+    },
+    "news": {
+      "x": 14,
+      "y": 583,
+      "width": 111.078125,
+      "height": 18
+    },
+    "tabTop": 619,
+    "titles": [
+      {
+        "height": 18,
+        "font": "13px",
+        "line": "18px"
+      },
+      {
+        "height": 18,
+        "font": "13px",
+        "line": "18px"
+      },
+      {
+        "height": 36,
+        "font": "13px",
+        "line": "18px"
+      },
+      {
+        "height": 18,
+        "font": "13px",
+        "line": "18px"
+      },
+      {
+        "height": 36,
+        "font": "13px",
+        "line": "18px"
+      },
+      {
+        "height": 36,
+        "font": "13px",
+        "line": "18px"
+      },
+      {
+        "height": 18,
+        "font": "13px",
+        "line": "18px"
+      },
+      {
+        "height": 36,
+        "font": "13px",
+        "line": "18px"
+      },
+      {
+        "height": 36,
+        "font": "13px",
+        "line": "18px"
+      },
+      {
+        "height": 36,
+        "font": "13px",
+        "line": "18px"
+      }
+    ],
+    "scrolledToLast": true,
+    "errors": []
+  }
+]

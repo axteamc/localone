@@ -3,7 +3,7 @@
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
-import { onFill, theme } from "../../theme";
+import { onFill, theme, actionColors } from "../../theme";
 import { ApiCallError, setBookmark, setReaction, type FeedPost, type PostReactionPatch } from "./api";
 import { shareNotice, sharePost } from "./share";
 
@@ -187,6 +187,7 @@ function Row({ label, onPress }: { label: string; onPress: () => void }) {
   );
 }
 
+const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   scrim: { flex: 1, backgroundColor: C.shadowSoft, alignItems: "center", justifyContent: "center", padding: 24 },
   menu: {
@@ -218,8 +219,8 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sheetTitle: { fontSize: 16, fontWeight: "700", color: C.text },
-  primary: { backgroundColor: C.inkStrong, borderRadius: theme.radii.control, paddingVertical: 12, alignItems: "center" },
-  primaryText: { color: onFill(C.inkStrong), fontWeight: "700" },
+  primary: { ...ACT.primary, borderRadius: theme.radii.control, paddingVertical: 12, alignItems: "center" },
+  primaryText: { ...ACT.primaryText, fontWeight: "700" },
   textButton: { paddingVertical: 8, minHeight: 44, justifyContent: "center", alignItems: "center" },
   sub: { fontSize: 15, color: C.textSub },
 });

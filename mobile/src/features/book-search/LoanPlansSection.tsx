@@ -4,7 +4,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { createLatestRunner } from "../../lib/latest";
-import { theme } from "../../theme";
+import { theme, actionColors } from "../../theme";
 import { ApiCallError, listLoanPlans, releaseLoanPlan, type LoanPlan } from "./api";
 import { BookCover } from "./SearchScreen";
 
@@ -164,6 +164,7 @@ export function LoanPlansSection() {
 }
 
 const c = theme.colors;
+const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   section: { gap: 10 },
   title: { fontSize: 16, fontWeight: "700", color: c.text },
@@ -202,10 +203,10 @@ const styles = StyleSheet.create({
   },
   moreText: { fontSize: 14, color: c.text, fontWeight: "600" },
   darkBtn: {
-    backgroundColor: c.inkStrong,
+    ...ACT.secondary,
     borderRadius: theme.radii.control,
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
-  darkBtnText: { fontSize: 14, color: c.paper, fontWeight: "700" },
+  darkBtnText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "700" },
 });

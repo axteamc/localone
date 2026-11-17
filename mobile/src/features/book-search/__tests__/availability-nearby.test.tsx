@@ -183,7 +183,7 @@ describe("내 주변 소장·대출 목록", () => {
     );
     await render(<BookDetailScreen isbn13={BOY.isbn13} />);
     expect(await screen.findByText("소장 알 수 없음")).toBeTruthy();
-    expect(screen.getByText("대출 알 수 없음")).toBeTruthy();
+    expect(screen.getByText("소장 있음 · 대출 알 수 없음")).toBeTruthy(); // C-70 상태 한 줄
     expect(screen.getAllByText("다시 시도")).toHaveLength(2);
     const texts = allTexts();
     expect(texts).not.toContain("소장 없음");
@@ -211,9 +211,9 @@ describe("내 주변 소장·대출 목록", () => {
       ])
     );
     await render(<BookDetailScreen isbn13={BOY.isbn13} />);
-    await screen.findByText("실시간 확인 ↗");
+    await screen.findByText("실시간 ↗");
     const texts = allTexts();
-    expect(texts.filter((t) => t.includes("실시간"))).toEqual(["실시간 확인 ↗"]);
+    expect(texts.filter((t) => t.includes("실시간"))).toEqual(["실시간 ↗"]);
     for (const banned of ["지금 바로", "방금 반납"]) {
       expect(texts.some((t) => t.includes(banned))).toBe(false);
     }
@@ -225,7 +225,7 @@ describe("내 주변 소장·대출 목록", () => {
       resp([lib1(1, "있음", { live_check: { url, kind: "isbn_search" } }), lib1(2, "없음칸")])
     );
     await render(<BookDetailScreen isbn13={BOY.isbn13} />);
-    const buttons = await screen.findAllByText("실시간 확인 ↗");
+    const buttons = await screen.findAllByText("실시간 ↗");
     expect(buttons).toHaveLength(1); // live_check null인 카드는 버튼 없음(V-7)
     await fireEvent.press(buttons[0]!);
     expect(openExternalUrl).toHaveBeenCalledWith(url);
@@ -237,7 +237,7 @@ describe("내 주변 소장·대출 목록", () => {
       resp([lib1(1, "가", { live_check: { url: "https://x.example.org", kind: "homepage" } })])
     );
     await render(<BookDetailScreen isbn13={BOY.isbn13} />);
-    await fireEvent.press(await screen.findByText("실시간 확인 ↗"));
+    await fireEvent.press(await screen.findByText("실시간 ↗"));
     expect(await screen.findByText("주소를 열지 못했어요.")).toBeTruthy(); // V-8
   });
 
@@ -256,10 +256,11 @@ describe("내 주변 소장·대출 목록", () => {
       // 버튼과 상태·정보 줄이 같은 가로 줄(A11 ④). 정보 줄 아래 바닥 버튼이 아니다(C-69)
       const row = btn.parent!;
       expect(StyleSheet.flatten(row.props.style)).toMatchObject({ flexDirection: "row" });
-      expect(within(row).getByText(`서울 종로구 ${id}`)).toBeTruthy();
+      expect(within(row).getByTestId(`info-open-${id}`)).toBeTruthy(); // 주소·전화 접기(C-70)
       // 다시 시도는 왼쪽 칸에 있고 버튼 안에 없다(A14)
       expect(within(btn).queryByText("다시 시도")).toBeNull();
-      // 높이 34 + hitSlop → 누르는 영역 44 이상
+      // 높이 38 + hitSlop → 누르는 영역 44 이상(C-70)
+      expect(StyleSheet.flatten(btn.props.style).height).toBe(38);
       const style = StyleSheet.flatten(btn.props.style);
       const slop = btn.props.hitSlop as { top: number; bottom: number };
       expect((style.height as number) + slop.top + slop.bottom).toBeGreaterThanOrEqual(44);
@@ -316,17 +317,32 @@ describe("내 주변 소장·대출 목록", () => {
     await render(<BookDetailScreen isbn13={BOY.isbn13} />);
     expect(await screen.findByText("오늘 휴관")).toBeTruthy();
     expect(screen.getByText("오늘 09:00~22:00")).toBeTruthy();
+    await fireEvent.press(screen.getByTestId("info-open-1")); // 주소·전화는 펼쳐야 보인다(C-70)
     const phone = screen.getByText("전화 02-2011-5799");
     expect(phone.props.selectable).toBe(true);
     await fireEvent.press(phone);
     expect(openExternalUrl).not.toHaveBeenCalled(); // tel: 걸기 없음(A2)
     expect(screen.getByText("09:30에 확인 · 출처 도서관 정보나루")).toBeTruthy();
-    // 머리 줄 → 상태 줄 → 정보 줄 순서
+    // 머리 줄 → 상태 한 줄 → (펼친) 주소·전화 순서
     const json = JSON.stringify(screen.toJSON());
     expect(json.indexOf("정독도서관")).toBeLessThan(json.indexOf("오늘 휴관"));
-    expect(json.indexOf("오늘 휴관")).toBeLessThan(json.indexOf("소장 있음"));
-    expect(json.indexOf("소장 있음")).toBeLessThan(json.indexOf("서울 종로구 1"));
+    expect(json.indexOf("오늘 휴관")).toBeLessThan(json.indexOf("대출 가능"));
+    expect(json.indexOf("대출 가능")).toBeLessThan(json.indexOf("서울 종로구 1"));
     expect(json.indexOf("서울 종로구 1")).toBeLessThan(json.indexOf("전화 02-2011-5799"));
+  });
+
+  test("address and phone are folded until opened", async () => {
+    fetchAvailabilityNearby.mockResolvedValueOnce(resp([lib1(1, "정독도서관", {}, { tel: "02-2011-5799" })]));
+    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await screen.findByText("정독도서관");
+    expect(screen.queryByText("서울 종로구 1")).toBeNull();
+    expect(screen.queryByText("전화 02-2011-5799")).toBeNull();
+    expect(screen.queryByText("소장 있음")).toBeNull(); // 대출이 확인되면 소장 있음은 따로 쓰지 않음(A11 ②)
+    await fireEvent.press(screen.getByText("주소·전화 ⌄"));
+    expect(screen.getByText("서울 종로구 1")).toBeTruthy();
+    expect(screen.getByText("전화 02-2011-5799")).toBeTruthy();
+    await fireEvent.press(screen.getByText("접기 ⌃"));
+    expect(screen.queryByText("서울 종로구 1")).toBeNull();
   });
 
   test("nearby error shows retry", async () => {

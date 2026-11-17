@@ -15,7 +15,7 @@ import {
 import { useAuth } from "../../auth/AuthProvider";
 import { fetchBook, fetchLibrary, searchBooks, type Book } from "../../lib/publicApi";
 import { ON_FILL_LIGHT } from "../../theme/tokens";
-import { onFill, theme } from "../../theme";
+import { onFill, theme, actionColors } from "../../theme";
 import {
   ApiCallError,
   BODY_MAX,
@@ -720,6 +720,7 @@ function Choice({ label, onPress }: { label: string; onPress: () => void }) {
   );
 }
 
+const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.bg },
   center: { alignItems: "center", justifyContent: "center" },
@@ -736,13 +737,13 @@ const styles = StyleSheet.create({
   headerX: { fontSize: 22, color: C.text },
   headerTitle: { fontSize: 16, fontWeight: "700", color: C.text },
   submit: {
-    backgroundColor: C.inkStrong,
+    ...ACT.primary,
     borderRadius: theme.radii.control,
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
   submitOff: { opacity: 0.35 },
-  submitText: { color: onFill(C.inkStrong), fontWeight: "700" },
+  submitText: { ...ACT.primaryText, fontWeight: "700" },
   hint: { textAlign: "right", paddingHorizontal: 16, paddingTop: 6, fontSize: 12, color: C.textSub },
   banner: {
     margin: 12,
@@ -856,12 +857,12 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   primary: {
-    backgroundColor: C.inkStrong,
+    ...ACT.primary,
     borderRadius: theme.radii.control,
     paddingVertical: 12,
     alignItems: "center",
   },
-  primaryText: { color: onFill(C.inkStrong), fontWeight: "700" },
+  primaryText: { ...ACT.primaryText, fontWeight: "700" },
   toast: {
     position: "absolute",
     bottom: 32,

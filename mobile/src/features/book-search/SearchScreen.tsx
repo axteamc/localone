@@ -15,7 +15,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import type { Book } from "../../lib/publicApi";
-import { theme } from "../../theme";
+import { theme, actionColors } from "../../theme";
 import { SearchEntry } from "./SearchEntry";
 import {
   QUERY_MAX_CHARS,
@@ -118,6 +118,7 @@ export function SearchScreen({ initialQuery }: { initialQuery?: string }) {
   };
 
   const showResults = !editing && search.status !== "idle";
+  const [focused, setFocused] = useState(false);
 
   return (
     <View style={styles.screen}>
@@ -125,13 +126,17 @@ export function SearchScreen({ initialQuery }: { initialQuery?: string }) {
         <TextInput
           ref={inputRef}
           testID="search-input"
-          style={styles.bar}
+          style={[styles.bar, focused && styles.barFocus]}
           value={input}
           onChangeText={(t) => {
             setInput(t);
             setEditing(true);
           }}
-          onFocus={() => setEditing(true)}
+          onFocus={() => {
+            setEditing(true);
+            setFocused(true);
+          }}
+          onBlur={() => setFocused(false)}
           onSubmitEditing={() => submit(input)}
           placeholder="책 제목이나 저자를 입력해 주세요"
           placeholderTextColor={theme.colors.textSub}
@@ -321,6 +326,7 @@ function Results({
 
 const c = theme.colors;
 const GRID_HALF_GAP = 5; // 2열 칸 사이 10의 반
+const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.cream },
   flex: { flex: 1 },
@@ -331,19 +337,21 @@ const styles = StyleSheet.create({
     backgroundColor: c.paper,
     borderColor: c.surface3,
     borderWidth: 1,
-    borderRadius: theme.radii.pill,
+    borderRadius: theme.radii.control,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 16,
     color: c.text,
+    outlineWidth: 0, // 웹 기본 파란 포커스 테두리 제거(파랑 금지, S4 기본값)
   },
+  barFocus: { borderColor: c.inkStrong, borderWidth: 1.5 },
   searchBtn: {
     justifyContent: "center",
-    backgroundColor: c.inkStrong,
-    borderRadius: theme.radii.pill,
+    ...ACT.primary,
+    borderRadius: theme.radii.control,
     paddingHorizontal: 16,
   },
-  searchBtnText: { color: c.paper, fontSize: 15, fontWeight: "700" },
+  searchBtnText: { ...ACT.primaryText, fontSize: 15, fontWeight: "700" },
   dim: { opacity: 0.4 },
   suggest: { paddingHorizontal: 16, paddingTop: 8 },
   suggestHead: { fontSize: 14, fontWeight: "700", color: c.text, marginTop: 8, marginBottom: 4 },
@@ -370,12 +378,12 @@ const styles = StyleSheet.create({
   },
   stateText: { fontSize: 15, color: c.text, lineHeight: 22 },
   stateBtn: {
-    backgroundColor: c.inkStrong,
+    ...ACT.secondary,
     borderRadius: theme.radii.control,
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
-  stateBtnText: { fontSize: 14, color: c.paper, fontWeight: "700" },
+  stateBtnText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "700" },
   cntRow: {
     flexDirection: "row",
     justifyContent: "space-between",

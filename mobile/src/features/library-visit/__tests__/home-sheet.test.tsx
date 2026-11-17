@@ -77,6 +77,14 @@ function popular() {
 }
 
 describe("VISIT-1b-P1 home sheet", () => {
+  test("short screens keep books and the news entrance visible without exceeding the available area", () => {
+    expect(495 - snapOffsets(495).half).toBe(275);
+    expect(snapOffsets(600).half).toBe(280); // 책·소식에 320, 지도에 280
+    expect(snapOffsets(400).half).toBe(200); // 지도 네 블록이 겹치지 않을 공간
+    expect(snapOffsets(200)).toEqual({ full: 0, half: 100, peek: 144 });
+    expect(snapOffsets(0)).toEqual({ full: 0, half: 0, peek: 0 });
+  });
+
   test("sheet starts half and snaps to three positions", async () => {
     jest.useFakeTimers();
     let config: PanResponderCallbacks = {};

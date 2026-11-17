@@ -100,5 +100,19 @@ export function getTheme(look: LookPreset = DEFAULT_LOOK): Theme {
   };
 }
 
+/**
+ * 행동 버튼 색(2026-11-18 S4 D 결정 B, DESIGN.md 결정 기록 "주 행동 버튼").
+ * 주 행동: 대표색 `fill1` 채움 + 1px 줄눈, 글자는 채움 대비 자동. 보조·카드 안 행동: `cream` 바탕 + `surface3` 테두리.
+ * `inkStrong` 채움은 홈 기점·소식 칩 같은 구조에만 쓴다.
+ */
+export function actionColors(colors: ThemeColors) {
+  return {
+    primary: { backgroundColor: colors.fill1, borderWidth: 1, borderColor: colors.seamHairline },
+    primaryText: { color: onFill(colors.fill1) },
+    secondary: { backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.surface3 },
+    secondaryText: { color: colors.text },
+  } as const;
+}
+
 /** M1 기본 룩(warm). 도서관 룩(VISIT-4)이 붙기 전까지 모든 화면이 쓴다. */
 export const theme: Theme = getTheme();

@@ -14,7 +14,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
 import { ApiCallError, fetchLibrary, type LibraryDetail } from "../../lib/publicApi";
 import { getDefaultLibrary, recordVisit } from "../../lib/visits";
-import { onFill, theme } from "../../theme";
+import { onFill, theme, actionColors } from "../../theme";
 import { FOLD_AT, VisitHeader, VisitHeaderFolded } from "./VisitHeader";
 import { AskDefaultCard } from "./AskDefaultCard";
 import { fetchLibraryPosts, type FeedPost } from "./api";
@@ -439,6 +439,7 @@ export function VisitScreen({
   );
 }
 
+const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.cream },
   content: { paddingBottom: 120, minHeight: "100%" },
@@ -511,6 +512,6 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   sheetTitle: { fontSize: 16, fontWeight: "700", color: C.text },
-  primary: { backgroundColor: C.inkStrong, borderRadius: theme.radii.control, paddingVertical: 12, alignItems: "center" },
-  primaryText: { color: onFill(C.inkStrong), fontWeight: "700" },
+  primary: { ...ACT.primary, borderRadius: theme.radii.control, paddingVertical: 12, alignItems: "center" },
+  primaryText: { ...ACT.primaryText, fontWeight: "700" },
 });

@@ -9,21 +9,23 @@ import {
   View,
 } from "react-native";
 import { useAuth } from "../src/auth/AuthProvider";
+import { theme } from "../src/theme";
 import { isAppleSignInAvailable, SignInResult } from "../src/auth/platform";
 
 // 개발산출물/시안/AUTH-1_로그인_시안.html 채택 후보 B (위 소개·책 모양 로고 방향, 아래 제공자 버튼)
+// 색·곡률은 테마 토큰에서만 가져온다(룩 전환 대응, 2026-11-18 S4 — 이전엔 warm 값을 직접 복사했음).
 const TOKENS = {
-  cream: "#EFEFE7",
-  paper: "#EFF1F1",
-  surface3: "#BFBCB5",
-  fill1: "#E9C970",
-  fill2: "#EDC9A9",
-  fill3: "#B3BFB5",
-  inkStrong: "#2E333F",
-  text: "#1D1D1F",
-  sub: "#71716F",
-  rCard: 18,
-  rPill: 9999,
+  cream: theme.colors.cream,
+  paper: theme.colors.paper,
+  surface3: theme.colors.surface3,
+  fill1: theme.colors.fill1,
+  fill2: theme.colors.fill2,
+  fill3: theme.colors.fill3,
+  inkStrong: theme.colors.inkStrong,
+  text: theme.colors.text,
+  sub: theme.colors.textSub,
+  rCard: theme.radii.card,
+  rPill: theme.radii.control,
 };
 
 function messageForFailure(result: Extract<SignInResult, { ok: false }>): string {
