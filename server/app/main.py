@@ -88,7 +88,8 @@ def create_app(
 
     @app.exception_handler(RequestValidationError)
     async def _validation_error(request: Request, exc: RequestValidationError):
-        return error_response(422, "VALIDATION_ERROR", "요청 형식이 올바르지 않아요.")
+        fields = sorted({str(e["loc"][-1]) if e.get("loc") else "body" for e in exc.errors()})
+        return error_response(422, "VALIDATION_ERROR", "요청 형식이 올바르지 않아요.", ",".join(fields))
 
     @app.exception_handler(Exception)
     async def _unhandled(request: Request, exc: Exception):
@@ -104,10 +105,6 @@ def create_app(
     app.state.provider_engine = ProviderEngine(engine, build_providers(settings))
     app.include_router(libraries_router)
 
-    @app.exception_handler(RequestValidationError)
-    async def _library_validation_error(request: Request, exc: RequestValidationError):
-        fields = ",".join(sorted({str(e["loc"][-1]) for e in exc.errors()}))
-        return error_response(422, "VALIDATION_ERROR", "요청 형식이 올바르지 않아요.", fields)
     # ── [/lib-D] ──
 
     return app

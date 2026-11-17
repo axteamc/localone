@@ -129,6 +129,17 @@ def select_user(conn: Connection, user_id: UUID) -> UserRow | None:
     return UserRow(id=row.id, status=row.status, created_at=row.created_at)
 
 
+def lock_active_user(conn: Connection, user_id: UUID) -> None:
+    """쓰기 트랜잭션의 첫 SQL로 탈퇴와 직렬화하고 계정 상태를 다시 확인한다."""
+    status = conn.execute(
+        text("SELECT status FROM users WHERE id = :id FOR SHARE"), {"id": user_id}
+    ).scalar_one_or_none()
+    if status is None:
+        raise ApiError(401, "AUTH_NOT_REGISTERED", MSG_NOT_REGISTERED)
+    if status != "active":
+        raise ApiError(403, "ACCOUNT_WITHDRAWN", MSG_WITHDRAWN)
+
+
 def insert_user_if_absent(conn: Connection, user_id: UUID) -> bool:
     inserted = conn.execute(
         text("INSERT INTO users (id) VALUES (:id) ON CONFLICT (id) DO NOTHING RETURNING id"),
@@ -146,6 +157,12 @@ async def get_current_user(request: Request) -> CurrentUser:
         raise ApiError(403, "ACCOUNT_WITHDRAWN", MSG_WITHDRAWN)
     request.state.user_row = row
     return user
+
+
+async def get_optional_user(request: Request) -> CurrentUser | None:
+    if request.headers.get("authorization") is None:
+        return None
+    return await get_current_user(request)
 
 
 @router.post("/api/v1/auth/session")
