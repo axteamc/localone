@@ -3,10 +3,10 @@
 // - plan: 빌릴 예정 카드의 "빼기" 옆 작은 버튼. 결과 안내는 부모(빌릴 예정 구역)가 배너로 보인다.
 // 대출일·예정일은 서버가 정한다(M2). 진행 중에는 "기록 중…"으로 막아 한 번만 보낸다(M-#8).
 import { useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
-import { theme, actionColors } from "../../theme";
+import { actionColors, cardSurface, theme } from "../../theme";
 import { startLoan, type Loan } from "./api";
 
 export const START_LABEL = "빌렸어요";
@@ -24,7 +24,7 @@ export const convertedNote = (loan: Loan) => `내 대출에 추가했어요. 반
 type Input = { isbn13: string; libraryId?: number; planId?: string };
 
 type Props =
-  | { variant: "detail"; input: Input }
+  | { variant: "detail"; input: Input; leftSlot?: ReactNode }
   | { variant: "plan"; input: Input; onStarted(loan: Loan): void; onFailed(error: unknown): void };
 
 export function StartLoanButton(props: Props) {
@@ -75,31 +75,56 @@ export function StartLoanButton(props: Props) {
   };
 
   const compact = props.variant === "plan";
+  const button = (
+    <Pressable
+      testID={compact ? `start-loan-${props.input.planId ?? props.input.isbn13}` : "start-loan"}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: busy }}
+      disabled={busy}
+      onPress={() => void press()}
+      style={({ pressed }) => [
+        compact ? styles.pill : [styles.wide, props.leftSlot ? styles.detailRight : styles.wideMargin],
+        !compact && pressed && ACT.secondaryPressed,
+        busy && styles.dim,
+      ]}
+    >
+      <Text style={compact ? styles.pillText : styles.wideText} numberOfLines={compact ? undefined : 1}>
+        {busy ? START_BUSY : START_LABEL}
+      </Text>
+    </Pressable>
+  );
+
   return (
     <>
-      <Pressable
-        testID={compact ? `start-loan-${props.input.planId ?? props.input.isbn13}` : "start-loan"}
-        accessibilityRole="button"
-        accessibilityState={{ disabled: busy }}
-        disabled={busy}
-        onPress={() => void press()}
-        style={[compact ? styles.pill : styles.wide, busy && styles.dim]}
-      >
-        <Text style={compact ? styles.pillText : styles.wideText}>{busy ? START_BUSY : START_LABEL}</Text>
-      </Pressable>
+      {!compact && props.leftSlot ? (
+        <View style={styles.detailRow}>
+          {props.leftSlot}
+          {button}
+        </View>
+      ) : (
+        button
+      )}
       {!compact && note?.kind === "login" && (
         <View style={styles.note}>
           <Text style={styles.noteText}>{LOGIN_TO_LOAN}</Text>
-          <Pressable accessibilityRole="button" onPress={() => router.push("/login")} style={styles.smallBtn}>
-            <Text style={styles.smallBtnText}>로그인</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push("/login")}
+            style={({ pressed }) => [styles.smallBtn, pressed && ACT.secondaryPressed]}
+          >
+            <Text style={styles.smallBtnText} numberOfLines={1}>로그인</Text>
           </Pressable>
         </View>
       )}
       {!compact && note?.kind === "started" && (
         <View testID="loan-started-note" style={styles.note}>
           <Text style={styles.noteText}>{startedNote(note.loan)}</Text>
-          <Pressable accessibilityRole="button" onPress={() => router.push("/loans")} style={styles.smallBtn}>
-            <Text style={styles.smallBtnText}>내 대출 보기</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push("/loans")}
+            style={({ pressed }) => [styles.smallBtn, pressed && ACT.secondaryPressed]}
+          >
+            <Text style={styles.smallBtnText} numberOfLines={1}>내 대출 보기</Text>
           </Pressable>
         </View>
       )}
@@ -111,13 +136,22 @@ export function StartLoanButton(props: Props) {
 const c = theme.colors;
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
-  wide: {
-    marginTop: 10,
-    ...ACT.secondary,
-    borderRadius: theme.radii.inner,
-    paddingVertical: 12,
+  detailRow: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: 8,
+    marginTop: 14,
   },
+  wide: {
+    ...ACT.secondary,
+    borderRadius: theme.radii.control,
+    height: 48,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  wideMargin: { marginTop: 10 },
+  detailRight: { flex: 1, flexShrink: 0 },
   wideText: { ...ACT.secondaryText, fontSize: 15, fontWeight: "500" },
   pill: {
     ...ACT.secondary,
@@ -129,8 +163,7 @@ const styles = StyleSheet.create({
   dim: { opacity: 0.5 },
   note: {
     marginTop: 10,
-    backgroundColor: c.paper,
-    borderRadius: theme.radii.card,
+    ...cardSurface(theme, { onPanel: true }),
     padding: 14,
     gap: 10,
     alignItems: "flex-start",

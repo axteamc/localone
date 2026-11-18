@@ -157,7 +157,9 @@ describe("상세 화면", () => {
     await render(<BookDetailScreen isbn13={BOY.isbn13} />);
     await screen.findByText("소년이 온다");
     expect(screen.getByText("한강")).toBeTruthy();
-    expect(screen.getByText("창비 · 2014")).toBeTruthy();
+    expect(screen.getByText("창비")).toBeTruthy();
+    expect(screen.getByText(`2014 · ISBN ${BOY.isbn13}`)).toBeTruthy();
+    expect(screen.queryByText(/창비 · 2014/)).toBeNull();
     const json = JSON.stringify(screen.toJSON());
     const at = (s: string) => json.indexOf(s);
     expect(at("소년이 온다")).toBeGreaterThan(-1);
