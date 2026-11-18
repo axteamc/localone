@@ -9,7 +9,7 @@ import { theme, actionColors } from "../../theme";
 import { BookCover } from "../book-search/SearchScreen";
 import { ApiCallError, listLoans, returnLoan, type Loan, type LoanStatus } from "./api";
 import { ddayColors, ddayFormat } from "./dday";
-import { DueDateSheet } from "./DueDateSheet";
+import { DueDateSheet, useOpenGeneration } from "./DueDateSheet";
 
 export const LOANS_TITLE = "내 대출";
 export const LOANS_EMPTY = "지금 빌린 책이 없어요. 책 상세나 빌릴 예정에서 '빌렸어요'를 눌러 보세요.";
@@ -47,16 +47,35 @@ export function LoansSection({ refreshKey = 0 }: { refreshKey?: number }) {
   const [editing, setEditing] = useState<Loan | null>(null);
   const [returning, setReturning] = useState<Loan | null>(null);
 
+  /**
+   * 첫 페이지부터 읽는다. 새 읽기는 진행 중인 앞 읽기(포커스·탭 전환·더 보기)를 모두 무효화한다(createLatestRunner).
+   * quiet: 쓰기 성공 뒤 다시 맞추기 — 지금 카드를 그대로 둔 채 서버 순서·커서로 바꾼다(실패하면 카드는 두고 안내).
+   */
   const load = useCallback(
-    async (status: LoanStatus = tabRef.current) => {
-      setList({ kind: "loading" });
-      setNotice(null);
+    async (status: LoanStatus = tabRef.current, opts: { quiet?: boolean } = {}) => {
+      if (!opts.quiet) {
+        setList({ kind: "loading" });
+        setNotice(null);
+      }
       const r = await runner.run((signal) => listLoans(status, { cursor: null }, signal));
-      if (r.status === "stale") return; // 늦게 온 앞 응답(다른 탭 포함)은 버린다(AC-RACE)
-      setList(r.status === "ok" ? { kind: "ready", items: r.value.items, nextCursor: r.value.next_cursor } : { kind: "error" });
+      if (r.status === "stale") return; // 늦게 온 앞 응답(다른 탭·쓰기 전 읽기 포함)은 버린다(AC-RACE)
+      if (r.status === "ok") {
+        setList({ kind: "ready", items: r.value.items, nextCursor: r.value.next_cursor });
+      } else if (opts.quiet) {
+        setList((prev) => (prev.kind === "ready" ? prev : { kind: "error" }));
+        setNotice(LOANS_FAILED);
+      } else {
+        setList({ kind: "error" });
+      }
     },
     [runner]
   );
+
+  /**
+   * 기한 수정·반납이 서버에 반영된 뒤: 그 전에 시작한 목록 읽기는 모두 버리고(반납한 카드·옛 예정일이 돌아오지 않게, E7),
+   * 첫 페이지부터 다시 읽어 반납 임박 순과 다음 페이지 커서를 서버 기준으로 맞춘다(LOAN-1 M8·C2).
+   */
+  const refreshAfterWrite = () => void load(tabRef.current, { quiet: true });
 
   // 탭으로 돌아올 때마다 새로 읽는다(책 상세에서 "빌렸어요" → "내 대출 보기"). 포커스를 잃으면 진행 중인 읽기는 버린다.
   useFocusEffect(
@@ -109,12 +128,18 @@ export function LoansSection({ refreshKey = 0 }: { refreshKey?: number }) {
     });
   };
 
-  const replace = (loan: Loan) =>
+  /** 저장한 카드는 바로 새 예정일로 바꾸고, 순서·커서는 다시 읽어 맞춘다 */
+  const replace = (loan: Loan) => {
     setList((prev) =>
       prev.kind === "ready" ? { ...prev, items: prev.items.map((x) => (x.id === loan.id ? loan : x)) } : prev
     );
-  const remove = (loanId: string) =>
+    refreshAfterWrite();
+  };
+  /** 반납한 카드는 바로 빼고(E7), 다시 읽어 맞춘다 */
+  const remove = (loanId: string) => {
     setList((prev) => (prev.kind === "ready" ? { ...prev, items: prev.items.filter((x) => x.id !== loanId) } : prev));
+    refreshAfterWrite();
+  };
 
   const onLoan = tab === "on_loan";
   return (
@@ -208,6 +233,7 @@ export function LoansSection({ refreshKey = 0 }: { refreshKey?: number }) {
           setEditing(null);
           changedElsewhere();
         }}
+        onLateResult={(saved) => (saved ? replace(saved) : refreshAfterWrite())}
       />
 
       <ReturnConfirm
@@ -223,6 +249,7 @@ export function LoansSection({ refreshKey = 0 }: { refreshKey?: number }) {
           setReturning(null);
           changedElsewhere();
         }}
+        onLateResult={(returned) => (returned ? remove(returned.id) : refreshAfterWrite())}
       />
     </View>
   );
@@ -278,37 +305,55 @@ function ReturnedCard({ loan }: { loan: Loan }) {
   );
 }
 
-/** 반납 확인 창(E8). 실패(503·네트워크)는 창을 닫지 않고 문구, 404·409는 닫고 목록 다시 읽기. */
+/**
+ * 반납 확인 창(E8). 실패(503·네트워크)는 창을 닫지 않고 문구, 404·409는 닫고 목록 다시 읽기.
+ * 창을 닫거나(안드로이드 뒤로 가기 포함) 다른 책 창을 연 뒤 앞 요청이 끝나면, 지금 창은 그대로 두고 onLateResult로 목록만 맞춘다.
+ */
 function ReturnConfirm({
   loan,
   onCancel,
   onReturned,
   onChanged,
+  onLateResult,
 }: {
   loan: Loan | null;
   onCancel(): void;
   onReturned(loan: Loan): void;
   onChanged(): void;
+  /** 닫힌·바뀐 창의 늦은 결과: 반납됐으면 그 대출, 404·409면 null. 실패(503 등)는 알리지 않는다 */
+  onLateResult(returned: Loan | null): void;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const sending = useRef(false);
-  useEffect(() => setError(null), [loan]);
+  const gen = useOpenGeneration(loan, () => {
+    sending.current = false;
+    setBusy(false);
+    setError(null);
+  });
   if (!loan) return null;
 
   const confirm = async () => {
     if (sending.current) return;
+    const mine = gen.current;
     sending.current = true;
     setBusy(true);
     setError(null);
     try {
-      onReturned(await returnLoan(loan.id));
+      const returned = await returnLoan(loan.id);
+      if (mine === gen.current) onReturned(returned);
+      else onLateResult(returned);
     } catch (e) {
-      if (e instanceof ApiCallError && (e.status === 404 || e.status === 409)) onChanged();
+      const changed = e instanceof ApiCallError && (e.status === 404 || e.status === 409);
+      if (mine !== gen.current) {
+        if (changed) onLateResult(null);
+      } else if (changed) onChanged();
       else setError(RETURN_FAILED);
     } finally {
-      sending.current = false;
-      setBusy(false);
+      if (mine === gen.current) {
+        sending.current = false;
+        setBusy(false);
+      }
     }
   };
 

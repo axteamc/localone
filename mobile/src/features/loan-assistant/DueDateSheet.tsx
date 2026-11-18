@@ -1,6 +1,6 @@
 // 반납 예정일 고치는 하단 시트(loan-assistant.md LOAN-2 E6, C6 R-#1~#3).
 // 새 날짜 패키지 없이 순수 React Native(Modal·TextInput·Pressable)로 만든다. 날짜는 "YYYY-MM-DD" 글자로만 다룬다.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type MutableRefObject } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { theme } from "../../theme";
 import { ApiCallError, changeDueDate, type Loan } from "./api";
@@ -35,6 +35,22 @@ const CHIPS: [string, number][] = [
   ["+14일", 14],
 ];
 
+/**
+ * 열린 대출이 바뀔 때마다(닫힘·다른 책·다시 열기) 세대를 올린다. 요청은 보낼 때의 세대를 기억해 두고,
+ * 끝났을 때 세대가 다르면 지금 창에 결과(닫기·오류 문구·보내는 중 해제)를 적용하지 않는다.
+ * onReset은 새 세대가 시작될 때 창의 보내는 중 상태를 비우는 데 쓴다.
+ */
+export function useOpenGeneration(loan: Loan | null, onReset: () => void): MutableRefObject<number> {
+  const gen = useRef(0);
+  const reset = useRef(onReset);
+  reset.current = onReset;
+  useLayoutEffect(() => {
+    gen.current += 1;
+    reset.current();
+  }, [loan]);
+  return gen;
+}
+
 type Props = {
   /** 고칠 대출. null이면 닫혀 있다 */
   loan: Loan | null;
@@ -42,13 +58,22 @@ type Props = {
   onSaved(loan: Loan): void;
   /** 409(반납됨)·404(이미 없음): 시트를 닫고 목록을 다시 읽게 한다(R-#2·#3) */
   onChanged(): void;
+  /**
+   * 닫았거나 다른 책으로 바뀐 시트의 앞 저장이 늦게 끝났을 때: 지금 시트는 건드리지 않고 목록만 맞춘다.
+   * 저장됐으면 그 대출, 409·404면 null. 실패(503·422 등)는 알리지 않는다(지금 시트에 엉뚱한 문구 금지).
+   */
+  onLateResult(saved: Loan | null): void;
 };
 
-export function DueDateSheet({ loan, onClose, onSaved, onChanged }: Props) {
+export function DueDateSheet({ loan, onClose, onSaved, onChanged, onLateResult }: Props) {
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const sending = useRef(false);
+  const gen = useOpenGeneration(loan, () => {
+    sending.current = false;
+    setBusy(false);
+  });
 
   useEffect(() => {
     if (!loan) return;
@@ -66,17 +91,25 @@ export function DueDateSheet({ loan, onClose, onSaved, onChanged }: Props) {
       setError(dateTooEarly(loan)); // 보내지 않고 막는다(E6)
       return;
     }
+    const mine = gen.current;
     sending.current = true;
     setBusy(true);
     setError(null);
     try {
-      onSaved(await changeDueDate(loan.id, due));
+      const saved = await changeDueDate(loan.id, due);
+      if (mine === gen.current) onSaved(saved);
+      else onLateResult(saved);
     } catch (e) {
-      if (e instanceof ApiCallError && (e.status === 409 || e.status === 404)) onChanged();
+      const changed = e instanceof ApiCallError && (e.status === 409 || e.status === 404);
+      if (mine !== gen.current) {
+        if (changed) onLateResult(null);
+      } else if (changed) onChanged();
       else setError(e instanceof ApiCallError && e.status === 422 ? dateTooEarly(loan) : DUE_FAILED);
     } finally {
-      sending.current = false;
-      setBusy(false);
+      if (mine === gen.current) {
+        sending.current = false;
+        setBusy(false);
+      }
     }
   };
 
