@@ -1,10 +1,18 @@
 // 대출·반납 탭의 "빌릴 예정" 구역(book-search.md LIB-3 N5·N9·N10, C6 L3-#6·#7)
+// 카드마다 "빌렸어요"로 내 대출에 옮긴다(loan-assistant.md LOAN-1 M6·M10 ②, C6 M-#3~#5).
 // 본인만 보는 메모 목록이다(N1). 로그인했을 때만 그린다(비로그인 처리는 탭 화면).
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { createLatestRunner } from "../../lib/latest";
 import { theme, actionColors } from "../../theme";
+import type { Loan } from "../loan-assistant/api";
+import {
+  START_CONFLICT,
+  START_FAILED,
+  StartLoanButton,
+  convertedNote,
+} from "../loan-assistant/StartLoanButton";
 import { ApiCallError, listLoanPlans, releaseLoanPlan, type LoanPlan } from "./api";
 import { BookCover } from "./SearchScreen";
 
@@ -20,7 +28,8 @@ type ListState =
   | { kind: "error" }
   | { kind: "ready"; items: LoanPlan[]; nextCursor: string | null };
 
-export function LoanPlansSection() {
+/** `onLoanStarted`: 예정을 내 대출로 옮겼거나(성공) 이미 바뀐 내용이라 다시 읽어야 할 때 — 위 "내 대출"을 다시 읽게 한다. */
+export function LoanPlansSection({ onLoanStarted }: { onLoanStarted?: () => void } = {}) {
   const router = useRouter();
   const runner = useMemo(() => createLatestRunner(), []);
   const [list, setList] = useState<ListState>({ kind: "loading" });
@@ -28,6 +37,7 @@ export function LoanPlansSection() {
   const [releasing, setReleasing] = useState<ReadonlySet<string>>(new Set());
   const releasingRef = useRef(new Set<string>()); // 같은 항목은 한 번만 보낸다(N10)
   const [notice, setNotice] = useState<string | null>(null);
+  const [banner, setBanner] = useState<string | null>(null); // "빌렸어요" 성공 안내(M10 ②)
 
   const load = useCallback(async () => {
     setList({ kind: "loading" });
@@ -74,11 +84,31 @@ export function LoanPlansSection() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emptyWithMore, moreBusy]);
 
+  const loanStarted = (planId: string, loan: Loan) => {
+    setList((prev) =>
+      prev.kind === "ready" ? { ...prev, items: prev.items.filter((p) => p.id !== planId) } : prev
+    );
+    setNotice(null);
+    setBanner(convertedNote(loan));
+    onLoanStarted?.();
+  };
+
+  const loanFailed = (error: unknown) => {
+    setBanner(null);
+    const changed = error instanceof ApiCallError && (error.status === 409 || error.status === 404); // M-#4·#5
+    if (changed) {
+      void load();
+      onLoanStarted?.();
+    }
+    setNotice(changed ? START_CONFLICT : START_FAILED); // load()가 지운 뒤에 다시 적는다
+  };
+
   const release = async (planId: string) => {
     if (releasingRef.current.has(planId)) return;
     releasingRef.current.add(planId);
     setReleasing(new Set(releasingRef.current));
     setNotice(null);
+    setBanner(null);
     try {
       await releaseLoanPlan(planId); // 확인창 없이 바로(N10)
       setList((prev) =>
@@ -121,6 +151,11 @@ export function LoanPlansSection() {
       )}
 
       {!!notice && <Text style={styles.notice}>{notice}</Text>}
+      {!!banner && (
+        <View testID="loan-converted-note" style={styles.box}>
+          <Text style={styles.text}>{banner}</Text>
+        </View>
+      )}
 
       {list.kind === "ready" &&
         list.items.map((plan) => {
@@ -136,6 +171,12 @@ export function LoanPlansSection() {
                 {!!plan.book.author && <Text style={styles.meta}>{plan.book.author}</Text>}
                 <Text style={styles.meta}>{where}</Text>
               </View>
+              <StartLoanButton
+                variant="plan"
+                input={{ isbn13: plan.book.isbn13, libraryId: plan.library.id, planId: plan.id }}
+                onStarted={(loan) => loanStarted(plan.id, loan)}
+                onFailed={loanFailed}
+              />
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{ disabled: busy }}
