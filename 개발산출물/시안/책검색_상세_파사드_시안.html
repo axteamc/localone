@@ -51,8 +51,8 @@
   .lbl { font-weight:500; font-size:12px; color:var(--ink-muted); margin-top:10px; display:block; }
   code { font-size:12px; background:var(--surface2); padding:0 4px; border-radius:3px; }
 
-  /* ---------- 휴대폰 공통 틀 (390×844 축소 286×600) ---------- */
-  .phone { width:286px; height:600px; margin:0 auto 10px; border-radius:28px; border:6px solid var(--ink-strong); position:relative; overflow:hidden; background:var(--panel-frosted); display:flex; flex-direction:column; font-size:11.5px; }
+  /* ---------- 휴대폰 공통 틀 (390×844 축소 304×610) ---------- */
+  .phone { width:304px; height:610px; margin:0 auto 10px; border-radius:28px; border:6px solid var(--ink-strong); position:relative; overflow:hidden; background:var(--panel-frosted); display:flex; flex-direction:column; font-size:11.5px; }
   .hd { flex:none; height:38px; background:var(--panel-frosted); border-bottom:1px solid var(--seam); display:flex; align-items:center; padding:0 12px; gap:8px; position:relative; }
   .hd::after { content:""; position:absolute; left:10px; right:10px; bottom:-1px; height:1px; background:var(--seam-hi); }
   .hd .back { font-size:20px; font-weight:500; color:var(--ink-strong); line-height:1; text-shadow:0 1px 2px var(--shadow-soft); cursor:pointer; background:none; border:0; padding:0 4px 0 0; }
@@ -60,7 +60,7 @@
   .hd .rvl, .hd .rvr { position:absolute; top:50%; width:3.5px; height:3.5px; margin-top:-1.75px; border-radius:2px; background:var(--rivet); }
   .hd .rvl { left:4px; } .hd .rvr { right:4px; }
 
-  .scr { flex:1; overflow-y:auto; overflow-x:hidden; position:relative; background:var(--panel-frosted); display:flex; flex-direction:column; }
+  .scr { flex:1; overflow-y:auto; overflow-x:hidden; position:relative; background:var(--panel-frosted); display:flex; flex-direction:column; scrollbar-width:thin; }
   .hide { display:none !important; }
 
   /* 계기판 목소리 (type.gauge) */
@@ -77,21 +77,21 @@
     background:var(--panel-lit); color:var(--ink-strong);
     border:1px solid var(--seam); border-radius:var(--r-pill);
     box-shadow:0 2px 0 var(--relief-mid);
-    font:inherit; font-size:12.5px; font-weight:500;
-    height:38px; padding:0 14px; display:inline-flex; align-items:center; justify-content:center;
+    font:inherit; font-size:12px; font-weight:500; white-space:nowrap;
+    height:38px; padding:0 13px; display:inline-flex; align-items:center; justify-content:center;
     cursor:pointer; transition:transform .08s, box-shadow .08s;
   }
   .btn-pri:active, .btn-pri.pressed { transform:translateY(1px); box-shadow:none; }
   .btn-sec {
     background:var(--panel-frosted); color:var(--text);
     border:1px solid var(--seam); border-radius:var(--r-pill);
-    font:inherit; font-size:11.5px; font-weight:500;
+    font:inherit; font-size:11.5px; font-weight:500; white-space:nowrap;
     height:34px; padding:0 12px; display:inline-flex; align-items:center; justify-content:center;
     cursor:pointer;
   }
   .btn-link {
     background:none; border:0; padding:2px 0; font:inherit; font-size:11px; font-weight:500;
-    color:var(--ink-strong); cursor:pointer;
+    color:var(--ink-strong); cursor:pointer; white-space:nowrap;
   }
 
   /* 무광 카드 (바탕이 panelFrosted일 때 panelLit + 1px seam + 아래 2px reliefBottomMid, 곡률 9) */
@@ -192,7 +192,7 @@
   .dh-B .dh-row { display:flex; gap:12px; align-items:flex-start; }
   .dh-B .d-cov { width:72px; height:102px; }
   .dh-B .d-meta { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
-  .dh-B .d-acts { display:grid; grid-template-columns:1.25fr 1fr; gap:6px; margin-top:10px; }
+  .dh-B .d-acts { display:grid; grid-template-columns:minmax(max-content, 1.55fr) 1fr; gap:6px; margin-top:10px; }
 
   /* 후보 C: 표지 옆 오른쪽 칸에 제목·저자와 행동 버튼을 함께 수직 압축 배치 (소장 카드 3곳 즉시 노출) */
   .dh-C { display:flex; gap:11px; align-items:stretch; padding-bottom:10px; border-bottom:1px solid var(--seam); }
@@ -209,20 +209,20 @@
     padding:9px 10px; display:flex; flex-direction:column; gap:5px;
   }
   .lib-card .lc-top { display:flex; justify-content:space-between; align-items:baseline; gap:6px; }
-  .lib-card .lc-name { font-size:13px; font-weight:500; color:var(--text); }
+  .lib-card .lc-name { font-size:13px; font-weight:500; color:var(--text); white-space:nowrap; }
   .lib-card .lc-body { display:flex; align-items:center; gap:8px; }
   .lib-card .lc-left { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
-  .lib-card .lc-st { display:flex; align-items:center; gap:5px; font-size:11.5px; color:var(--text); }
+  .lib-card .lc-st { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text); white-space:nowrap; }
   .lib-card .dot { width:7px; height:7px; border-radius:50%; background:var(--loan-avail); flex:none; }
   .lib-card .dot.out { background:var(--loan-out); }
   .lib-card .dot.unk { background:var(--loan-unk); }
-  .lib-card .fold-btn { background:none; border:0; padding:0; font:inherit; font-size:10.5px; font-weight:500; color:var(--ink-muted); text-align:left; cursor:pointer; }
+  .lib-card .fold-btn { background:none; border:0; padding:0; font:inherit; font-size:10.5px; font-weight:500; color:var(--ink-muted); text-align:left; cursor:pointer; white-space:nowrap; }
   .lib-card .fold-box { font-size:10.5px; color:var(--ink-soft); line-height:1.4; padding-top:2px; }
   .lib-card .live-btn {
     flex:none; height:32px; padding:0 10px;
     background:var(--panel-frosted); border:1px solid var(--seam);
     border-radius:var(--r-pill); font:inherit; font-size:11px; font-weight:500; color:var(--text);
-    display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
+    display:inline-flex; align-items:center; justify-content:center; cursor:pointer; white-space:nowrap;
   }
 
   /* 하단 시트 (SavePlanSheet 기본값: panelLit, 위 곡률 9) */
@@ -236,9 +236,9 @@
   .sheet-row { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px 0; border-bottom:1px solid var(--seam); }
 
   /* 넓은 웹 1280 비교 틀 */
-  .desk { position:relative; height:420px; border:1px solid var(--seam); border-radius:var(--r-info); overflow:hidden; background:var(--bg); margin-top:12px; display:flex; justify-content:center; gap:28px; padding:0 20px; }
+  .desk { position:relative; height:440px; border:1px solid var(--seam); border-radius:var(--r-info); overflow:hidden; background:var(--bg); margin-top:12px; display:flex; justify-content:center; gap:28px; padding:0 20px; }
   .desk .wallgrid { position:absolute; inset:0; background-image:linear-gradient(var(--seam) 1px, transparent 1px), linear-gradient(90deg, var(--seam) 1px, transparent 1px); background-size:60px 60px; opacity:.55; pointer-events:none; }
-  .desk .col { position:relative; z-index:1; width:260px; height:100%; border-left:1px solid var(--seam); border-right:1px solid var(--seam); box-shadow:0 10px 30px var(--shadow-cast); background:var(--panel-frosted); display:flex; flex-direction:column; overflow:hidden; }
+  .desk .col { position:relative; z-index:1; width:320px; height:100%; border-left:1px solid var(--seam); border-right:1px solid var(--seam); box-shadow:0 10px 30px var(--shadow-cast); background:var(--panel-frosted); display:flex; flex-direction:column; overflow:hidden; }
 
   /* 표 */
   .wide { overflow-x:auto; }
