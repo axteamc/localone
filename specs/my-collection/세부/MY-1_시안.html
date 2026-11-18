@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MY-1 시안</title>
+<!--
+  my-collection MY-1 시안 (../team/prompts/1_기획.md 1B 2단계 시안 사이클).
+  색·곡률은 개발산출물/디자인_기준.md 토큰(warm, M1 기본)을 :root 한 곳에만 두고 나머지는 변수로만 쓴다.
+  후보 비교는 세 후보 모두 같은 가짜 데이터(닉네임·소개·게시물 4개)를 쓴다.
+-->
+<style>
+  :root {
+    /* 개발산출물/디자인_기준.md 토큰 (warm, M1 기본) — 직접 값은 여기에만 */
+    --bg: #E1E1DE; --surface2: #D0CEC8; --surface3: #BFBCB5;
+    --fill1: #E9C970; --fill2: #EDC9A9; --fill3: #B3BFB5;
+    --cream: #EFEFE7; --paper: #EFF1F1; --ink-strong: #2E333F;
+    --text: #1D1D1F; --text-sub: #707070; --line: #C4C4C1;
+    --r-card: 18px; --r-pill: 18px; --r-control: 9999px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; line-height: 1.5; }
+  header.page { padding: 20px 16px 8px; max-width: 1240px; margin: 0 auto; }
+  header.page h1 { font-size: 20px; margin: 0 0 4px; }
+  .how { background: var(--cream); border-radius: var(--r-card); padding: 12px 16px; margin: 8px 0 0; }
+  main { max-width: 1240px; margin: 0 auto; padding: 0 16px 40px; }
+  section.element { margin-top: 24px; }
+  section.element > h2 { font-size: 17px; margin: 0 0 4px; }
+  .status { display: inline-block; font-size: 12px; padding: 2px 10px; border-radius: var(--r-pill); background: var(--surface2); margin-left: 6px; }
+  .cands { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 12px; }
+  .cand { background: var(--paper); border-radius: var(--r-card); padding: 14px; border: 3px solid transparent; }
+  .cand.recommended { border-color: var(--fill1); }
+  .cand.chosen { border-color: var(--ink-strong); }
+  .cand h3 { margin: 0 0 8px; font-size: 15px; }
+  .badge { font-size: 12px; padding: 1px 8px; border-radius: var(--r-pill); background: var(--fill1); margin-left: 6px; }
+  .badge.chosen { background: var(--ink-strong); color: var(--paper); }
+  .state button { font: inherit; font-size: 14px; border: 0; border-radius: var(--r-pill); padding: 4px 12px; background: var(--surface2); cursor: pointer; margin: 2px; }
+  .state button[aria-pressed="true"] { background: var(--ink-strong); color: var(--paper); }
+  .note { font-size: 14px; margin-top: 10px; }
+  .note dt { font-weight: 700; margin-top: 6px; }
+  .note dd { margin: 0; }
+  .flow { background: var(--cream); border-radius: 12px; padding: 8px 10px; }
+
+  /* ---- 휴대폰 화면 ---- */
+  .phone { position: relative; width: 100%; max-width: 330px; height: 600px; margin: 0 auto; background: var(--bg); border-radius: 26px; border: 6px solid var(--ink-strong); overflow: hidden; display: flex; flex-direction: column; }
+  .sbar { height: 22px; font-size: 11px; padding: 3px 14px 0; color: var(--text); flex: none; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 4px 14px; flex: none; }
+  .topbar .ttl { font-size: 17px; font-weight: 700; }
+  .gear { width: 30px; height: 30px; border-radius: var(--r-control); border: 0; background: transparent; font-size: 18px; cursor: pointer; color: var(--text); }
+  .body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .avatar { border-radius: 50%; background: var(--surface3); display: flex; align-items: center; justify-content: center; color: var(--paper); flex: none; }
+  .nick { font-weight: 700; color: var(--text); }
+  .bio { color: var(--text-sub); font-size: 13px; }
+  .editbtn { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--paper); color: var(--text); border-radius: var(--r-control); padding: 5px 12px; cursor: pointer; }
+  .editlink { font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--text-sub); text-decoration: underline; cursor: pointer; padding: 0; }
+
+  /* A: 왼쪽 사진 + 옆 글 */
+  .profA { display: flex; gap: 12px; align-items: center; padding: 8px 14px 12px; }
+  .profA .avatar { width: 64px; height: 64px; font-size: 26px; }
+  .profA .meta { flex: 1; min-width: 0; }
+  .profA .nick { font-size: 17px; }
+  .profA .editbtn { margin-top: 6px; }
+  /* B: 가운데 큰 사진 */
+  .profB { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 6px 14px 12px; gap: 4px; }
+  .profB .avatar { width: 88px; height: 88px; font-size: 36px; }
+  .profB .nick { font-size: 18px; margin-top: 4px; }
+  .profB .editbtn { width: 100%; margin-top: 8px; padding: 8px; }
+  /* C: 한 줄로 작게 */
+  .profC { display: flex; gap: 10px; align-items: center; padding: 4px 14px 8px; }
+  .profC .avatar { width: 36px; height: 36px; font-size: 15px; }
+  .profC .meta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .profC .nick { font-size: 15px; }
+  .profC .bio { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+
+  .tabbar { display: flex; border-bottom: 1px solid var(--line); background: var(--bg); flex: none; }
+  .tabbar span { flex: 1; text-align: center; padding: 8px 0; font-size: 14px; color: var(--text-sub); cursor: pointer; }
+  .tabbar span.on { color: var(--text); font-weight: 700; box-shadow: inset 0 -2px 0 var(--ink-strong); }
+  .feed { flex: 1; overflow: hidden; padding: 12px 12px 0; display: grid; grid-template-columns: 1fr 1fr; column-gap: 12px; align-content: start; }
+  .col { display: flex; flex-direction: column; gap: 12px; }
+  .card { border-radius: var(--r-card); padding: 10px; display: flex; align-items: flex-end; font-size: 12px; font-weight: 700; color: var(--text); }
+  .card.f1 { background: var(--fill1); } .card.f2 { background: var(--fill2); } .card.f3 { background: var(--fill3); }
+  .nav { height: 52px; flex: none; display: flex; border-top: 1px solid var(--line); background: var(--paper); font-size: 11px; }
+  .nav span { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-sub); }
+  .nav span.on { color: var(--text); font-weight: 700; }
+  .toast { position: absolute; left: 16px; right: 16px; bottom: 64px; background: var(--ink-strong); color: var(--paper); border-radius: var(--r-pill); padding: 8px 12px; font-size: 13px; text-align: center; }
+
+  #spec, #except, #fullflow { background: var(--paper); border-radius: var(--r-card); padding: 14px 16px; margin-top: 28px; }
+  #spec table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  #spec th, #spec td { text-align: left; padding: 6px; border-bottom: 1px solid var(--surface2); vertical-align: top; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>내 정보 모음 · MY-1 시안 — 위쪽 내 프로필 배치</h1>
+  <p class="how">화면 3개를 비교해 보세요. 화면마다 아래에 <b>누르면 어떻게 이어지는지</b>를 적어 뒀어요. 화면 위 버튼으로 <b>소개가 없을 때</b>, <b>아래로 내렸을 때</b> 모습을 바꿔 볼 수 있고, 화면 안의 <b>프로필 수정</b>·<b>탭</b>도 눌러 볼 수 있어요. <b>추천</b> 표시가 있는 화면이 Claude의 추천이에요. 고르는 건 직접 해 주세요.</p>
+</header>
+
+<main>
+  <!-- ===== 중심 요소 1 ===== -->
+  <section class="element" id="el-1" data-chosen="">
+    <h2>정할 것 1. "내 정보" 탭을 열면 위쪽 내 프로필을 어떻게 놓을까<span class="status" data-status>결정 전</span></h2>
+    <div class="state">소개: <button aria-pressed="true" data-bio="1">소개 있음</button><button aria-pressed="false" data-bio="0">소개 없음</button>
+      &nbsp; 화면: <button aria-pressed="true" data-scroll="0">처음 열었을 때</button><button aria-pressed="false" data-scroll="1">아래로 내렸을 때</button>
+    </div>
+
+    <div class="cands">
+      <!-- 후보 A (추천) -->
+      <article class="cand recommended" data-id="A">
+        <h3>왼쪽 사진 + 옆에 이름 <span class="badge">추천</span></h3>
+        <div class="phone" data-phone>
+          <div class="sbar">9:41</div>
+          <div class="topbar"><span class="ttl">내 정보</span><button class="gear" title="설정">⚙</button></div>
+          <div class="body">
+            <div class="profA" data-prof>
+              <div class="avatar">👤</div>
+              <div class="meta">
+                <div class="nick">이웃-0000</div>
+                <div class="bio" data-biotext>동네 도서관 산책을 좋아해요</div>
+                <button class="editbtn" data-edit>프로필 수정</button>
+              </div>
+            </div>
+            <div class="tabbar" data-tabs><span class="on">내 게시물</span><span>좋아요</span><span>북마크</span></div>
+            <div class="feed" data-feed></div>
+          </div>
+          <div class="nav"><span>홈</span><span>대출·반납</span><span class="on">내 정보</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>사진이 왼쪽에 중간 크기로 있고, 이름·소개·"프로필 수정"이 사진 옆에 모여 있어요. 프로필이 낮아서 첫 화면에 게시물 카드가 많이 보여요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">"내 정보" 탭을 누름 → 위에 내 사진·이름, 바로 아래 탭과 내 게시물 카드 → 아래로 내리면 프로필은 위로 사라지고 탭은 맨 위에 붙어 있음 → 카드를 누르면 게시물 상세로. 오른쪽 위 ⚙를 누르면 설정·로그아웃으로 가요.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>첫 화면 카드 4개가 거의 다 보임. 프로필 높이 약 90.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>내 정보와 카드가 둘 다 잘 보임 / 사진이 크지 않아 "내 공간" 느낌은 덜함</dd>
+          <dt>추천 이유</dt><dd>이 탭에 오는 이유는 대부분 모아 둔 게시물을 다시 보려는 것이라, 프로필은 알아볼 만큼만 두고 카드를 먼저 보여 주는 게 맞아서요.</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 B -->
+      <article class="cand" data-id="B">
+        <h3>가운데 큰 사진</h3>
+        <div class="phone" data-phone>
+          <div class="sbar">9:41</div>
+          <div class="topbar"><span class="ttl">내 정보</span><button class="gear" title="설정">⚙</button></div>
+          <div class="body">
+            <div class="profB" data-prof>
+              <div class="avatar">👤</div>
+              <div class="nick">이웃-0000</div>
+              <div class="bio" data-biotext>동네 도서관 산책을 좋아해요</div>
+              <button class="editbtn" data-edit>프로필 수정</button>
+            </div>
+            <div class="tabbar" data-tabs><span class="on">내 게시물</span><span>좋아요</span><span>북마크</span></div>
+            <div class="feed" data-feed></div>
+          </div>
+          <div class="nav"><span>홈</span><span>대출·반납</span><span class="on">내 정보</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>큰 사진이 가운데, 그 아래 이름·소개, 넓은 "프로필 수정" 버튼이 있어요. 프로필이 화면 위쪽 3분의 1쯤을 차지해요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">"내 정보" 탭을 누름 → 큰 내 사진과 이름이 먼저 보임 → 카드는 아래로 조금 내려야 다 보임 → 내리면 프로필이 사라지고 탭이 맨 위에 붙음 → 카드를 누르면 게시물 상세로.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>첫 화면에 카드 윗부분 2개 정도만 보임. 프로필 높이 약 190.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>"내 공간"이라는 느낌이 큼 / 게시물을 보려면 한 번 내려야 함</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 C -->
+      <article class="cand" data-id="C">
+        <h3>한 줄로 작게</h3>
+        <div class="phone" data-phone>
+          <div class="sbar">9:41</div>
+          <div class="topbar"><span class="ttl">내 정보</span><button class="gear" title="설정">⚙</button></div>
+          <div class="body">
+            <div class="profC" data-prof data-keep>
+              <div class="avatar">👤</div>
+              <div class="meta">
+                <span class="nick">이웃-0000</span>
+                <span class="bio" data-biotext>동네 도서관 산책을 좋아해요</span>
+              </div>
+              <button class="editlink" data-edit>수정</button>
+            </div>
+            <div class="tabbar" data-tabs><span class="on">내 게시물</span><span>좋아요</span><span>북마크</span></div>
+            <div class="feed" data-feed></div>
+          </div>
+          <div class="nav"><span>홈</span><span>대출·반납</span><span class="on">내 정보</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>작은 사진·이름·소개가 한 줄에 들어가고 "수정"은 글자 링크예요. 내려도 이 한 줄이 위에 계속 남아요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">"내 정보" 탭을 누름 → 맨 위 한 줄에 내 이름, 바로 아래 탭과 카드가 화면 대부분 → 내려도 이름 줄과 탭이 같이 위에 붙어 있음 → 카드를 누르면 게시물 상세로.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>첫 화면 카드가 가장 많이 보임. 소개가 길면 한 줄에서 잘림(…). 프로필 높이 약 48.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>카드를 가장 넓게 봄 / 사진이 작고 소개가 잘려 내 프로필이 잘 안 보임</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <!-- 중심 요소 2, 3 은 1이 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
+
+  <!-- ===== 처음부터 끝까지 (세부 명세서 2. 유저 플로우와 같게) ===== -->
+  <section id="fullflow">
+    <h2>처음부터 끝까지 이렇게 써요</h2>
+    <ol>
+      <li>사용자가 하단 "내 정보" 탭을 누르면 동네한권이 위쪽 내 프로필과 "내 게시물" 탭의 카드를 보여 준다.</li>
+      <li>(정할 것 1을 고르면 여기를 이어서 쓴다)</li>
+    </ol>
+  </section>
+
+  <!-- ===== 명세 패널 (세부 명세서 확인 목록·결정 기록과 같게) ===== -->
+  <section id="spec">
+    <h2>명세</h2>
+    <p>다시 비교하기: <select id="pick"><option value="">채택안 보기</option><option value="A">왼쪽 사진 + 옆에 이름</option><option value="B">가운데 큰 사진</option><option value="C">한 줄로 작게</option></select></p>
+    <table>
+      <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값</th></tr>
+      <tr><td>1. 위쪽 내 프로필 배치 (Y-O1)</td><td>결정 전</td><td>— (추천: 왼쪽 사진 + 옆에 이름)</td><td>—</td><td>A 사진 64 / B 88 / C 36, 원형</td></tr>
+      <tr><td>2. 좋아요·북마크 해제 뒤 목록 (Y-O4)</td><td>결정 전</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>3. 탭이 비었을 때 (Y-O3)</td><td>결정 전</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>탭 바 모양 (Y-O2)</td><td>기본값(Claude)</td><td>글자 + 고른 탭 밑줄(<code>ink-strong</code> 2), 내리면 맨 위에 붙음</td><td>묻지 않음</td><td>글자 14</td></tr>
+      <tr><td>탭 오갈 때 (Y-O2)</td><td>기본값(Claude)</td><td>불러온 탭은 기억, 아래로 당기면 새로</td><td>묻지 않음</td><td>—</td></tr>
+      <tr><td>다음 묶음 (Y-O5)</td><td>기본값(Claude)</td><td>끝까지 내리면 자동으로 이어 불러옴</td><td>묻지 않음</td><td>한 번에 20개</td></tr>
+      <tr><td>소개가 없을 때 (Y-O1)</td><td>기본값(Claude)</td><td>소개 줄을 숨김</td><td>묻지 않음</td><td>—</td></tr>
+      <tr><td>프로필 수정 누름 (Y-O1)</td><td>기본값(Claude)</td><td>아래 안내 "프로필 수정은 곧 열려요" 2초</td><td>묻지 않음</td><td>—</td></tr>
+      <tr><td>설정·로그아웃 자리 (Y-O1)</td><td>기본값(Claude)</td><td>오른쪽 위 ⚙ (설정 화면은 따로 만들어짐)</td><td>묻지 않음</td><td>30×30</td></tr>
+      <tr><td>게시물 카드</td><td>정해짐</td><td>게시물 카드 2열 그대로, 누르면 게시물 상세</td><td>—</td><td>열 간격 12, 좌우 12, 곡률 <code>--r-card</code></td></tr>
+    </table>
+  </section>
+</main>
+
+<script>
+  // 세 후보 모두 같은 게시물 4개
+  var CARDS = [
+    [{ c: 'f2', h: 150, t: '마음에 남은 문장' }, { c: 'f1', h: 110, t: '정독도서관 창가' }],
+    [{ c: 'f3', h: 110, t: '이번 주 다 읽음' }, { c: 'f2', h: 150, t: '소년이 온다' }]
+  ];
+  document.querySelectorAll('[data-feed]').forEach(function (f) {
+    CARDS.forEach(function (col) {
+      var d = document.createElement('div'); d.className = 'col';
+      col.forEach(function (k) { var c = document.createElement('div'); c.className = 'card ' + k.c; c.style.height = k.h + 'px'; c.textContent = k.t; d.appendChild(c); });
+      f.appendChild(d);
+    });
+  });
+
+  var el = document.getElementById('el-1');
+  function press(sel, b) { el.querySelectorAll(sel).forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); }
+  // 소개 있음/없음
+  el.querySelectorAll('[data-bio]').forEach(function (b) {
+    b.addEventListener('click', function () { press('[data-bio]', b); el.querySelectorAll('[data-biotext]').forEach(function (t) { t.hidden = b.dataset.bio === '0'; }); });
+  });
+  // 처음 / 내렸을 때: A·B는 프로필이 위로 사라지고 탭이 맨 위, C는 한 줄이 남음
+  el.querySelectorAll('[data-scroll]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      press('[data-scroll]', b);
+      var down = b.dataset.scroll === '1';
+      el.querySelectorAll('[data-prof]').forEach(function (p) { if (!p.hasAttribute('data-keep')) p.hidden = down; });
+      el.querySelectorAll('[data-feed]').forEach(function (f) { f.style.marginTop = down ? '-60px' : '0'; });
+    });
+  });
+  // 탭 누르기
+  el.querySelectorAll('[data-tabs]').forEach(function (t) {
+    t.querySelectorAll('span').forEach(function (s) { s.addEventListener('click', function () { t.querySelectorAll('span').forEach(function (x) { x.classList.toggle('on', x === s); }); }); });
+  });
+  // 프로필 수정 누르기 → 안내
+  el.querySelectorAll('[data-edit]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var ph = b.closest('[data-phone]'); if (ph.querySelector('.toast')) return;
+      var t = document.createElement('div'); t.className = 'toast'; t.textContent = '프로필 수정은 곧 열려요'; ph.appendChild(t);
+      setTimeout(function () { t.remove(); }, 2000);
+    });
+  });
+  // 채택안 표시
+  function mark(id) {
+    el.querySelectorAll('.cand').forEach(function (c) {
+      c.classList.toggle('chosen', c.dataset.id === id);
+      var old = c.querySelector('.badge.chosen'); if (old) old.remove();
+      if (c.dataset.id === id) { var s = document.createElement('span'); s.className = 'badge chosen'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+    });
+    el.querySelector('[data-status]').textContent = id ? '확인' : '결정 전';
+  }
+  mark(el.dataset.chosen);
+  document.getElementById('pick').addEventListener('change', function (e) { mark(e.target.value || el.dataset.chosen); });
+</script>
+</body>
+</html>
