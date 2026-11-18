@@ -25,6 +25,21 @@ WITHDRAWN_NICKNAME = "탈퇴한 이웃"
 WithdrawalStep = Callable[[Connection, UUID, datetime], None]
 
 
+def _withdraw_published_posts(conn: Connection, user_id: UUID, now: datetime) -> None:
+    # hidden(운영 숨김)은 기록이라 그대로 둔다(W1 ①)
+    conn.execute(
+        text("UPDATE posts SET status = 'withdrawn', updated_at = :now "
+             "WHERE user_id = :uid AND status = 'published'"),
+        {"uid": user_id, "now": now},
+    )
+
+
+def _delete_own_reactions_and_bookmarks(conn: Connection, user_id: UUID, now: datetime) -> None:
+    # 내가 남긴 것만. 남이 내 글에 남긴 것은 그대로(W7)
+    conn.execute(text("DELETE FROM post_reactions WHERE user_id = :uid"), {"uid": user_id})
+    conn.execute(text("DELETE FROM post_bookmarks WHERE user_id = :uid"), {"uid": user_id})
+
+
 def _anonymize_profile(conn: Connection, user_id: UUID, now: datetime) -> None:
     conn.execute(
         text("UPDATE user_profiles SET nickname = :nickname, updated_at = :now WHERE user_id = :uid"),
@@ -34,6 +49,8 @@ def _anonymize_profile(conn: Connection, user_id: UUID, now: datetime) -> None:
 
 # C5 표 순서: ① 공개 철회 → ② 개인 삭제 → ③ 프로필 익명화. ⓪(users 상태)은 withdraw_user_account가 맨 앞에서 한다.
 WITHDRAWAL_STEPS: list[WithdrawalStep] = [
+    _withdraw_published_posts,  # LOCAL-1 (B)
+    _delete_own_reactions_and_bookmarks,  # LOCAL-2 (B)
     _anonymize_profile,
 ]
 

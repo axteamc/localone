@@ -18,6 +18,7 @@ from app.routers import me as me_router
 from app.routers.me import WITHDRAWN_NICKNAME, withdraw_user_account
 from app.settings import Settings
 from tests.conftest import TEST_SUPABASE_URL, USER_A_ID, USER_B_ID
+from tests.provider_fakes import public_reference_data  # noqa: F401  (픽스처: 도서관 101)
 
 A = UUID(USER_A_ID)
 B = UUID(USER_B_ID)
@@ -162,3 +163,45 @@ def test_write_during_withdraw_is_403_no_row(auth, db_engine):
                 future.result(timeout=5)
     assert (caught.value.status_code, caught.value.code) == (403, "ACCOUNT_WITHDRAWN")
     assert nickname_of(db_engine, A) == WITHDRAWN_NICKNAME
+
+
+# ── LOCAL-1·LOCAL-2 (B) 테이블: Owner D+B ──
+
+def _post(engine: Engine, user: UUID, status: str = "published") -> str:
+    with engine.begin() as conn:
+        return str(conn.execute(text(
+            "INSERT INTO posts (user_id, library_id, image_kind, image_value, body, status, client_request_id) "
+            "VALUES (:u, 101, 'color', 'fill2', '본문', :s, gen_random_uuid()) RETURNING id"),
+            {"u": user, "s": status}).scalar_one())
+
+
+def _post_status(engine: Engine, post_id: str) -> str:
+    return scalar(engine, "SELECT status FROM posts WHERE id = :p", p=post_id)
+
+
+def test_withdraw_withdraws_published_posts_only_mine(client, auth, db_engine, public_reference_data):
+    mine = _post(db_engine, A)
+    mine_hidden = _post(db_engine, A, "hidden")
+    theirs = _post(db_engine, B)
+    assert client.delete("/api/v1/me", headers=auth["A"]).status_code == 200
+    assert _post_status(db_engine, mine) == "withdrawn"
+    assert _post_status(db_engine, mine_hidden) == "hidden"
+    assert _post_status(db_engine, theirs) == "published"
+    # 피드(published만)에서 사라진다
+    feed = client.get("/api/v1/libraries/101/posts")
+    assert feed.status_code == 200
+    ids = [item["id"] for item in feed.json()["items"]]
+    assert mine not in ids and theirs in ids
+
+
+def test_withdraw_deletes_own_reactions_and_bookmarks(client, auth, db_engine, public_reference_data):
+    mine, theirs = _post(db_engine, A), _post(db_engine, B)
+    with db_engine.begin() as conn:
+        for table in ("post_reactions", "post_bookmarks"):
+            conn.execute(text(f"INSERT INTO {table} (post_id, user_id) VALUES (:p, :u)"), {"p": theirs, "u": A})
+            conn.execute(text(f"INSERT INTO {table} (post_id, user_id) VALUES (:p, :u)"), {"p": mine, "u": B})
+    assert client.delete("/api/v1/me", headers=auth["A"]).status_code == 200
+    for table in ("post_reactions", "post_bookmarks"):
+        assert scalar(db_engine, f"SELECT count(*) FROM {table} WHERE user_id = :u", u=A) == 0
+        assert scalar(db_engine, f"SELECT count(*) FROM {table} WHERE user_id = :u AND post_id = :p",
+                      u=B, p=mine) == 1  # W7
