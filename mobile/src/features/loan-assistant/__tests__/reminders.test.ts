@@ -554,6 +554,13 @@ describe("notifications.platform", () => {
     expect(calls.filter((c) => c.startsWith("channel:"))).toHaveLength(2);
   });
 
+  test("android fresh install reports denied+canAskAgain and still shows the first prompt", async () => {
+    // API 36 에뮬레이터 새 설치에서 실제로 받은 값: { status: "denied", canAskAgain: true }(아직 묻지 않음)
+    const fresh = loadPlatform("android", { status: "denied", canAskAgain: true });
+    expect(await fresh.real.requestNotificationPermission()).toBe("granted");
+    expect(fresh.calls).toEqual(["channel:loan-reminders", "getPermissions", "requestPermissions"]);
+  });
+
   test("ios never creates a channel and denied android does not prompt again", async () => {
     const ios = loadPlatform("ios");
     expect(await ios.real.requestNotificationPermission()).toBe("granted");
