@@ -405,6 +405,16 @@
   .v2lib.peek .iso-cube { opacity:.94; pointer-events:auto; transform:scale(var(--p)); }
   .v2lib.peek .iso-cube:hover { transform:scale(calc(var(--p) * 1.04)); }
   .v2lib.peek .face-left .l-addr-wrap, .v2lib.peek .face-right .r-hours, .v2lib.peek .face-right .r-closed, .v2lib.peek .face-right .r-tel-wrap { opacity:.5; }
+
+  /* 4차: 기점 누르면 전체 보기(같은 크기 큐브, 실제 방향) */
+  .v2plinth { cursor:pointer; }
+  .v2lib.ring { cursor:pointer; z-index:3; }
+  .v2lib.ring .iso-cube { opacity:1; pointer-events:auto; transform:scale(var(--p)); }
+  .v2lib.ring .iso-cube:hover { transform:scale(calc(var(--p) * 1.05)); }
+  .v2lib.ring .face-left .l-addr-wrap, .v2lib.ring .face-right .r-hours, .v2lib.ring .face-right .r-closed, .v2lib.ring .face-right .r-tel-wrap { opacity:.5; }
+
+  /* 작은 큐브에서도 이름은 읽히게(화면에서 약 12~13px) */
+  .v2lib.ring .face-top-txt, .v2lib.peek .face-top-txt { font-size:calc(12.5px / var(--p)); letter-spacing:.12em; padding-left:.12em; }
 </style>
 </head>
 <body class="ink-deboss">
@@ -644,7 +654,7 @@
     <div class="how">
       <b>D 결정(2026-11-18).</b> 큰 틀은 2번 "주인공 포커스 + 가장자리 걸침". ① 처음 주인공 기본값은 <b>가장 가까운 곳</b>, 최근 방문은 별도 설정(도서관 안 설정 + 홈에서 큐브 꾹 누르기). ② 검정 + 노랑은 로고에만 피함(앱에서는 씀). ③ 뚜껑에는 <b>이름만</b>(이름 줄이는 규칙은 디자인 뒤에). ④ 주인공은 더 크게, 기점은 더 치우쳐도 됨.<br>
       <b>위치 추상화를 남기면서 크게 보이는 방법.</b> 주인공 도서관의 방향으로 판을 네 칸으로 나눠요 — <b>북동~남동(45°~135°)이면 기점을 왼쪽으로 밀고 오른쪽 넓은 칸에 주인공</b>, 북쪽(315°~45°)이면 기점을 아래로 밀고 위쪽에, 남쪽이면 기점을 위로, 서쪽이면 기점을 오른쪽으로. 칸 안에서도 실제 방향만큼 더 비켜요(북동이면 오른쪽 칸의 위쪽). 나머지 도서관은 <b>작은 큐브가 밀려난 기점에서 본 실제 방향의 가장자리에 걸쳐</b> 잘린 채 보여요. 윗면 이름은 판 안쪽에 오게 둬요(D 3차: "가장자리 걸침이 더 내가 원하는 방향"). 가로 화면(가로가 세로의 1.6배 넘음)에서는 위·아래 칸이 너무 낮아서 북·남도 동·서 칸으로 보내요.<br>
-      <b>눌러 보기.</b> 걸친 큐브 누르기 → 그 도서관이 주인공. <b>빈 판을 끌기</b> → 지도처럼 끈 반대쪽(왼쪽으로 끌면 오른쪽)에 있는 도서관이 주인공. <b>주인공 큐브를 꾹(0.6초) 누르기</b> → "처음 크게 보일 도서관" 설정. 움직임은 0.8초로 느리게 했어요.
+      <b>눌러 보기.</b> 걸친 큐브 누르기 → 그 도서관이 주인공. <b>빈 판을 끌기</b> → 지도처럼 끈 반대쪽(왼쪽으로 끌면 오른쪽)에 있는 도서관이 주인공. <b>주인공 큐브를 꾹(0.6초) 누르기</b> → "처음 크게 보일 도서관" 설정. <b>기점(HERE) 누르기</b> → 기점이 가운데로 오고 모든 도서관이 같은 크기 큐브로 실제 방향에 넓게(거리는 비례로 안쪽·바깥쪽), 큐브를 누르면 그 도서관이 주인공, 기점을 다시 누르면 원래 주인공으로(D 4차). 움직임은 0.8초로 느리게 했어요.
     </div>
     <div class="bar">
       <label>화면 크기 <select id="v2size"><option value="390x844" selected>휴대폰 390×844</option><option value="360x640">작은 휴대폰 360×640</option><option value="844x412">가로 웹 844×412</option></select></label>
@@ -854,13 +864,46 @@ document.querySelectorAll(".hero-btn").forEach(btn=>{
     document.getElementById("v2title").textContent=h.full;
     document.getElementById("v2meta").textContent=`${h.km}KM · ${h.id===RECENT?"LAST VISIT · ":""}${h.tel}`;
   }
-  function setHero(id){ hero=id; menu.classList.remove("on"); layout(); }
+  function setHero(id){ hero=id; mode="hero"; menu.classList.remove("on"); layout(); }
+  /* 기점 누르기: 기점을 가운데로, 모든 도서관을 같은 크기 큐브로 실제 방향·거리(비례)에 넓게 */
+  let mode="hero", lastHero=null;
+  function layoutRing(){
+    const W=board.clientWidth, H=board.clientHeight, O=[W/2,H/2];
+    const q=Math.max(.36, Math.min(.56, Math.min(W,H)*.24/220)), cw=220*q, ch=206*q;
+    const rMin=Math.min(W,H)*.26, rMaxX=W/2-cw/2-6, rMaxY=H/2-ch/2-6;
+    const kmMax=Math.max(...LIBS.map(l=>l.km));
+    plinth.style.left=O[0]+"px"; plinth.style.top=O[1]+"px";
+    document.getElementById("v2axisV").style.left=O[0]+"px"; document.getElementById("v2axisH").style.top=O[1]+"px";
+    document.getElementById("v2grid").style.backgroundPosition=`${O[0]-1}px ${O[1]-1}px`;
+    /* 방향이 가까운 도서관끼리는 각도를 조금 벌린다 */
+    const items=LIBS.map(l=>({l, a:l.bear})).sort((x,y)=>x.a-y.a);
+    for(let it=0; it<20; it++) for(let i=0;i<items.length;i++){ const A=items[i], B=items[(i+1)%items.length]; let d=((B.a-A.a)+360)%360; if(d<38){ A.a-=(38-d)/2; B.a+=(38-d)/2; } }
+    items.forEach(({l,a})=>{
+      const el=document.getElementById("v2-"+l.id), cube=el.querySelector(".iso-cube"), [dx,dy]=dirOf(a);
+      const f=.45+.55*(l.km/kmMax);                       /* 가까울수록 안쪽 */
+      const rx=Math.max(rMin, rMaxX)*f, ry=Math.max(rMin, rMaxY)*f;
+      let cx=O[0]+dx*Math.max(rx, cw*.62), cy=O[1]+dy*Math.max(ry, ch*.55);
+      cx=Math.min(W-cw/2-4, Math.max(cw/2+4, cx)); cy=Math.min(H-ch/2-4, Math.max(ch/2+4, cy));
+      el.className="v2lib ring"; el.style.setProperty("--p",q);
+      el.style.left=cx+"px"; el.style.top=cy+"px"; cube.style.left=(-110*q)+"px"; cube.style.top=(-103*q)+"px";
+    });
+    document.getElementById("v2title").textContent=`내 위치 주변 도서관 ${LIBS.length}곳`;
+    document.getElementById("v2meta").textContent="TAP A CUBE TO FOCUS";
+  }
+  function toggleRing(){
+    menu.classList.remove("on");
+    if(mode==="ring"){ mode="hero"; hero=lastHero||hero; layout(); return; }
+    mode="ring"; lastHero=hero; layoutRing();
+  }
+  plinth.addEventListener("click",e=>{ if(dragMoved) return; e.stopPropagation(); toggleRing(); });
+
 
   /* 빈 판 끌기: 지도처럼 끈 반대쪽의 도서관을 고른다 */
   let drag=null, dragMoved=false;
   board.addEventListener("pointerdown",e=>{
     dragMoved=false;
-    if(e.target.closest(".v2menu")) return;
+    if(e.target.closest(".v2menu") || e.target.closest(".v2plinth")) return;
+    if(mode==="ring"){ if(e.target.closest(".v2lib")) drag={x:e.clientX,y:e.clientY,id:e.pointerId,lid:true}; return; }
     const onHeroCube=e.target.closest(".v2lib.hero");
     if(onHeroCube){ startPress(e); return; }
     if(e.target.closest(".v2lib.peek")) { drag={x:e.clientX,y:e.clientY,id:e.pointerId,lid:true}; return; }
@@ -903,7 +946,7 @@ document.querySelectorAll(".hero-btn").forEach(btn=>{
     const [w,h]=document.getElementById("v2size").value.split("x").map(Number);
     const ph=document.getElementById("v2phone");
     ph.style.setProperty("--W",w+"px"); ph.style.setProperty("--H",h+"px"); ph.classList.toggle("land", w>h); menu.classList.remove("on");
-    requestAnimationFrame(layout);
+    requestAnimationFrame(()=> mode==="ring" ? layoutRing() : layout());
   }
   document.getElementById("v2size").addEventListener("change",applySize);
   applySize();
