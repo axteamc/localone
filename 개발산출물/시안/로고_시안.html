@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="명세" content="../../DESIGN.md">
+<title>동네한권 로고 시안</title>
+<!--
+  D 요청(2026-11-18, 페이지 디자인 1차 P1): 로고 형태 6~8개를 SVG로, 룩 4종 색 바꾸기, 백색 바탕 기본 + 유리판·진한 바탕 위 모습,
+  1024·48 아이콘과 로그인 상단 배치 미리보기. 근거: C-60(주요 컬러 책 모양 로고 방향), DESIGN.md 글자와 공간 규칙·곡률 위계.
+  색은 mobile/src/theme/tokens.ts 의 룩 4종 기본 색과 DERIVE 산식으로만 만든다(아래 script 의 LOOKS·DERIVE). 외부 글꼴·이미지 없음.
+-->
+<style>
+  :root {
+    --white:#FFFFFF; --text:#1D1D1F; --ink-muted:#6B6B66; --ink-soft:#4D4D4B;
+    --shadow-cast:rgba(28,30,36,.22); --seam-hi:rgba(255,255,255,.68);
+    --r-block:3px; --r-info:9px;
+    /* 룩 색은 script 가 채운다(기본 warm) */
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif; line-height:1.5; }
+  header.page, main { max-width:1320px; margin:0 auto; padding:0 16px; }
+  header.page { padding-top:22px; }
+  h1 { font-size:22px; font-weight:400; margin:0 0 4px; color:var(--ink-soft); }
+  h2 { font-size:18px; font-weight:500; margin:0 0 4px; } h3 { font-size:15px; font-weight:500; margin:0 0 8px; }
+  .how, .flow { background:var(--panel-lit); border:1px solid var(--seam); border-radius:var(--r-info); padding:12px 16px; margin:10px 0 0; font-size:14px; }
+  .bar { display:flex; flex-wrap:wrap; gap:16px; align-items:center; margin-top:12px; font-size:14px; }
+  select { font:inherit; padding:4px 8px; border-radius:8px; border:1px solid var(--surface3); background:var(--paper); color:var(--text); }
+  section.element, #spec, #login { margin-top:40px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:999px; background:var(--surface2); margin-left:6px; font-weight:400; }
+  .gauge { font-size:10px; font-weight:500; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-muted); }
+
+  /* 한눈 비교 띠 */
+  .strip { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px; background:var(--seam); border:1px solid var(--seam); border-radius:var(--r-info); overflow:hidden; margin-top:12px; }
+  .strip > div { background:var(--white); padding:12px 8px 8px; display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; }
+  .strip > div.sel { outline:2px solid var(--ink-strong); outline-offset:-2px; }
+  .strip .row { display:flex; align-items:flex-end; gap:10px; }
+
+  /* 후보 */
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-info); padding:14px; border:3px solid transparent; }
+  .cand.recommended { border-color:var(--fill1); } .cand.chosen { border-color:var(--ink-strong); }
+  .cand.preview { outline:2px dashed var(--ink-strong); outline-offset:3px; }
+  .badge { display:inline-block; font-size:12px; font-weight:500; padding:1px 9px; border-radius:999px; background:var(--fill1); color:var(--on-fill1); margin-left:6px; }
+  .badge.adopted { background:var(--ink-strong); color:var(--white); }
+  .cand p { font-size:13.5px; margin:6px 0; }
+  .lbl { font-weight:500; font-size:12.5px; color:var(--ink-muted); margin-top:10px; display:block; }
+  .grounds { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .ground { aspect-ratio:1; border-radius:var(--r-block); display:flex; align-items:center; justify-content:center; position:relative; border:1px solid var(--seam); }
+  .ground span { position:absolute; left:6px; bottom:4px; font-size:9px; letter-spacing:.12em; text-transform:uppercase; }
+  .g-white { background:var(--white); } .g-white span { color:var(--ink-muted); }
+  .g-glass { background:var(--panel-frosted); background-image:linear-gradient(var(--seam) 1px, transparent 1px), linear-gradient(90deg, var(--seam) 1px, transparent 1px); background-size:50% 50%; background-position:-1px -1px; } .g-glass span { color:var(--ink-muted); }
+  .g-dark { background:var(--ink-strong); border-color:var(--ink-strong); } .g-dark span { color:var(--relief-mid); }
+  .ground svg { width:62%; height:62%; }
+  .sizes { display:flex; align-items:flex-end; gap:14px; margin-top:10px; flex-wrap:wrap; }
+  .sizes figure { margin:0; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .sizes figcaption { font-size:9.5px; letter-spacing:.12em; color:var(--ink-muted); }
+  .icon { border-radius:22.37%; background:var(--icon-bg); display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 1px var(--seam); overflow:hidden; }
+  .icon svg { width:72%; height:72%; }
+  .i180 { width:132px; height:132px; } .i48 { width:48px; height:48px; } .i24 { width:24px; height:24px; border-radius:6px; }
+
+  /* 로그인 상단 배치 미리보기 */
+  .phones { display:flex; flex-wrap:wrap; gap:20px; margin-top:12px; align-items:flex-start; }
+  .phone { width:300px; height:620px; border-radius:30px; border:6px solid var(--ink-strong); position:relative; overflow:hidden; background:var(--panel-frosted); flex:none; }
+  .phone .wall { position:absolute; inset:0; background-image:linear-gradient(var(--seam) 1px, transparent 1px), linear-gradient(90deg, var(--seam) 1px, transparent 1px); background-size:96px 96px; background-position:center -1px; opacity:.55; }
+  .phone .in { position:absolute; inset:0; padding:64px 24px 32px; display:flex; flex-direction:column; }
+  .phone .logo { width:56px; height:56px; }
+  .phone .brand { font-size:13px; font-weight:500; margin-top:14px; color:var(--text); }
+  .phone .title { font-size:24px; font-weight:400; color:var(--ink-soft); margin:4px 0 0; letter-spacing:-.02em; }
+  .phone .meta { margin-top:8px; }
+  .phone .btns { margin-top:auto; display:flex; flex-direction:column; gap:12px; }
+  .phone .btn { height:48px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:500; }
+  .phone .primary { background:var(--fill1); color:var(--on-fill1); border:1px solid var(--seam); }
+  .phone .apple { background:#000; color:#fff; }
+  .note { font-size:13px; max-width:420px; }
+
+  /* 표 */
+  .wide { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-info); overflow:hidden; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--seam); }
+  th { background:var(--surface2); font-weight:500; }
+  .st { font-size:12px; padding:1px 8px; border-radius:999px; background:var(--surface2); white-space:nowrap; }
+
+  /* SVG 부품: 바탕에 따라 '진한 부분' 색을 바꾼다 */
+  .lg { --lk:var(--ink-strong); --lp:var(--paper); --ls:var(--seam); }
+  .g-dark .lg, .on-dark .lg { --lk:var(--paper); --lp:var(--ink-strong); --ls:var(--relief-dark); }
+  .lg .k { fill:var(--lk); } .lg .p { fill:var(--lp); } .lg .s { stroke:var(--ls); fill:none; }
+  .lg .f1 { fill:var(--fill1); } .lg .f2 { fill:var(--fill2); } .lg .f3 { fill:var(--fill3); }
+  .lg .pl { fill:var(--lp); stroke:var(--ls); }
+  @media (max-width:600px) { header.page, main { padding:0 12px; } .phone { width:100%; max-width:300px; } }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>동네한권 로고 — 형태 7개</h1>
+  <div class="how"><b>보는 법.</b> 맨 위 띠에서 7개를 실제 크기(48·24)로 한꺼번에 비교하고, 아래 카드에서 하나씩 자세히 보세요. 카드마다 <b>백색 바탕(기본) · 유리판 · 진한 바탕</b> 위 모습, 앱 아이콘 1024(축소 표시)·48·24가 있어요. <b>룩</b>을 바꾸면 모든 로고 색이 그 룩의 `fill1~3`·`inkStrong`으로 바뀌어요. 띠나 카드를 누르면 맨 아래 <b>로그인 상단 배치</b>에 그 로고가 들어가요. 노란 테두리가 추천이에요.</div>
+  <div class="bar">
+    <label>룩 <select id="look"><option value="warm" selected>warm (M1 기본)</option><option value="modern">모던</option><option value="toffee">toffee</option><option value="oxford">Oxford</option></select></label>
+    <label>아이콘 바탕 <select id="iconbg"><option value="white" selected>백색</option><option value="glass">유리판</option><option value="dark">진한 바탕</option></select></label>
+    <label>후보 다시 보기 <select data-for="el-logo"></select></label>
+  </div>
+</header>
+<main>
+
+<section class="element" id="el-logo" data-chosen="">
+  <h2>정할 것. 로고 형태 <span class="status">결정 전</span></h2>
+  <div class="flow"><b>정해진 것(C-60).</b> 로그인은 위 소개·로고, 아래 버튼. 로고는 글자보다 <b>주요 컬러</b>로 기억되게. <b>이번에 따른 규칙.</b> 곡률은 블록 3(구조)·책 표지 5·9 계열, 색은 `fill1~3` 세 색 + 진한 부분 하나(규칙 5·7), 48px에서도 형태가 읽힐 것.</div>
+  <div class="strip" id="strip"></div>
+  <div class="cands" id="cands"></div>
+</section>
+
+<section id="login">
+  <h2>로그인 상단 배치 미리보기 <span class="status">기본값(Claude)</span></h2>
+  <div class="flow">C-60 배치 그대로: 로고 56 · "동네한권" 13/500 · 제목 24/400 `inkSoft` 왼쪽 정렬, 아래 주 버튼(`fill1`). 바탕은 유리판 + 옅은 격자(로그인 시안에서 강도를 정해요). Apple 버튼은 iOS만, 애플 규정의 검정 버튼이라 "무거운 표식 하나"의 예외예요.</div>
+  <div class="phones">
+    <div class="phone" id="loginPhone"><div class="wall"></div><div class="in">
+      <div class="logo" id="loginLogo"></div>
+      <div class="brand">동네한권</div>
+      <div class="title">동네한권에 로그인</div>
+      <div class="btns"><div class="btn primary">Google로 계속하기</div><div class="btn apple">Apple로 계속하기</div></div>
+    </div></div>
+    <p class="note" id="loginNote"></p>
+  </div>
+</section>
+
+<section id="spec">
+  <h2>명세</h2>
+  <div class="wide"><table>
+    <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
+    <tr data-el="el-logo"><td>로고 형태</td><td>— (추천: E 책등 묶음)</td><td>—</td><td>—</td><td>(받기 전)</td><td>격자 64, 블록 곡률 3, 책등 곡률 2·4(표지 5·9 축소), 색 `fill1~3` + 진한 부분 `inkStrong`(진한 바탕 위는 `paper`). 아이콘 1024는 바탕 + 로고 72%, 모서리 22.37%</td><td>로그인 상단 56 · 앱 아이콘 · 웹 탭 아이콘 · 시연 자료 표지</td><td><span class="st">결정 전</span></td></tr>
+    <tr><td>아이콘 바탕</td><td>백색</td><td>—</td><td>—</td><td>—</td><td>#FFFFFF(로고 자산 기본). 앱 화면 안에서는 순백을 쓰지 않는다(카드 `paper`)</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>로그인 상단 배치</td><td>로고 56 왼쪽 위 + 브랜드 + 제목</td><td>—</td><td>—</td><td>—</td><td>위 여백 64, 로고↔브랜드 14, 좌우 24</td><td>/login → 아래 Google(주 버튼)</td><td><span class="st">기본값(Claude)</span> — 로그인 시안에서 로고와 버튼 관계를 정함</td></tr>
+  </table></div>
+  <p>아직 하지 않음: 아이콘 PNG(1024·48) 만들기, 앱에 로고 넣기. 고른 뒤 다시 보여 드리고 불편해지는 점을 받아요.</p>
+</section>
+</main>
+
+<script>
+/* ---- 색: mobile/src/theme/tokens.ts 와 같은 값·산식 ---- */
+const LOOKS = {
+  modern:{bg:"#CDCDCB",surface2:"#BDBDBA",surface3:"#A8A8A5",fill1:"#FB5102",fill2:"#F2F2EF",fill3:"#9AA0B4",cream:"#E9E9E6",paper:"#E6E6E4",inkStrong:"#1C1E2A"},
+  warm:{bg:"#E1E1DE",surface2:"#D0CEC8",surface3:"#BFBCB5",fill1:"#E9C970",fill2:"#EDC9A9",fill3:"#B3BFB5",cream:"#EFEFE7",paper:"#EFF1F1",inkStrong:"#2E333F"},
+  toffee:{bg:"#E4E2DB",surface2:"#D5CFC4",surface3:"#C2BBAD",fill1:"#6E5140",fill2:"#C88A56",fill3:"#7E8C7D",cream:"#EEEFED",paper:"#EEEFED",inkStrong:"#332A27"},
+  oxford:{bg:"#CDCDCB",surface2:"#BDBDBA",surface3:"#A8A8A5",fill1:"#35557F",fill2:"#D2B48C",fill3:"#7A93AC",cream:"#E9E9E6",paper:"#E6E6E4",inkStrong:"#002147"}
+};
+const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const toHex=a=>"#"+a.map(c=>Math.max(0,Math.min(255,Math.round(c))).toString(16).padStart(2,"0")).join("").toUpperCase();
+const mix=(a,b,w)=>{const A=hex(a),B=hex(b);return toHex(A.map((c,i)=>c*w+B[i]*(1-w)))};
+const lum=h=>{const [r,g,b]=hex(h).map(c=>{c/=255;return c<=.03928?c/12.92:((c+.055)/1.055)**2.4});return .2126*r+.7152*g+.0722*b};
+const contrast=(a,b)=>{const x=[lum(a),lum(b)].sort((p,q)=>q-p);return (x[0]+.05)/(x[1]+.05)};
+const onFill=f=>contrast(f,"#FFFFFF")>=contrast(f,"#1D1D1F")?"#FFFFFF":"#1D1D1F";
+function applyLook(name){
+  const c=LOOKS[name], r=document.documentElement.style;
+  const v={bg:c.bg,surface2:c.surface2,surface3:c.surface3,fill1:c.fill1,fill2:c.fill2,fill3:c.fill3,cream:c.cream,paper:c.paper,"ink-strong":c.inkStrong,
+    "panel-frosted":mix(c.paper,c.bg,.58),"panel-lit":mix(c.paper,c.cream,.84),seam:mix(c.inkStrong,c.bg,.14),rivet:mix(c.inkStrong,c.surface3,.34),
+    "relief-mid":mix(c.inkStrong,c.surface2,.15),"relief-dark":mix(c.inkStrong,c.surface3,.26),"on-fill1":onFill(c.fill1)};
+  for(const k in v) r.setProperty("--"+k,v[k]);
+}
+
+/* ---- 로고 형태 7개 (viewBox 0 0 64 64) ---- */
+const FORMS = [
+  {id:"A", name:"파사드 한 칸", svg:`
+    <rect class="pl" x="6.5" y="6.5" width="51" height="51" rx="3"/>
+    <circle class="k" cx="12" cy="12" r="1.8"/><circle class="k" cx="52" cy="12" r="1.8"/>
+    <rect class="pl" x="17.5" y="22.5" width="31" height="29" rx="3"/>
+    <rect class="f1" x="17" y="22" width="9" height="30" rx="2"/>
+    <path class="p" d="M19 27a2.5 2.5 0 0 1 5 0v6h-5z" opacity=".9"/>`,
+   desc:"홈 파사드의 한 칸을 그대로 잘라 왔어요. 리벳 둘, 블록 하나, 왼쪽 스파인(`fill1`)과 렌즈형 손잡이.",
+   see:"48에서는 리벳이 점 두 개로 남고 스파인 노랑이 왼쪽 띠로 보여요. 24에서는 네모 안의 네모.",
+   gain:"홈 화면과 같은 말을 해요. / 색이 한 가지라 '주요 컬러' 기억은 약해요."},
+  {id:"B", name:"기점 매스", svg:`
+    <line class="s" x1="32" y1="4" x2="32" y2="60" stroke-width="1.5"/>
+    <rect x="23" y="22" width="24" height="26" rx="3" fill="var(--relief-dark)"/>
+    <rect class="k" x="19" y="18" width="26" height="28" rx="3"/>
+    <rect class="f1" x="27" y="25" width="10" height="14" rx="1.5"/>`,
+   desc:"홈 가운데 축 위의 진한 기점(내 위치)을 매스로. 축 선 하나에 무거운 덩어리 하나, 창 하나만 노랑.",
+   see:"48에서 진한 사각 + 노란 창. 진한 바탕 위에서는 덩어리가 밝게 뒤집혀요.",
+   gain:"가장 단단하고 작은 크기에서 강해요. / 책·도서관이라는 뜻은 거의 안 보여요."},
+  {id:"C", name:"격자 위 블록", svg:`
+    <path class="s" d="M6 22H58M6 42H58M22 6V58M42 6V58" stroke-width="1"/>
+    <line class="s" x1="32" y1="6" x2="32" y2="58" stroke-width="1.5"/>
+    <rect class="pl" x="8" y="12" width="21" height="14" rx="2.5"/><rect class="f1" x="8" y="12" width="5" height="14" rx="2"/>
+    <rect class="pl" x="35" y="27" width="21" height="14" rx="2.5"/><rect class="f2" x="35" y="27" width="5" height="14" rx="2"/>
+    <rect class="pl" x="8" y="42" width="21" height="14" rx="2.5"/><rect class="f3" x="8" y="42" width="5" height="14" rx="2"/>`,
+   desc:"홈 판의 축약도. 격자와 축, 서쪽·동쪽에 놓인 도서관 블록 셋(스파인 `fill1~3`).",
+   see:"48에서 격자 선은 희미해지고 블록 셋이 계단처럼 보여요. 24에서는 거의 무늬.",
+   gain:"앱이 '동네 지도 판'이라는 걸 그대로 말해요. / 작은 크기에서 가장 복잡해요."},
+  {id:"D", name:"아치", svg:`
+    <path class="f2" d="M12 56V30a20 20 0 0 1 40 0v26z"/>
+    <path class="f1" d="M22 56V32a10 10 0 0 1 20 0v24z"/>
+    <rect class="k" x="8" y="54" width="48" height="5" rx="1.5"/>`,
+   desc:"Arne Vodder 사이드보드의 아치. 바깥 아치 `fill2`, 안쪽 문 `fill1`, 아래 진한 받침.",
+   see:"48에서 문 모양이 또렷해요. 진한 바탕 위에서는 받침이 밝은 선이 돼요.",
+   gain:"'도서관에 들어간다'는 느낌. / 홈 화면은 직각 파사드라 아치가 홈과는 조금 따로 놀아요."},
+  {id:"E", name:"책등 묶음", svg:`
+    <rect class="f2" x="11" y="20" width="12" height="34" rx="2"/>
+    <rect class="f3" x="26" y="12" width="12" height="42" rx="2"/>
+    <rect class="f1" x="41" y="24" width="12" height="30" rx="2"/>
+    <path class="p" d="M29 18a3 3 0 0 1 6 0v7h-6z" opacity=".9"/>
+    <rect class="k" x="8" y="54" width="48" height="4" rx="1.5"/>`,
+   desc:"지금 로그인의 책 세 권(C-60 방향)을 홈 재질로 다듬었어요. 곡률 18 알약 → 책등 2(블록 계열), 가운데 책에 렌즈형 손잡이, 아래 진한 선반 한 줄.",
+   see:"48에서 세 색 막대 + 선반이 바로 읽혀요. 24에서도 세 색 줄무늬로 남아요.",
+   gain:"C-60에서 고른 '주요 컬러 책 모양'을 이어 가고 작은 크기에 강해요. / 형태 자체는 흔한 편이라 색이 기억을 맡아요.",
+   rec:"C-60에서 D가 고른 '주요 컬러 기반 책 모양'을 그대로 잇고, 홈의 재질(곡률 3 계열·렌즈 손잡이·진한 받침 하나)로 맞춘 안이라 결정이 가장 덜 흔들려요. 24px에서도 세 색이 남는 것은 E·G뿐이에요."},
+  {id:"F", name:"글자형 ㄷ + 한 권", svg:`
+    <path class="k" d="M10 10H54V20H20V44H54V54H10Z"/>
+    <rect class="f1" x="30" y="24" width="12" height="20" rx="2"/>
+    <rect class="f2" x="44" y="28" width="8" height="16" rx="1.5"/>`,
+   desc:"'동네'의 ㄷ이 책 한 권(`fill1`)을 품고 있어요. 이름 '동네한권'을 그대로 그림으로.",
+   see:"48에서 ㄷ 획이 굵게 남아요. 진한 부분이 크니 '무거운 표식' 역할을 로고가 가져가요.",
+   gain:"이름과 바로 연결돼 기억하기 쉬워요. / 한글을 모르면 그냥 도형이고, 진한 면이 커서 화면에서 무거워요."},
+  {id:"G", name:"슬라이딩 도어", svg:`
+    <rect class="pl" x="6.5" y="14.5" width="51" height="34" rx="3"/>
+    <rect class="f1" x="9" y="17" width="15" height="29" rx="1.5"/>
+    <rect class="f2" x="24.5" y="17" width="15" height="29" rx="1.5"/>
+    <rect class="f3" x="40" y="17" width="15" height="29" rx="1.5"/>
+    <path class="p" d="M16.5 26q2 4 0 8q-2-4 0-8z M32 26q2 4 0 8q-2-4 0-8z M47.5 26q2 4 0 8q-2-4 0-8z"/>
+    <rect class="k" x="12" y="48" width="4" height="7" rx="1"/><rect class="k" x="48" y="48" width="4" height="7" rx="1"/>`,
+   desc:"사이드보드의 색 블록 도어 세 짝과 렌즈형 손잡이, 다리 둘. DESIGN 원칙(Vodder)에서 바로 온 모양.",
+   see:"48에서 세 색 문이 가로로 또렷해요. 손잡이는 48 아래에선 사라져요.",
+   gain:"색 세 개를 가장 크게 보여 줘요. / '책'보다는 '가구'로 읽혀요."}
+];
+const REC="E";
+const svg=(f,cls="")=>`<svg class="lg ${cls}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="로고 후보 ${f.id} ${f.name}">${f.svg}</svg>`;
+
+function render(){
+  const strip=document.getElementById("strip"), cands=document.getElementById("cands"), pick=document.querySelector('[data-for="el-logo"]');
+  strip.innerHTML=FORMS.map(f=>`<div data-id="${f.id}"><div class="row"><div style="width:48px;height:48px">${svg(f)}</div><div style="width:24px;height:24px">${svg(f)}</div></div><span class="gauge">${f.id} · ${f.name}${f.id===REC?" · 추천":""}</span></div>`).join("");
+  cands.innerHTML=FORMS.map(f=>`<article class="cand${f.id===REC?" recommended":""}" data-id="${f.id}">
+    <h3>후보 ${f.id} — ${f.name}${f.id===REC?' <span class="badge">추천</span>':""}</h3>
+    <div class="grounds"><div class="ground g-white">${svg(f)}<span>white</span></div><div class="ground g-glass">${svg(f)}<span>glass</span></div><div class="ground g-dark">${svg(f)}<span>dark</span></div></div>
+    <div class="sizes"><figure><div class="icon i180">${svg(f)}</div><figcaption>1024 (축소)</figcaption></figure><figure><div class="icon i48">${svg(f)}</div><figcaption>48</figcaption></figure><figure><div class="icon i24">${svg(f)}</div><figcaption>24</figcaption></figure></div>
+    <p>${f.desc}</p>
+    <span class="lbl">누르면 이렇게 이어져요</span><p>앱 아이콘을 누름 → 로그인 화면 위쪽에 같은 로고 56 → Google로 계속하기 → 홈(파사드). 로그인 뒤에는 로고가 나오지 않아요(웹 탭 아이콘만).</p>
+    <span class="lbl">화면을 열어야 보이는 것</span><p>${f.see}</p>
+    <span class="lbl">얻는 것 / 포기하는 것</span><p>${f.gain}</p>
+    ${f.rec?`<p><b>추천 이유:</b> ${f.rec}</p>`:""}
+  </article>`).join("");
+  pick.innerHTML='<option value="">— 전체 —</option>'+FORMS.map(f=>`<option value="${f.id}">${f.id} · ${f.name}${f.id===REC?" (추천)":""}</option>`).join("");
+}
+function choose(id){
+  const f=FORMS.find(x=>x.id===id)||FORMS.find(x=>x.id===REC);
+  document.getElementById("loginLogo").innerHTML=svg(f);
+  document.getElementById("loginNote").innerHTML=`지금 들어간 로고: <b>${f.id} · ${f.name}</b>${f.id===REC?" (추천, 기본)":""}. 위 띠나 카드를 눌러 바꿔 보세요. 룩을 바꾸면 버튼 색(주 버튼 = 그 룩의 fill1)도 같이 바뀌어요.`;
+  document.querySelectorAll("#strip > div").forEach(d=>d.classList.toggle("sel",d.dataset.id===f.id));
+}
+function setIconBg(v){
+  const r=document.documentElement.style;
+  r.setProperty("--icon-bg", v==="white"?"#FFFFFF":v==="glass"?"var(--panel-frosted)":"var(--ink-strong)");
+  document.querySelectorAll(".icon").forEach(i=>i.classList.toggle("on-dark",v==="dark"));
+}
+function markChosen(){
+  const el=document.getElementById("el-logo"), id=el.dataset.chosen;
+  document.querySelectorAll("#cands .cand").forEach(c=>{ if(id && c.dataset.id===id){ c.classList.add("chosen"); c.querySelector("h3").insertAdjacentHTML("beforeend",' <span class="badge adopted">채택</span>'); } });
+}
+applyLook("warm"); render(); setIconBg("white"); choose(document.getElementById("el-logo").dataset.chosen||REC); markChosen();
+document.getElementById("look").addEventListener("change",e=>applyLook(e.target.value));
+document.getElementById("iconbg").addEventListener("change",e=>setIconBg(e.target.value));
+document.querySelector('[data-for="el-logo"]').addEventListener("change",e=>{
+  document.querySelectorAll("#cands .cand").forEach(c=>c.classList.toggle("preview",c.dataset.id===e.target.value));
+  if(e.target.value){ choose(e.target.value); document.querySelector(`#cands .cand[data-id="${e.target.value}"]`).scrollIntoView({behavior:"smooth",block:"center"}); }
+});
+document.addEventListener("click",e=>{ const t=e.target.closest("#strip > div, #cands .cand"); if(t) choose(t.dataset.id); });
+</script>
+</body>
+</html>
