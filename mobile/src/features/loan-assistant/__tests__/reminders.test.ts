@@ -1,13 +1,14 @@
 // LOAN-3-P1 기기 예약 알림·알림 진입 (loan-assistant.md LOAN-3 P5)
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import React from "react";
+import { AppState, type AppStateStatus } from "react-native";
 import RootLayout from "../../../../app/_layout";
 import * as api from "../api";
 import type { Loan, LoanPage } from "../api";
 import { LoansSection, REMINDERS_DENIED, WEB_NO_REMINDERS } from "../LoansSection";
 import * as platform from "../notifications.platform";
-import { REMINDER_TITLE, clearLoanReminders, reminderPlan, syncLoanReminders } from "../reminders";
+import { REMINDER_TITLE, clearLoanReminders, fetchAllOnLoan, reminderPlan, syncLoanReminders } from "../reminders";
 
 // @types/node 없이 쓰는 최소 타입(소스 검사용, search.test.tsx와 같은 방식)
 declare const __dirname: string;
@@ -271,6 +272,193 @@ describe("LOAN-3-P1", () => {
   });
 });
 
+// ── PR #172 리뷰 보완 ──
+describe("LOAN-3 full-list sync (PR #172 review)", () => {
+  const cursorPage = (items: Loan[], next_cursor: string | null): LoanPage => ({ items, next_cursor, today: "2026-11-16" });
+  const loanIds = () =>
+    [...new Set([...mockDevice.scheduled.keys()].filter((k) => k.startsWith("loan:")).map((k) => k.split(":")[1]))].sort();
+  const many = (n: number, prefix = "m") =>
+    Array.from({ length: n }, (_, i) => loan(`${prefix}${String(i).padStart(3, "0")}`, { due_on: "2026-12-10" }));
+  const sorted = (ls: Loan[]) => ls.map((l) => l.id).sort();
+  type ListArgs = Parameters<typeof api.listLoans>;
+  const deferredPage = () => {
+    let resolve!: (p: LoanPage) => void;
+    let reject!: (e: unknown) => void;
+    const promise = new Promise<LoanPage>((res, rej) => {
+      resolve = res;
+      reject = rej;
+    });
+    return { promise, resolve, reject };
+  };
+
+  test("51+ loans: every page up to next_cursor end is scheduled, on re-entry too", async () => {
+    const first50 = many(50);
+    const tail = [loan("z051", { due_on: "2026-12-20" }), loan("z052", { due_on: "2026-12-21" })];
+    listLoans.mockImplementation(async (status: ListArgs[0], p: ListArgs[1]) => {
+      if (status !== "on_loan") return cursorPage([], null);
+      if (p.cursor === null) return cursorPage(first50, "c1");
+      if (p.cursor === "c1") return cursorPage([tail[0]!], "c2");
+      return cursorPage([tail[1]!], null);
+    });
+    await render(React.createElement(LoansSection));
+    await screen.findByTestId("loan-m000");
+    await waitFor(() => expect(loanIds()).toEqual(sorted([...first50, ...tail])));
+    expect(mockDevice.scheduled.size).toBe(52 * 3);
+    expect(screen.queryByTestId("loan-z051")).toBeNull(); // 화면은 첫 페이지만(더 보기 전)
+
+    // 다시 들어와도(포커스 재진입) 51권째부터의 예약이 사라지지 않는다
+    await screen.unmount();
+    await render(React.createElement(LoansSection));
+    await screen.findByTestId("loan-m000");
+    await waitFor(() => expect(listLoans.mock.calls.filter((c) => c[1].cursor === "c2")).toHaveLength(2));
+    await waitFor(() => expect(loanIds()).toEqual(sorted([...first50, ...tail])));
+    // 화면 첫 페이지를 재사용하므로 첫 페이지는 진입마다 한 번만 읽는다
+    expect(listLoans.mock.calls.filter((c) => c[1].cursor === null)).toHaveLength(2);
+  });
+
+  test("a failing later page never applies a partial list", async () => {
+    // 이전 맞추기로 세 권(a, b, c) 예약돼 있음
+    await syncLoanReminders([loan("a"), loan("b"), loan("c")], "2026-11-16", EARLY);
+    const before = new Map(mockDevice.scheduled);
+    cancelAllLoan.mockClear();
+    requestPermission.mockClear();
+    listLoans.mockImplementation(async (_s: ListArgs[0], p: ListArgs[1]) => {
+      if (p.cursor === null) return cursorPage([loan("a")], "c1");
+      throw new api.ApiCallError(503, "DB_UNAVAILABLE", "x", "");
+    });
+    await render(React.createElement(LoansSection));
+    await screen.findByTestId("loan-a");
+    await waitFor(() => expect(listLoans.mock.calls.some((c) => c[1].cursor === "c1")).toBe(true));
+    await act(async () => undefined);
+    expect(cancelAllLoan).not.toHaveBeenCalled(); // 지우지 않는다
+    expect(requestPermission).not.toHaveBeenCalled();
+    expect(mockDevice.scheduled).toEqual(before); // b·c 예약 그대로
+  });
+
+  test("write completions merge into the latest list and reminders keep later pages in either order", async () => {
+    const a = loan("a", { due_on: "2026-11-20", d_day: 4 });
+    const b = loan("b", { due_on: "2026-11-30", d_day: 14 });
+    const savedA = loan("a", { due_on: "2026-11-25", due_on_assumed: false, d_day: 9 });
+    for (const order of ["page-then-patch", "patch-then-page"] as const) {
+      mockDevice.scheduled.clear();
+      let server = { first: cursorPage([a], "c1"), second: cursorPage([b], null) };
+      let moreGate: ReturnType<typeof deferredPage> | null = null;
+      listLoans.mockImplementation(async (_s: ListArgs[0], p: ListArgs[1]) => {
+        if (p.cursor === null) return server.first;
+        if (moreGate) {
+          const gate = moreGate;
+          moreGate = null;
+          return gate.promise;
+        }
+        return server.second;
+      });
+      await render(React.createElement(LoansSection));
+      await screen.findByTestId("loan-a");
+      await waitFor(() => expect(loanIds()).toEqual(["a", "b"]));
+
+      // 더 보기(지연) 시작 → A 기한 수정(지연) 시작
+      const more = deferredPage();
+      moreGate = more;
+      await fireEvent.press(screen.getByText("더 보기"));
+      await fireEvent.press(screen.getAllByText("기한 수정")[0]!);
+      await fireEvent.changeText(screen.getByTestId("due-input"), "2026-11-25");
+      const patch = deferredPage() as unknown as { promise: Promise<Loan>; resolve(l: Loan): void };
+      jest.mocked(api.changeDueDate).mockReturnValueOnce(patch.promise);
+      await fireEvent.press(screen.getByTestId("due-save"));
+
+      server = { first: cursorPage([savedA], "c1n"), second: cursorPage([b], null) };
+      if (order === "page-then-patch") {
+        await act(async () => more.resolve(cursorPage([b], null)));
+        expect(screen.getByTestId("loan-b")).toBeTruthy();
+        await act(async () => patch.resolve(savedA));
+      } else {
+        await act(async () => patch.resolve(savedA));
+        await act(async () => more.resolve(cursorPage([b], null)));
+      }
+      // 저장 결과는 최신 목록으로 합쳐지고 첫 페이지부터 다시 읽어 서버 커서를 받는다
+      await waitFor(() =>
+        expect(within(screen.getByTestId("loan-a")).getByText("대출 2026-11-10 · 예정 2026-11-25")).toBeTruthy()
+      );
+      // 예약 대상은 화면 페이지와 무관하게 a(새 예정일)·b 모두
+      await waitFor(() => expect(loanIds()).toEqual(["a", "b"]));
+      expect(mockDevice.scheduled.get("loan:a:d0")?.date.toISOString()).toBe("2026-11-25T00:00:00.000Z");
+      // 커서도 최신: 더 보기를 누르면 새 커서로 b가 중복 없이 붙는다
+      await fireEvent.press(screen.getByText("더 보기"));
+      await screen.findByTestId("loan-b");
+      expect(listLoans.mock.lastCall?.[1]).toEqual({ cursor: "c1n" });
+      expect(screen.getAllByTestId(/^loan-[ab]$/).map((n) => n.props.testID)).toEqual(["loan-a", "loan-b"]);
+      await screen.unmount();
+      listLoans.mockReset();
+    }
+  });
+
+  test("returned tab: coming back to the app re-syncs reminders from the full on_loan list and keeps the tab", async () => {
+    const handlers: ((s: AppStateStatus) => void)[] = [];
+    const spy = jest.spyOn(AppState, "addEventListener").mockImplementation(((_t: string, fn: (s: AppStateStatus) => void) => {
+      handlers.push(fn);
+      return { remove: () => handlers.splice(handlers.indexOf(fn), 1) };
+    }) as unknown as typeof AppState.addEventListener);
+    try {
+      mockDevice.permission = "denied";
+      let onLoan = [loan("a"), loan("b", { due_on: "2026-11-30" })];
+      listLoans.mockImplementation(async (status: ListArgs[0]) =>
+        status === "on_loan"
+          ? cursorPage(onLoan, null)
+          : cursorPage([loan("r", { status: "returned", returned_on: "2026-11-15", d_day: 0 })], null)
+      );
+      await render(React.createElement(LoansSection));
+      await screen.findByTestId("loan-a");
+      expect(await screen.findByText(REMINDERS_DENIED)).toBeTruthy();
+      expect(mockDevice.scheduled.size).toBe(0);
+
+      await fireEvent.press(screen.getByTestId("loans-tab-returned"));
+      await screen.findByTestId("returned-r");
+
+      // 백그라운드에서: 다른 기기에서 b 반납 + a 기한 변경, 설정에서 알림 허용
+      await act(async () => handlers.forEach((h) => h("background")));
+      onLoan = [loan("a", { due_on: "2026-11-27", due_on_assumed: false })];
+      mockDevice.permission = "granted";
+      const displayReturnedReads = listLoans.mock.calls.filter((c) => c[0] === "returned").length;
+      await act(async () => handlers.forEach((h) => h("active")));
+
+      await waitFor(() => expect(loanIds()).toEqual(["a"]));
+      expect(mockDevice.scheduled.get("loan:a:d0")?.date.toISOString()).toBe("2026-11-27T00:00:00.000Z");
+      // 화면은 지난 대출 그대로(다시 읽지도 않음)
+      expect(screen.getByTestId("returned-r")).toBeTruthy();
+      expect(screen.getByTestId("loans-tab-returned").props.accessibilityState).toEqual({ selected: true });
+      expect(listLoans.mock.calls.filter((c) => c[0] === "returned")).toHaveLength(displayReturnedReads);
+      // 빌린 책으로 돌아가면 거부 안내도 사라져 있다
+      await fireEvent.press(screen.getByTestId("loans-tab-on_loan"));
+      await screen.findByTestId("loan-a");
+      expect(screen.queryByText(REMINDERS_DENIED)).toBeNull();
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test("fetchAllOnLoan collects until next_cursor null and throws on failure or a repeating cursor", async () => {
+    listLoans.mockImplementation(async (_s: ListArgs[0], p: ListArgs[1]) =>
+      p.cursor === null ? cursorPage([loan("a")], "c1") : p.cursor === "c1" ? cursorPage([loan("b"), loan("a")], "c2") : cursorPage([loan("c")], null)
+    );
+    const all = await fetchAllOnLoan();
+    expect(all.items.map((l) => l.id)).toEqual(["a", "b", "c"]); // 겹친 a는 한 번만
+    expect(all.today).toBe("2026-11-16");
+
+    // first를 주면 첫 페이지는 다시 읽지 않는다
+    listLoans.mockClear();
+    await fetchAllOnLoan(undefined, cursorPage([loan("a")], "c1"));
+    expect(listLoans.mock.calls.map((c) => c[1].cursor)).toEqual(["c1", "c2"]);
+
+    listLoans.mockImplementation(async (_s: ListArgs[0], p: ListArgs[1]) => cursorPage([loan("a")], p.cursor === null ? "loop" : "loop"));
+    await expect(fetchAllOnLoan()).rejects.toThrow();
+    listLoans.mockImplementation(async (_s: ListArgs[0], p: ListArgs[1]) => {
+      if (p.cursor === null) return cursorPage([loan("a")], "c1");
+      throw new api.ApiCallError(503, "DB_UNAVAILABLE", "x", "");
+    });
+    await expect(fetchAllOnLoan()).rejects.toBeInstanceOf(api.ApiCallError);
+  });
+});
+
 // 분기 파일 자체: 알림 응답이 대출 알림일 때만 onTap(진짜 notifications.platform + expo-notifications 목)
 describe("notifications.platform", () => {
   test("subscribeNotificationTap fires only for loan notifications and cold start", async () => {
@@ -298,5 +486,81 @@ describe("notifications.platform", () => {
     expect(onTap).toHaveBeenCalledTimes(2);
     unsubscribe();
     expect(remove).toHaveBeenCalled();
+  });
+
+  /** 진짜 분기 파일을 OS·expo-notifications 대역과 함께 불러온다. calls에 네이티브 호출 순서가 쌓인다. */
+  function loadPlatform(os: "android" | "ios", opts: { status?: string; canAskAgain?: boolean; channel?: Promise<unknown> } = {}) {
+    const calls: string[] = [];
+    const native = {
+      setNotificationChannelAsync: jest.fn((id: string) => {
+        calls.push(`channel:${id}`);
+        return opts.channel ?? Promise.resolve(null);
+      }),
+      getPermissionsAsync: jest.fn(async () => {
+        calls.push("getPermissions");
+        return { granted: false, status: opts.status ?? "undetermined", canAskAgain: opts.canAskAgain ?? true };
+      }),
+      requestPermissionsAsync: jest.fn(async () => {
+        calls.push("requestPermissions");
+        return { granted: true, status: "granted", canAskAgain: true };
+      }),
+      scheduleNotificationAsync: jest.fn(async (req: { identifier: string }) => {
+        calls.push(`schedule:${req.identifier}`);
+        return req.identifier;
+      }),
+      AndroidImportance: { DEFAULT: 3 },
+      SchedulableTriggerInputTypes: { DATE: "date" },
+    };
+    let real!: typeof import("../notifications.platform");
+    jest.isolateModules(() => {
+      jest.doMock("expo-notifications", () => native);
+      jest.doMock("react-native", () => ({ Platform: { OS: os }, Linking: { openSettings: jest.fn() } }));
+      real = jest.requireActual<typeof import("../notifications.platform")>("../notifications.platform");
+    });
+    return { real, native, calls };
+  }
+
+  test("android creates the channel before checking or requesting permission (fresh install)", async () => {
+    let createChannel!: () => void;
+    const channel = new Promise<unknown>((res) => (createChannel = () => res(null)));
+    const { real, native, calls } = loadPlatform("android", { channel });
+    const result = real.requestNotificationPermission();
+    await Promise.resolve();
+    await Promise.resolve();
+    // 채널 생성이 끝나기 전에는 권한을 보지도 묻지도 않는다
+    expect(calls).toEqual(["channel:loan-reminders"]);
+    expect(native.getPermissionsAsync).not.toHaveBeenCalled();
+    createChannel();
+    expect(await result).toBe("granted");
+    expect(calls).toEqual(["channel:loan-reminders", "getPermissions", "requestPermissions"]);
+
+    // 첫 허용 뒤 예약: 같은 채널로, 채널은 다시 만들지 않는다
+    await real.scheduleLocal("loan:a:d0", new Date("2026-11-24T00:00:00Z"), "동네한권", "오늘이 반납일이에요");
+    expect(calls).toEqual(["channel:loan-reminders", "getPermissions", "requestPermissions", "schedule:loan:a:d0"]);
+    expect(native.scheduleNotificationAsync).toHaveBeenCalledWith(
+      expect.objectContaining({ trigger: expect.objectContaining({ channelId: "loan-reminders" }) })
+    );
+  });
+
+  test("android channel failure is not cached and permission is not requested without it", async () => {
+    const { real, native, calls } = loadPlatform("android", { channel: Promise.reject(new Error("boom")) });
+    await expect(real.requestNotificationPermission()).rejects.toThrow("boom");
+    expect(native.requestPermissionsAsync).not.toHaveBeenCalled();
+    native.setNotificationChannelAsync.mockImplementation((id: string) => {
+      calls.push(`channel:${id}`);
+      return Promise.resolve(null);
+    });
+    expect(await real.requestNotificationPermission()).toBe("granted"); // 다음 맞추기 때 다시 만든다
+    expect(calls.filter((c) => c.startsWith("channel:"))).toHaveLength(2);
+  });
+
+  test("ios never creates a channel and denied android does not prompt again", async () => {
+    const ios = loadPlatform("ios");
+    expect(await ios.real.requestNotificationPermission()).toBe("granted");
+    expect(ios.calls).toEqual(["getPermissions", "requestPermissions"]);
+
+    const denied = loadPlatform("android", { status: "denied", canAskAgain: false });
+    expect(await denied.real.requestNotificationPermission()).toBe("denied");
+    expect(denied.calls).toEqual(["channel:loan-reminders", "getPermissions"]);
   });
 });

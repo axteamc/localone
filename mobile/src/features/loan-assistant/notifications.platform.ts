@@ -16,6 +16,9 @@ function ensureChannel(): Promise<unknown> {
   channelReady ??= Notifications.setNotificationChannelAsync(ANDROID_CHANNEL, {
     name: "반납 알림",
     importance: Notifications.AndroidImportance.DEFAULT,
+  }).catch((e: unknown) => {
+    channelReady = null; // 실패를 기억하지 않는다(다음 맞추기 때 다시 만든다)
+    throw e;
   });
   return channelReady;
 }
@@ -23,9 +26,12 @@ function ensureChannel(): Promise<unknown> {
 /**
  * 권한이 있으면 granted. 아직 묻지 않았을 때만 시스템 창을 한 번 띄운다.
  * 이미 거부했으면(다시 물을 수 없으면) 창을 띄우지 않고 denied(T10).
+ * Android 13+는 알림 채널이 하나도 없으면 권한 창이 뜨지 않으므로, 권한을 보거나 묻기 전에 채널부터 만든다
+ * (Expo SDK 58 expo-notifications 권한 안내). 새 설치에서 첫 허용 → 예약까지 이어지게 하기 위함(T10).
  */
 export async function requestNotificationPermission(): Promise<"granted" | "denied" | "unsupported"> {
   if (!NOTIFICATIONS_SUPPORTED) return "unsupported";
+  await ensureChannel();
   const current = await Notifications.getPermissionsAsync();
   if (current.granted) return "granted";
   if (current.status === "denied" || current.canAskAgain === false) return "denied";
