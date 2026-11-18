@@ -73,11 +73,11 @@ beforeEach(() => {
 describe("VISIT-1-P1 home list", () => {
   test("starts at current location and lists nearby", async () => {
     await render(<HomeScreen />);
-    expect(await screen.findByText("정독도서관")).toBeTruthy();
+    expect(await screen.findByText("정독")).toBeTruthy();
     // 2026-11-18 큐브 배치: 가장 가까운 정독이 주인공, 종로·남산은 가장자리에 걸친 큐브로 함께 보인다
-    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/정독도서관/);
-    expect(screen.getByText("종로도서관")).toBeTruthy();
-    expect(screen.getByText("남산도서관")).toBeTruthy();
+    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/정독/);
+    expect(screen.getByText("종로")).toBeTruthy();
+    expect(screen.getByText("남산")).toBeTruthy();
     expect(m.fetchLibrariesNearby).toHaveBeenCalledTimes(1);
     expect(m.fetchLibrariesNearby).toHaveBeenCalledWith(37.5815, 126.9831, 3, expect.anything());
     expect(screen.queryByText("위치 허용하기")).toBeNull();
@@ -118,7 +118,7 @@ describe("VISIT-1-P1 home list", () => {
 
   test("search bar opens book search", async () => {
     await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
+    await screen.findByText("정독");
     await fireEvent.press(screen.getByTestId("home-search-bar"));
     expect(mockPush).toHaveBeenCalledWith("/search");
     expect(mockPush).toHaveBeenCalledTimes(1);
@@ -136,7 +136,7 @@ describe("VISIT-1-P1 home list", () => {
     expect(await screen.findByText("지금은 도서관을 불러올 수 없어요.")).toBeTruthy();
     expect(screen.queryByText("Network request failed")).toBeNull();
     await fireEvent.press(screen.getByText("↻ 새로고침"));
-    expect(await screen.findByText("정독도서관")).toBeTruthy();
+    expect(await screen.findByText("정독")).toBeTruthy();
     expect(m.fetchLibrariesNearby).toHaveBeenCalledTimes(2);
     expect(screen.queryByText("지금은 도서관을 불러올 수 없어요.")).toBeNull();
   });
@@ -159,7 +159,7 @@ describe("VISIT-1-P1 home list", () => {
     await render(<HomeScreen />);
     expect(await screen.findByText("도서관을 찾는 중…")).toBeTruthy();
     resolve(nearby(actual.FAKE_LIBRARIES));
-    expect(await screen.findByText("정독도서관")).toBeTruthy();
+    expect(await screen.findByText("정독")).toBeTruthy();
     expect(screen.queryByText("도서관을 찾는 중…")).toBeNull();
   });
 
@@ -181,7 +181,7 @@ describe("VISIT-1-P1 home list", () => {
 
   test("works signed out", async () => {
     await render(<HomeScreen />);
-    expect(await screen.findByText("정독도서관")).toBeTruthy();
+    expect(await screen.findByText("정독")).toBeTruthy();
     expect(screen.queryByText(/로그인/)).toBeNull();
   });
 });

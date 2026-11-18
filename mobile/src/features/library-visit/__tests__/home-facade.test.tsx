@@ -98,8 +98,8 @@ beforeEach(() => {
 describe("VISIT-1 home cubes", () => {
   test("the nearest library is the hero and every cube carries name, distance, bearing and today", async () => {
     await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
-    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/정독도서관/);
+    await screen.findByText("정독");
+    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/정독/);
     expect(screen.getByLabelText("정독도서관 420m")).toBeTruthy();
     // 나머지는 가장자리에 걸친 작은 큐브
     expect(role("facade-cube-102")).toBe("peek");
@@ -113,7 +113,7 @@ describe("VISIT-1 home cubes", () => {
 
   test("origin says current location and radius, and there is no separate axis or ruler", async () => {
     await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
+    await screen.findByText("정독");
     expect(screen.getByText("현위치")).toBeTruthy();
     expect(screen.getByText("3KM")).toBeTruthy();
     expect(screen.queryByTestId("facade-ruler")).toBeNull();
@@ -124,8 +124,8 @@ describe("VISIT-1 home cubes", () => {
     const noCoords: api.LibrarySummary = { ...actual.FAKE_LIBRARIES[0]!, id: 104, name: "좌표없는도서관", latitude: null, longitude: null };
     m.fetchLibrariesNearby.mockResolvedValue(nearby([...actual.FAKE_LIBRARIES, noCoords]));
     await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
-    expect(screen.queryByText("좌표없는도서관")).toBeNull();
+    await screen.findByText("정독");
+    expect(screen.queryByText("좌표없는")).toBeNull();
   });
 
   test("results with no coordinates at all show a notice instead of a blank facade (③-3)", async () => {
@@ -135,12 +135,12 @@ describe("VISIT-1 home cubes", () => {
     m.fetchLibrariesNearby.mockResolvedValue(nearby([noCoords(104, "좌표없는도서관"), noCoords(105, "또없는도서관")]));
     await render(<HomeScreen />);
     expect(await screen.findByText("이 지역 도서관은 위치 정보가 없어 여기에 놓지 못했어요.")).toBeTruthy();
-    expect(screen.queryByText("좌표없는도서관")).toBeNull();
+    expect(screen.queryByText("좌표없는")).toBeNull();
   });
 
   test("find button uses matte primary plate instead of yellow fill (2026-11-18 주 버튼 색 B)", async () => {
     await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
+    await screen.findByText("정독");
     expect(StyleSheet.flatten(screen.getByTestId("home-find-library").props.style).backgroundColor).toBe(theme.colors.panelLit);
     expect(StyleSheet.flatten(screen.getByText("도서관 찾기").props.style).color).toBe(theme.colors.inkStrong);
   });
@@ -148,23 +148,23 @@ describe("VISIT-1 home cubes", () => {
   test("distance falls back to straight-line when the server gives none", async () => {
     m.fetchLibrariesNearby.mockResolvedValue(nearby([{ ...actual.FAKE_LIBRARIES[0]!, distance_m: null }]));
     await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
+    await screen.findByText("정독");
     expect(screen.getByTestId("facade-hero")).toHaveTextContent(/0m/);
   });
 
   test("hero press opens visit page without preview", async () => {
     await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
+    await screen.findByText("정독");
     await fireEvent.press(screen.getByLabelText("정독도서관 420m"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/libraries/[libraryId]", params: { libraryId: "101", distanceM: "420" } });
   });
 
   test("an edge cube becomes the hero without leaving the page, then opens on press", async () => {
     await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
+    await screen.findByText("정독");
     await fireEvent.press(screen.getByLabelText("종로도서관 크게 보기"));
     expect(mockPush).not.toHaveBeenCalled();
-    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/종로도서관/);
+    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/종로/);
     expect(role("facade-cube-101")).toBe("peek");
     await fireEvent.press(screen.getByLabelText("종로도서관 1.3km"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/libraries/[libraryId]", params: { libraryId: "102", distanceM: "1310" } });
@@ -179,7 +179,7 @@ describe("VISIT-1 home cubes", () => {
       ])
     );
     await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
+    await screen.findByText("정독");
     await fireEvent.press(screen.getByLabelText(/^정독도서관 \d/));
     await fireEvent.press(screen.getByLabelText("종로도서관 크게 보기"));
     await fireEvent.press(screen.getByLabelText(/^종로도서관 \d/));
@@ -192,23 +192,23 @@ describe("VISIT-1 home cubes", () => {
 
   test("origin press shows every library as same-size cubes, a cube press focuses it, origin again restores", async () => {
     await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
+    await screen.findByText("정독");
     await fireEvent.press(screen.getByLabelText("주변 도서관 전체 보기"));
     expect(screen.queryByTestId("facade-hero")).toBeNull();
     for (const id of [101, 102, 103]) expect(role(`facade-cube-${id}`)).toBe("ring");
     // 기점 다시 → 원래 주인공
     await fireEvent.press(screen.getByLabelText("원래 도서관 크게 보기"));
-    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/정독도서관/);
+    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/정독/);
     // 전체 보기에서 큐브 누르기 → 그 도서관이 주인공
     await fireEvent.press(screen.getByLabelText("주변 도서관 전체 보기"));
     await fireEvent.press(screen.getByLabelText("남산도서관 크게 보기"));
-    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/남산도서관/);
+    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/남산/);
     expect(mockPush).not.toHaveBeenCalled();
   });
 
   test("long press on the hero opens the first-hero setting and saves it on the device", async () => {
     await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
+    await screen.findByText("정독");
     await fireEvent(screen.getByLabelText("정독도서관 420m"), "longPress");
     expect(screen.getByTestId("facade-hero-menu")).toBeTruthy();
     expect(screen.getByText("홈을 열면 처음 크게 보일 도서관")).toBeTruthy();
@@ -216,24 +216,24 @@ describe("VISIT-1 home cubes", () => {
     expect(m.setHeroRule).toHaveBeenCalledWith("recent");
     expect(screen.queryByTestId("facade-hero-menu")).toBeNull();
     // 최근 방문(102 종로)이 주인공
-    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/종로도서관/);
+    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/종로/);
     expect(mockPush).not.toHaveBeenCalled();
   });
 
   test("a saved recent-visit setting makes that library the first hero", async () => {
     m.getHeroRule.mockResolvedValue("recent");
     await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
-    await waitFor(() => expect(screen.getByTestId("facade-hero")).toHaveTextContent(/종로도서관/));
+    await screen.findByText("정독");
+    await waitFor(() => expect(screen.getByTestId("facade-hero")).toHaveTextContent(/종로/));
   });
 
   test("recent-visit setting falls back to the nearest when that library is not on the board", async () => {
     m.getHeroRule.mockResolvedValue("recent");
     m.getRecentVisitedLibraryId.mockResolvedValue(999);
     await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
+    await screen.findByText("정독");
     await act(async () => {});
-    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/정독도서관/);
+    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/정독/);
   });
 });
 
@@ -243,12 +243,12 @@ describe("VISIT-1 home first-hero setting and recent visit (review fixes)", () =
     const rule = deferred<HeroRule>();
     m.getHeroRule.mockReturnValue(rule.promise);
     await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
+    await screen.findByText("정독");
     // 처음 읽기가 끝나기 전에 꾹 누르기로 "최근 방문한 곳"(102 종로)을 고른다
     await chooseRecent("정독도서관 420m");
     // 그 뒤에야 이전 저장값("nearest")이 도착한다
     await act(async () => rule.resolve("nearest"));
-    heroHas(/종로도서관/);
+    heroHas(/종로/);
     // 저장값과 화면 값이 모두 새 설정이다
     expect(m.setHeroRule.mock.calls).toEqual([["recent"]]);
     await fireEvent(screen.getByLabelText("종로도서관 1.3km"), "longPress");
@@ -260,7 +260,7 @@ describe("VISIT-1 home first-hero setting and recent visit (review fixes)", () =
   test("returning home re-reads the recent visit, so choosing it shows the library just visited", async () => {
     m.getRecentVisitedLibraryId.mockResolvedValue(null); // 방문 기록 없음으로 시작
     await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
+    await screen.findByText("정독");
     // 홈을 unmount하지 않은 채 B(103 남산)를 방문하고 돌아온다
     m.getRecentVisitedLibraryId.mockResolvedValue(103);
     await act(async () => {
@@ -269,31 +269,31 @@ describe("VISIT-1 home first-hero setting and recent visit (review fixes)", () =
     // 적용할 때의 다시 읽기는 끝나지 않게 붙잡아 둔다 — 홈 복귀 때 읽은 값만으로 B가 나와야 한다
     m.getRecentVisitedLibraryId.mockReturnValue(new Promise<number | null>(() => {}));
     await chooseRecent("정독도서관 420m");
-    heroHas(/남산도서관/);
+    heroHas(/남산/);
     expect(m.setHeroRule).toHaveBeenCalledWith("recent");
   });
 
   test("choosing the recent-visit setting reads the latest visit again", async () => {
     m.getRecentVisitedLibraryId.mockResolvedValue(null);
     await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
+    await screen.findByText("정독");
     m.getRecentVisitedLibraryId.mockResolvedValue(103); // 홈 복귀 알림 없이 기록만 바뀜
     await chooseRecent("정독도서관 420m");
-    await waitFor(() => heroHas(/남산도서관/));
+    await waitFor(() => heroHas(/남산/));
   });
 
   test("returning home alone keeps the hero the user picked (V3: only view, list or setting resets it)", async () => {
     m.getHeroRule.mockResolvedValue("recent");
     await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
-    await waitFor(() => heroHas(/종로도서관/));
+    await screen.findByText("정독");
+    await waitFor(() => heroHas(/종로/));
     await fireEvent.press(screen.getByLabelText("남산도서관 크게 보기"));
-    heroHas(/남산도서관/);
+    heroHas(/남산/);
     m.getRecentVisitedLibraryId.mockResolvedValue(101);
     await act(async () => {
       await mockFocus?.();
     });
-    heroHas(/남산도서관/);
+    heroHas(/남산/);
   });
 
   test("a late recent-visit answer does not overwrite a newer one", async () => {
@@ -302,12 +302,54 @@ describe("VISIT-1 home first-hero setting and recent visit (review fixes)", () =
     const second = deferred<number | null>();
     m.getRecentVisitedLibraryId.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
     await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
+    await screen.findByText("정독");
     await act(async () => {
       await mockFocus?.();
     });
     await act(async () => second.resolve(103)); // 나중 읽기가 먼저 끝남(남산)
     await act(async () => first.resolve(102)); // 먼저 읽기가 늦게 끝남(종로) — 버린다
-    heroHas(/남산도서관/);
+    heroHas(/남산/);
+  });
+});
+
+// L6(2026-11-19 D): 방문 페이지 ⋯ 메뉴에서도 같은 설정을 바꾼다 — 홈은 unmount되지 않으므로 돌아올 때 다시 읽는다
+describe("VISIT-1 first-hero setting changed on the visit page (L6)", () => {
+  test("returning home applies a setting changed elsewhere and reads the recent visit again", async () => {
+    m.getRecentVisitedLibraryId.mockResolvedValue(null);
+    await render(<HomeScreen />);
+    await screen.findByText("정독");
+    heroHas(/정독/);
+    // 방문 페이지(103 남산)에서 ⋯ → "최근 방문한 곳"을 고르고 돌아온다
+    m.getHeroRule.mockResolvedValue("recent");
+    m.getRecentVisitedLibraryId.mockResolvedValue(103);
+    await act(async () => {
+      await mockFocus?.();
+    });
+    await waitFor(() => heroHas(/남산/));
+    expect(m.setHeroRule).not.toHaveBeenCalled(); // 홈은 읽기만 한다
+    // 다시 "가장 가까운 곳"으로 바꾸고 돌아오면 가장 가까운 곳
+    m.getHeroRule.mockResolvedValue("nearest");
+    await act(async () => {
+      await mockFocus?.();
+    });
+    await waitFor(() => heroHas(/정독/));
+  });
+
+  test("a choice made on home is saved before the next focus read, so it is not undone", async () => {
+    const save = deferred<void>();
+    m.setHeroRule.mockReturnValue(save.promise);
+    await render(<HomeScreen />);
+    await screen.findByText("정독");
+    await chooseRecent("정독도서관 420m");
+    heroHas(/종로/);
+    // 저장이 끝나기 전에 홈 복귀 → 읽기는 저장 뒤로 미룬다
+    let stored: HeroRule = "nearest";
+    m.getHeroRule.mockImplementation(async () => stored);
+    await act(async () => {
+      void mockFocus?.();
+    });
+    stored = "recent";
+    await act(async () => save.resolve());
+    heroHas(/종로/);
   });
 });
