@@ -204,7 +204,7 @@ describe("APP-0-P2 routes and tabs", () => {
     expect(mockRecordedStackScreens).toEqual(
       expect.arrayContaining([
         { name: "(tabs)", options: { headerShown: false } },
-        expect.objectContaining({ name: "login", options: expect.objectContaining({ title: "" }) }),
+        { name: "login", options: { headerShown: false } },
         expect.objectContaining({ name: "settings", options: expect.objectContaining({ title: "설정" }) }), // AUTH-2 G6
       ])
     );
