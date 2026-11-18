@@ -45,6 +45,13 @@ jest.mock("../features/local-feed/PostDetail", () => {
   };
 });
 
+// MY-1: 내 정보 탭은 실제 화면이 붙었다. 이 시험은 경로만 본다(화면은 my-collection 시험에서)
+jest.mock("../features/my-collection/MyCollectionScreen", () => {
+  const ReactLib = require("react");
+  const { View } = require("react-native");
+  return { MyCollectionScreen: () => ReactLib.createElement(View, { testID: "my-collection-screen" }) };
+});
+
 jest.mock("../features/library-visit/HomeScreen", () => {
   const ReactLib = require("react");
   const { View } = require("react-native");
@@ -212,24 +219,9 @@ describe("APP-0-P2 routes and tabs", () => {
     expect(loans.getByText("대출·반납")).toBeTruthy();
     expect(loans.getByText("로그인하면 빌릴 예정과 내 대출을 볼 수 있어요")).toBeTruthy(); // LIB-3 N9
 
-    const meSignedOut = await render(<MeTabScreen />);
-    expect(meSignedOut.getByText("내 정보")).toBeTruthy();
-    expect(meSignedOut.getByText("준비 중이에요")).toBeTruthy();
-    expect(meSignedOut.getByText("로그인 안 함")).toBeTruthy();
-    expect(meSignedOut.queryByText("설정")).toBeNull(); // AUTH-2 G6: 로그인했을 때만
-    await fireEvent.press(meSignedOut.getByText("로그인"));
-    expect(mockPush).toHaveBeenCalledWith("/login");
-
-    mockedUseAuth.mockReturnValue({
-      status: "signedIn",
-      userId: "00000000-0000-4000-8000-00000000000a",
-      signInWithGoogle: jest.fn<() => Promise<SignInResult>>(),
-      signInWithApple: jest.fn<() => Promise<SignInResult>>(),
-    });
-    const meSignedIn = await render(<MeTabScreen />);
-    expect(meSignedIn.getByText("로그인함")).toBeTruthy();
-    await fireEvent.press(meSignedIn.getByText("설정"));
-    expect(mockPush).toHaveBeenCalledWith("/settings");
+    // MY-1: 내 정보 탭은 MyCollectionScreen을 그린다(비로그인·로그인 화면은 my-collection 시험에서)
+    const me = await render(<MeTabScreen />);
+    expect(me.getByTestId("my-collection-screen")).toBeTruthy();
 
     mockUseLocalSearchParams.mockReturnValue({ libraryId: "101" });
     const lib = await render(<LibraryDetailStubScreen />);

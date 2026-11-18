@@ -1,6 +1,6 @@
 # 내 정보 모음 — MY-1 세부 명세서
 
-- 담당: A · 큰 틀: `specs/my-collection/명세서.md` · 계획 Step: MY-1 · 상태: 검토 요청
+- 담당: A · 큰 틀: `specs/my-collection/명세서.md` · 계획 Step: MY-1 · 상태: 승인(머지됨, 기획 #167·계약 #169, 발행 본문 `d00b205`) · 구현 중
 - 한 줄 설명 (사용자 말 그대로, 버튼을 누르면 어떻게 이어지는지 순서대로): "내 정보 들어오면 내 프로필이 보이며, 좋아요나 표시해 둔 게시글이 보이고, 원하는 대로 게시글 관리할 수 있는 곳" (원래 "게시글과 책이 보이고" → 이 화면엔 게시물 카드만 나온다고 짚자 "응 그렇게 해 줘"로 "책"을 뺌. 보이는 것: 내가 올린 글·좋아요·북마크한 게시물)
 - 이 세부가 끝나면 사용자가 눈으로 볼 수 있는 것: 하단 `"내 정보"` 탭에서 위쪽 내 프로필과, 내 게시물 / 좋아요 / 북마크 3탭의 2열 게시물 카드
 - 시안: `specs/my-collection/세부/MY-1_시안.html`
@@ -107,6 +107,14 @@
 - [Claude 맞춤] 시안 카드 메뉴 그림을 local-feed H10 모양으로 맞춤(결정 내용 불변)
 - [정해진 것 이견] 처음 열리는 탭을 사용자가 고르기 — 사용자 "내 게시글 좋아요 북마크에서 원하는 거 먼저 보게 하는 기능 넣는 건 어려워?", "고르는 건 어떤 식으로 만들 수 있어?" — 계약 Y1(기본 탭 `내 게시물`, C-46 F2) 잠금이라 MY-1에 넣지 않고 다음에 할 것에 기록. 방법 후보: 마지막에 본 탭 기억 / 설정에서 고르기 / 탭 길게 눌러 지정
 
+- [계약 보완 필요] `server/tests/test_user_profiles.py:190`(D core SRV-0-P2 시험)이 `user_profiles` 컬럼을 정확히 3개로 고정해, 계약 C5가 정한 `bio`·`avatar_url` 추가만으로 실패함 — MY-1-P1 허용 파일 밖이지만 CI를 위해 그 단언만 5컬럼 + 기존 3컬럼 NOT NULL·새 2컬럼 NULL 허용으로 최소 수정(별도 커밋, 되돌리기 쉬움) — 계약 my-collection.md C5·P2 허용 파일 표
+- [처리 못 함] 받은 알림 이슈 닫기(#174 등) — 이 PC의 자동 권한 판단이 `gh issue close`를 막음. 내용은 처리함(구현 시작) — CLAUDE.md 10절
+- [구현 중 변경] 결정 1의 머리줄 `"내 정보"` 제목 — 탭 머리 띠(`_layout.tsx`, D 소유·수정 금지)가 이미 `"내 정보"`를 보여 두 번 겹침 → 화면 안 제목 줄은 빼고 ⚙만 프로필 오른쪽 위에 둠(배치·플로우 불변) — `mobile/src/features/my-collection/ProfileHeader.tsx`
+- [Claude가 정함] 원형(아바타·빈 상태 아이콘) 곡률은 `"50%"` — 곡률 토큰에 원이 없어 `LibraryAvailabilityCard` 점과 같은 예외를 따름
+- [Claude가 정함] 앱 조회 함수의 오류 변환은 local-feed `send()`가 내보내지 않아(B 파일 수정 금지) `my-collection/api.ts`에 같은 규칙으로 짧게 둠
+- [처리 못 함] 실제 서버 + Google 로그인 화면 확인 — 이 PC에서 Google 로그인을 띄울 수 없음(LOAN-1과 같은 사정). 웹·Android 에뮬레이터 화면은 커밋하지 않는 임시 미리보기(로그인·서버 응답을 계약 C7 가짜 값으로 대체)로 확인
+- (해결됨) 위 `[기준 충돌] ↻ 새로고침`·`[계약 보완 필요] 가짜 메뉴`는 D 확정판(`d00b205`)에서 반영됨(M-#7 문구, B `PostMenu` 실제 import)
+
 ## 다음에 할 것
 
 - 프로필 수정 화면(MY-2), 팔로우·타인 프로필(C-46 §8-5), 방문 기록 카드 북마크(VISIT-4 D3).
@@ -118,7 +126,7 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 | 구현 근거 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| MY-1-P1 | `feat/my-collection-MY-1` | - | 대기 | - | - |
-| MY-1-P2 | `feat/my-collection-MY-1` | - | 대기 | - | - |
+| MY-1-P1 | `feat/my-collection-MY-1` | #177 (Draft) | 완료 | 마이그레이션 `server/migrations/versions/0010_user_profiles_bio_avatar.py`(bio·avatar_url + CHECK 2, RLS 유지) · 라우터 `server/app/routers/my_collection.py`(커서 L38-56, 탭별 조회 L61-80, 목록 공통 L83-107, 4경로 L110-145) · 등록 `server/app/main.py` `[my-collection-A]` 블록 · 시험 `server/tests/test_my_collection.py` 14개 통과, 서버 전체 398 passed(`-W error`). 가드 제거 5종(소유자·published·id 타이브레이커·공감 소유 조인·커서 시간대) 모두 빨강 확인 | `TODO(연결): VISIT-4 D3`(`my_collection.py` `item_kind`) |
+| MY-1-P2 | `feat/my-collection-MY-1` | #177 (Draft) | 완료 | 호출 `mobile/src/features/my-collection/api.ts` · 상태 `useMyCollection.ts`(첫 장 L160, 다음 장 L193, 계정 바뀜 비우기 L236, 공감·북마크 반영 L267, 메뉴 변경 L347, 실패 문구 L358, 되돌리기 L367) · 화면 `MyCollectionScreen.tsx`·`ProfileHeader.tsx`·`CollectionTabs.tsx` · `app/(tabs)/me.tsx` 연결 · B `PostMenu.tsx`에 선택 `failText` 한 줄 · 시험 `__tests__/my-collection.test.tsx` 23개 통과(⚙ → `/settings` 추가), main 합친 뒤 앱 전체 443 passed, `tsc --noEmit` 0, `expo export --platform web` 성공, main 합친 뒤 서버 전체 438 passed(마이그레이션 순번 0009 → 0010, main의 `0009_library_return_stats.py`와 겹쳐서). 가드 제거 9종 + `failText` 모두 빨강 확인. 웹·Android 에뮬레이터 미리보기(가짜 로그인·가짜 응답) 눈 확인, 검증서 `specs/my-collection/verify.md` | AUTH-2 연결 완료(#178: ⚙ → `/settings` `MyCollectionScreen.tsx:96`, 로그아웃 정리는 `userId` 변화 `useMyCollection.ts:236`), `TODO(연결): VISIT-4 D3`(`api.ts:18`) |
 
-- **다음 세션 이어하기 메모**: 제출 완료 — 기획 PR #167·계약 PR 검토 대기(다음 세부 자동 시작 금지).
+- **다음 세션 이어하기 메모**: MY-1-P1·P2 끝, 마지막 파트 마무리(verify.md·Ready) 단계. 이 PC는 Windows 앱 제어 정책이 `.venv`의 psycopg DLL을 막아 서버 시험은 도커 컨테이너(`localone-test-db` 5439 + `python:3.12-slim`, `--network container:localone-test-db`)에서 `uv run pytest -W error`로 돌림. 5433은 다른 프로젝트 DB가 사용 중.

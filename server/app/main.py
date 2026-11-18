@@ -138,6 +138,12 @@ def create_app(
     app.include_router(loans_router)
     # ── [/loan-assistant-C] ──
 
+    # ── [my-collection-A] ──
+    from app.routers.my_collection import router as my_collection_router
+
+    app.include_router(my_collection_router)
+    # ── [/my-collection-A] ──
+
     return app
 
 

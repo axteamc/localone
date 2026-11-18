@@ -67,9 +67,20 @@ export type PostMenuProps = {
   onChange(postId: string, patch: PostReactionPatch): void;
   onNotice(text: string): void;
   onLoginNeeded(): void;
+  /** 선택: 실패 안내 문구를 바꾼다(my-collection MY-1 Y-O4). 없으면 toggleFailText(e) — 홈·방문 페이지 동작 그대로 */
+  failText?(kind: "reaction" | "bookmark", e: unknown): string;
 };
 
-export function PostMenu({ post, signedIn, authLoading, onClose, onChange, onNotice, onLoginNeeded }: PostMenuProps) {
+export function PostMenu({
+  post,
+  signedIn,
+  authLoading,
+  onClose,
+  onChange,
+  onNotice,
+  onLoginNeeded,
+  failText,
+}: PostMenuProps) {
   const router = useRouter();
   const busy = useRef({ reaction: false, bookmark: false, share: false });
   const [, rerender] = useState(0);
@@ -94,7 +105,7 @@ export function PostMenu({ post, signedIn, authLoading, onClose, onChange, onNot
         onChange(post.id, { my_bookmark: res.bookmarked });
       }
     } catch (e) {
-      onNotice(toggleFailText(e));
+      onNotice(failText ? failText(kind, e) : toggleFailText(e));
     } finally {
       busy.current[kind] = false;
       rerender((n) => n + 1);
@@ -208,7 +219,7 @@ const styles = StyleSheet.create({
   iconLabel: { fontSize: 12, color: C.textSub, marginTop: 2 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: C.divider, marginVertical: 4 },
   row: { minHeight: 44, justifyContent: "center", paddingHorizontal: 16 },
-  rowText: { fontSize: 15, color: C.text, fontWeight: "600" },
+  rowText: { fontSize: 15, color: C.text, fontWeight: "500" },
   sheetBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: C.shadowSoft },
   sheet: {
     backgroundColor: C.paper,
@@ -218,9 +229,9 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     gap: 12,
   },
-  sheetTitle: { fontSize: 16, fontWeight: "700", color: C.text },
+  sheetTitle: { fontSize: 16, fontWeight: "500", color: C.text },
   primary: { ...ACT.primary, borderRadius: theme.radii.control, paddingVertical: 12, alignItems: "center" },
-  primaryText: { ...ACT.primaryText, fontWeight: "700" },
+  primaryText: { ...ACT.primaryText, fontWeight: "500" },
   textButton: { paddingVertical: 8, minHeight: 44, justifyContent: "center", alignItems: "center" },
   sub: { fontSize: 15, color: C.textSub },
 });
