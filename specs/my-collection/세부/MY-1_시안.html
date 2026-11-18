@@ -99,6 +99,11 @@
   .empty .go { font: inherit; font-size: 14px; border: 0; border-radius: var(--r-control); padding: 9px 16px; background: var(--ink-strong); color: var(--paper); cursor: pointer; }
   .steps3 { display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--text-sub); }
   .steps3 span { background: var(--paper); border-radius: 12px; padding: 6px 6px; }
+  .err { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 30px 20px; text-align: center; font-size: 14px; color: var(--text); }
+  .err.inline { flex-direction: row; justify-content: center; padding: 10px; font-size: 13px; }
+  .refresh { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--paper); color: var(--text); border-radius: var(--r-control); padding: 5px 12px; cursor: pointer; }
+  .sk { background: var(--surface2); border-radius: var(--r-card); }
+  .skl { background: var(--surface2); border-radius: var(--r-pill); height: 12px; }
   .toast { position: absolute; left: 16px; right: 16px; bottom: 64px; background: var(--ink-strong); color: var(--paper); border-radius: var(--r-pill); padding: 8px 12px; font-size: 13px; text-align: center; }
 
   #spec, #except, #fullflow { background: var(--paper); border-radius: var(--r-card); padding: 14px 16px; margin-top: 28px; }
@@ -297,6 +302,19 @@
       </article>
     </div>
     <p>다시 비교하기: <select id="pick3"><option value="">채택안 보기</option><option value="A">안내 + 홈으로 가는 버튼</option><option value="B">안내 한 줄만</option><option value="C">그림으로 순서 안내 + 버튼</option></select></p>
+  </section>
+
+  <!-- ===== 잘 안 될 때 (예외, 1B 3단계) — VISIT-1·VISIT-1b 시안과 같은 표현: 안내 + "↻ 새로고침", 안 된 칸만 바뀌고 나머지는 그대로 ===== -->
+  <section id="except">
+    <h2>잘 안 될 때 보이는 화면</h2>
+    <p style="margin:0;font-size:14px">버튼을 하나씩 눌러 보세요. 화면 안의 버튼(새로고침·로그인 등)을 누르면 다음 모습도 볼 수 있어요. 문구는 Claude가 먼저 넣어 둔 거예요.</p>
+    <div class="state" id="exTabs">
+      <button aria-pressed="true" data-ex="0">① 게시물을 못 불러옴</button><button aria-pressed="false" data-ex="1">② 내 프로필만 못 불러옴</button><button aria-pressed="false" data-ex="2">③ 더 내리다 못 불러옴</button><button aria-pressed="false" data-ex="3">④ 하나도 없음</button><button aria-pressed="false" data-ex="4">⑤ 좋아요 취소를 두 번 빠르게</button><button aria-pressed="false" data-ex="5">⑥ 좋아요 취소가 안 됨</button><button aria-pressed="false" data-ex="6">⑦ 로그인 안 함</button><button aria-pressed="false" data-ex="7">⑧ 불러오는 중</button>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;align-items:flex-start">
+      <div class="phone" id="exPhone" style="margin:0"></div>
+      <dl class="note" style="flex:1;min-width:240px;margin-top:0"><dt>이럴 땐</dt><dd id="exWhen"></dd><dt>그대로인 곳 / 바뀌는 곳</dt><dd id="exKeep"></dd><dt>누르면</dt><dd class="flow" id="exNext"></dd></dl>
+    </div>
   </section>
 
   <!-- ===== 처음부터 끝까지 (세부 명세서 2. 유저 플로우와 같게) ===== -->
@@ -512,6 +530,75 @@
     }
     mark3(el3.dataset.chosen);
     document.getElementById('pick3').addEventListener('change', function (e) { mark3(e.target.value || el3.dataset.chosen); });
+  })();
+  // ===== 잘 안 될 때 =====
+  (function () {
+    var P = document.getElementById('exPhone');
+    var TOP = '<div class="sbar">9:41</div><div class="topbar"><span class="ttl">내 정보</span><button class="gear">⚙</button></div><div class="body">';
+    var PROF = '<div class="profA"><div class="avatar">👤</div><div class="meta"><div class="nick">이웃-0000</div><div class="bio">동네 도서관 산책을 좋아해요</div><button class="editbtn">프로필 수정</button></div></div>';
+    var NAV = '</div><div class="nav"><span>홈</span><span>대출·반납</span><span class="on">내 정보</span></div>';
+    function tabs(t) { var n = ['내 게시물', '좋아요', '북마크'], h = '<div class="tabbar">'; n.forEach(function (x, i) { h += '<span' + (i === t ? ' class="on"' : '') + '>' + x + '</span>'; }); return h + '</div>'; }
+    function cards(list) {
+      var h = '<div class="feed"><div class="feedin">';
+      list.forEach(function (col) { h += '<div class="col">'; col.forEach(function (k) { h += '<div class="card ' + k[0] + (k[3] || '') + '" style="height:' + k[1] + 'px">' + (k[4] || '') + k[2] + '</div>'; }); h += '</div>'; });
+      return h + '</div></div>';
+    }
+    var FOUR = [[['f2', 150, '마음에 남은 문장'], ['f2', 150, '소년이 온다']], [['f3', 110, '이번 주 다 읽음'], ['f1', 110, '정독도서관 창가']]];
+    var RF = '<button class="refresh" data-next>↻ 새로고침</button>';
+    var EX = [
+      { when: '인터넷이 끊기거나 동네한권이 게시물 목록을 받지 못했을 때',
+        keep: '위쪽 내 프로필과 탭은 그대로. 카드 자리만 안내로 바뀜',
+        next: '"↻ 새로고침"을 누르면 그 탭만 다시 불러와 카드가 보여요',
+        a: function () { return TOP + PROF + tabs(0) + '<div class="err">게시물을 불러오지 못했어요' + RF + '</div>' + NAV; },
+        b: function () { return TOP + PROF + tabs(0) + cards(FOUR) + NAV; } },
+      { when: '게시물은 받았는데 내 프로필(사진·이름)만 받지 못했을 때',
+        keep: '탭과 카드는 그대로. 프로필 자리만 한 줄 안내로 바뀜',
+        next: '"↻ 새로고침"을 누르면 프로필만 다시 불러와요',
+        a: function () { return TOP + '<div class="err inline">내 정보를 불러오지 못했어요 ' + RF + '</div>' + tabs(0) + cards(FOUR) + NAV; },
+        b: function () { return TOP + PROF + tabs(0) + cards(FOUR) + NAV; } },
+      { when: '끝까지 내려 다음 게시물을 불러오다 실패했을 때',
+        keep: '이미 보이던 카드는 그대로. 맨 아래에만 안내',
+        next: '"↻ 새로고침"을 누르면 다음 게시물을 다시 불러와 아래에 이어 붙여요. 다 보면 맨 아래 "모두 봤어요"',
+        a: function () { return TOP + tabs(0) + cards(FOUR) + '<div class="err inline">더 불러오지 못했어요 ' + RF + '</div>' + NAV; },
+        b: function () { return TOP + tabs(0) + cards([[['f3', 150, '두 번째 읽는 중'], ['f2', 110, '반납 전 한 장']], [['f1', 110, '동네 서가 산책'], ['f3', 150, '밑줄 그은 곳']]]) + '<div class="err inline" style="color:var(--text-sub)">모두 봤어요</div>' + NAV; } },
+      { when: '처음 가입해서 탭에 게시물이 하나도 없을 때',
+        keep: '프로필과 탭은 그대로. 카드 자리에 정할 것 3에서 고른 안내',
+        next: '"가까운 도서관 둘러보기"를 누르면 홈 탭으로 가요',
+        a: function () { return TOP + PROF + tabs(1) + '<div class="empty"><div class="ico">♡</div><div class="msg">아직 좋아요한 게시물이 없어요</div><div class="sub">마음에 드는 게시물에 ♡를 누르면 여기 모여요</div><button class="go" data-next>가까운 도서관 둘러보기</button></div>' + NAV; },
+        b: function () { return '<div class="sbar">9:41</div><div class="topbar"><span class="ttl">홈</span></div><div class="body"><div class="empty"><div class="sub">홈 화면(도서관 블록)으로 바뀌었어요</div></div></div><div class="nav"><span class="on">홈</span><span>대출·반납</span><span>내 정보</span></div>'; } },
+      { when: '메뉴에서 "좋아요 취소"를 빠르게 두 번 눌렀을 때 (되돌리기를 두 번 눌러도 같음)',
+        keep: '첫 번째 누름만 받음. 흐린 카드 하나, 안내 하나만 보임',
+        next: '4초 뒤 그 카드 하나만 빠져요. 다른 카드가 같이 빠지지 않아요',
+        a: function () { return TOP + PROF + tabs(1) + cards([[['f2', 150, '마음에 남은 문장'], ['f2', 150, '소년이 온다', ' dim', '<span class="tag">취소함</span>']], [['f3', 110, '이번 주 다 읽음'], ['f1', 110, '정독도서관 창가']]]) + NAV + '<div class="toast">좋아요를 취소했어요<span class="undo" data-next>되돌리기</span></div>'; },
+        b: function () { return TOP + PROF + tabs(1) + cards(FOUR) + NAV; } },
+      { when: '"좋아요 취소"를 눌렀는데 동네한권이 처리하지 못했을 때',
+        keep: '카드는 흐려지지 않고 원래대로. 좋아요도 그대로 켜져 있음',
+        next: '아래 안내를 보고 다시 길게 눌러 취소하면 돼요',
+        a: function () { return TOP + PROF + tabs(1) + cards(FOUR) + NAV + '<div class="toast">좋아요를 취소하지 못했어요. 다시 해 주세요</div>'; },
+        b: null },
+      { when: '로그인하지 않고 "내 정보" 탭을 눌렀을 때 (남의 좋아요·북마크는 누구도 볼 수 없음)',
+        keep: '프로필·탭·카드 대신 로그인 안내만. 아무것도 불러오지 않음',
+        next: '"로그인"을 누르면 로그인 화면으로 가고, 로그인하면 내 게시물 탭이 열려요',
+        a: function () { return TOP + '<div class="empty"><div class="ico">👤</div><div class="msg">로그인하면 내 정보를 볼 수 있어요</div><div class="sub">내가 올린 게시물과 좋아요·북마크한 게시물을 모아 봐요</div><button class="go" data-next>로그인</button></div>' + NAV; },
+        b: function () { return TOP + PROF + tabs(0) + cards(FOUR) + NAV; } },
+      { when: '탭을 처음 열어 불러오는 동안',
+        keep: '프로필과 카드 자리에 회색 빈 모양이 잠깐 보임',
+        next: '불러오면 바로 실제 프로필과 카드로 바뀌어요',
+        a: function () { return TOP + '<div class="profA"><div class="avatar"></div><div class="meta" style="display:flex;flex-direction:column;gap:6px"><div class="skl" style="width:60%"></div><div class="skl" style="width:85%"></div></div></div>' + tabs(0) + '<div class="feed"><div class="feedin"><div class="col"><div class="sk" style="height:150px"></div><div class="sk" style="height:110px"></div></div><div class="col"><div class="sk" style="height:110px"></div><div class="sk" style="height:150px"></div></div></div></div>' + NAV; },
+        b: function () { return TOP + PROF + tabs(0) + cards(FOUR) + NAV; } }
+    ];
+    function show(i, after) {
+      var e = EX[i];
+      P.innerHTML = after && e.b ? e.b() : e.a();
+      document.getElementById('exWhen').textContent = e.when;
+      document.getElementById('exKeep').textContent = e.keep;
+      document.getElementById('exNext').textContent = e.next;
+      var n = P.querySelector('[data-next]');
+      if (n && e.b) n.addEventListener('click', function () { show(i, true); });
+      document.querySelectorAll('#exTabs button').forEach(function (b) { b.setAttribute('aria-pressed', +b.dataset.ex === i); });
+    }
+    document.querySelectorAll('#exTabs button').forEach(function (b) { b.addEventListener('click', function () { show(+b.dataset.ex, false); }); });
+    show(0, false);
   })();
 </script>
 </body>
