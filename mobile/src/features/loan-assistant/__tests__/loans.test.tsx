@@ -123,10 +123,19 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-function signedIn() {
+function signedIn(userId = "user-a") {
   jest.mocked(useAuth).mockReturnValue({
     status: "signedIn",
-    userId: "user-a",
+    userId,
+    signInWithGoogle: jest.fn(),
+    signInWithApple: jest.fn(),
+  } as unknown as ReturnType<typeof useAuth>);
+}
+
+function signedOut() {
+  jest.mocked(useAuth).mockReturnValue({
+    status: "signedOut",
+    userId: null,
     signInWithGoogle: jest.fn(),
     signInWithApple: jest.fn(),
   } as unknown as ReturnType<typeof useAuth>);
@@ -324,5 +333,85 @@ describe("LOAN-1-P2", () => {
     await act(async () => slow.resolve(page([loan("stale")])));
     expect(screen.queryByTestId("loan-stale")).toBeNull();
     expect(screen.getByTestId("loan-fresh")).toBeTruthy();
+  });
+
+  test("switching signed-in user clears previous loans and discards delayed response (P1)", async () => {
+    signedIn("user-a");
+    const slowA = deferred<LoanPage>();
+    listLoans.mockReturnValueOnce(slowA.promise);
+    listLoanPlans.mockResolvedValue({ items: [], next_cursor: null });
+    const { rerender } = await render(<LoansTabScreen />);
+    expect(within(screen.getByTestId("my-loans")).getByLabelText("불러오는 중")).toBeTruthy();
+
+    signedIn("user-b");
+    listLoans.mockResolvedValueOnce(page([loan("b1")]));
+    await rerender(<LoansTabScreen />);
+    await screen.findByTestId("loan-b1");
+
+    await act(async () => slowA.resolve(page([loan("a1")])));
+    expect(screen.queryByTestId("loan-a1")).toBeNull();
+    expect(screen.getByTestId("loan-b1")).toBeTruthy();
+  });
+
+  test("start loan button clears note on account change and drops in-flight response (P2)", async () => {
+    signedIn("user-a");
+    startLoan.mockResolvedValueOnce(loan("n1", { due_on: "2026-11-30" }));
+    const { rerender } = await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await fireEvent.press(await screen.findByTestId("start-loan"));
+    await screen.findByTestId("loan-started-note");
+
+    // 로그아웃 시 기존 성공 배너 제거
+    signedOut();
+    await rerender(<BookDetailScreen isbn13={BOY.isbn13} />);
+    expect(screen.queryByTestId("loan-started-note")).toBeNull();
+
+    // POST 진행 중 계정 교체 시 이전 계정 응답 무시
+    signedIn("user-a");
+    await rerender(<BookDetailScreen isbn13={BOY.isbn13} />);
+    const pendingA = deferred<Loan>();
+    startLoan.mockReturnValueOnce(pendingA.promise);
+    await fireEvent.press(screen.getByTestId("start-loan"));
+    expect(screen.getByText("기록 중…")).toBeTruthy();
+
+    signedIn("user-b");
+    await rerender(<BookDetailScreen isbn13={BOY.isbn13} />);
+    expect(screen.getByText("빌렸어요")).toBeTruthy();
+    await act(async () => pendingA.resolve(loan("n2", { due_on: "2026-12-01" })));
+    expect(screen.queryByTestId("loan-started-note")).toBeNull();
+  });
+
+  test("loan conversion cancels stale plan reload so converted card does not reappear (P2)", async () => {
+    signedIn("user-a");
+    listLoanPlans.mockResolvedValueOnce({
+      items: [plan("p1", "전환 책"), plan("p2", "다른 책")],
+      next_cursor: null,
+    });
+    listLoans.mockResolvedValue(page([]));
+    await render(<LoansTabScreen />);
+    await screen.findByTestId("plan-p1");
+
+    const postDeferred = deferred<Loan>();
+    startLoan.mockReturnValueOnce(postDeferred.promise);
+    await fireEvent.press(within(screen.getByTestId("plan-p1")).getByText("빌렸어요"));
+
+    // 전환 POST 진행 중 #16 재조회가 시작된 상황(예: 다른 예정 404 → load())
+    const staleReload = deferred<{ items: LoanPlan[]; next_cursor: null }>();
+    listLoanPlans.mockReturnValueOnce(staleReload.promise);
+    jest.mocked(planApi.releaseLoanPlan).mockRejectedValueOnce(new api.ApiCallError(404, "NOT_FOUND", "x", ""));
+    await fireEvent.press(within(screen.getByTestId("plan-p2")).getByText("빼기"));
+
+    // 전환 POST가 먼저 성공하고, 이후 커밋된 최신 목록은 빈 목록을 반환
+    const freshReload = deferred<{ items: LoanPlan[]; next_cursor: null }>();
+    listLoanPlans.mockReturnValueOnce(freshReload.promise);
+    await act(async () =>
+      postDeferred.resolve(loan("l1", { plan_id: "p1", due_on: "2026-11-30" }))
+    );
+    expect(await screen.findByTestId("loan-converted-note")).toBeTruthy();
+
+    // 오래된 재조회 응답이 p1을 포함해 뒤늦게 도착해도 무시된다
+    await act(async () => staleReload.resolve({ items: [plan("p1", "전환 책")], next_cursor: null }));
+    await act(async () => freshReload.resolve({ items: [], next_cursor: null }));
+    expect(screen.queryByTestId("plan-p1")).toBeNull();
+    expect(screen.getByTestId("loan-converted-note")).toBeTruthy();
   });
 });
