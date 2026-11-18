@@ -12,6 +12,7 @@ const mockPush = jest.fn();
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn() }),
+  useFocusEffect: (cb: () => void) => (require("react") as typeof import("react")).useEffect(cb, [cb]),
 }));
 
 jest.mock("../../../auth/AuthProvider", () => ({

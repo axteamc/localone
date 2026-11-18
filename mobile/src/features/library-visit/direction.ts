@@ -138,10 +138,91 @@ const PLINTH_HW = 29; // 기점 반폭(58×44)
 const PLINTH_HH = 22;
 const ORIGIN_GAP = 10;
 const NAME_IN = 24; // 걸친 큐브 이름(윗면 가운데)이 판 안쪽에 남는 거리
+const NAME_DY = 103 - TOP_CY; // 큐브 몸 가운데 ~ 윗면 가운데(기본 좌표)
+
+// ── 겹침 판정(PR 191 리뷰 수정) ─────────────────────────────────────────
+// 누르는 영역 = FacadeHome이 큐브마다 그리는 Pressable(220×206, 가운데 기준 scale)을 보이는 판(0..W × 0..H)으로 자른 것.
+// 판 밖과 하단 창 아래는 누를 수 없으므로 자른다. 기점은 58×44. 이름(윗면 가운데)은 큐브 안에 있으므로
+// 누르는 영역끼리 겹치지 않으면 이름도 다른 큐브·기점에 가리지 않는다.
+type Rect = [number, number, number, number];
+const pressRect = (cx: number, cy: number, s: number, W: number, H: number): Rect => [
+  Math.max(0, cx - (CUBE_W / 2) * s),
+  Math.max(0, cy - (CUBE_H / 2) * s),
+  Math.min(W, cx + (CUBE_W / 2) * s),
+  Math.min(H, cy + (CUBE_H / 2) * s),
+];
+
+/** 후보 이름 자리(x, y)와 원래 자리에서 옮긴 거리 d. 렌더마다 부르므로 객체를 만들지 않고 숫자 배열로 둔다 */
+type Cands = { n: number; x: Float64Array; y: Float64Array; d: Float64Array };
+
+/**
+ * 후보 중 원래 자리와 가장 가까운 빈자리. 빈자리가 없으면(판에 다 들어가지 않을 때, 2026-11-18 D 결정: 지금대로 최소 겹침 분산)
+ * "겹친 넓이 ÷ 큐브 한 개 넓이 + d ÷ dRef"가 가장 작은 곳: 큐브 하나를 통째로 덮는 손해가 dRef만큼 옮기는 손해와 같아서,
+ * 같은 자리에 포개지 않고 방향도 되도록 지킨다. s = 배율, 고른 자리의 누르는 영역은 taken에 더한다.
+ */
+function pickSpot(c: Cands, s: number, W: number, H: number, taken: Rect[], dRef: number): [number, number] {
+  const hw = (CUBE_W / 2) * s;
+  const hh = (CUBE_H / 2) * s;
+  const dy = NAME_DY * s; // 이름 자리 → 큐브 몸 가운데
+  const area = 4 * hw * hh;
+  let free = -1;
+  let least = -1;
+  let leastCost = Infinity;
+  for (let i = 0; i < c.n; i++) {
+    const d = c.d[i] as number;
+    if (free >= 0 && d >= (c.d[free] as number)) continue;
+    const x = c.x[i] as number;
+    const cy = (c.y[i] as number) + dy;
+    const l = Math.max(0, x - hw);
+    const r = Math.min(W, x + hw);
+    const t = Math.max(0, cy - hh);
+    const b = Math.min(H, cy + hh);
+    let o = 0;
+    for (const q of taken) o += Math.max(0, Math.min(r, q[2]) - Math.max(l, q[0])) * Math.max(0, Math.min(b, q[3]) - Math.max(t, q[1]));
+    if (o === 0) free = i;
+    else if (free < 0) {
+      const cost = o / area + d / dRef;
+      if (cost < leastCost) {
+        leastCost = cost;
+        least = i;
+      }
+    }
+  }
+  const k = free >= 0 ? free : Math.max(0, least);
+  const px = c.x[k] as number;
+  const py = c.y[k] as number;
+  taken.push(pressRect(px, py + dy, s, W, H));
+  return [px, py];
+}
+
+/** 이름이 판 안쪽 NAME_IN에 남는 둘레(윗변 → 오른변 → 아랫변 → 왼변). 판이 작으면 한 점·한 선으로 줄어든다 */
+function insetLoop(W: number, H: number) {
+  const x0 = Math.min(NAME_IN, W / 2);
+  const y0 = Math.min(NAME_IN, H / 2);
+  const w = W - 2 * x0;
+  const h = H - 2 * y0;
+  const L = 2 * (w + h);
+  const at = (u: number): [number, number] => {
+    const v = ((u % L) + L) % L;
+    if (v < w) return [x0 + v, y0];
+    if (v < w + h) return [x0 + w, y0 + (v - w)];
+    if (v < 2 * w + h) return [x0 + w - (v - w - h), y0 + h];
+    return [x0, y0 + h - (v - 2 * w - h)];
+  };
+  /** 둘레 위 점(x, y)의 위치 u */
+  const toU = (x: number, y: number): number => {
+    if (y <= y0 + 1e-6) return x - x0;
+    if (x >= x0 + w - 1e-6) return w + (y - y0);
+    if (y >= y0 + h - 1e-6) return w + h + (x0 + w - x);
+    return 2 * w + h + (y0 + h - y);
+  };
+  return { L, at, toU };
+}
 
 /**
  * 주인공 모드: 주인공 하나 크게(칸의 92% 안, 최대 1.7배), 기점은 반대쪽 12%,
- * 나머지는 밀려난 기점에서 본 실제 방향의 가장자리에 걸친 작은 큐브(이름만 판 안 24px).
+ * 나머지는 밀려난 기점에서 본 실제 방향의 가장자리에 걸친 작은 큐브(이름만 판 안 24px). 누르는 영역이 주인공·기점·
+ * 먼저 놓인 큐브와 겹치면 가장자리를 따라(다른 변으로 넘어가도) 가장 가까운 빈자리로 간다(PR 191 리뷰 수정).
  * W·H는 하단 창 위로 보이는 판 크기.
  */
 export function heroScene(items: FacadeItem[], heroId: number, W: number, H: number): FacadeScene {
@@ -174,15 +255,19 @@ export function heroScene(items: FacadeItem[], heroId: number, W: number, H: num
   hy = Math.min(r3 - ch, Math.max(r1, hy));
 
   const cubes: CubePlace[] = [{ id: h.lib.id, role: "hero", cx: hx + cw / 2, cy: hy + ch / 2, scale: s }];
-  const heroRect = [hx, hy + ch * 0.05, hx + cw, hy + ch * 0.92] as const;
-  const inHero = (x: number, y: number) => x > heroRect[0] - 62 && x < heroRect[2] + 62 && y > heroRect[1] - 36 && y < heroRect[3] + 36;
-  const nearPlinth = (x: number, y: number) => Math.abs(x - O[0]) < PLINTH_HW + 62 && Math.abs(y - O[1]) < PLINTH_HH + 36;
   const P = Math.max(0.45, Math.min(0.62, s * 0.5)); // 걸친 큐브 크기
-  const placed: [number, number][] = [];
+  // 이미 놓인 누르는 영역: 주인공·기점, 그다음 걸친 큐브를 가까운 순으로 더한다
+  const taken: Rect[] = [
+    pressRect(hx + cw / 2, hy + ch / 2, s, W, H),
+    [O[0] - PLINTH_HW, O[1] - PLINTH_HH, O[0] + PLINTH_HW, O[1] + PLINTH_HH],
+  ];
+  const loop = insetLoop(W, H);
+  const steps = Math.floor(loop.L / 2 / 2); // 2px 간격, 양쪽으로 반 둘레까지
+  const cands: Cands = { n: 0, x: new Float64Array(2 * steps + 1), y: new Float64Array(2 * steps + 1), d: new Float64Array(2 * steps + 1) };
   for (const it of items) {
     if (it.lib.id === h.lib.id) continue;
     const [dx, dy] = dirOf(it.bearingDeg);
-    // 밀려난 기점에서 실제 방향으로 그은 선이 가장자리와 만나는 곳
+    // 밀려난 기점에서 실제 방향으로 그은 선이 가장자리와 만나는 곳 → 이름 자리(판 안 24px 둘레)
     const tx = dx > 1e-9 ? (W - O[0]) / dx : dx < -1e-9 ? -O[0] / dx : Infinity;
     const ty = dy > 1e-9 ? (H - O[1]) / dy : dy < -1e-9 ? -O[1] / dy : Infinity;
     const t = Math.min(tx, ty);
@@ -193,23 +278,21 @@ export function heroScene(items: FacadeItem[], heroId: number, W: number, H: num
     else ey = dy > 0 ? H - NAME_IN : NAME_IN;
     ex = Math.min(W - NAME_IN, Math.max(NAME_IN, ex));
     ey = Math.min(H - NAME_IN, Math.max(NAME_IN, ey));
-    for (let k = 0; k < 8; k++) {
-      const other = placed.find((q) => Math.abs(q[0] - ex) < (136 * P) / 0.62 && Math.abs(q[1] - ey) < (78 * P) / 0.62);
-      const hit: "hero" | "plinth" | [number, number] | undefined = inHero(ex, ey) ? "hero" : nearPlinth(ex, ey) ? "plinth" : other;
-      if (!hit) break;
-      if (onSide) {
-        const box = hit === "hero" ? [heroRect[1] - 40, heroRect[3] + 40] : hit === "plinth" ? [O[1] - 62, O[1] + 62] : [hit[1] - 66, hit[1] + 66];
-        const [b0, b1] = box as [number, number];
-        ey = b0 > 20 && (Math.abs(b0 - ey) <= Math.abs(b1 - ey) || b1 > H - 20) ? b0 : Math.min(H - 20, b1);
-      } else {
-        const box = hit === "hero" ? [heroRect[0] - 66, heroRect[2] + 66] : hit === "plinth" ? [O[0] - 96, O[0] + 96] : [hit[0] - 120, hit[0] + 120];
-        const [b0, b1] = box as [number, number];
-        ex = b0 > 30 && (Math.abs(b0 - ex) <= Math.abs(b1 - ex) || b1 > W - 30) ? b0 : Math.min(W - 30, b1);
+    // 겹치면 둘레를 따라(다른 변으로 넘어가도) 양쪽으로 가장 가까운 빈자리. 없으면 겹침이 가장 적은 곳
+    const u0 = loop.toU(ex, ey);
+    cands.n = 0;
+    for (let k = 0; k <= steps; k++) {
+      for (const u of k === 0 ? [u0] : [u0 + 2 * k, u0 - 2 * k]) {
+        const [x, y] = loop.at(u);
+        cands.x[cands.n] = x;
+        cands.y[cands.n] = y;
+        cands.d[cands.n] = 2 * k;
+        cands.n += 1;
       }
     }
-    placed.push([ex, ey]);
-    // (ex, ey)는 윗면 가운데 → 큐브 몸 가운데로
-    cubes.push({ id: it.lib.id, role: "peek", cx: ex, cy: ey + (103 - TOP_CY) * P, scale: P });
+    const [px, py] = pickSpot(cands, P, W, H, taken, loop.L / 2);
+    // (px, py)는 윗면 가운데 → 큐브 몸 가운데로
+    cubes.push({ id: it.lib.id, role: "peek", cx: px, cy: py + NAME_DY * P, scale: P });
   }
   return { origin: { x: O[0], y: O[1] }, cubes };
 }
@@ -221,55 +304,43 @@ export function ringScale(W: number, H: number): number {
 
 /**
  * 전체 보기(기점 누르기): 기점이 가운데, 모든 도서관을 같은 크기 큐브로 실제 방향에, 거리는 비례(가까울수록 안쪽).
- * 서로·기점과 겹치지 않게 밀어내고, 가장자리에서 잘려도 이름(윗면 가운데)은 판 안 24px.
+ * 원래 자리에서 누르는 영역이 서로·기점과 겹치지 않는 가장 가까운 빈자리로 옮기고(PR 191 리뷰 수정), 가장자리에서 잘려도
+ * 이름(윗면 가운데)은 판 안 24px.
  */
 export function ringScene(items: FacadeItem[], W: number, H: number): FacadeScene {
   const O: [number, number] = [W / 2, H / 2];
   const q = ringScale(W, H);
   const cw = CUBE_W * q;
   const ch = CUBE_H * q;
-  const NAME = (103 - TOP_CY) * q; // 큐브 몸 가운데 ~ 윗면 가운데
+  const NAME = NAME_DY * q; // 큐브 몸 가운데 ~ 윗면 가운데
   const dMax = Math.max(1, ...items.map((it) => it.distanceM));
-  const pts = items.map((it) => {
+  // 이름 자리 후보: 판 안 24px 안쪽 격자(3px, 큰 판은 후보가 약 1.2만 개가 되게 넓힌다).
+  // 원래 자리(실제 방향·거리 비례)와 가장 가까운 빈자리에 가까운 순으로 놓는다
+  const x0 = Math.min(NAME_IN, W / 2);
+  const y0 = Math.min(NAME_IN, H / 2);
+  const step = Math.max(3, Math.ceil(Math.sqrt((W * H) / 12000)));
+  const nx = Math.floor((W - 2 * x0) / step) + 1;
+  const ny = Math.floor((H - 2 * y0) / step) + 1;
+  const cands: Cands = { n: nx * ny, x: new Float64Array(nx * ny), y: new Float64Array(nx * ny), d: new Float64Array(nx * ny) };
+  for (let j = 0; j < ny; j++)
+    for (let i = 0; i < nx; i++) {
+      cands.x[j * nx + i] = x0 + i * step;
+      cands.y[j * nx + i] = y0 + j * step;
+    }
+  const taken: Rect[] = [[O[0] - PLINTH_HW, O[1] - PLINTH_HH, O[0] + PLINTH_HW, O[1] + PLINTH_HH]];
+  const cubes: CubePlace[] = items.map((it) => {
     const [dx, dy] = dirOf(it.bearingDeg);
     const f = 0.72 + 0.28 * (it.distanceM / dMax);
-    return { id: it.lib.id, x: O[0] + dx * (W / 2 - cw * 0.18) * f, y: O[1] + dy * (H / 2 - ch * 0.12) * f };
+    // 원래 자리(큐브 몸 가운데)를 이름 자리로 바꿔 판 안 24px로 맞춘다
+    const want = [
+      Math.min(W - x0, Math.max(x0, O[0] + dx * (W / 2 - cw * 0.18) * f)),
+      Math.min(H - y0, Math.max(y0, O[1] + dy * (H / 2 - ch * 0.12) * f - NAME)),
+    ] as const;
+    for (let k = 0; k < cands.n; k++) cands.d[k] = Math.hypot((cands.x[k] as number) - want[0], (cands.y[k] as number) - want[1]);
+    const [px, py] = pickSpot(cands, q, W, H, taken, Math.hypot(W, H));
+    return { id: it.lib.id, role: "ring" as const, cx: px, cy: py + NAME, scale: q };
   });
-  for (let iter = 0; iter < 60; iter++) {
-    for (let i = 0; i < pts.length; i++)
-      for (let j = i + 1; j < pts.length; j++) {
-        const A = pts[i]!;
-        const B = pts[j]!;
-        const dx = B.x - A.x;
-        const dy = B.y - A.y;
-        const ox = cw * 0.8 - Math.abs(dx);
-        const oy = ch * 0.72 - Math.abs(dy);
-        if (ox > 0 && oy > 0) {
-          if (ox / cw < oy / ch) {
-            const m = (ox / 2) * Math.sign(dx || 1);
-            A.x -= m;
-            B.x += m;
-          } else {
-            const m = (oy / 2) * Math.sign(dy || 1);
-            A.y -= m;
-            B.y += m;
-          }
-        }
-      }
-    for (const p of pts) {
-      const dx = p.x - O[0];
-      const dy = p.y - O[1];
-      const ox = cw * 0.5 + 34 - Math.abs(dx);
-      const oy = ch * 0.5 + 28 - Math.abs(dy);
-      if (ox > 0 && oy > 0) {
-        if (ox / cw < oy / ch) p.x += ox * Math.sign(dx || 1);
-        else p.y += oy * Math.sign(dy || 1);
-      }
-      p.x = Math.min(W - NAME_IN, Math.max(NAME_IN, p.x));
-      p.y = Math.min(H - NAME_IN + NAME, Math.max(NAME_IN + NAME, p.y));
-    }
-  }
-  return { origin: { x: O[0], y: O[1] }, cubes: pts.map((p) => ({ id: p.id, role: "ring", cx: p.x, cy: p.y, scale: q })) };
+  return { origin: { x: O[0], y: O[1] }, cubes };
 }
 
 /** 이만큼(px) 넘게 끌어야 주인공을 바꾼다 */

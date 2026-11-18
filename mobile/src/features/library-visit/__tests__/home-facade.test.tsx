@@ -5,14 +5,35 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-
 import React from "react";
 import { StyleSheet } from "react-native";
 import * as api from "../deps";
+import type { HeroRule } from "../direction";
 import { HomeScreen } from "../HomeScreen";
 import { theme } from "../../../theme";
 
 const mockPush = jest.fn();
+// 홈은 방문 페이지(루트 Stack)로 가도 unmount되지 않는다. 마지막 useFocusEffect 콜백을 잡아 두고 "홈 복귀"를 흉내 낸다
+let mockFocus: (() => unknown) | null = null;
 
-jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn() }),
-}));
+jest.mock("expo-router", () => {
+  const ReactLib = require("react") as typeof import("react");
+  return {
+    useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn() }),
+    useFocusEffect: (cb: () => unknown) => {
+      mockFocus = cb;
+      ReactLib.useEffect(() => {
+        cb();
+      }, [cb]);
+    },
+  };
+});
+
+/** 시험에서 응답 순서를 정하는 Promise */
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  const promise = new Promise<T>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
+}
 
 jest.mock("../../../auth/AuthProvider", () => ({
   useAuth: jest.fn(() => ({ status: "signedOut", session: null, user: null })),
@@ -56,8 +77,15 @@ const nearby = (items: api.LibrarySummary[]): api.LibraryListResponse => ({
 
 const role = (id: string) => screen.getByTestId(id).props.accessibilityHint as string;
 
+const heroHas = (name: RegExp) => expect(screen.getByTestId("facade-hero")).toHaveTextContent(name);
+const chooseRecent = async (heroLabel: string) => {
+  await fireEvent(screen.getByLabelText(heroLabel), "longPress");
+  await fireEvent.press(screen.getByText("최근 방문한 곳"));
+};
+
 beforeEach(() => {
   jest.clearAllMocks();
+  mockFocus = null;
   m.locate.mockResolvedValue({ ok: true, lat: 37.5815, lng: 126.9831 });
   m.getDefaultLibrary.mockResolvedValue(null);
   m.fetchLibrariesNearby.mockImplementation(actual.fetchLibrariesNearby);
@@ -206,5 +234,80 @@ describe("VISIT-1 home cubes", () => {
     await screen.findByText("정독도서관");
     await act(async () => {});
     expect(screen.getByTestId("facade-hero")).toHaveTextContent(/정독도서관/);
+  });
+});
+
+// PR 191 리뷰 수정(2026-11-18): 늦은 설정 읽기·홈 복귀 뒤 최근 방문 다시 읽기
+describe("VISIT-1 home first-hero setting and recent visit (review fixes)", () => {
+  test("a late first read of the saved setting does not undo a newer choice", async () => {
+    const rule = deferred<HeroRule>();
+    m.getHeroRule.mockReturnValue(rule.promise);
+    await render(<HomeScreen />);
+    await screen.findByText("정독도서관");
+    // 처음 읽기가 끝나기 전에 꾹 누르기로 "최근 방문한 곳"(102 종로)을 고른다
+    await chooseRecent("정독도서관 420m");
+    // 그 뒤에야 이전 저장값("nearest")이 도착한다
+    await act(async () => rule.resolve("nearest"));
+    heroHas(/종로도서관/);
+    // 저장값과 화면 값이 모두 새 설정이다
+    expect(m.setHeroRule.mock.calls).toEqual([["recent"]]);
+    await fireEvent(screen.getByLabelText("종로도서관 1.3km"), "longPress");
+    const [nearest, recent] = screen.getAllByRole("menuitem");
+    expect(recent!.props.accessibilityState).toEqual({ selected: true });
+    expect(nearest!.props.accessibilityState).toEqual({ selected: false });
+  });
+
+  test("returning home re-reads the recent visit, so choosing it shows the library just visited", async () => {
+    m.getRecentVisitedLibraryId.mockResolvedValue(null); // 방문 기록 없음으로 시작
+    await render(<HomeScreen />);
+    await screen.findByText("정독도서관");
+    // 홈을 unmount하지 않은 채 B(103 남산)를 방문하고 돌아온다
+    m.getRecentVisitedLibraryId.mockResolvedValue(103);
+    await act(async () => {
+      await mockFocus?.();
+    });
+    // 적용할 때의 다시 읽기는 끝나지 않게 붙잡아 둔다 — 홈 복귀 때 읽은 값만으로 B가 나와야 한다
+    m.getRecentVisitedLibraryId.mockReturnValue(new Promise<number | null>(() => {}));
+    await chooseRecent("정독도서관 420m");
+    heroHas(/남산도서관/);
+    expect(m.setHeroRule).toHaveBeenCalledWith("recent");
+  });
+
+  test("choosing the recent-visit setting reads the latest visit again", async () => {
+    m.getRecentVisitedLibraryId.mockResolvedValue(null);
+    await render(<HomeScreen />);
+    await screen.findByText("정독도서관");
+    m.getRecentVisitedLibraryId.mockResolvedValue(103); // 홈 복귀 알림 없이 기록만 바뀜
+    await chooseRecent("정독도서관 420m");
+    await waitFor(() => heroHas(/남산도서관/));
+  });
+
+  test("returning home alone keeps the hero the user picked (V3: only view, list or setting resets it)", async () => {
+    m.getHeroRule.mockResolvedValue("recent");
+    await render(<HomeScreen />);
+    await screen.findByText("정독도서관");
+    await waitFor(() => heroHas(/종로도서관/));
+    await fireEvent.press(screen.getByLabelText("남산도서관 크게 보기"));
+    heroHas(/남산도서관/);
+    m.getRecentVisitedLibraryId.mockResolvedValue(101);
+    await act(async () => {
+      await mockFocus?.();
+    });
+    heroHas(/남산도서관/);
+  });
+
+  test("a late recent-visit answer does not overwrite a newer one", async () => {
+    m.getHeroRule.mockResolvedValue("recent");
+    const first = deferred<number | null>();
+    const second = deferred<number | null>();
+    m.getRecentVisitedLibraryId.mockReturnValueOnce(first.promise).mockReturnValueOnce(second.promise);
+    await render(<HomeScreen />);
+    await screen.findByText("정독도서관");
+    await act(async () => {
+      await mockFocus?.();
+    });
+    await act(async () => second.resolve(103)); // 나중 읽기가 먼저 끝남(남산)
+    await act(async () => first.resolve(102)); // 먼저 읽기가 늦게 끝남(종로) — 버린다
+    heroHas(/남산도서관/);
   });
 });
