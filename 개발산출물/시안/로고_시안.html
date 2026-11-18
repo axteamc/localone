@@ -1,0 +1,530 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="명세" content="../../DESIGN.md">
+<title>동네한권 로고 시안</title>
+<!--
+  D 요청(2026-11-18, 페이지 디자인 1차 P1): 로고 형태 6~8개를 SVG로, 룩 4종 색 바꾸기, 백색 바탕 기본 + 유리판·진한 바탕 위 모습,
+  1024·48 아이콘과 로그인 상단 배치 미리보기. 근거: C-60(주요 컬러 책 모양 로고 방향), DESIGN.md 글자와 공간 규칙·곡률 위계.
+  색은 mobile/src/theme/tokens.ts 의 룩 4종 기본 색과 DERIVE 산식으로만 만든다(아래 script 의 LOOKS·DERIVE). 외부 글꼴·이미지 없음.
+-->
+<style>
+  :root {
+    --white:#FFFFFF; --text:#1D1D1F; --ink-muted:#6B6B66; --ink-soft:#4D4D4B;
+    --shadow-cast:rgba(28,30,36,.22); --seam-hi:rgba(255,255,255,.68);
+    --r-block:3px; --r-info:9px;
+    /* 룩 색은 script 가 채운다(기본 warm) */
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif; line-height:1.5; }
+  header.page, main { max-width:1320px; margin:0 auto; padding:0 16px; }
+  header.page { padding-top:22px; }
+  h1 { font-size:22px; font-weight:400; margin:0 0 4px; color:var(--ink-soft); }
+  h2 { font-size:18px; font-weight:500; margin:0 0 4px; } h3 { font-size:15px; font-weight:500; margin:0 0 8px; }
+  .how, .flow { background:var(--panel-lit); border:1px solid var(--seam); border-radius:var(--r-info); padding:12px 16px; margin:10px 0 0; font-size:14px; }
+  .bar { display:flex; flex-wrap:wrap; gap:16px; align-items:center; margin-top:12px; font-size:14px; }
+  select { font:inherit; padding:4px 8px; border-radius:8px; border:1px solid var(--surface3); background:var(--paper); color:var(--text); }
+  section.element, #spec, #login { margin-top:40px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:999px; background:var(--surface2); margin-left:6px; font-weight:400; }
+  .gauge { font-size:10px; font-weight:500; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-muted); }
+
+  /* 한눈 비교 띠 */
+  .strip { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:1px; background:var(--seam); border:1px solid var(--seam); border-radius:var(--r-info); overflow:hidden; margin-top:12px; }
+  .strip > div { background:var(--white); padding:12px 8px 8px; display:flex; flex-direction:column; align-items:center; gap:6px; cursor:pointer; }
+  .strip > div.sel { outline:2px solid var(--ink-strong); outline-offset:-2px; }
+  .strip .row { display:flex; align-items:flex-end; gap:10px; }
+
+  /* 후보 */
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-info); padding:14px; border:3px solid transparent; }
+  .cand.recommended { border-color:var(--fill1); } .cand.chosen { border-color:var(--ink-strong); }
+  .cand.preview { outline:2px dashed var(--ink-strong); outline-offset:3px; }
+  .badge { display:inline-block; font-size:12px; font-weight:500; padding:1px 9px; border-radius:999px; background:var(--fill1); color:var(--on-fill1); margin-left:6px; }
+  .badge.adopted { background:var(--ink-strong); color:var(--white); }
+  .cand p { font-size:13.5px; margin:6px 0; }
+  .lbl { font-weight:500; font-size:12.5px; color:var(--ink-muted); margin-top:10px; display:block; }
+  .grounds { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+  .ground { aspect-ratio:1; border-radius:var(--r-block); display:flex; align-items:center; justify-content:center; position:relative; border:1px solid var(--seam); }
+  .ground span { position:absolute; left:6px; bottom:4px; font-size:9px; letter-spacing:.12em; text-transform:uppercase; }
+  .g-white { background:var(--white); } .g-white span { color:var(--ink-muted); }
+  .g-glass { background:var(--panel-frosted); background-image:linear-gradient(var(--seam) 1px, transparent 1px), linear-gradient(90deg, var(--seam) 1px, transparent 1px); background-size:50% 50%; background-position:-1px -1px; } .g-glass span { color:var(--ink-muted); }
+  .g-dark { background:var(--ink-strong); border-color:var(--ink-strong); } .g-dark span { color:var(--relief-mid); }
+  .ground svg { width:62%; height:62%; }
+  .sizes { display:flex; align-items:flex-end; gap:14px; margin-top:10px; flex-wrap:wrap; }
+  .sizes figure { margin:0; display:flex; flex-direction:column; align-items:center; gap:4px; }
+  .sizes figcaption { font-size:9.5px; letter-spacing:.12em; color:var(--ink-muted); }
+  .icon { border-radius:22.37%; background:var(--icon-bg); display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 1px var(--seam); overflow:hidden; }
+  .icon svg { width:72%; height:72%; }
+  .i180 { width:132px; height:132px; } .i48 { width:48px; height:48px; } .i24 { width:24px; height:24px; border-radius:6px; }
+
+  /* 로그인 상단 배치 미리보기 */
+  .phones { display:flex; flex-wrap:wrap; gap:20px; margin-top:12px; align-items:flex-start; }
+  .phone { width:300px; height:620px; border-radius:30px; border:6px solid var(--ink-strong); position:relative; overflow:hidden; background:var(--panel-frosted); flex:none; }
+  .phone .wall { position:absolute; inset:0; background-image:linear-gradient(var(--seam) 1px, transparent 1px), linear-gradient(90deg, var(--seam) 1px, transparent 1px); background-size:96px 96px; background-position:center -1px; opacity:.55; }
+  .phone .in { position:absolute; inset:0; padding:64px 24px 32px; display:flex; flex-direction:column; }
+  .phone .logo { width:56px; height:56px; }
+  .phone .brand { font-size:13px; font-weight:500; margin-top:14px; color:var(--text); }
+  .phone .title { font-size:24px; font-weight:400; color:var(--ink-soft); margin:4px 0 0; letter-spacing:-.02em; }
+  .phone .meta { margin-top:8px; }
+  .phone .btns { margin-top:auto; display:flex; flex-direction:column; gap:12px; }
+  .phone .btn { height:48px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:500; }
+  .phone .primary { background:var(--panel-lit); color:var(--ink-strong); border:1px solid var(--seam); box-shadow:0 2px 0 var(--relief-mid); }
+  .phone .apple { background:#000; color:#fff; }
+  .note { font-size:13px; max-width:420px; }
+
+  /* 표 */
+  .wide { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-info); overflow:hidden; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--seam); }
+  th { background:var(--surface2); font-weight:500; }
+  .st { font-size:12px; padding:1px 8px; border-radius:999px; background:var(--surface2); white-space:nowrap; }
+
+  /* SVG 부품: 바탕에 따라 '진한 부분' 색을 바꾼다 */
+  .lg { --lk:var(--ink-strong); --lp:var(--paper); --ls:var(--seam); }
+  .g-dark .lg, .on-dark .lg { --lk:var(--paper); --lp:var(--ink-strong); --ls:var(--relief-dark); }
+  .lg .k { fill:var(--lk); } .lg .p { fill:var(--lp); } .lg .s { stroke:var(--ls); fill:none; }
+  .lg .f1 { fill:var(--fill1); } .lg .f2 { fill:var(--fill2); } .lg .f3 { fill:var(--fill3); }
+  .lg .pl { fill:var(--lp); stroke:var(--ls); }
+  .lg { --lsh:var(--relief-dark); } .g-dark .lg, .on-dark .lg { --lsh:var(--relief-mid); }
+  .lg .sh { fill:var(--lsh); } .lg .pn { fill:var(--panel-lit); stroke:var(--ls); } .lg .p2 { fill:var(--ls); }
+  .nohd .lg .hd { display:none; } .hdpair:not(.off) .lg .hd { display:inline; } .hdpair.off .lg .hd { display:none; }
+  .hdpair .ground { aspect-ratio:1; }
+  /* 상자 구도(정할 것 3) */
+  .lg.iso .ie { stroke:var(--seam); stroke-width:.12; stroke-linejoin:round; }
+  .noedge .lg.iso .ie { stroke:none; }
+  .lg.iso .ln { stroke:var(--seam); stroke-width:.1; }
+  .lg.iso .ln-thin { stroke:var(--seam); stroke-width:.055; opacity:.65; }
+  .lg .it1 { fill:var(--fill1); } .lg .it2 { fill:var(--fill2); } .lg .it3 { fill:var(--fill3); }
+  .lg .it1d { fill:color-mix(in srgb, var(--fill1) 84%, #6B6B66); } .lg .it2d { fill:color-mix(in srgb, var(--fill2) 84%, #6B6B66); } .lg .it3d { fill:color-mix(in srgb, var(--fill3) 84%, #6B6B66); }
+  .lg .il { fill:var(--paper); } .lg .ir { fill:color-mix(in srgb, var(--paper) 78%, var(--surface3)); } .lg .ip { fill:var(--paper); } .lg .ib { fill:var(--paper); opacity:.85; }
+  @media (max-width:600px) { header.page, main { padding:0 12px; } .phone { width:100%; max-width:300px; } }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>동네한권 로고 — 형태 7개</h1>
+  <div class="how"><b>결정(2026-11-18).</b> 처음엔 <b>F 글자형 ㄷ + 한 권</b>을 골랐다가, "검정 + 노랑 자제"(그믐과 겹침)로 노랑을 빼 보니 노랑이 있어야 밸런스가 좋아서 <b>G 슬라이딩 도어</b>로 바꿨어요(진한 테두리). 바로 아래 <b>정할 것 2</b>에서 G를 다듬은 6가지를 골라요. 다른 후보는 바꿀 때를 위해 그대로 둬요. 배포용 파일은 <a href="../로고/">개발산출물/로고/</a>(다듬은 안이 정해지면 바꿔요).<br><b>보는 법.</b> 맨 위 띠에서 7개를 실제 크기(48·24)로 한꺼번에 비교하고, 아래 카드에서 하나씩 자세히 보세요. 카드마다 <b>백색 바탕(기본) · 유리판 · 진한 바탕</b> 위 모습, 앱 아이콘 1024(축소 표시)·48·24가 있어요. <b>룩</b>을 바꾸면 모든 로고 색이 그 룩의 `fill1~3`·`inkStrong`으로 바뀌어요. 띠나 카드를 누르면 맨 아래 <b>로그인 상단 배치</b>에 그 로고가 들어가요. 노란 테두리가 추천이에요.</div>
+  <div class="bar">
+    <label>룩 <select id="look"><option value="warm" selected>warm (M1 기본)</option><option value="modern">모던</option><option value="toffee">toffee</option><option value="oxford">Oxford</option></select></label>
+    <label>아이콘 바탕 <select id="iconbg"><option value="white" selected>백색</option><option value="glass">유리판</option><option value="dark">진한 바탕</option></select></label>
+    <label>후보 다시 보기 <select data-for="el-logo"></select></label>
+  </div>
+</header>
+<main>
+<section class="element" id="el-door" data-chosen="">
+  <h2>정할 것 2. 슬라이딩 도어(G) 다듬기 <span class="status">결정 전</span></h2>
+  <div class="flow"><b>정해진 것(2026-11-18 D).</b> F는 내려놓고 G 슬라이딩 도어로 가요. 노랑이 있어야 밸런스가 좋아서 노랑·피치·세이지 세 색을 그대로 써요. <b>다리는 기본으로 없앴어요.</b> 진한색(`inkStrong`)은 쓰지 않아 검정 + 노랑이 생기지 않아요. 선반·받침은 회색(`reliefSideDark`). 손잡이는 위 "손잡이" 선택 상자로 켜고 끌 수 있고, 카드마다 있음/없음 두 가지를 나란히 보여 줘요. 4·5는 "책장"처럼 보이게 다듬은 안, 6은 방문 페이지(SNS) 아래 책장 디자인(책 + 선반 + 노랑·크림·세이지 도어 장)을 참조한 안이에요.</div>
+  <div class="bar"><label>손잡이 <select id="handles"><option value="on" selected>있음</option><option value="off">없음</option></select></label>
+    <label>후보 다시 보기 <select data-for="el-door"></select></label></div>
+  <div class="strip" id="strip2"></div>
+  <div class="cands" id="cands2"></div>
+</section>
+
+<section class="element" id="el-iso" data-chosen="">
+  <h2>정할 것 3. 상자 구도 — 직육면체로 '파사드 또는 책' <span class="status">결정 전</span></h2>
+  <div class="flow"><b>D 요청(2026-11-18).</b> 참고 사진 두 장(윗면만 색, 옆면은 흰 종이 상자를 비스듬히 본 구도)에서 <b>직육면체라는 형태만</b> 가져와, 파사드나 책처럼 느껴지게, 더 모던하고 날렵하게. 그래서 <b>윗면(또는 책등)에만 색</b>(노랑·피치·세이지), 옆면은 흰색·회색 두 단 명도, 진한 선 없이 줄눈 색 얇은 선만 썼어요(검정 + 노랑 없음). 각도는 등각(30°). 위 "모서리 선" 상자로 선을 없애면 면 명도 차이만 남아 더 날렵해져요. <b>정할 것 2(G1~G6)와 이 칸(I1~I6) 중 하나를 골라 주세요.</b></div>
+  <div class="bar"><label>모서리 선 <select id="edges"><option value="on" selected>있음(얇게)</option><option value="off">없음(면만, 더 날렵)</option></select></label>
+    <label>후보 다시 보기 <select data-for="el-iso"></select></label></div>
+  <div class="strip" id="strip3"></div>
+  <div class="cands" id="cands3"></div>
+</section>
+
+<section class="element" id="el-logo" data-chosen="G">
+  <h2>정할 것 1. 로고 형태 <span class="status">확인 — G 슬라이딩 도어(2026-11-18, F에서 바꿈)</span></h2>
+  <div class="flow"><b>정해진 것(C-60).</b> 로그인은 위 소개·로고, 아래 버튼. 로고는 글자보다 <b>주요 컬러</b>로 기억되게. <b>이번에 따른 규칙.</b> 곡률은 블록 3(구조)·책 표지 5·9 계열, 색은 `fill1~3` 세 색 + 진한 부분 하나(규칙 5·7), 48px에서도 형태가 읽힐 것.</div>
+  <div class="strip" id="strip"></div>
+  <div class="cands" id="cands"></div>
+</section>
+
+<section id="login">
+  <h2>로그인 상단 배치 미리보기 <span class="status">기본값(Claude)</span></h2>
+  <div class="flow">C-60 배치 그대로: 로고 64 · "동네한권" 13/500 · 제목 24/400 `inkSoft` 왼쪽 정렬, 아래 주 버튼(무광 판, 2026-11-18 D 결정). 바탕은 유리판 + 옅은 격자(로그인 시안에서 강도를 정해요). Apple 버튼은 iOS만, 애플 규정의 검정 버튼이라 "무거운 표식 하나"의 예외예요.</div>
+  <div class="phones">
+    <div class="phone" id="loginPhone"><div class="wall"></div><div class="in">
+      <div class="logo" id="loginLogo"></div>
+      <div class="brand">동네한권</div>
+      <div class="title">동네한권에 로그인</div>
+      <div class="btns"><div class="btn primary">Google로 계속하기</div><div class="btn apple">Apple로 계속하기</div></div>
+    </div></div>
+    <p class="note" id="loginNote"></p>
+  </div>
+</section>
+
+<section id="spec">
+  <h2>명세</h2>
+  <div class="wide"><table>
+    <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
+    <tr data-el="el-logo"><td>로고 형태</td><td>G 슬라이딩 도어(앱 기본 로고, 다듬기는 정할 것 2)</td><td>없음(받지 않음). 다른 후보는 이 시안에 남겨 나중에 바꿀 수 있음</td><td>F(처음 채택했다가 내려놓음: "F 결정을 포기하고 슬라이딩 도어 시안과 합쳐서, 슬라이딩 도어에서 다리는 기본으로 제거하고 손잡이 있는 버전 없는 버전도 양쪽 준비해주고, 어떻게 조형해서 좀 더 "책장"스러운 느낌 나게 만들기도 시도", "노랑을 뺀 상태로 보니 노랑을 써야 밸런스가 좋은 거 같기도 해"), A·B·C·D·E(추천이었음)</td><td>처음 F: "1 : F -> 앱 기본 로고로 쓰고 배포 시 활용하기 위해 별도 파일도 개발산출물에 남길 것", "로고 시안 마음에 드는게 많아서 일단 F로 두고, 시안 git에 올려두면 나중에 바꿀 수 있게 할 것"</td><td>격자 64, 블록 곡률 3, 책등 곡률 2·4(표지 5·9 축소), 색 `fill1~3` + 진한 부분 `inkStrong`(진한 바탕 위는 `paper`). 아이콘 1024는 바탕 + 로고 72%, 모서리 22.37%</td><td>로그인 상단 56 · 앱 아이콘 · 웹 탭 아이콘 · 시연 자료 표지</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-door"><td>2. 슬라이딩 도어 다듬기</td><td>— (추천: G3 높이가 다른 책등 도어)</td><td>—</td><td>—</td><td>(받기 전)</td><td>다리 없음, 진한색 없음(선반·받침 `reliefSideDark`), 손잡이 있음/없음 두 벌, 색 `fill1·fill2·fill3`. G6은 방문 페이지 책장(책 + 선반 + 노랑·크림·세이지 장) 참조</td><td>로그인 상단 64 · 앱 아이콘 · 웹 탭 아이콘</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-iso"><td>3. 상자 구도(직육면체)</td><td>— (추천: I2 세 상자 동네)</td><td>—</td><td>—</td><td>(받기 전) D 요청: "파사드가 이렇게 느껴지게 만들고, 좀 더 모던하게 날렵하게 만드는 방향성도 고려해줘. 첨부 사진에서 저런 구도에 \"파사드 or 책\"처럼 느껴지기만 하면 돼(직육면체라는 형태의 본질만 가져와서 참조)"</td><td>등각 30°, 윗면(책은 책등)만 `fill1~3`, 옆면 `paper` / paper 78% + surface3, 모서리 `seamHairline` 얇게(끌 수 있음), 진한색 없음</td><td>로그인 상단 64 · 앱 아이콘</td><td><span class="st">결정 전</span></td></tr>
+    <tr><td>아이콘 바탕</td><td>백색</td><td>—</td><td>—</td><td>—</td><td>#FFFFFF(로고 자산 기본). 앱 화면 안에서는 순백을 쓰지 않는다(카드 `paper`)</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>로그인 상단 배치</td><td>로고 56 왼쪽 위 + 브랜드 + 제목</td><td>—</td><td>—</td><td>—</td><td>위 여백 64, 로고↔브랜드 14, 좌우 24</td><td>/login → 아래 Google(주 버튼)</td><td><span class="st">기본값(Claude)</span> — 로그인 시안에서 로고와 버튼 관계를 정함</td></tr>
+  </table></div>
+  <p>아직 하지 않음: 아이콘 PNG(1024·48) 만들기, 앱에 로고 넣기. 고른 뒤 다시 보여 드리고 불편해지는 점을 받아요.</p>
+</section>
+</main>
+
+<script>
+/* ---- 색: mobile/src/theme/tokens.ts 와 같은 값·산식 ---- */
+const LOOKS = {
+  modern:{bg:"#CDCDCB",surface2:"#BDBDBA",surface3:"#A8A8A5",fill1:"#FB5102",fill2:"#F2F2EF",fill3:"#9AA0B4",cream:"#E9E9E6",paper:"#E6E6E4",inkStrong:"#1C1E2A"},
+  warm:{bg:"#E1E1DE",surface2:"#D0CEC8",surface3:"#BFBCB5",fill1:"#E9C970",fill2:"#EDC9A9",fill3:"#B3BFB5",cream:"#EFEFE7",paper:"#EFF1F1",inkStrong:"#2E333F"},
+  toffee:{bg:"#E4E2DB",surface2:"#D5CFC4",surface3:"#C2BBAD",fill1:"#6E5140",fill2:"#C88A56",fill3:"#7E8C7D",cream:"#EEEFED",paper:"#EEEFED",inkStrong:"#332A27"},
+  oxford:{bg:"#CDCDCB",surface2:"#BDBDBA",surface3:"#A8A8A5",fill1:"#35557F",fill2:"#D2B48C",fill3:"#7A93AC",cream:"#E9E9E6",paper:"#E6E6E4",inkStrong:"#002147"}
+};
+const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const toHex=a=>"#"+a.map(c=>Math.max(0,Math.min(255,Math.round(c))).toString(16).padStart(2,"0")).join("").toUpperCase();
+const mix=(a,b,w)=>{const A=hex(a),B=hex(b);return toHex(A.map((c,i)=>c*w+B[i]*(1-w)))};
+const lum=h=>{const [r,g,b]=hex(h).map(c=>{c/=255;return c<=.03928?c/12.92:((c+.055)/1.055)**2.4});return .2126*r+.7152*g+.0722*b};
+const contrast=(a,b)=>{const x=[lum(a),lum(b)].sort((p,q)=>q-p);return (x[0]+.05)/(x[1]+.05)};
+const onFill=f=>contrast(f,"#FFFFFF")>=contrast(f,"#1D1D1F")?"#FFFFFF":"#1D1D1F";
+function applyLook(name){
+  const c=LOOKS[name], r=document.documentElement.style;
+  const v={bg:c.bg,surface2:c.surface2,surface3:c.surface3,fill1:c.fill1,fill2:c.fill2,fill3:c.fill3,cream:c.cream,paper:c.paper,"ink-strong":c.inkStrong,
+    "panel-frosted":mix(c.paper,c.bg,.58),"panel-lit":mix(c.paper,c.cream,.84),seam:mix(c.inkStrong,c.bg,.14),rivet:mix(c.inkStrong,c.surface3,.34),
+    "relief-mid":mix(c.inkStrong,c.surface2,.15),"relief-dark":mix(c.inkStrong,c.surface3,.26),"on-fill1":onFill(c.fill1)};
+  for(const k in v) r.setProperty("--"+k,v[k]);
+}
+
+/* ---- 로고 형태 7개 (viewBox 0 0 64 64) ---- */
+const FORMS = [
+  {id:"A", name:"파사드 한 칸", svg:`
+    <rect class="pl" x="6.5" y="6.5" width="51" height="51" rx="3"/>
+    <circle class="k" cx="12" cy="12" r="1.8"/><circle class="k" cx="52" cy="12" r="1.8"/>
+    <rect class="pl" x="17.5" y="22.5" width="31" height="29" rx="3"/>
+    <rect class="f1" x="17" y="22" width="9" height="30" rx="2"/>
+    <path class="p" d="M19 27a2.5 2.5 0 0 1 5 0v6h-5z" opacity=".9"/>`,
+   desc:"홈 파사드의 한 칸을 그대로 잘라 왔어요. 리벳 둘, 블록 하나, 왼쪽 스파인(`fill1`)과 렌즈형 손잡이.",
+   see:"48에서는 리벳이 점 두 개로 남고 스파인 노랑이 왼쪽 띠로 보여요. 24에서는 네모 안의 네모.",
+   gain:"홈 화면과 같은 말을 해요. / 색이 한 가지라 '주요 컬러' 기억은 약해요."},
+  {id:"B", name:"기점 매스", svg:`
+    <line class="s" x1="32" y1="4" x2="32" y2="60" stroke-width="1.5"/>
+    <rect x="23" y="22" width="24" height="26" rx="3" fill="var(--relief-dark)"/>
+    <rect class="k" x="19" y="18" width="26" height="28" rx="3"/>
+    <rect class="f1" x="27" y="25" width="10" height="14" rx="1.5"/>`,
+   desc:"홈 가운데 축 위의 진한 기점(내 위치)을 매스로. 축 선 하나에 무거운 덩어리 하나, 창 하나만 노랑.",
+   see:"48에서 진한 사각 + 노란 창. 진한 바탕 위에서는 덩어리가 밝게 뒤집혀요.",
+   gain:"가장 단단하고 작은 크기에서 강해요. / 책·도서관이라는 뜻은 거의 안 보여요."},
+  {id:"C", name:"격자 위 블록", svg:`
+    <path class="s" d="M6 22H58M6 42H58M22 6V58M42 6V58" stroke-width="1"/>
+    <line class="s" x1="32" y1="6" x2="32" y2="58" stroke-width="1.5"/>
+    <rect class="pl" x="8" y="12" width="21" height="14" rx="2.5"/><rect class="f1" x="8" y="12" width="5" height="14" rx="2"/>
+    <rect class="pl" x="35" y="27" width="21" height="14" rx="2.5"/><rect class="f2" x="35" y="27" width="5" height="14" rx="2"/>
+    <rect class="pl" x="8" y="42" width="21" height="14" rx="2.5"/><rect class="f3" x="8" y="42" width="5" height="14" rx="2"/>`,
+   desc:"홈 판의 축약도. 격자와 축, 서쪽·동쪽에 놓인 도서관 블록 셋(스파인 `fill1~3`).",
+   see:"48에서 격자 선은 희미해지고 블록 셋이 계단처럼 보여요. 24에서는 거의 무늬.",
+   gain:"앱이 '동네 지도 판'이라는 걸 그대로 말해요. / 작은 크기에서 가장 복잡해요."},
+  {id:"D", name:"아치", svg:`
+    <path class="f2" d="M12 56V30a20 20 0 0 1 40 0v26z"/>
+    <path class="f1" d="M22 56V32a10 10 0 0 1 20 0v24z"/>
+    <rect class="k" x="8" y="54" width="48" height="5" rx="1.5"/>`,
+   desc:"Arne Vodder 사이드보드의 아치. 바깥 아치 `fill2`, 안쪽 문 `fill1`, 아래 진한 받침.",
+   see:"48에서 문 모양이 또렷해요. 진한 바탕 위에서는 받침이 밝은 선이 돼요.",
+   gain:"'도서관에 들어간다'는 느낌. / 홈 화면은 직각 파사드라 아치가 홈과는 조금 따로 놀아요."},
+  {id:"E", name:"책등 묶음", svg:`
+    <rect class="f2" x="11" y="20" width="12" height="34" rx="2"/>
+    <rect class="f3" x="26" y="12" width="12" height="42" rx="2"/>
+    <rect class="f1" x="41" y="24" width="12" height="30" rx="2"/>
+    <path class="p" d="M29 18a3 3 0 0 1 6 0v7h-6z" opacity=".9"/>
+    <rect class="k" x="8" y="54" width="48" height="4" rx="1.5"/>`,
+   desc:"지금 로그인의 책 세 권(C-60 방향)을 홈 재질로 다듬었어요. 곡률 18 알약 → 책등 2(블록 계열), 가운데 책에 렌즈형 손잡이, 아래 진한 선반 한 줄.",
+   see:"48에서 세 색 막대 + 선반이 바로 읽혀요. 24에서도 세 색 줄무늬로 남아요.",
+   gain:"C-60에서 고른 '주요 컬러 책 모양'을 이어 가고 작은 크기에 강해요. / 형태 자체는 흔한 편이라 색이 기억을 맡아요.",
+   rec:"C-60에서 D가 고른 '주요 컬러 기반 책 모양'을 그대로 잇고, 홈의 재질(곡률 3 계열·렌즈 손잡이·진한 받침 하나)로 맞춘 안이라 결정이 가장 덜 흔들려요. 24px에서도 세 색이 남는 것은 E·G뿐이에요."},
+  {id:"F", name:"글자형 ㄷ + 한 권", svg:`
+    <path class="k" d="M10 10H54V20H20V44H54V54H10Z"/>
+    <rect class="f1" x="30" y="24" width="12" height="20" rx="2"/>
+    <rect class="f2" x="44" y="28" width="8" height="16" rx="1.5"/>`,
+   desc:"'동네'의 ㄷ이 책 한 권(`fill1`)을 품고 있어요. 이름 '동네한권'을 그대로 그림으로.",
+   see:"48에서 ㄷ 획이 굵게 남아요. 진한 부분이 크니 '무거운 표식' 역할을 로고가 가져가요.",
+   gain:"이름과 바로 연결돼 기억하기 쉬워요. / 한글을 모르면 그냥 도형이고, 진한 면이 커서 화면에서 무거워요."},
+  {id:"G", name:"슬라이딩 도어", svg:`
+    <rect class="pl" x="6.5" y="14.5" width="51" height="34" rx="3"/>
+    <rect class="f1" x="9" y="17" width="15" height="29" rx="1.5"/>
+    <rect class="f2" x="24.5" y="17" width="15" height="29" rx="1.5"/>
+    <rect class="f3" x="40" y="17" width="15" height="29" rx="1.5"/>
+    <path class="p" d="M16.5 26q2 4 0 8q-2-4 0-8z M32 26q2 4 0 8q-2-4 0-8z M47.5 26q2 4 0 8q-2-4 0-8z"/>
+    <rect class="k" x="12" y="48" width="4" height="7" rx="1"/><rect class="k" x="48" y="48" width="4" height="7" rx="1"/>`,
+   desc:"사이드보드의 색 블록 도어 세 짝과 렌즈형 손잡이, 다리 둘. DESIGN 원칙(Vodder)에서 바로 온 모양.",
+   see:"48에서 세 색 문이 가로로 또렷해요. 손잡이는 48 아래에선 사라져요.",
+   gain:"색 세 개를 가장 크게 보여 줘요. / '책'보다는 '가구'로 읽혀요."}
+];
+const REC="E";
+const svg=(f,cls="")=>`<svg class="lg ${cls}" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="로고 후보 ${f.id} ${f.name}">${f.svg}</svg>`;
+
+function render(){
+  const strip=document.getElementById("strip"), cands=document.getElementById("cands"), pick=document.querySelector('[data-for="el-logo"]');
+  strip.innerHTML=FORMS.map(f=>`<div data-id="${f.id}"><div class="row"><div style="width:48px;height:48px">${svg(f)}</div><div style="width:24px;height:24px">${svg(f)}</div></div><span class="gauge">${f.id} · ${f.name}${f.id===REC?" · 추천":""}</span></div>`).join("");
+  cands.innerHTML=FORMS.map(f=>`<article class="cand${f.id===REC?" recommended":""}" data-id="${f.id}">
+    <h3>후보 ${f.id} — ${f.name}${f.id===REC?' <span class="badge">추천</span>':""}</h3>
+    <div class="grounds"><div class="ground g-white">${svg(f)}<span>white</span></div><div class="ground g-glass">${svg(f)}<span>glass</span></div><div class="ground g-dark">${svg(f)}<span>dark</span></div></div>
+    <div class="sizes"><figure><div class="icon i180">${svg(f)}</div><figcaption>1024 (축소)</figcaption></figure><figure><div class="icon i48">${svg(f)}</div><figcaption>48</figcaption></figure><figure><div class="icon i24">${svg(f)}</div><figcaption>24</figcaption></figure></div>
+    <p>${f.desc}</p>
+    <span class="lbl">누르면 이렇게 이어져요</span><p>앱 아이콘을 누름 → 로그인 화면 위쪽에 같은 로고 56 → Google로 계속하기 → 홈(파사드). 로그인 뒤에는 로고가 나오지 않아요(웹 탭 아이콘만).</p>
+    <span class="lbl">화면을 열어야 보이는 것</span><p>${f.see}</p>
+    <span class="lbl">얻는 것 / 포기하는 것</span><p>${f.gain}</p>
+    ${f.rec?`<p><b>추천 이유:</b> ${f.rec}</p>`:""}
+  </article>`).join("");
+  pick.innerHTML='<option value="">— 전체 —</option>'+FORMS.map(f=>`<option value="${f.id}">${f.id} · ${f.name}${f.id===REC?" (추천)":""}</option>`).join("");
+}
+function choose(id){
+  const f=FORMS.find(x=>x.id===id)||FORMS.find(x=>x.id===REC);
+  document.getElementById("loginLogo").innerHTML=svg(f);
+  document.getElementById("loginNote").innerHTML=`지금 들어간 로고: <b>${f.id} · ${f.name}</b>${f.id===REC?" (추천, 기본)":""}. 위 띠나 카드를 눌러 바꿔 보세요. 룩을 바꾸면 버튼 색(주 버튼 = 그 룩의 fill1)도 같이 바뀌어요.`;
+  document.querySelectorAll("#strip > div").forEach(d=>d.classList.toggle("sel",d.dataset.id===f.id));
+}
+function setIconBg(v){
+  const r=document.documentElement.style;
+  r.setProperty("--icon-bg", v==="white"?"#FFFFFF":v==="glass"?"var(--panel-frosted)":"var(--ink-strong)");
+  document.querySelectorAll(".icon").forEach(i=>i.classList.toggle("on-dark",v==="dark"));
+}
+function markChosen(){
+  const el=document.getElementById("el-logo"), id=el.dataset.chosen;
+  document.querySelectorAll("#cands .cand").forEach(c=>{ if(id && c.dataset.id===id){ c.classList.add("chosen"); c.querySelector("h3").insertAdjacentHTML("beforeend",' <span class="badge adopted">채택</span>'); } });
+}
+applyLook("warm"); render(); setIconBg("white"); choose(document.getElementById("el-logo").dataset.chosen||REC); markChosen();
+document.getElementById("look").addEventListener("change",e=>applyLook(e.target.value));
+document.getElementById("iconbg").addEventListener("change",e=>setIconBg(e.target.value));
+document.querySelector('[data-for="el-logo"]').addEventListener("change",e=>{
+  document.querySelectorAll("#cands .cand").forEach(c=>c.classList.toggle("preview",c.dataset.id===e.target.value));
+  if(e.target.value){ choose(e.target.value); document.querySelector(`#cands .cand[data-id="${e.target.value}"]`).scrollIntoView({behavior:"smooth",block:"center"}); }
+});
+document.addEventListener("click",e=>{ const t=e.target.closest("#strip > div, #cands .cand"); if(t) choose(t.dataset.id); });
+
+/* ---- 정할 것 2: 슬라이딩 도어 다듬기 (다리 없음, 진한색 없음) ---- */
+const LV=(x,y,h)=>`M${x} ${y}q1.8 ${h/2} 0 ${h}q-1.8 -${h/2} 0 -${h}z`;      /* 세로 렌즈 손잡이 */
+const LH=(cx,cy)=>`<ellipse class="p hd" cx="${cx}" cy="${cy}" rx="3.2" ry="1.2"/>`; /* 가로 렌즈 손잡이(책장 장) */
+const BANDS=(x,y,w)=>`<rect class="p bd" x="${x+2}" y="${y+4}" width="${w-4}" height="1.2" opacity=".85"/><rect class="p bd" x="${x+2}" y="${y+7}" width="${w-4}" height="1.2" opacity=".85"/>`;
+const DOORS=[
+  {id:"G1", name:"도어 세 짝 + 틀", svg:`
+    <rect class="pl" x="6.5" y="14.5" width="51" height="35" rx="3"/>
+    <rect class="f1" x="9" y="17" width="15" height="30" rx="1.5"/>
+    <rect class="f2" x="24.5" y="17" width="15" height="30" rx="1.5"/>
+    <rect class="f3" x="40" y="17" width="15" height="30" rx="1.5"/>
+    <path class="p hd" d="${LV(16.5,27,10)} ${LV(32,27,10)} ${LV(47.5,27,10)}"/>`,
+   desc:"원래 G에서 다리만 뺐어요. 틀(유리판 + 줄눈) 안에 노랑·피치·세이지 도어 세 짝.",
+   see:"48에서 세 색 가로 띠. 틀이 얇아 흰 바탕에선 테두리로만 보여요.",
+   gain:"원래 G 그대로라 익숙해요. / 아직 '가구'에 가깝고 책장 느낌은 약해요."},
+  {id:"G2", name:"틀 없이 도어만", svg:`
+    <rect class="f1" x="7" y="13" width="16" height="36" rx="2"/>
+    <rect class="f2" x="24" y="13" width="16" height="36" rx="2"/>
+    <rect class="f3" x="41" y="13" width="16" height="36" rx="2"/>
+    <rect class="sh" x="6" y="51" width="52" height="2.5" rx="1"/>
+    <path class="p hd" d="${LV(15,26,10)} ${LV(32,26,10)} ${LV(49,26,10)}"/>`,
+   desc:"틀을 빼고 세 짝만 세운 뒤 아래 회색 받침 한 줄.",
+   see:"가장 단순해서 24에서도 세 색이 또렷해요.",
+   gain:"작은 크기에 가장 강해요. / 색 막대 셋이라 '책장'인지는 받침으로만 알아요."},
+  {id:"G3", name:"높이가 다른 책등 도어", svg:`
+    <path class="s" d="M6.5 9V53.5H57.5V9" stroke-width="1.4"/>
+    <rect class="f1" x="10" y="19" width="14" height="32" rx="1.5"/>
+    <rect class="f2" x="25.5" y="13" width="13" height="38" rx="1.5"/>
+    <rect class="f3" x="40" y="22" width="14" height="29" rx="1.5"/>
+    ${BANDS(10,19,14)}${BANDS(25.5,13,13)}${BANDS(40,22,14)}
+    <rect class="sh" x="6" y="51" width="52" height="3" rx="1"/>
+    <path class="p hd" d="${LV(17,31,8)} ${LV(32,28,8)} ${LV(47,33,8)}"/>`,
+   desc:"도어 높이를 책처럼 들쭉날쭉하게, 위쪽에 책등 띠 두 줄, 위가 열린 틀과 회색 선반. 도어이면서 책등으로 읽혀요.",
+   see:"48에서 '틀 안에 꽂힌 세 권'. 손잡이를 끄면 완전히 책, 켜면 사이드보드 도어.",
+   gain:"슬라이딩 도어의 색 블록과 책장이 한 그림에 들어가요. / G1보다 선이 조금 많아요.",
+   rec:"D가 말한 두 가지(노랑을 살린 세 색 밸런스 + '책장스러운 느낌')를 모두 지키면서, 세 색 면이 커서 48·24 아이콘에서도 그대로 남아요. 손잡이 켜고 끄기로 '도어'와 '책' 사이를 고를 수 있어요."},
+  {id:"G4", name:"두 단 책장", svg:`
+    <rect class="pl" x="6.5" y="6.5" width="51" height="51" rx="3"/>
+    <rect class="sh" x="7" y="31" width="50" height="2" rx=".5"/>
+    <rect class="f1" x="11" y="12" width="7" height="19" rx="1"/>
+    <rect class="f2" x="19.5" y="15" width="6" height="16" rx="1"/>
+    <rect class="f3" x="27" y="10" width="7" height="21" rx="1"/>
+    <rect class="pn" x="10.5" y="36.5" width="21" height="17" rx="1.5"/>
+    <rect class="pn" x="32.5" y="36.5" width="21" height="17" rx="1.5"/>
+    <path class="p2 hd" d="${LV(27,41,8)} ${LV(37,41,8)}"/>`,
+   desc:"위 칸에 세 색 책, 아래 칸은 흰·회색 무광 도어 두 짝. 위는 서가, 아래는 사이드보드.",
+   see:"48에서 위 칸 책이 작아져 색이 점처럼 보여요. 오른쪽 위 빈 칸이 숨 쉴 자리.",
+   gain:"'책장'이 가장 분명하고, 아래 흰·회색이 이번 무광 버튼과 같은 재질이에요. / 색 면이 작아 24에서는 약해요."},
+  {id:"G5", name:"한 짝 열린 도어", svg:`
+    <rect class="pl" x="6.5" y="14.5" width="51" height="35" rx="3"/>
+    <rect class="f1" x="9" y="17" width="15" height="30" rx="1.5"/>
+    <rect class="f3" x="40" y="17" width="15" height="30" rx="1.5"/>
+    <rect class="f2" x="26" y="22" width="4" height="25" rx=".8"/><rect class="f1" x="30.5" y="19" width="3.5" height="28" rx=".8"/><rect class="f3" x="34.5" y="24" width="4" height="23" rx=".8"/>
+    <path class="p hd" d="${LV(16.5,27,10)} ${LV(47.5,27,10)}"/>`,
+   desc:"가운데 도어를 옆으로 밀어 열면 안에 책 세 권이 보여요. 슬라이딩 도어의 '미는' 동작을 그대로 그림으로.",
+   see:"48에서 가운데 줄무늬(책)가 보여요. 24에서는 가운데가 조금 복잡해요.",
+   gain:"'열면 책이 있다'는 이야기가 있어 기억에 남아요. / 가운데가 잘게 쪼개져 작은 크기에 약해요."},
+  {id:"G6", name:"SNS 책장 참조", svg:`
+    <rect class="pl" x="12.5" y="8.5" width="12" height="29" rx="1.5"/><rect class="sh" x="12.5" y="9" width="1.6" height="28" opacity=".5"/>
+    <rect class="pl" x="26.5" y="6.5" width="12" height="31" rx="1.5"/><rect class="sh" x="26.5" y="7" width="1.6" height="30" opacity=".5"/>
+    <rect class="pl" x="40.5" y="10.5" width="12" height="27" rx="1.5"/><rect class="sh" x="40.5" y="11" width="1.6" height="26" opacity=".5"/>
+    <rect class="sh" x="8" y="38" width="48" height="2.5" rx=".8"/>
+    <rect class="f1" x="8" y="43" width="15" height="14" rx="1.5"/>
+    <rect class="f2" x="24.5" y="43" width="15" height="14" rx="1.5"/>
+    <rect class="f3" x="41" y="43" width="15" height="14" rx="1.5"/>
+    ${LH(18,50)}${LH(34.5,50)}${LH(51,50)}`,
+   desc:"방문 페이지(SNS) 아래 책장 그대로: 흰·회색 책 세 권이 선반 위에 서 있고, 아래 낮은 장에 노랑·피치·세이지 도어와 가로 렌즈 손잡이. 원래 책장의 진한 선반은 회색으로 바꿨어요(검정 + 노랑 자제).",
+   see:"48에서 위는 흰 책, 아래는 세 색 띠. 앱 안 책장과 같은 그림이라 방문 페이지에서 다시 만나요.",
+   gain:"앱 안의 책장과 로고가 같은 말을 해요. / 색이 아래 띠에만 있어 아이콘에서 색이 작아요."}
+];
+const REC2="G3";
+function svg2(f){ return `<svg class="lg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="로고 후보 ${f.id} ${f.name}">${f.svg}</svg>`; }
+function render2(){
+  const strip=document.getElementById("strip2"), cands=document.getElementById("cands2"), pick=document.querySelector('[data-for="el-door"]');
+  strip.innerHTML=DOORS.map(f=>`<div data-id2="${f.id}"><div class="row"><div style="width:48px;height:48px">${svg2(f)}</div><div style="width:24px;height:24px">${svg2(f)}</div></div><span class="gauge">${f.id} · ${f.name}${f.id===REC2?" · 추천":""}</span></div>`).join("");
+  cands.innerHTML=DOORS.map(f=>`<article class="cand${f.id===REC2?" recommended":""}" data-id="${f.id}">
+    <h3>${f.id} — ${f.name}${f.id===REC2?' <span class="badge">추천</span>':""}</h3>
+    <div class="grounds"><div class="ground g-white">${svg2(f)}<span>white</span></div><div class="ground g-glass">${svg2(f)}<span>glass</span></div><div class="ground g-dark">${svg2(f)}<span>dark</span></div></div>
+    <div class="sizes"><figure><div class="icon i180">${svg2(f)}</div><figcaption>1024 (축소)</figcaption></figure><figure><div class="icon i48">${svg2(f)}</div><figcaption>48</figcaption></figure><figure><div class="icon i24">${svg2(f)}</div><figcaption>24</figcaption></figure>
+      <figure class="hdpair"><div class="ground g-white" style="width:84px">${svg2(f)}</div><figcaption>손잡이 있음</figcaption></figure><figure class="hdpair off"><div class="ground g-white" style="width:84px">${svg2(f)}</div><figcaption>손잡이 없음</figcaption></figure></div>
+    <p>${f.desc}</p>
+    <span class="lbl">누르면 이렇게 이어져요</span><p>앱 아이콘 → 로그인 화면 위쪽 같은 로고 64 → Google로 계속하기(무광 판 버튼) → 홈(파사드).</p>
+    <span class="lbl">화면을 열어야 보이는 것</span><p>${f.see}</p>
+    <span class="lbl">얻는 것 / 포기하는 것</span><p>${f.gain}</p>
+    ${f.rec?`<p><b>추천 이유:</b> ${f.rec}</p>`:""}
+  </article>`).join("");
+  pick.innerHTML='<option value="">— 전체 —</option>'+DOORS.map(f=>`<option value="${f.id}">${f.id} · ${f.name}${f.id===REC2?" (추천)":""}</option>`).join("");
+}
+function choose2(id){
+  const f=DOORS.find(x=>x.id===id)||DOORS.find(x=>x.id===REC2);
+  document.getElementById("loginLogo").innerHTML=svg2(f);
+  document.getElementById("loginNote").innerHTML=`지금 들어간 로고: <b>${f.id} · ${f.name}</b>${f.id===REC2?" (추천, 기본)":""}. 위 띠나 카드를 눌러 바꿔 보세요. 버튼은 D가 고른 무광 판이에요.`;
+  document.querySelectorAll("#strip2 > div").forEach(d=>d.classList.toggle("sel",d.dataset.id2===f.id));
+}
+render2();
+(function(){ const el=document.getElementById("el-door"), id=el.dataset.chosen; document.querySelectorAll("#cands2 .cand").forEach(c=>{ if(id && c.dataset.id===id){ c.classList.add("chosen"); c.querySelector("h3").insertAdjacentHTML("beforeend",' <span class="badge adopted">채택</span>'); } }); choose2(id||REC2); })();
+document.getElementById("handles").addEventListener("change",e=>document.body.classList.toggle("nohd",e.target.value==="off"));
+document.querySelector('[data-for="el-door"]').addEventListener("change",e=>{
+  document.querySelectorAll("#cands2 .cand").forEach(c=>c.classList.toggle("preview",c.dataset.id===e.target.value));
+  if(e.target.value){ choose2(e.target.value); document.querySelector(`#cands2 .cand[data-id="${e.target.value}"]`).scrollIntoView({behavior:"smooth",block:"center"}); }
+});
+document.addEventListener("click",e=>{ const t=e.target.closest("#strip2 > div, #cands2 .cand"); if(t) choose2(t.dataset.id2||t.dataset.id); });
+
+/* ---- 정할 것 3: 상자 구도(등각 직육면체). 윗면·책등만 색, 옆면은 흰·회색, 진한색 없음 ---- */
+const ISO_C=0.866, ISO_S=0.5;
+const PJ=(X,Y,Z)=>[(X-Y)*ISO_C, (X+Y)*ISO_S - Z];
+let ISO_BB=null;
+function addBB(p){ if(!ISO_BB) ISO_BB=[p[0],p[1],p[0],p[1]]; else { ISO_BB[0]=Math.min(ISO_BB[0],p[0]); ISO_BB[1]=Math.min(ISO_BB[1],p[1]); ISO_BB[2]=Math.max(ISO_BB[2],p[0]); ISO_BB[3]=Math.max(ISO_BB[3],p[1]); } }
+const fmt=n=>Math.round(n*100)/100;
+function poly(pts,cls){ pts.forEach(addBB); return `<polygon class="${cls}" points="${pts.map(p=>fmt(p[0])+","+fmt(p[1])).join(" ")}"/>`; }
+function seg(a,b,cls){ return `<line class="${cls}" x1="${fmt(a[0])}" y1="${fmt(a[1])}" x2="${fmt(b[0])}" y2="${fmt(b[1])}"/>`; }
+/* 상자: 윗면 top, 왼쪽 앞면(Y=Y+D) left, 오른쪽 앞면(X=X+W) right */
+function box(X,Y,Z,W,D,H,c){
+  const T=[PJ(X,Y,Z+H),PJ(X+W,Y,Z+H),PJ(X+W,Y+D,Z+H),PJ(X,Y+D,Z+H)];
+  const L=[PJ(X,Y+D,Z),PJ(X+W,Y+D,Z),PJ(X+W,Y+D,Z+H),PJ(X,Y+D,Z+H)];
+  const R=[PJ(X+W,Y,Z),PJ(X+W,Y+D,Z),PJ(X+W,Y+D,Z+H),PJ(X+W,Y,Z+H)];
+  return poly(L,"ie "+(c.left||"il"))+poly(R,"ie "+(c.right||"ir"))+poly(T,"ie "+(c.top||"il"));
+}
+const onL=(X,Y,Z,W,D,H)=>(u,v)=>PJ(X+u*W, Y+D, Z+v*H);   /* 왼쪽 앞면 위의 점 */
+const onR=(X,Y,Z,W,D,H)=>(u,v)=>PJ(X+W, Y+u*D, Z+v*H);   /* 오른쪽 앞면 */
+const onT=(X,Y,Z,W,D,H)=>(u,v)=>PJ(X+u*W, Y+v*D, Z+H);   /* 윗면 */
+const quad=(f,u0,u1,v0,v1,cls)=>poly([f(u0,v0),f(u1,v0),f(u1,v1),f(u0,v1)],cls);
+function isoSvg(id,label,draw){
+  ISO_BB=null; const body=draw();
+  const [x0,y0,x1,y1]=ISO_BB, w=x1-x0, h=y1-y0, side=Math.max(w,h)*1.12, cx=(x0+x1)/2, cy=(y0+y1)/2;
+  return `<svg class="lg iso" viewBox="${fmt(cx-side/2)} ${fmt(cy-side/2)} ${fmt(side)} ${fmt(side)}" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="로고 후보 ${id} ${label}">${body}</svg>`;
+}
+const ISOS=[
+  {id:"I1", name:"한 상자 파사드", draw:()=>{ const b=[0,0,0,10,10,10], l=onL(...b);
+     return box(...b,{top:"it1"})+seg(l(1/3,0),l(1/3,1),"ln")+seg(l(2/3,0),l(2/3,1),"ln")+seg(l(0,.5),l(1,.5),"ln"); },
+   desc:"상자 하나. 윗면 노랑, 왼쪽 앞면에 줄눈으로 나눈 칸(홈 파사드의 격자). 사진의 'M.' 상자처럼 단 하나의 물체.",
+   see:"48에서 노란 윗면 + 흰 상자. 24에서도 상자로 읽혀요. 줄눈은 48 아래에서 사라져요.",
+   gain:"가장 단단하고 아이콘에 강해요. / 노랑 한 색이라 세 색 밸런스는 없어요."},
+  {id:"I2", name:"세 상자 동네", draw:()=>
+     box(0,0,0,6,6,9,{top:"it1"})+box(8,-1,0,6,6,6,{top:"it2"})+box(1,8,0,6,6,4.5,{top:"it3"}),
+   desc:"높이가 다른 상자 셋이 엇갈려 놓였어요. 윗면만 노랑·피치·세이지. 사진의 캔들 상자 배치를 동네 블록(파사드)으로.",
+   see:"48에서 세 색 윗면이 계단처럼. 24에서는 세 색 점 + 흰 덩어리.",
+   gain:"노랑을 살린 세 색 밸런스와 사진 구도가 그대로예요. 홈 판 위의 도서관 블록들과도 같은 말을 해요. / 상자 셋이라 24에서는 조금 잘아져요.",
+   rec:"D가 말한 '노랑이 있어야 밸런스가 좋다'와 '사진의 구도'를 함께 지키고, 높이가 다른 세 상자가 '동네의 건물들(파사드)'로 읽혀요. 진한색 없이 윗면 색만 있어 날렵해요."},
+  {id:"I3", name:"눕힌 책 한 권", draw:()=>{ const b=[0,0,0,14,10,2.6], r=onR(...b), t=onT(...b);
+     let s=box(...b,{top:"it1",left:"it1d",right:"ip"});
+     for(const v of [.3,.55,.8]) s+=seg(r(.04,v),r(.96,v),"ln");
+     s+=quad(t,.62,.72,0,1,"it2")+quad(onL(...b),.62,.72,-.9,1,"it2");
+     return s; },
+   desc:"책 한 권을 눕힌 모습. 표지(윗면)와 책등(왼쪽)은 노랑, 오른쪽 옆은 흰 책장 면에 종이 결 세 줄, 피치 가름끈 하나.",
+   see:"48에서 얇은 노란 판 + 흰 종이 결. 두께가 얇아 24에서는 납작한 노란 마름모.",
+   gain:"'책'이 가장 바로 읽혀요. / 납작해서 아이콘 칸을 꽉 채우지 못해요."},
+  {id:"I4", name:"책 세 권 쌓기", draw:()=>{
+     const bs=[[0,0,0,13,9,2.2,"it3"],[0.9,-0.5,2.2,12,9,2.2,"it2"],[0.2,0.5,4.4,12.4,8.4,2.2,"it1"]]; let s="";
+     for(const [X,Y,Z,W,D,H,c] of bs){ s+=box(X,Y,Z,W,D,H,{top:c,left:c+"d",right:"ip"}); const r=onR(X,Y,Z,W,D,H); s+=seg(r(.04,.5),r(.96,.5),"ln"); }
+     return s; },
+   desc:"책 세 권을 조금씩 어긋나게 쌓았어요. 책등은 아래부터 세이지·피치·노랑, 오른쪽은 흰 종이 면.",
+   see:"48에서 세 색 띠가 쌓인 탑. 24에서도 세 색 줄이 남아요.",
+   gain:"책과 세 색 밸런스를 둘 다 가져요. / 색이 옆면(책등)에 있어 사진처럼 '윗면만 색'은 아니에요."},
+  {id:"I5", name:"세운 책 = 탑", draw:()=>{ const b=[0,0,0,4,10,15], l=onL(...b), r=onR(...b);
+     let s=box(...b,{top:"it1",left:"it1d",right:"il"});
+     s+=quad(l,.12,.88,.82,.86,"ib")+quad(l,.12,.88,.74,.78,"ib");
+     for(const u of [1/3,2/3]) s+=seg(r(u,0),r(u,1),"ln");
+     for(const v of [1/3,2/3]) s+=seg(r(0,v),r(1,v),"ln");
+     return s; },
+   desc:"가늘고 높은 상자 하나. 좁은 면은 노란 책등(띠 두 줄), 넓은 면은 흰 파사드 격자. 보는 사람에 따라 책도, 건물도 돼요.",
+   see:"48에서 노란 기둥 + 흰 격자 면. 세로로 길어 아이콘 칸 양옆이 비어요.",
+   gain:"'파사드 or 책' 이중 읽기가 가장 분명하고 날렵해요. / 세로로 길어 둥근 아이콘 칸에서 작아 보여요."},
+  {id:"I6", name:"도어 상자", draw:()=>{ const b=[0,0,0,12,8,9], l=onL(...b);
+     let s=box(...b,{top:"il",right:"ir"});
+     s+=quad(l,0,1/3,0,1,"it1d")+quad(l,1/3,2/3,0,1,"it2d")+quad(l,2/3,1,0,1,"it3d");
+     s+=seg(l(1/3,0),l(1/3,1),"ln")+seg(l(2/3,0),l(2/3,1),"ln");
+     return s; },
+   desc:"앞에서 고른 G 슬라이딩 도어를 상자로 세웠어요. 왼쪽 앞면이 노랑·피치·세이지 도어 세 짝, 윗면과 오른쪽은 흰색.",
+   see:"48에서 세 색 띠가 비스듬히. 사진과 반대로 옆면에 색.",
+   gain:"G에서 이어지는 안이에요. / 사진의 '윗면만 색'과는 반대예요."},
+  {id:"I7", name:"펼쳐진 책 지붕 큐브", draw:()=>{
+     const L=[PJ(0,10,0),PJ(10,10,0),PJ(10,10,8.8),PJ(5,10,7),PJ(0,10,8.8)];
+     const R=[PJ(10,0,0),PJ(10,10,0),PJ(10,10,8.8),PJ(10,0,8.8)];
+     const T1=[PJ(0,0,8.8),PJ(5,0,7),PJ(5,10,7),PJ(0,10,8.8)];
+     const T2=[PJ(5,0,7),PJ(10,0,8.8),PJ(10,10,8.8),PJ(5,10,7)];
+     return poly(L,"ie il")+poly(R,"ie ir")+poly(T1,"ie it1")+poly(T2,"ie it1d")+seg(PJ(5,0,7),PJ(5,10,7),"ln"); },
+   desc:"파사드 큐브의 컬러 윗면 가운데를 V자로 살짝 접어 내렸어요. 입체로 보면 도서관 지붕, 위에서 보면 펼쳐진 책 한 권.",
+   see:"48과 24 모두에서 V자로 접힌 노란 윗면과 흰 큐브 실루엣이 그대로 남아요.",
+   gain:"선을 추가하지 않고 면의 꺾임만으로 '책+도서관'을 가장 미니멀하게 표현해요. / 한 색 포인트 위주예요."},
+  {id:"I8", name:"한 권이 꽂힌 큐브", draw:()=>
+     box(0,0,0,10,9.5,9,{top:"il",left:"il",right:"ir"})+
+     box(5.4,7.2,0,2.4,4.2,9.8,{top:"it1",left:"it1",right:"it1d"}),
+   desc:"흰 큐브(도서관 공간) 앞쪽으로 책 한 권 분량의 블록만 살짝 돌출되고, 그 한 권에만 노랑(`fill1`)을 얹었어요. 이름 '동네한권'의 은유.",
+   see:"48에서 흰 덩어리 위로 튀어나온 노란 책 한 권이 또렷해요. 24에서도 노란 세로 포인트가 읽혀요.",
+   gain:"브랜드명 '동네한권'과 홈 파사드 큐브가 하나의 이야기로 연결돼요. / 24에서는 돌출 틈이 작아 보여요."},
+  {id:"I9", name:"책 페이지 + 책갈피 큐브", draw:()=>{ const b=[0,0,0,10,10,8.6], r=onR(...b);
+     let s=box(...b,{top:"it1",left:"il",right:"ip"});
+     for(const v of [.14,.26,.38,.50,.62,.74,.86]) s+=seg(r(.04,v),r(.96,v),"ln-thin");
+     s+=poly([r(.42,.86),r(.62,.86),r(.62,.32),r(.52,.43),r(.42,.32)],"ie it2");
+     return s; },
+   desc:"홈 파사드 큐브(C2) 형태 그대로에, 오른쪽 면에 7줄의 미세한 페이지 결을 긋고 위쪽 표지 틈에서 내려오는 미니멀 제비꼬리(V-cut) 책갈피(`fill2`)를 넣었어요.",
+   see:"48에서 노란 표지 + 미세한 책장 결 + V-cut 책갈피가 또렷이 읽혀요. 24에서는 노란 윗면 큐브에 피치 포인트.",
+   gain:"'두꺼운 양장본 책'과 '파사드 큐브'가 가장 직관적으로 겹쳐 보여요. / 미세한 줄은 24px에선 면 질감으로만 남아요."},
+  {id:"I10", name:"세 권의 큐브 서가", draw:()=>
+     box(0,0,0,3.6,9.5,11.5,{top:"it3",left:"it3d",right:"ir"})+
+     box(3.6,.7,0,3.6,9.5,9.4,{top:"it2",left:"it2d",right:"ir"})+
+     box(7.2,.2,0,3.6,9.5,10.5,{top:"it1",left:"it1d",right:"ir"}),
+   desc:"높이와 깊이가 조금씩 다른 세 권의 책등 큐브를 바짝 붙여 세웠어요. 윗면만 세이지·피치·노랑, 옆면은 흰·회색 종이.",
+   see:"48에서 세 색 윗면이 계단처럼 읽히고, 24에서도 세 색 균형이 유지돼요.",
+   gain:"노랑·피치·세이지 세 색 밸런스를 모두 챙기면서 '서가/책'과 '동네 건물'을 동시에 연상시켜요. / 단일 큐브보단 쪼개져 있어요."}
+];
+const REC3="I2";
+ISOS.forEach(f=>f.svg=isoSvg(f.id,f.name,f.draw));
+function render3(){
+  const strip=document.getElementById("strip3"), cands=document.getElementById("cands3"), pick=document.querySelector('[data-for="el-iso"]');
+  strip.innerHTML=ISOS.map(f=>`<div data-id3="${f.id}"><div class="row"><div style="width:48px;height:48px">${f.svg}</div><div style="width:24px;height:24px">${f.svg}</div></div><span class="gauge">${f.id} · ${f.name}${f.id===REC3?" · 추천":""}</span></div>`).join("");
+  cands.innerHTML=ISOS.map(f=>`<article class="cand${f.id===REC3?" recommended":""}" data-id="${f.id}">
+    <h3>${f.id} — ${f.name}${f.id===REC3?' <span class="badge">추천</span>':""}</h3>
+    <div class="grounds"><div class="ground g-white">${f.svg}<span>white</span></div><div class="ground g-glass">${f.svg}<span>glass</span></div><div class="ground g-dark">${f.svg}<span>dark</span></div></div>
+    <div class="sizes"><figure><div class="icon i180">${f.svg}</div><figcaption>1024 (축소)</figcaption></figure><figure><div class="icon i48">${f.svg}</div><figcaption>48</figcaption></figure><figure><div class="icon i24">${f.svg}</div><figcaption>24</figcaption></figure></div>
+    <p>${f.desc}</p>
+    <span class="lbl">누르면 이렇게 이어져요</span><p>앱 아이콘 → 로그인 화면 위쪽 같은 로고 64 → Google로 계속하기(무광 판 버튼) → 홈(파사드).</p>
+    <span class="lbl">화면을 열어야 보이는 것</span><p>${f.see}</p>
+    <span class="lbl">얻는 것 / 포기하는 것</span><p>${f.gain}</p>
+    ${f.rec?`<p><b>추천 이유:</b> ${f.rec}</p>`:""}
+  </article>`).join("");
+  pick.innerHTML='<option value="">— 전체 —</option>'+ISOS.map(f=>`<option value="${f.id}">${f.id} · ${f.name}${f.id===REC3?" (추천)":""}</option>`).join("");
+}
+function choose3(id){
+  const f=ISOS.find(x=>x.id===id); if(!f) return;
+  document.getElementById("loginLogo").innerHTML=f.svg;
+  document.getElementById("loginNote").innerHTML=`지금 들어간 로고: <b>${f.id} · ${f.name}</b>. 위 띠나 카드를 눌러 바꿔 보세요. 버튼은 D가 고른 무광 판이에요.`;
+  document.querySelectorAll("#strip3 > div").forEach(d=>d.classList.toggle("sel",d.dataset.id3===f.id));
+  document.querySelectorAll("#strip2 > div").forEach(d=>d.classList.remove("sel"));
+}
+render3();
+document.getElementById("edges").addEventListener("change",e=>document.body.classList.toggle("noedge",e.target.value==="off"));
+document.querySelector('[data-for="el-iso"]').addEventListener("change",e=>{
+  document.querySelectorAll("#cands3 .cand").forEach(c=>c.classList.toggle("preview",c.dataset.id===e.target.value));
+  if(e.target.value){ choose3(e.target.value); document.querySelector(`#cands3 .cand[data-id="${e.target.value}"]`).scrollIntoView({behavior:"smooth",block:"center"}); }
+});
+document.addEventListener("click",e=>{ const t=e.target.closest("#strip3 > div, #cands3 .cand"); if(t) choose3(t.dataset.id3||t.dataset.id); });
+</script>
+</body>
+</html>

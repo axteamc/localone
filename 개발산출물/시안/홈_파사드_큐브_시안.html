@@ -1,0 +1,963 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>홈 파사드 큐브 시안 — 3면 입체 블록</title>
+<style>
+  :root {
+    --white:#FFFFFF; --text:#1D1D1F; --ink-muted:#6B6B66; --ink-soft:#4D4D4B;
+    --shadow-cast:rgba(28,30,36,.20); --seam-hi:rgba(255,255,255,.72);
+    --r-block:3px; --r-info:9px; --r-pill:18px;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif; line-height:1.5; }
+  header.page, main { max-width:1320px; margin:0 auto; padding:0 16px 48px; }
+  header.page { padding-top:22px; padding-bottom:0; }
+  h1 { font-size:22px; font-weight:400; margin:0 0 4px; color:var(--ink-strong); letter-spacing:-.01em; }
+  h2 { font-size:18px; font-weight:500; margin:0 0 6px; }
+  h3 { font-size:15px; font-weight:600; margin:0 0 8px; }
+  .how, .flow { background:var(--panel-lit); border:1px solid var(--seam); border-radius:var(--r-info); padding:12px 16px; margin:10px 0 0; font-size:13.5px; }
+  .bar { display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin-top:12px; font-size:13.5px; }
+  select { font:inherit; padding:5px 10px; border-radius:8px; border:1px solid var(--surface3); background:var(--paper); color:var(--text); }
+  section { margin-top:34px; }
+  .badge { display:inline-block; font-size:11.5px; font-weight:600; padding:1px 9px; border-radius:var(--r-pill); background:var(--fill1); color:var(--on-fill1); margin-left:6px; vertical-align:middle; }
+
+  /* 후보 비교 그리드 */
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(360px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-info); padding:16px; border:2px solid var(--seam); display:flex; flex-direction:column; gap:10px; }
+  .cand.recommended { border-color:var(--fill1); }
+  .cand p { font-size:13px; margin:0; color:var(--ink-soft); }
+  .stage { background:var(--panel-frosted); border:1px solid var(--seam); border-radius:var(--r-info); min-height:220px; display:flex; align-items:center; justify-content:center; padding:28px 20px; position:relative; overflow:hidden; background-image:linear-gradient(var(--seam) 1px, transparent 1px), linear-gradient(90deg, var(--seam) 1px, transparent 1px); background-size:48px 48px; }
+
+  /* =========================================================
+     C1: 사선 캐비닛 (정면 수직 + 윗면·오른쪽 옆면 18도 투영)
+     ========================================================= */
+  .cube-c1 {
+    --w: 156px; --h: 94px; --top-h: 28px; --side-w: 64px; --sk: -32deg; --sky: -22deg;
+    --c-top: var(--fill1); --c-on: var(--on-fill1);
+    position:relative; width:calc(var(--w) + var(--side-w)); height:calc(var(--h) + var(--top-h));
+    cursor:pointer; user-select:none; transition:transform .2s ease;
+  }
+  .cube-c1:hover { transform:translateY(-2px); }
+  /* 바닥 투영 그림자 (사진 1의 대각선 부드러운 그림자) */
+  .cube-c1 .cast {
+    position:absolute; left:-22px; right:16px; bottom:-14px; height:26px;
+    background:linear-gradient(105deg, rgba(28,30,36,.22) 0%, rgba(28,30,36,.10) 55%, transparent 100%);
+    transform:skewX(42deg); filter:blur(5px); border-radius:6px; pointer-events:none;
+  }
+  /* 윗면 (컬러 포인트 + 도서관 핵심 이름) */
+  .cube-c1 .top {
+    position:absolute; left:0; top:0; width:var(--w); height:var(--top-h);
+    background:var(--c-top);
+    transform-origin:bottom left; transform:skewX(-56deg);
+    border:1px solid rgba(0,0,0,.06); border-bottom:0;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.35);
+  }
+  .cube-c1 .top .t-name {
+    transform:skewX(56deg); /* 글자 기울기 보정으로 또렷하게, 살짝 원근감만 */
+    font-size:13px; font-weight:700; letter-spacing:.18em; padding-left:.18em;
+    color:color-mix(in srgb, var(--c-top) 45%, #1D1D1F);
+    text-shadow:0 1px 0 rgba(255,255,255,.42), 0 -0.5px 0 rgba(0,0,0,.28);
+  }
+  body.ink-print .cube-c1 .top .t-name {
+    color:var(--c-on); text-shadow:none;
+  }
+  /* 정면 (밝은 paper + 넉넉한 여백 + 하단 타이틀) */
+  .cube-c1 .front {
+    position:absolute; left:0; top:var(--top-h); width:var(--w); height:var(--h);
+    background:var(--paper); border:1px solid var(--seam);
+    box-shadow:inset 0 1px 0 var(--seam-hi);
+    padding:9px 11px 10px; display:flex; flex-direction:column; justify-content:space-between;
+  }
+  .cube-c1 .front .meta-top {
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:8.5px; letter-spacing:.1em; color:var(--ink-muted); font-weight:600;
+  }
+  .cube-c1 .front .dot { display:inline-block; width:5px; height:5px; border-radius:50%; background:var(--c-top); margin-right:4px; vertical-align:middle; }
+  .cube-c1 .front .main-title {
+    font-size:17px; font-weight:700; letter-spacing:-.02em; color:var(--ink-strong); line-height:1.15;
+  }
+  .cube-c1 .front .sub-cap {
+    font-size:9px; color:var(--ink-muted); margin-top:2px; letter-spacing:.02em;
+  }
+  /* 옆면 (한 톤 어두운 paper + 전화번호·주소·휴관일) */
+  .cube-c1 .side {
+    position:absolute; left:var(--w); top:var(--top-h); width:var(--side-w); height:var(--h);
+    background:color-mix(in srgb, var(--paper) 78%, var(--surface3));
+    border:1px solid var(--seam); border-left:0;
+    transform-origin:top left; transform:skewY(-33.7deg); /* top-h(28) / side-w(42~64) 비율 맞춤 */
+    padding:12px 7px 7px; display:flex; flex-direction:column; justify-content:flex-end; gap:3px;
+    overflow:hidden;
+  }
+  /* MIRA 스타일 접힌 컬러 탭 */
+  .cube-c1 .tab {
+    position:absolute; top:0; right:8px; width:26px; height:12px;
+    background:var(--c-top); color:var(--c-on);
+    font-size:7.5px; font-weight:700; display:flex; align-items:center; justify-content:center;
+    border-radius:0 0 2px 2px; box-shadow:0 1px 1px rgba(0,0,0,.15);
+  }
+  body.ink-deboss .cube-c1 .tab { color:color-mix(in srgb, var(--c-top) 35%, #1D1D1F); }
+  .cube-c1 .side .info-line {
+    font-size:7.5px; line-height:1.28; color:var(--ink-soft); word-break:keep-all;
+    transition:opacity .2s;
+  }
+  .cube-c1 .side .info-lbl { font-size:6.5px; letter-spacing:.08em; color:var(--ink-muted); text-transform:uppercase; }
+  /* C1 정확한 기하학 맞춤: skewX(-56deg)의 가로 이동 = tan(56)*28 = 41.5px -> side-w를 42px로 맞추면 꼭짓점이 1px 오차 없이 맞물림! */
+  .cube-c1.exact { --top-h:28px; --side-w:44px; }
+  .cube-c1.exact .top { transform:skewX(-57.5deg); }
+  .cube-c1.exact .top .t-name { transform:skewX(57.5deg); }
+  .cube-c1.exact .side { transform:skewY(-32.5deg); }
+
+  /* C1-wide: 옆면 정보를 더 넉넉히 넣기 위해 side-w 62px, top-h 32px */
+  .cube-c1.wide-side { --w:146px; --h:92px; --top-h:32px; --side-w:62px; }
+  .cube-c1.wide-side .top { transform:skewX(-62.7deg); }
+  .cube-c1.wide-side .top .t-name { transform:skewX(62.7deg); font-size:14px; }
+  .cube-c1.wide-side .side { transform:skewY(-27.3deg); padding:15px 7px 7px; }
+
+  /* =========================================================
+     C2: 등각 큐브 (Luma Candles 스타일 30도 등각 직육면체 - 정밀 정합)
+     ========================================================= */
+  .iso-cube {
+    position:relative; width:220px; height:206px; flex:none; cursor:pointer; user-select:none;
+    --c-top: var(--fill1); --c-on: var(--on-fill1);
+    transition:transform .2s ease;
+  }
+  .iso-cube:hover { transform:translateY(-3px); }
+  .iso-cube svg.geo { position:absolute; inset:0; width:220px; height:206px; overflow:visible; pointer-events:none; }
+  /* 윗면 텍스트: 중심 (110, 67.4) */
+  .iso-cube .face-top-txt {
+    position:absolute; left:110px; top:67.4px;
+    transform:translate(-50%,-50%) rotate(-30deg) skewX(30deg) scaleY(.866);
+    font-size:16px; font-weight:700; letter-spacing:.22em; padding-left:.22em;
+    color:color-mix(in srgb, var(--c-top) 40%, #1D1D1F);
+    text-shadow:0 1px 0 rgba(255,255,255,.45), 0 -0.5px 0 rgba(0,0,0,.25);
+    pointer-events:none; white-space:nowrap;
+  }
+  body.ink-print .iso-cube .face-top-txt { color:var(--c-on); text-shadow:none; }
+
+  /* 좌측 측면: (14, 67.4) 기준, 폭 96px, 높이 78px, skewY(30deg) -> (110, 122.8)과 정확히 맞물림 */
+  .iso-cube .face-left {
+    position:absolute; left:14px; top:67.4px; width:96px; height:78px;
+    transform-origin:0 0; transform:skewY(30deg);
+    background:color-mix(in srgb, var(--paper) 80%, var(--surface3));
+    border:1px solid var(--seam); border-right:0;
+    padding:7px 8px; display:flex; flex-direction:column; justify-content:space-between;
+    overflow:hidden; box-sizing:border-box;
+  }
+  .iso-cube .face-left .l-top {
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:8px; font-weight:700; letter-spacing:.04em; color:var(--ink-strong);
+  }
+  .iso-cube .face-left .l-badge {
+    display:inline-flex; align-items:center; gap:3px;
+  }
+  .iso-cube .face-left .l-dot {
+    width:5px; height:5px; border-radius:50%; background:var(--c-top); display:inline-block;
+  }
+  .iso-cube .face-left .l-dist { color:var(--ink-muted); font-weight:600; }
+  .iso-cube .face-left .l-addr-wrap { display:flex; flex-direction:column; gap:2px; }
+  .iso-cube .face-left .l-lbl { font-size:6.5px; letter-spacing:.1em; color:var(--ink-muted); font-weight:600; }
+  .iso-cube .face-left .l-addr { font-size:8.5px; line-height:1.3; color:var(--ink-soft); word-break:keep-all; font-weight:500; }
+
+  /* 우측 측면: (110, 122.8) 기준, 폭 96px, 높이 78px, skewY(-30deg) -> (206, 67.4)와 정확히 맞물림 */
+  .iso-cube .face-right {
+    position:absolute; left:110px; top:122.8px; width:96px; height:78px;
+    transform-origin:0 0; transform:skewY(-30deg);
+    background:var(--paper);
+    border:1px solid var(--seam);
+    box-shadow:inset 0 1px 0 var(--seam-hi);
+    padding:7px 8px; display:flex; flex-direction:column; justify-content:space-between;
+    overflow:hidden; box-sizing:border-box;
+  }
+  .iso-cube .face-right .r-hours { font-size:8px; line-height:1.32; color:var(--ink-strong); font-weight:600; }
+  .iso-cube .face-right .r-closed { font-size:7.5px; color:var(--ink-muted); margin-top:2px; }
+  .iso-cube .face-right .r-tel-wrap { border-top:1px solid var(--seam); padding-top:4px; }
+  .iso-cube .face-right .r-lbl { font-size:6.5px; letter-spacing:.1em; color:var(--ink-muted); }
+  .iso-cube .face-right .r-tel { font-size:9px; font-weight:700; color:var(--ink-strong); letter-spacing:.02em; }
+
+  /* =========================================================
+     C3: 슬림 뚜껑 + 딥 사이드 (MIRA 미니멀형)
+     ========================================================= */
+  .cube-c3 {
+    --w:164px; --h:96px; --top-h:22px; --side-w:54px;
+    --c-top:var(--fill3); --c-on:var(--on-fill3);
+    position:relative; width:calc(var(--w) + var(--side-w)); height:calc(var(--h) + var(--top-h));
+  }
+  .cube-c3 .cast {
+    position:absolute; left:-14px; right:20px; bottom:-12px; height:22px;
+    background:linear-gradient(100deg, rgba(28,30,36,.20), transparent);
+    transform:skewX(48deg); filter:blur(4px);
+  }
+  .cube-c3 .top {
+    position:absolute; left:0; top:0; width:var(--w); height:var(--top-h);
+    background:var(--c-top); transform-origin:bottom left; transform:skewX(-67.8deg);
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.32);
+  }
+  .cube-c3 .top .t-name {
+    transform:skewX(67.8deg); font-size:12px; font-weight:700; letter-spacing:.22em; padding-left:.22em;
+    color:color-mix(in srgb, var(--c-top) 42%, #1D1D1F);
+    text-shadow:0 1px 0 rgba(255,255,255,.4);
+  }
+  body.ink-print .cube-c3 .top .t-name { color:var(--c-on); text-shadow:none; }
+  .cube-c3 .front {
+    position:absolute; left:0; top:var(--top-h); width:var(--w); height:var(--h);
+    background:var(--paper); border:1px solid var(--seam);
+    padding:10px 12px 9px; display:flex; flex-direction:column; justify-content:space-between;
+  }
+  .cube-c3 .front .micro { display:flex; justify-content:space-between; font-size:7.5px; letter-spacing:.14em; color:var(--ink-muted); }
+  .cube-c3 .front .big { font-size:21px; font-weight:600; letter-spacing:-.03em; color:var(--ink-strong); line-height:1; }
+  .cube-c3 .side {
+    position:absolute; left:var(--w); top:var(--top-h); width:var(--side-w); height:var(--h);
+    background:color-mix(in srgb, var(--paper) 74%, var(--surface3));
+    border:1px solid var(--seam); border-left:0;
+    transform-origin:top left; transform:skewY(-22.2deg);
+    padding:8px 7px; display:flex; flex-direction:column; justify-content:flex-end; gap:2px;
+  }
+  .cube-c3 .side .tab {
+    position:absolute; top:0; right:6px; width:24px; height:10px; background:var(--c-top);
+    font-size:7px; font-weight:700; display:flex; align-items:center; justify-content:center;
+    color:color-mix(in srgb, var(--c-top) 35%, #1D1D1F);
+  }
+  .cube-c3 .side .s-txt { font-size:7px; line-height:1.28; color:var(--ink-soft); }
+
+  /* =========================================================
+     실제 홈 파사드 미리보기 (휴대폰 목업)
+     ========================================================= */
+  .preview-wrap { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; margin-top:12px; }
+  .phone { width:340px; height:680px; border-radius:34px; border:6px solid var(--ink-strong); position:relative; overflow:hidden; background:var(--bg); flex:none; box-shadow:0 16px 36px rgba(28,30,36,.18); }
+  .scr { position:absolute; inset:0; display:flex; flex-direction:column; }
+  .statusbar { height:18px; flex:none; background:var(--panel-frosted); }
+  .hd { flex:none; height:40px; display:flex; align-items:center; justify-content:space-between; padding:0 16px; background:var(--panel-frosted); border-bottom:1px solid var(--seam); font-size:15px; font-weight:500; }
+  .sb { flex:none; padding:8px 12px; background:var(--panel-frosted); border-bottom:1px solid var(--seam); }
+  .sfield { height:34px; border-radius:var(--r-info); background:var(--paper); border:1px solid var(--seam); display:flex; align-items:center; padding:0 6px 0 12px; color:var(--ink-muted); font-size:12px; }
+  .sfield span { flex:1; }
+  .findbtn { background:var(--fill1); color:var(--on-fill1); border:1px solid rgba(0,0,0,.08); border-radius:6px; padding:3px 9px; font-size:11px; font-weight:700; }
+
+  .board { position:relative; flex:1; background:var(--panel-frosted); overflow:hidden; }
+  .grid { position:absolute; left:10px; right:10px; top:8px; bottom:8px; display:grid; grid-template-columns:repeat(4,1fr); grid-template-rows:repeat(4,1fr); border-top:1px solid var(--seam); border-left:1px solid var(--seam); }
+  .bay { border-right:1px solid var(--seam); border-bottom:1px solid var(--seam); position:relative; }
+  .bay::before, .bay::after { content:""; position:absolute; top:5px; width:3px; height:3px; border-radius:2px; background:var(--rivet); }
+  .bay::before { left:5px; } .bay::after { right:5px; }
+  .axis { position:absolute; top:8px; bottom:8px; left:50%; width:1px; background:var(--seam); }
+
+  /* 폰 안의 큐브 스케일 */
+  .phone .cube-c1.wide-side {
+    --w: 118px; --h: 72px; --top-h: 24px; --side-w: 48px;
+    position:absolute; z-index:2;
+  }
+  .phone .cube-c1.wide-side .top { transform:skewX(-63.4deg); }
+  .phone .cube-c1.wide-side .top .t-name { transform:skewX(63.4deg); font-size:11px; }
+  .phone .cube-c1.wide-side .side { transform:skewY(-26.6deg); padding:12px 5px 5px; }
+  .phone .cube-c1.wide-side .front { padding:7px 9px 7px; }
+  .phone .cube-c1.wide-side .front .main-title { font-size:14px; }
+  .phone .cube-c1.wide-side .front .meta-top { font-size:7.5px; }
+  .phone .cube-c1.wide-side .front .sub-cap { font-size:8px; }
+  .phone .cube-c1.wide-side .side .info-line { font-size:6.5px; line-height:1.22; }
+  .phone .cube-c1.wide-side .side .info-lbl { font-size:5.5px; }
+  .phone .cube-c1.wide-side .tab { width:22px; height:10px; font-size:6.5px; right:5px; }
+
+  /* 선택 / 비선택 상태 (C2 등각 큐브 폰 배치 — 주인공 크게 + 주변 가장자리 걸침) */
+  .phone .iso-cube {
+    position:absolute;
+    transform-origin:top left;
+    transition:transform .35s cubic-bezier(.22,1,.36,1), left .35s cubic-bezier(.22,1,.36,1), top .35s cubic-bezier(.22,1,.36,1), opacity .25s ease;
+    z-index:2;
+  }
+  .phone .iso-cube.is-hero {
+    transform:scale(.88);
+    z-index:4;
+  }
+  .phone .iso-cube.is-hero:hover { transform:scale(.89) translateY(-2px); }
+  .phone .iso-cube.is-hero .face-right { border-color:var(--ink-strong); }
+  .phone .iso-cube.is-hero .face-left { border-color:var(--ink-strong); border-right:0; }
+
+  .phone .iso-cube.is-edge {
+    transform:scale(.76);
+    z-index:2;
+    opacity:.92;
+  }
+  .phone .iso-cube.is-edge:hover { opacity:1; transform:scale(.78); }
+  .phone .iso-cube.is-edge .face-left .l-addr-wrap,
+  .phone .iso-cube.is-edge .face-right .r-hours,
+  .phone .iso-cube.is-edge .face-right .r-closed,
+  .phone .iso-cube.is-edge .face-right .r-tel-wrap { opacity:0.55; transition:opacity .2s; }
+  body.show-all-side .phone .iso-cube.is-edge .face-left .l-addr-wrap,
+  body.show-all-side .phone .iso-cube.is-edge .face-right .r-hours,
+  body.show-all-side .phone .iso-cube.is-edge .face-right .r-closed,
+  body.show-all-side .phone .iso-cube.is-edge .face-right .r-tel-wrap { opacity:0.95; }
+
+  .hero-switch { display:inline-flex; gap:6px; margin-bottom:10px; }
+  .hero-btn { font:inherit; font-size:12px; padding:5px 11px; border-radius:999px; border:1px solid var(--seam); background:var(--paper); color:var(--ink-soft); cursor:pointer; }
+  .hero-btn.on { background:var(--ink-strong); color:#FFFFFF; border-color:var(--ink-strong); font-weight:600; }
+
+  /* 내 위치 기점 */
+  .plinth {
+    position:absolute; left:50%; top:146px; width:56px; height:42px; margin-left:-28px;
+    background:var(--ink-strong); color:#FFFFFF; border-radius:var(--r-block);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    box-shadow:4px 6px 0 var(--relief-dark); z-index:3;
+  }
+  .plinth b { font-size:15px; line-height:14px; font-weight:300; }
+  .plinth span { font-size:7.5px; opacity:.85; }
+
+  /* 하단 시트 */
+  .sheet {
+    flex:none; height:168px; background:var(--panel-lit); border-top:1px solid var(--seam);
+    box-shadow:0 -1px 0 var(--seam-hi), 0 -4px 12px var(--shadow-cast);
+    padding:8px 14px; position:relative; z-index:5;
+  }
+  .grab { width:32px; height:3px; border-radius:2px; background:var(--surface3); margin:0 auto 8px; }
+  .shead { display:flex; justify-content:space-between; align-items:baseline; }
+  .stitle { font-size:13.5px; font-weight:700; color:var(--ink-strong); }
+  .smeta { font-size:10px; color:var(--ink-muted); }
+  .covers { display:flex; gap:8px; margin-top:10px; }
+  .cv { width:58px; }
+  .cv i { display:block; width:58px; height:80px; border-radius:4px 8px 8px 4px; background:var(--surface2); border:1px solid var(--seam); }
+  .cv span { display:block; font-size:9px; margin-top:4px; color:var(--ink-soft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+  .tabs { flex:none; height:44px; display:flex; background:var(--panel-frosted); border-top:1px solid var(--seam); }
+  .tabs a { flex:1; display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-muted); text-decoration:none; }
+  .tabs a.on { color:var(--ink-strong); font-weight:700; box-shadow:inset 0 2px 0 var(--ink-strong); }
+
+  .explain { flex:1; min-width:280px; max-width:520px; }
+  .explain ul { padding-left:18px; font-size:13.5px; color:var(--ink-soft); }
+  .explain li { margin-bottom:6px; }
+
+  /* ===== 3. 미리보기 v2 ===== */
+  .v2badge { background:var(--panel-lit); color:var(--ink-soft); border:1px solid var(--seam); font-weight:500; }
+  .v2phone { --W:390px; --H:844px; width:calc(var(--W) + 12px); height:calc(var(--H) + 12px); border:6px solid var(--ink-strong); border-radius:34px; overflow:hidden; background:var(--bg); display:flex; flex-direction:column; flex:none; box-shadow:0 16px 36px rgba(28,30,36,.18); position:relative; }
+  .v2phone.land { border-radius:18px; }
+  .v2status { flex:none; height:22px; background:var(--panel-frosted); }
+  .v2phone.land .v2status { height:0; }
+  .v2hd { flex:none; height:44px; display:flex; align-items:center; padding:0 18px; background:var(--panel-frosted); border-bottom:1px solid var(--seam); position:relative; }
+  .v2label { font-size:11px; font-weight:500; letter-spacing:3.5px; color:var(--ink-muted); }
+  .v2rv { position:absolute; left:7px; top:50%; width:4px; height:4px; margin-top:-2px; border-radius:2px; background:var(--rivet); } .v2rv.r { left:auto; right:7px; }
+  .v2sb { flex:none; padding:8px 12px; background:var(--panel-frosted); border-bottom:1px solid var(--seam); }
+  .v2field { height:36px; border-radius:var(--r-info); background:var(--paper); border:1px solid var(--seam); display:flex; align-items:center; padding:0 5px 0 12px; color:var(--ink-muted); font-size:12px; }
+  .v2field span { flex:1; }
+  .v2find { font:inherit; font-size:11px; font-weight:500; color:var(--ink-strong); background:var(--panel-lit); border:1px solid var(--seam); box-shadow:0 2px 0 color-mix(in srgb, var(--ink-strong) 15%, var(--surface2)); border-radius:999px; padding:3px 10px; }
+  .v2board { position:relative; flex:1; min-height:0; overflow:hidden; background:var(--panel-frosted); }
+  .v2grid { position:absolute; inset:0; background-image:linear-gradient(var(--seam) 1px, transparent 1px), linear-gradient(90deg, var(--seam) 1px, transparent 1px); background-size:25% 25%; background-position:-1px -1px; opacity:.8; }
+  .v2axis { position:absolute; top:0; bottom:0; left:50%; width:1px; background:var(--seam); }
+  .v2plinth { position:absolute; width:58px; height:44px; margin:-22px 0 0 -29px; border-radius:var(--r-block); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:6; background:var(--ink-strong); color:#FFFFFF; box-shadow:4px 6px 0 var(--relief-dark); }
+  .v2plinth b { font-size:16px; line-height:15px; font-weight:400; }
+  .v2plinth span { font-size:7px; letter-spacing:.12em; font-weight:500; opacity:.85; }
+  .v2plinth.light { background:var(--paper); color:var(--ink-strong); border:1px solid var(--seam); box-shadow:4px 6px 0 color-mix(in srgb, var(--paper) 70%, var(--surface3)); }
+
+  .v2lib { position:absolute; left:0; top:0; transition:left .4s cubic-bezier(.22,1,.36,1), top .4s cubic-bezier(.22,1,.36,1); z-index:2; }
+  .v2lib .iso-cube { position:absolute; left:0; top:0; transform-origin:0 0; transition:transform .4s cubic-bezier(.22,1,.36,1), opacity .25s; }
+  .v2lib .iso-cube:hover { transform:scale(var(--s)); }
+  .v2lib.peek .iso-cube { opacity:0; pointer-events:none; transform:scale(.3); }
+  .v2lib.hero { z-index:4; }
+  .v2lib.hero .iso-cube { transform:scale(var(--s)); }
+  .v2lib .lid { position:absolute; width:120px; height:69px; margin:-34.5px 0 0 -60px; cursor:pointer; transition:opacity .25s; }
+  .v2lib.hero .lid { opacity:0; pointer-events:none; }
+  .v2lib .lid svg { width:120px; height:69px; display:block; overflow:visible; }
+  .v2lib .lid .lname { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%) rotate(-30deg) skewX(30deg) scaleY(.866); font-size:13px; font-weight:500; letter-spacing:.2em; padding-left:.2em; white-space:nowrap; color:color-mix(in srgb, var(--c-top) 40%, #1D1D1F); text-shadow:0 1px 0 rgba(255,255,255,.45); }
+  .v2lib .lid:hover svg polygon { filter:brightness(1.04); }
+  /* v2 안에서는 글자 2단계(700 없음) */
+  #v2 .iso-cube .face-top-txt { font-weight:500; }
+  #v2 .iso-cube .face-left .l-top, #v2 .iso-cube .face-right .r-hours, #v2 .iso-cube .face-right .r-tel { font-weight:500; }
+  #v2 .iso-cube .face-left .l-dist, #v2 .iso-cube .face-left .l-lbl { font-weight:500; }
+
+  .v2sheet { flex:none; height:156px; background:var(--panel-lit); border-top:1px solid var(--seam); box-shadow:0 -1px 0 var(--seam-hi), 0 -4px 12px var(--shadow-cast); padding:8px 16px; position:relative; z-index:7; }
+  .v2title { font-size:20px; font-weight:400; color:var(--ink-soft); letter-spacing:-.02em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .v2meta { font-size:9px; letter-spacing:.14em; font-weight:500; color:var(--ink-muted); text-transform:uppercase; margin-top:2px; }
+  .v2covers { display:flex; gap:8px; margin-top:10px; }
+  .v2covers i { width:56px; height:76px; border-radius:4px 8px 8px 4px; background:var(--surface2); border:1px solid var(--seam); flex:none; }
+  .v2phone.land .v2sheet { height:58px; display:flex; align-items:center; gap:14px; padding:6px 16px; }
+  .v2phone.land .v2sheet .grab, .v2phone.land .v2covers { display:none; }
+  .v2phone.land .v2title { font-size:16px; }
+  .v2tabs { flex:none; height:48px; display:flex; background:var(--panel-frosted); border-top:1px solid var(--seam); position:relative; z-index:7; }
+  .v2tabs a { flex:1; display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-muted); position:relative; }
+  .v2tabs a + a { border-left:1px solid var(--seam); }
+  .v2tabs a.on { color:var(--ink-strong); font-weight:500; }
+  .v2tabs a.on::before { content:""; position:absolute; top:-1px; left:30%; right:30%; height:2px; background:var(--ink-strong); }
+  .v2phone.land .v2tabs { height:40px; }
+  .v2note { font-size:12.5px; color:var(--ink-muted); }
+
+  /* v2 2차: 느린 움직임, 끌기, 꾹 누르기 메뉴, 밀려나는 기점 */
+  .v2board { touch-action:none; cursor:grab; user-select:none; }
+  .v2board.dragging { cursor:grabbing; }
+  .v2lib { transition:left .8s cubic-bezier(.22,1,.36,1), top .8s cubic-bezier(.22,1,.36,1); translate:var(--px,0px) var(--py,0px); }
+  .v2lib .iso-cube { transition:transform .8s cubic-bezier(.22,1,.36,1), opacity .5s; }
+  .v2lib .lid { transition:opacity .5s; }
+  .v2plinth { transition:left .8s cubic-bezier(.22,1,.36,1), top .8s cubic-bezier(.22,1,.36,1); translate:var(--px,0px) var(--py,0px); }
+  .v2axis { transition:left .8s cubic-bezier(.22,1,.36,1), top .8s cubic-bezier(.22,1,.36,1); translate:var(--px,0px) var(--py,0px); }
+  .v2axis.h { left:0; right:0; top:50%; bottom:auto; width:auto; height:1px; }
+  .v2grid { transition:background-position .8s cubic-bezier(.22,1,.36,1); background-size:96px 96px; translate:var(--px,0px) var(--py,0px); inset:-200px; }
+  .v2board.dragging .v2lib, .v2board.dragging .v2plinth, .v2board.dragging .v2axis, .v2board.dragging .v2grid { transition:none; }
+  .v2menu { position:absolute; z-index:9; width:204px; background:var(--panel-lit); border:1px solid var(--seam); border-radius:var(--r-info); box-shadow:0 8px 24px var(--shadow-cast); padding:10px; display:none; cursor:default; }
+  .v2menu.on { display:block; }
+  .v2menu-t { font-size:12px; color:var(--ink-soft); margin-bottom:6px; }
+  .v2menu button { display:flex; justify-content:space-between; align-items:center; width:100%; font:inherit; font-size:13px; text-align:left; padding:8px 10px; margin-top:4px; border-radius:999px; border:1px solid var(--seam); background:var(--panel-frosted); color:var(--text); cursor:pointer; }
+  .v2menu button.on { background:var(--panel-lit); box-shadow:0 2px 0 color-mix(in srgb, var(--ink-strong) 15%, var(--surface2)); font-weight:500; }
+  .v2menu small { font-size:9px; letter-spacing:.12em; color:var(--ink-muted); }
+  .v2menu-n { font-size:10.5px; color:var(--ink-muted); margin-top:8px; }
+  .v2set { font-size:13px; color:var(--ink-soft); }
+
+  /* 3차: 뚜껑 대신 가장자리 걸침(작은 큐브가 가장자리 밖으로 잘림) */
+  .v2lib .lid { display:none; }
+  .v2lib.peek { cursor:pointer; }
+  .v2lib.peek .iso-cube { opacity:.94; pointer-events:auto; transform:scale(var(--p)); }
+  .v2lib.peek .iso-cube:hover { transform:scale(calc(var(--p) * 1.04)); }
+  .v2lib.peek .face-left .l-addr-wrap, .v2lib.peek .face-right .r-hours, .v2lib.peek .face-right .r-closed, .v2lib.peek .face-right .r-tel-wrap { opacity:.5; }
+
+  /* 4차: 기점 누르면 전체 보기(같은 크기 큐브, 실제 방향) */
+  .v2plinth { cursor:pointer; }
+  .v2lib.ring { cursor:pointer; z-index:3; }
+  .v2lib.ring .iso-cube { opacity:1; pointer-events:auto; transform:scale(var(--p)); }
+  .v2lib.ring .iso-cube:hover { transform:scale(calc(var(--p) * 1.05)); }
+  .v2lib.ring .face-left .l-addr-wrap, .v2lib.ring .face-right .r-hours, .v2lib.ring .face-right .r-closed, .v2lib.ring .face-right .r-tel-wrap { opacity:.5; }
+
+  /* 작은 큐브에서도 이름은 읽히게(화면에서 약 12~13px) */
+  .v2lib.ring .face-top-txt, .v2lib.peek .face-top-txt { font-size:calc(12.5px / var(--p)); letter-spacing:.12em; padding-left:.12em; }
+
+  /* 5차: 따로 그린 축 선은 없앤다 — 격자를 기점에 맞춰 두면 기점을 지나는 격자선이 축 역할(두 줄로 보이던 문제) */
+  #v2 .v2axis { display:none; }
+</style>
+</head>
+<body class="ink-deboss">
+<header class="page">
+  <h1>홈 파사드 큐브 시안 — 3면 입체 블록</h1>
+  <div class="how">
+    <b>목표.</b> 첨부 사진(Luma Candles · MIRA 패키지 박스)처럼 <b>윗면 컬러 포인트(추출된 도서관 이름만) + 정면 여백과 메인 타이틀 + 옆면 전화번호·주소</b>의 3면 입체 블록으로 파사드를 재구성합니다.
+  </div>
+  <div class="bar">
+    <label>룩 <select id="look">
+      <option value="warm" selected>warm (기본)</option>
+      <option value="modern">모던</option>
+      <option value="toffee">toffee</option>
+      <option value="oxford">Oxford</option>
+    </select></label>
+    <label>윗면 이름 스타일 <select id="topink">
+      <option value="deboss" selected>음각 (MIRA 사진식)</option>
+      <option value="print">대비 인쇄 (선명함 우선)</option>
+    </select></label>
+    <label>폰 미리보기 비선택 블록 옆면 <select id="sidevis">
+      <option value="focus" selected>선택된 블록만 또렷하게</option>
+      <option value="all">모두 표시</option>
+    </select></label>
+  </div>
+</header>
+
+<main>
+  <section>
+    <h2>1. 큐브 형태 비교 (3안)</h2>
+    <div class="cands">
+      <!-- C1 -->
+      <article class="cand">
+        <h3>후보 C1 — 사선 캐비닛 (18°~27° 투영)</h3>
+        <div class="stage">
+          <div class="cube-c1 wide-side" style="--c-top:var(--fill1); --c-on:var(--on-fill1);">
+            <div class="cast"></div>
+            <div class="top"><span class="t-name">무등</span></div>
+            <div class="front">
+              <div class="meta-top"><span><i class="dot"></i>OPEN</span><span>09:00–18:00</span></div>
+              <div>
+                <div class="main-title">무등도서관</div>
+                <div class="sub-cap">광주광역시시립 · 보유 128권</div>
+              </div>
+            </div>
+            <div class="side">
+              <div class="tab">0.4km</div>
+              <div><div class="info-lbl">TEL</div><div class="info-line">062-613-7710</div></div>
+              <div><div class="info-lbl">ADDR</div><div class="info-line">광주 북구 면앙로 130</div></div>
+              <div><div class="info-lbl">CLOSED</div><div class="info-line">매주 월 · 공휴일</div></div>
+            </div>
+          </div>
+        </div>
+        <p><b>특징:</b> 정면이 수직이라 글자가 기울어지지 않아 모바일 가독성이 가장 좋고, 윗면(`fill1~3`)과 오른쪽 옆면(어두운 `paper`)이 기하학적으로 정확히 맞물립니다. MIRA 사진의 접힌 컬러 탭(`0.4km`)과 바닥 대각선 그림자를 적용했습니다.</p>
+      </article>
+
+      <!-- C2 -->
+      <article class="cand recommended">
+        <h3>후보 C2 — 등각 큐브 (Luma 30° 구도) <span class="badge">선택</span></h3>
+        <div class="stage">
+          <div class="iso-cube" style="--c-top:var(--fill1); --c-on:var(--on-fill1);">
+            <svg class="geo" viewBox="0 0 220 206">
+              <defs>
+                <filter id="blur2"><feGaussianBlur stdDeviation="5"/></filter>
+              </defs>
+              <!-- 바닥 그림자 -->
+              <polygon points="110,200 18,148 76,132 164,180" fill="rgba(28,30,36,.20)" filter="url(#blur2)"/>
+              <!-- 윗면 (컬러 포인트) -->
+              <polygon points="110,12 206,67.4 110,122.8 14,67.4" fill="var(--c-top)" stroke="rgba(0,0,0,.08)" stroke-width="1"/>
+              <!-- 하이라이트 모서리 -->
+              <polyline points="14,67.4 110,122.8 206,67.4" fill="none" stroke="var(--seam-hi)" stroke-width="1.2"/>
+            </svg>
+            <div class="face-top-txt">사직</div>
+            <div class="face-left">
+              <div class="l-top">
+                <span class="l-badge"><i class="l-dot"></i>OPEN</span>
+                <span class="l-dist">0.9km</span>
+              </div>
+              <div class="l-addr-wrap">
+                <div class="l-lbl">ADDRESS</div>
+                <div class="l-addr">광주 남구<br>제중로 56</div>
+              </div>
+            </div>
+            <div class="face-right">
+              <div>
+                <div class="r-hours">화~일<br>09:00 ~ 18:00</div>
+                <div class="r-closed">매주 월요일 휴관</div>
+              </div>
+              <div class="r-tel-wrap">
+                <div class="r-lbl">TEL</div>
+                <div class="r-tel">062-613-7740</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p><b>특징:</b> 30° 등각 직육면체 면 좌표(`14, 67.4` · `110, 122.8`)와 CSS `skewY(±30deg)` + `transform-origin: 0 0`을 정확히 일치시켜 글자가 면 안에 깔끔하게 들어갑니다. 좌측은 상태·거리·주소, 우측은 운영시간·휴관일·전화번호를 배치했습니다.</p>
+      </article>
+
+      <!-- C3 -->
+      <article class="cand">
+        <h3>후보 C3 — 슬림 뚜껑 + 미니멀 여백 (MIRA형)</h3>
+        <div class="stage">
+          <div class="cube-c3" style="--c-top:var(--fill3); --c-on:var(--on-fill3);">
+            <div class="cast"></div>
+            <div class="top"><span class="t-name">산수</span></div>
+            <div class="front">
+              <div class="micro"><span>OPEN</span><span>·</span><span>09:00–18:00</span></div>
+              <div class="big">산수</div>
+            </div>
+            <div class="side">
+              <div class="tab">1.2km</div>
+              <div class="s-txt">062-608-4260</div>
+              <div class="s-txt">광주 동구 산수동<br>필문대로 171</div>
+            </div>
+          </div>
+        </div>
+        <p><b>특징:</b> 윗면 뚜껑을 얇게 눌러 높이를 줄이고, 정면은 MIRA 사진처럼 상단 마이크로 간격 텍스트 + 하단 굵은 이름만 남겨 여백을 극대화한 안입니다.</p>
+      </article>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. 홈 파사드 실제 배치 미리보기 — 주인공 포커스 + 가장자리 걸침</h2>
+    <div class="hero-switch">
+      <button class="hero-btn on" type="button" data-mode="nearest">가장 가까운 도서관 기준 (무등)</button>
+      <button class="hero-btn" type="button" data-mode="recent">가장 최근 방문 도서관 기준 (사직)</button>
+    </div>
+    <div class="preview-wrap">
+      <div class="phone" id="phone">
+        <div class="scr">
+          <div class="statusbar"></div>
+          <div class="hd"><span>동네한권</span><span style="font-size:11px;color:var(--ink-muted)">광주 북구</span></div>
+          <div class="sb">
+            <div class="sfield"><span>도서관·책 이름 검색</span><button class="findbtn" type="button">찾기</button></div>
+          </div>
+          <div class="board" id="board">
+            <div class="grid">
+              <div class="bay"></div><div class="bay"></div><div class="bay"></div><div class="bay"></div>
+              <div class="bay"></div><div class="bay"></div><div class="bay"></div><div class="bay"></div>
+              <div class="bay"></div><div class="bay"></div><div class="bay"></div><div class="bay"></div>
+              <div class="bay"></div><div class="bay"></div><div class="bay"></div><div class="bay"></div>
+            </div>
+            <div class="axis"></div>
+
+            <!-- 주인공 자리 (우측 크게, 온전히 보임): left:126px; top:18px -->
+            <div class="iso-cube is-hero" id="lib-mudeung" data-lib="광주광역시시립무등도서관" style="left:126px; top:18px; --c-top:var(--fill1); --c-on:var(--on-fill1);">
+              <svg class="geo" viewBox="0 0 220 206">
+                <polygon points="110,200 18,148 76,132 164,180" fill="rgba(28,30,36,.18)" filter="url(#blur2)"/>
+                <polygon points="110,12 206,67.4 110,122.8 14,67.4" fill="var(--c-top)" stroke="rgba(0,0,0,.08)" stroke-width="1"/>
+                <polyline points="14,67.4 110,122.8 206,67.4" fill="none" stroke="var(--seam-hi)" stroke-width="1.2"/>
+              </svg>
+              <div class="face-top-txt">무등</div>
+              <div class="face-left">
+                <div class="l-top"><span class="l-badge"><i class="l-dot"></i>OPEN</span><span class="l-dist">0.4km</span></div>
+                <div class="l-addr-wrap"><div class="l-lbl">ADDRESS</div><div class="l-addr">광주 북구<br>면앙로 130</div></div>
+              </div>
+              <div class="face-right">
+                <div><div class="r-hours">화~일<br>09:00 ~ 18:00</div><div class="r-closed">매주 월요일 휴관</div></div>
+                <div class="r-tel-wrap"><div class="r-lbl">TEL</div><div class="r-tel">062-613-7710</div></div>
+              </div>
+            </div>
+
+            <!-- 내 위치 기점 (+ 현위치 3km) -->
+            <div class="plinth" style="left:41%; top:158px;"><b>+</b><span>현위치 · 3km</span></div>
+
+            <!-- 주변 1 (좌측 상단 가장자리 걸침): left:-88px; top:-52px -->
+            <div class="iso-cube is-edge" id="lib-sansu" data-lib="광주광역시시립산수도서관" style="left:-88px; top:-52px; --c-top:var(--fill2); --c-on:var(--on-fill2);">
+              <svg class="geo" viewBox="0 0 220 206">
+                <polygon points="110,200 18,148 76,132 164,180" fill="rgba(28,30,36,.18)" filter="url(#blur2)"/>
+                <polygon points="110,12 206,67.4 110,122.8 14,67.4" fill="var(--c-top)" stroke="rgba(0,0,0,.08)" stroke-width="1"/>
+                <polyline points="14,67.4 110,122.8 206,67.4" fill="none" stroke="var(--seam-hi)" stroke-width="1.2"/>
+              </svg>
+              <div class="face-top-txt">산수</div>
+              <div class="face-left">
+                <div class="l-top"><span class="l-badge"><i class="l-dot"></i>OPEN</span><span class="l-dist">0.9km</span></div>
+                <div class="l-addr-wrap"><div class="l-lbl">ADDRESS</div><div class="l-addr">광주 동구<br>필문대로 171</div></div>
+              </div>
+              <div class="face-right">
+                <div><div class="r-hours">화~일<br>09:00 ~ 18:00</div><div class="r-closed">매주 월요일 휴관</div></div>
+                <div class="r-tel-wrap"><div class="r-lbl">TEL</div><div class="r-tel">062-608-4260</div></div>
+              </div>
+            </div>
+
+            <!-- 주변 2 (좌측 하단 가장자리 걸침): left:-66px; top:202px -->
+            <div class="iso-cube is-edge" id="lib-sajik" data-lib="광주광역시시립사직도서관" style="left:-66px; top:202px; --c-top:var(--fill3); --c-on:var(--on-fill3);">
+              <svg class="geo" viewBox="0 0 220 206">
+                <polygon points="110,200 18,148 76,132 164,180" fill="rgba(28,30,36,.18)" filter="url(#blur2)"/>
+                <polygon points="110,12 206,67.4 110,122.8 14,67.4" fill="var(--c-top)" stroke="rgba(0,0,0,.08)" stroke-width="1"/>
+                <polyline points="14,67.4 110,122.8 206,67.4" fill="none" stroke="var(--seam-hi)" stroke-width="1.2"/>
+              </svg>
+              <div class="face-top-txt">사직</div>
+              <div class="face-left">
+                <div class="l-top"><span class="l-badge"><i class="l-dot"></i>OPEN</span><span class="l-dist">1.3km</span></div>
+                <div class="l-addr-wrap"><div class="l-lbl">ADDRESS</div><div class="l-addr">광주 남구<br>제중로 56</div></div>
+              </div>
+              <div class="face-right">
+                <div><div class="r-hours">화~일<br>09:00 ~ 18:00</div><div class="r-closed">매주 월요일 휴관</div></div>
+                <div class="r-tel-wrap"><div class="r-lbl">TEL</div><div class="r-tel">062-613-7740</div></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="sheet">
+            <div class="grab"></div>
+            <div class="shead">
+              <div class="stitle" id="sheetTitle">광주광역시시립무등도서관</div>
+              <div class="smeta" id="sheetMeta">0.4km · 062-613-7710</div>
+            </div>
+            <div class="covers">
+              <div class="cv"><i></i><span>소년이 온다</span></div>
+              <div class="cv"><i></i><span>채식주의자</span></div>
+              <div class="cv"><i></i><span>모순</span></div>
+              <div class="cv"><i></i><span>이처럼 사소한 것들</span></div>
+            </div>
+          </div>
+          <div class="tabs">
+            <a class="on" href="#!">홈</a>
+            <a href="#!">저장</a>
+            <a href="#!">내 정보</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="explain">
+        <h3>미리보기 확인 포인트</h3>
+        <ul>
+          <li><b>클릭 테스트:</b> 휴대폰 화면 안의 도서관 블록(무등·산수·사직)을 눌러 보세요. 선택된 블록만 옆면의 전화번호·주소가 또렷해지고 아래 시트 제목이 바뀝니다.</li>
+          <li><b>윗면 이름 스타일:</b> 상단 드롭다운에서 <b>음각(MIRA식)</b>과 <b>대비 인쇄</b>를 바꿔 가며 `warm` 노랑(`fill1`), `modern` 오렌지(`fill1`), `oxford` 네이비(`fill1`) 위에서의 시인성을 비교할 수 있습니다.</li>
+          <li><b>다음 단계:</b> C1·C2·C3 중 마음에 드는 방향(또는 수정 포인트: 예. 윗면 두께, 정면 텍스트 구성, 옆면 항목)을 정해 주시면 도서관 이름 추출 규칙까지 묶어 실제 구현으로 넘기겠습니다.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 3. 실제 배치 미리보기 v2 (2026-11-18 D 피드백 2차 반영) ===== -->
+  <section id="v2">
+    <h2>3. 실제 배치 미리보기 v2 — 주인공 크게 + 기점은 반대쪽으로 + 가장자리 걸침 <span class="badge v2badge">D 피드백 2차</span></h2>
+    <div class="how">
+      <b>D 결정(2026-11-18).</b> 큰 틀은 2번 "주인공 포커스 + 가장자리 걸침". ① 처음 주인공 기본값은 <b>가장 가까운 곳</b>, 최근 방문은 별도 설정(도서관 안 설정 + 홈에서 큐브 꾹 누르기). ② 검정 + 노랑은 로고에만 피함(앱에서는 씀). ③ 뚜껑에는 <b>이름만</b>(이름 줄이는 규칙은 디자인 뒤에). ④ 주인공은 더 크게, 기점은 더 치우쳐도 됨.<br>
+      <b>위치 추상화를 남기면서 크게 보이는 방법.</b> 주인공 도서관의 방향으로 판을 네 칸으로 나눠요 — <b>북동~남동(45°~135°)이면 기점을 왼쪽으로 밀고 오른쪽 넓은 칸에 주인공</b>, 북쪽(315°~45°)이면 기점을 아래로 밀고 위쪽에, 남쪽이면 기점을 위로, 서쪽이면 기점을 오른쪽으로. 칸 안에서도 실제 방향만큼 더 비켜요(북동이면 오른쪽 칸의 위쪽). 나머지 도서관은 <b>작은 큐브가 밀려난 기점에서 본 실제 방향의 가장자리에 걸쳐</b> 잘린 채 보여요. 윗면 이름은 판 안쪽에 오게 둬요(D 3차: "가장자리 걸침이 더 내가 원하는 방향"). 가로 화면(가로가 세로의 1.6배 넘음)에서는 위·아래 칸이 너무 낮아서 북·남도 동·서 칸으로 보내요.<br>
+      <b>눌러 보기.</b> 걸친 큐브 누르기 → 그 도서관이 주인공. <b>빈 판을 끌기</b> → 지도처럼 끈 반대쪽(왼쪽으로 끌면 오른쪽)에 있는 도서관이 주인공. <b>주인공 큐브를 꾹(0.6초) 누르기</b> → "처음 크게 보일 도서관" 설정. <b>기점(HERE) 누르기</b> → 기점이 가운데로 오고 모든 도서관이 같은 크기 큐브로 실제 방향에 넓게(거리는 비례로 안쪽·바깥쪽), 큐브를 누르면 그 도서관이 주인공, 기점을 다시 누르면 원래 주인공으로(D 4차). 전체 보기 큐브는 판 폭의 약 46%로 크게, 가장자리에서 잘려도 이름은 판 안에(D 5차: "큐브들이 너무 작은 치명적인 결함"). 따로 그린 축 선은 없애고 기점에 맞춘 격자선이 축 역할. 움직임은 0.8초로 느리게 했어요.
+    </div>
+    <div class="bar">
+      <label>화면 크기 <select id="v2size"><option value="390x844" selected>휴대폰 390×844</option><option value="360x640">작은 휴대폰 360×640</option><option value="844x412">가로 웹 844×412</option></select></label>
+      <span class="v2set">설정: 처음 주인공 = <b id="v2ruleLbl">가장 가까운 곳(기본)</b></span>
+    </div>
+    <div class="preview-wrap">
+      <div class="v2phone" id="v2phone">
+        <div class="v2status"></div>
+        <div class="v2hd"><span class="v2label">HOME</span><span class="v2rv"></span><span class="v2rv r"></span></div>
+        <div class="v2sb"><div class="v2field"><span>책 제목·저자 검색</span><button class="v2find" type="button">도서관 찾기</button></div></div>
+        <div class="v2board" id="v2board">
+          <div class="v2grid" id="v2grid"></div><div class="v2axis" id="v2axisV"></div><div class="v2axis h" id="v2axisH"></div>
+          <div class="v2plinth" id="v2plinthEl"><b>+</b><span>HERE · 3KM</span></div>
+          <div class="v2menu" id="v2menu" role="dialog" aria-label="처음 크게 보일 도서관">
+            <div class="v2menu-t">홈을 열면 처음 크게 보일 도서관</div>
+            <button type="button" data-rule="nearest">가장 가까운 곳 <small>기본</small></button>
+            <button type="button" data-rule="recent">최근 방문한 곳</button>
+            <div class="v2menu-n">도서관 페이지 ⋯ 메뉴에서도 바꿀 수 있어요</div>
+          </div>
+        </div>
+        <div class="v2sheet" id="v2sheet">
+          <div class="grab"></div>
+          <div class="v2title" id="v2title"></div>
+          <div class="v2meta" id="v2meta"></div>
+          <div class="v2covers"><i></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="v2tabs"><a class="on">홈</a><a>대출·반납</a><a>내 정보</a></div>
+      </div>
+      <div class="explain">
+        <h3>이번에 정한 값 — 기본값(Claude)</h3>
+        <ul>
+          <li><b>기점 위치</b>: 판 가장자리에서 12%(세로 칸이면 높이의 12%) 안쪽. 주인공 칸은 나머지 88%에서 기점 둘레 여백을 뺀 곳.</li>
+          <li><b>주인공 크기</b>: 칸의 92% 안에서 가장 크게(최대 1.7배). 390 화면에서 북쪽이면 폭 약 330px, 동쪽이면 약 280px(이전 v2는 약 238px).</li>
+          <li><b>칸 나누기</b>: 북 315°~45° · 동 45°~135° · 남 135°~225° · 서 225°~315°. 가로 화면에서는 북·남을 동·서로.</li>
+          <li><b>끌기</b>: 40px 넘게 끌면 고름(끈 반대 방향과 가장 가까운 방향의 도서관). 덜 끌면 제자리로.</li>
+          <li><b>꾹 누르기</b>: 0.6초. 설정은 기기에 저장(시안에선 화면 위 "설정:"에 보임).</li>
+          <li><b>움직임</b>: 0.8초, 끝으로 갈수록 천천히.</li>
+        </ul>
+        <p class="v2note">도서관 이름·전화·방위는 시안용이에요. 색은 확정 규칙대로 가장 가까운 영업 중 = `fill1`, 나머지 거리순 `fill2`·`fill3` 교대.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<script>
+const LOOKS = {
+  modern:{bg:"#CDCDCB",surface2:"#BDBDBA",surface3:"#A8A8A5",fill1:"#FB5102",fill2:"#F2F2EF",fill3:"#9AA0B4",cream:"#E9E9E6",paper:"#E6E6E4",inkStrong:"#1C1E2A"},
+  warm:{bg:"#E1E1DE",surface2:"#D0CEC8",surface3:"#BFBCB5",fill1:"#E9C970",fill2:"#EDC9A9",fill3:"#B3BFB5",cream:"#EFEFE7",paper:"#EFF1F1",inkStrong:"#2E333F"},
+  toffee:{bg:"#E4E2DB",surface2:"#D5CFC4",surface3:"#C2BBAD",fill1:"#6E5140",fill2:"#C88A56",fill3:"#7E8C7D",cream:"#EEEFED",paper:"#EEEFED",inkStrong:"#332A27"},
+  oxford:{bg:"#CDCDCB",surface2:"#BDBDBA",surface3:"#A8A8A5",fill1:"#35557F",fill2:"#D2B48C",fill3:"#7A93AC",cream:"#E9E9E6",paper:"#E6E6E4",inkStrong:"#002147"}
+};
+const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+const toHex=a=>"#"+a.map(c=>Math.max(0,Math.min(255,Math.round(c))).toString(16).padStart(2,"0")).join("").toUpperCase();
+const mix=(a,b,w)=>{const A=hex(a),B=hex(b);return toHex(A.map((c,i)=>c*w+B[i]*(1-w)))};
+const lum=h=>{const [r,g,b]=hex(h).map(c=>{c/=255;return c<=.03928?c/12.92:((c+.055)/1.055)**2.4});return .2126*r+.7152*g+.0722*b};
+const contrast=(a,b)=>{const x=[lum(a),lum(b)].sort((p,q)=>q-p);return (x[0]+.05)/(x[1]+.05)};
+const onFill=f=>contrast(f,"#FFFFFF")>=contrast(f,"#1D1D1F")?"#FFFFFF":"#1D1D1F";
+
+function applyLook(name){
+  const c=LOOKS[name], r=document.documentElement.style;
+  const v={
+    bg:c.bg, surface2:c.surface2, surface3:c.surface3,
+    fill1:c.fill1, fill2:c.fill2, fill3:c.fill3,
+    cream:c.cream, paper:c.paper, "ink-strong":c.inkStrong,
+    "panel-frosted":mix(c.paper,c.bg,.58),
+    "panel-lit":mix(c.paper,c.cream,.84),
+    seam:mix(c.inkStrong,c.bg,.14),
+    rivet:mix(c.inkStrong,c.surface3,.34),
+    "relief-dark":mix(c.inkStrong,c.surface3,.26),
+    "on-fill1":onFill(c.fill1),
+    "on-fill2":onFill(c.fill2),
+    "on-fill3":onFill(c.fill3)
+  };
+  for(const k in v) r.setProperty("--"+k,v[k]);
+}
+
+applyLook("warm");
+document.getElementById("look").addEventListener("change",e=>applyLook(e.target.value));
+document.getElementById("topink").addEventListener("change",e=>{
+  document.body.classList.toggle("ink-deboss", e.target.value==="deboss");
+  document.body.classList.toggle("ink-print", e.target.value==="print");
+});
+document.getElementById("sidevis").addEventListener("change",e=>{
+  document.body.classList.toggle("show-all-side", e.target.value==="all");
+});
+
+const SLOTS = {
+  hero:  { left:"126px", top:"18px",  cls:"is-hero" },
+  edge1: { left:"-88px", top:"-52px", cls:"is-edge" },
+  edge2: { left:"-66px", top:"202px", cls:"is-edge" }
+};
+function setHero(heroId){
+  const order = heroId==="lib-mudeung" ? ["lib-mudeung","lib-sansu","lib-sajik"]
+              : heroId==="lib-sajik"   ? ["lib-sajik","lib-mudeung","lib-sansu"]
+              : ["lib-sansu","lib-sajik","lib-mudeung"];
+  const keys = ["hero","edge1","edge2"];
+  order.forEach((id, i)=>{
+    const el=document.getElementById(id), slot=SLOTS[keys[i]];
+    el.style.left=slot.left; el.style.top=slot.top;
+    el.classList.remove("is-hero","is-edge");
+    el.classList.add(slot.cls);
+  });
+  const card=document.getElementById(order[0]);
+  document.getElementById("sheetTitle").textContent=card.dataset.lib;
+  const tel=card.querySelector(".r-tel")?.textContent||"";
+  const dist=card.querySelector(".l-dist")?.textContent||"";
+  document.getElementById("sheetMeta").textContent=`${dist} · ${tel}`;
+}
+document.getElementById("board").addEventListener("click",e=>{
+  const card=e.target.closest(".iso-cube");
+  if(!card) return;
+  setHero(card.id);
+});
+document.querySelectorAll(".hero-btn").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    document.querySelectorAll(".hero-btn").forEach(b=>b.classList.remove("on"));
+    btn.classList.add("on");
+    setHero(btn.dataset.mode==="nearest" ? "lib-mudeung" : "lib-sajik");
+  });
+});
+
+/* ===== 3. 미리보기 v2(2차): 주인공 크게 + 기점은 반대쪽 + 가장자리 뚜껑 + 끌기 + 꾹 누르기 ===== */
+(function(){
+  /* 방위각(도, 북=0 시계방향)·거리는 시안용 */
+  const LIBS=[
+    {id:"mudeung", short:"무등", full:"광주광역시시립무등도서관", km:0.4, bear:50,  addr:"광주 북구<br>면앙로 130", tel:"062-613-7710"},
+    {id:"sansu",   short:"산수", full:"광주광역시시립산수도서관", km:0.9, bear:300, addr:"광주 동구<br>필문대로 171", tel:"062-608-4260"},
+    {id:"sajik",   short:"사직", full:"광주광역시시립사직도서관", km:1.3, bear:215, addr:"광주 남구<br>제중로 56", tel:"062-613-7740"},
+    {id:"ilgok",   short:"일곡", full:"일곡도서관(시안)",         km:2.1, bear:350, addr:"광주 북구<br>(시안)", tel:"—"},
+    {id:"cheomdan",short:"첨단", full:"첨단도서관(시안)",         km:2.8, bear:105, addr:"광주 광산구<br>(시안)", tel:"—"}
+  ];
+  const RECENT="sajik";
+  const byDist=LIBS.slice().sort((a,b)=>a.km-b.km);
+  byDist.forEach((l,i)=>{ l.tone = i===0 ? "fill1" : (i%2 ? "fill2" : "fill3"); });
+  const board=document.getElementById("v2board"), plinth=document.getElementById("v2plinthEl"), menu=document.getElementById("v2menu");
+  const geo=`<svg class="geo" viewBox="0 0 220 206"><polygon points="110,200 18,148 76,132 164,180" fill="rgba(28,30,36,.18)" filter="url(#blur2)"/><polygon points="110,12 206,67.4 110,122.8 14,67.4" fill="var(--c-top)" stroke="rgba(0,0,0,.08)" stroke-width="1"/><polyline points="14,67.4 110,122.8 206,67.4" fill="none" stroke="var(--seam-hi)" stroke-width="1.2"/></svg>`;
+  LIBS.forEach(l=>{
+    const el=document.createElement("div");
+    el.className="v2lib peek"; el.id="v2-"+l.id;
+    el.style.setProperty("--c-top","var(--"+l.tone+")");
+    el.innerHTML=`<div class="iso-cube" style="--c-top:var(--${l.tone})">${geo}<div class="face-top-txt">${l.short}</div>
+      <div class="face-left"><div class="l-top"><span class="l-badge"><i class="l-dot"></i>OPEN</span><span class="l-dist">${l.km}KM</span></div><div class="l-addr-wrap"><div class="l-lbl">ADDRESS</div><div class="l-addr">${l.addr}</div></div></div>
+      <div class="face-right"><div><div class="r-hours">화~일<br>09:00 ~ 18:00</div><div class="r-closed">매주 월요일 휴관</div></div><div class="r-tel-wrap"><div class="r-lbl">TEL</div><div class="r-tel">${l.tel}</div></div></div></div>
+      <div class="lid" role="button" aria-label="${l.full} 크게 보기"><svg viewBox="0 0 120 69"><polygon points="60,0 120,34.5 60,69 0,34.5" fill="var(--c-top)" stroke="var(--seam)" stroke-width="1"/><polyline points="0,34.5 60,69 120,34.5" fill="none" stroke="var(--seam-hi)" stroke-width="1"/></svg><div class="lname">${l.short}</div></div>`;
+    el.addEventListener("click",()=>{ if(dragMoved || el.classList.contains("hero")) return; setHero(l.id); });
+    board.appendChild(el);
+  });
+  let hero=byDist[0].id, rule="nearest";
+  const dirOf=b=>{ const a=b*Math.PI/180; return [Math.sin(a), -Math.cos(a)]; };
+  const norm=b=>((b%360)+360)%360;
+  function sectorOf(b, W, H){
+    b=norm(b);
+    let s = (b>=315||b<45) ? "N" : b<135 ? "E" : b<225 ? "S" : "W";
+    if(W>H*1.6 && (s==="N"||s==="S")) s = (b<180) ? "E" : "W";   /* 가로 화면: 북·남도 좌우 칸으로 */
+    return s;
+  }
+  function layout(){
+    const W=board.clientWidth, H=board.clientHeight, h=LIBS.find(l=>l.id===hero), sec=sectorOf(h.bear,W,H);
+    const F=.12, PW=29, PH=22, GAP=10;
+    /* 기점: 주인공 반대쪽 가장자리 근처 */
+    const O = sec==="N" ? [W/2, H*(1-F)] : sec==="S" ? [W/2, H*F] : sec==="E" ? [W*F, H/2] : [W*(1-F), H/2];
+    /* 주인공 칸 */
+    const R = sec==="N" ? [6, 6, W-6, O[1]-PH-GAP] : sec==="S" ? [6, O[1]+PH+GAP, W-6, H-6]
+            : sec==="E" ? [O[0]+PW+GAP, 6, W-6, H-6] : [6, 6, O[0]-PW-GAP, H-6];
+    const rw=R[2]-R[0], rh=R[3]-R[1];
+    const s=Math.max(.4, Math.min(rw*.92/220, rh*.92/206, 1.7)), cw=220*s, ch=206*s;
+    const [hdx,hdy]=dirOf(h.bear);
+    /* 칸 안에서 실제 방향만큼 더 비키기 */
+    let hx=R[0]+(rw-cw)/2, hy=R[1]+(rh-ch)/2;
+    if(sec==="N"||sec==="S") hx += hdx*(rw-cw)/2; else hy += hdy*(rh-ch)/2;
+    hx=Math.min(R[2]-cw, Math.max(R[0], hx)); hy=Math.min(R[3]-ch, Math.max(R[1], hy));
+    plinth.style.left=O[0]+"px"; plinth.style.top=O[1]+"px";
+    document.getElementById("v2axisV").style.left=O[0]+"px"; document.getElementById("v2axisH").style.top=O[1]+"px";
+    document.getElementById("v2grid").style.backgroundPosition=`${O[0]-1}px ${O[1]-1}px`;
+    const heroRect=[hx, hy+ch*0.05, hx+cw, hy+ch*0.92];
+    const inHero=(x,y)=>x>heroRect[0]-62 && x<heroRect[2]+62 && y>heroRect[1]-36 && y<heroRect[3]+36;
+    const nearPlinth=(x,y)=>Math.abs(x-O[0])<29+62 && Math.abs(y-O[1])<22+36;
+    const placed=[], P=Math.max(.45, Math.min(.62, s*.5));   /* 걸친 큐브 크기 */
+    LIBS.forEach(l=>{
+      const el=document.getElementById("v2-"+l.id), cube=el.querySelector(".iso-cube"), [dx,dy]=dirOf(l.bear);
+      if(l.id===hero){
+        el.className="v2lib hero"; el.style.setProperty("--s",s);
+        el.style.left=hx+"px"; el.style.top=hy+"px"; cube.style.left="0px"; cube.style.top="0px";
+        return;
+      }
+      el.className="v2lib peek"; el.style.setProperty("--p",P); cube.style.left=(-110*P)+"px"; cube.style.top=(-67.4*P)+"px";
+      /* 밀려난 기점에서 실제 방향으로 그은 선이 가장자리와 만나는 곳 */
+      const tx = dx>0 ? (W-O[0])/dx : dx<0 ? -O[0]/dx : Infinity;
+      const ty = dy>0 ? (H-O[1])/dy : dy<0 ? -O[1]/dy : Infinity;
+      const t=Math.min(tx,ty), onSide = tx<ty;
+      let ex=O[0]+dx*t, ey=O[1]+dy*t;
+      /* 이름(윗면 가운데)만 판 안쪽에 두고 큐브 몸은 가장자리 밖으로 걸친다 */
+      const IX=24, IY=24;
+      if(onSide) ex = dx>0 ? W-IX : IX; else ey = dy>0 ? H-IY : IY;
+      ex=Math.min(W-IX, Math.max(IX, ex)); ey=Math.min(H-IY, Math.max(IY, ey));
+      for(let k=0;k<8;k++){
+        const hit = inHero(ex,ey) ? "hero" : nearPlinth(ex,ey) ? "plinth" : placed.find(q=>Math.abs(q[0]-ex)<136*P/.62 && Math.abs(q[1]-ey)<78*P/.62);
+        if(!hit) break;
+        if(onSide){ const box = hit==="hero" ? [heroRect[1]-40, heroRect[3]+40] : hit==="plinth" ? [O[1]-62, O[1]+62] : [hit[1]-66, hit[1]+66];
+          ey = (box[0]>20 && (Math.abs(box[0]-ey)<=Math.abs(box[1]-ey) || box[1]>H-20)) ? box[0] : Math.min(H-20, box[1]); }
+        else { const box = hit==="hero" ? [heroRect[0]-66, heroRect[2]+66] : hit==="plinth" ? [O[0]-96, O[0]+96] : [hit[0]-120, hit[0]+120];
+          ex = (box[0]>30 && (Math.abs(box[0]-ex)<=Math.abs(box[1]-ex) || box[1]>W-30)) ? box[0] : Math.min(W-30, box[1]); }
+      }
+      placed.push([ex,ey]);
+      el.style.left=ex+"px"; el.style.top=ey+"px";
+    });
+    document.getElementById("v2title").textContent=h.full;
+    document.getElementById("v2meta").textContent=`${h.km}KM · ${h.id===RECENT?"LAST VISIT · ":""}${h.tel}`;
+  }
+  function setHero(id){ hero=id; mode="hero"; menu.classList.remove("on"); layout(); }
+  /* 기점 누르기: 기점을 가운데로, 모든 도서관을 같은 크기 큐브로 실제 방향·거리(비례)에 넓게 */
+  let mode="hero", lastHero=null;
+  function layoutRing(){
+    const W=board.clientWidth, H=board.clientHeight, O=[W/2,H/2];
+    /* 큐브 크기: 판 폭의 약 46%(첨부 비율보다 조금 작게). 가장자리에서 잘려도 되고 이름만 판 안에 */
+    const q=Math.max(.5, Math.min(.95, Math.min(W, H*1.1)*.46/220)), cw=220*q, ch=206*q, NAME=35.6*q;
+    plinth.style.left=O[0]+"px"; plinth.style.top=O[1]+"px";
+    document.getElementById("v2grid").style.backgroundPosition=`${O[0]-1}px ${O[1]-1}px`;
+    const kmMax=Math.max(...LIBS.map(l=>l.km));
+    const pts=LIBS.map(l=>{ const [dx,dy]=dirOf(l.bear), f=.72+.28*(l.km/kmMax);
+      return {l, x:O[0]+dx*(W/2-cw*.18)*f, y:O[1]+dy*(H/2-ch*.12)*f}; });
+    /* 서로·기점과 겹치지 않게 밀어내고, 이름(윗면 가운데)은 판 안 24px에 둔다 */
+    for(let it=0; it<60; it++){
+      for(let i=0;i<pts.length;i++) for(let j=i+1;j<pts.length;j++){
+        const A=pts[i], B=pts[j], dx=B.x-A.x, dy=B.y-A.y, ox=cw*.8-Math.abs(dx), oy=ch*.72-Math.abs(dy);
+        if(ox>0 && oy>0){ if(ox/cw < oy/ch){ const m=ox/2*Math.sign(dx||1); A.x-=m; B.x+=m; } else { const m=oy/2*Math.sign(dy||1); A.y-=m; B.y+=m; } }
+      }
+      pts.forEach(P=>{ const dx=P.x-O[0], dy=P.y-O[1], ox=cw*.5+34-Math.abs(dx), oy=ch*.5+28-Math.abs(dy);
+        if(ox>0 && oy>0){ if(ox/cw < oy/ch) P.x+=ox*Math.sign(dx||1); else P.y+=oy*Math.sign(dy||1); }
+        P.x=Math.min(W-24, Math.max(24, P.x)); P.y=Math.min(H-24+NAME, Math.max(24+NAME, P.y)); });
+    }
+    pts.forEach(({l,x,y})=>{
+      const el=document.getElementById("v2-"+l.id), cube=el.querySelector(".iso-cube");
+      el.className="v2lib ring"; el.style.setProperty("--p",q);
+      el.style.left=x+"px"; el.style.top=y+"px"; cube.style.left=(-110*q)+"px"; cube.style.top=(-103*q)+"px";
+    });
+    document.getElementById("v2title").textContent=`내 위치 주변 도서관 ${LIBS.length}곳`;
+    document.getElementById("v2meta").textContent="TAP A CUBE TO FOCUS";
+  }
+  function toggleRing(){
+    menu.classList.remove("on");
+    if(mode==="ring"){ mode="hero"; hero=lastHero||hero; layout(); return; }
+    mode="ring"; lastHero=hero; layoutRing();
+  }
+  plinth.addEventListener("click",e=>{ if(dragMoved) return; e.stopPropagation(); toggleRing(); });
+
+
+  /* 빈 판 끌기: 지도처럼 끈 반대쪽의 도서관을 고른다 */
+  let drag=null, dragMoved=false;
+  board.addEventListener("pointerdown",e=>{
+    dragMoved=false;
+    if(e.target.closest(".v2menu") || e.target.closest(".v2plinth")) return;
+    if(mode==="ring"){ if(e.target.closest(".v2lib")) drag={x:e.clientX,y:e.clientY,id:e.pointerId,lid:true}; return; }
+    const onHeroCube=e.target.closest(".v2lib.hero");
+    if(onHeroCube){ startPress(e); return; }
+    if(e.target.closest(".v2lib.peek")) { drag={x:e.clientX,y:e.clientY,id:e.pointerId,lid:true}; return; }
+    menu.classList.remove("on");
+    drag={x:e.clientX,y:e.clientY,id:e.pointerId}; board.setPointerCapture(e.pointerId); board.classList.add("dragging");
+  });
+  board.addEventListener("pointermove",e=>{
+    if(press && Math.hypot(e.clientX-press.x,e.clientY-press.y)>8) cancelPress();
+    if(!drag || drag.lid) return;
+    const dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+    if(Math.hypot(dx,dy)>6) dragMoved=true;
+    board.style.setProperty("--px",dx+"px"); board.style.setProperty("--py",dy+"px");
+  });
+  function endDrag(e){
+    cancelPress();
+    if(!drag) return;
+    const dx=e.clientX-drag.x, dy=e.clientY-drag.y, wasLid=drag.lid; drag=null;
+    board.classList.remove("dragging"); board.style.setProperty("--px","0px"); board.style.setProperty("--py","0px");
+    if(wasLid || Math.hypot(dx,dy)<40) return;
+    const v=[-dx,-dy], len=Math.hypot(v[0],v[1]);
+    let best=null, bestCos=-2;
+    LIBS.forEach(l=>{ if(l.id===hero) return; const [ux,uy]=dirOf(l.bear); const c=(ux*v[0]+uy*v[1])/len; if(c>bestCos){bestCos=c;best=l;} });
+    if(best && bestCos>0.3) setHero(best.id);
+  }
+  board.addEventListener("pointerup",endDrag); board.addEventListener("pointercancel",endDrag);
+
+  /* 주인공 큐브 꾹 누르기: 처음 주인공 설정 */
+  let press=null;
+  function startPress(e){ const r=board.getBoundingClientRect(); press={x:e.clientX,y:e.clientY,t:setTimeout(()=>{
+      menu.style.left=Math.min(r.width-212, Math.max(8, e.clientX-r.left-100))+"px"; menu.style.top=Math.min(r.height-150, Math.max(8, e.clientY-r.top-20))+"px";
+      menu.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.rule===rule)); menu.classList.add("on"); press=null; },600)}; }
+  function cancelPress(){ if(press){ clearTimeout(press.t); press=null; } }
+  menu.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+    rule=b.dataset.rule;
+    document.getElementById("v2ruleLbl").textContent = rule==="recent" ? "최근 방문한 곳" : "가장 가까운 곳(기본)";
+    setHero(rule==="recent" ? RECENT : byDist[0].id);
+  }));
+
+  function applySize(){
+    const [w,h]=document.getElementById("v2size").value.split("x").map(Number);
+    const ph=document.getElementById("v2phone");
+    ph.style.setProperty("--W",w+"px"); ph.style.setProperty("--H",h+"px"); ph.classList.toggle("land", w>h); menu.classList.remove("on");
+    requestAnimationFrame(()=> mode==="ring" ? layoutRing() : layout());
+  }
+  document.getElementById("v2size").addEventListener("change",applySize);
+  applySize();
+})();
+</script>
+</body>
+</html>
