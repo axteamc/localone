@@ -378,6 +378,26 @@
   .v2tabs a.on::before { content:""; position:absolute; top:-1px; left:30%; right:30%; height:2px; background:var(--ink-strong); }
   .v2phone.land .v2tabs { height:40px; }
   .v2note { font-size:12.5px; color:var(--ink-muted); }
+
+  /* v2 2차: 느린 움직임, 끌기, 꾹 누르기 메뉴, 밀려나는 기점 */
+  .v2board { touch-action:none; cursor:grab; user-select:none; }
+  .v2board.dragging { cursor:grabbing; }
+  .v2lib { transition:left .8s cubic-bezier(.22,1,.36,1), top .8s cubic-bezier(.22,1,.36,1); translate:var(--px,0px) var(--py,0px); }
+  .v2lib .iso-cube { transition:transform .8s cubic-bezier(.22,1,.36,1), opacity .5s; }
+  .v2lib .lid { transition:opacity .5s; }
+  .v2plinth { transition:left .8s cubic-bezier(.22,1,.36,1), top .8s cubic-bezier(.22,1,.36,1); translate:var(--px,0px) var(--py,0px); }
+  .v2axis { transition:left .8s cubic-bezier(.22,1,.36,1), top .8s cubic-bezier(.22,1,.36,1); translate:var(--px,0px) var(--py,0px); }
+  .v2axis.h { left:0; right:0; top:50%; bottom:auto; width:auto; height:1px; }
+  .v2grid { transition:background-position .8s cubic-bezier(.22,1,.36,1); background-size:96px 96px; translate:var(--px,0px) var(--py,0px); inset:-200px; }
+  .v2board.dragging .v2lib, .v2board.dragging .v2plinth, .v2board.dragging .v2axis, .v2board.dragging .v2grid { transition:none; }
+  .v2menu { position:absolute; z-index:9; width:204px; background:var(--panel-lit); border:1px solid var(--seam); border-radius:var(--r-info); box-shadow:0 8px 24px var(--shadow-cast); padding:10px; display:none; cursor:default; }
+  .v2menu.on { display:block; }
+  .v2menu-t { font-size:12px; color:var(--ink-soft); margin-bottom:6px; }
+  .v2menu button { display:flex; justify-content:space-between; align-items:center; width:100%; font:inherit; font-size:13px; text-align:left; padding:8px 10px; margin-top:4px; border-radius:999px; border:1px solid var(--seam); background:var(--panel-frosted); color:var(--text); cursor:pointer; }
+  .v2menu button.on { background:var(--panel-lit); box-shadow:0 2px 0 color-mix(in srgb, var(--ink-strong) 15%, var(--surface2)); font-weight:500; }
+  .v2menu small { font-size:9px; letter-spacing:.12em; color:var(--ink-muted); }
+  .v2menu-n { font-size:10.5px; color:var(--ink-muted); margin-top:8px; }
+  .v2set { font-size:13px; color:var(--ink-soft); }
 </style>
 </head>
 <body class="ink-deboss">
@@ -611,18 +631,17 @@
     </div>
   </section>
 
-  <!-- ===== 3. 실제 배치 미리보기 v2 (2026-11-18 D 피드백 반영) ===== -->
+  <!-- ===== 3. 실제 배치 미리보기 v2 (2026-11-18 D 피드백 2차 반영) ===== -->
   <section id="v2">
-    <h2>3. 실제 배치 미리보기 v2 — 주인공 하나 크게, 나머지는 가장자리에 이름만 <span class="badge v2badge">D 피드백 반영</span></h2>
+    <h2>3. 실제 배치 미리보기 v2 — 주인공 크게 + 기점은 반대쪽으로 + 가장자리 뚜껑 <span class="badge v2badge">D 피드백 2차</span></h2>
     <div class="how">
-      <b>D 말.</b> "작은 화면에서 안 보이는 문제는 가장 가까운 or 가장 최근 방문한 도서관이 가장 크게 보이도록 화면 구성", "실제 배치 미리보기는 정확히 반영이 안 된 느낌이야(더 커야 하고 나머지는 살짝씩 이름만 보여서 클릭하면 그게 메인. 내 위치가 중앙인 건 동일)".<br>
-      <b>이렇게 그렸어요.</b> ① 주인공 큐브는 판 크기에 맞춰 <b>가능한 한 크게</b>(판 폭의 약 80%, 높이의 약 62%까지), 실제 방향 쪽으로 기점을 비켜 놓아요. ② 나머지 도서관은 <b>실제 방향의 판 가장자리에 윗면(뚜껑)만</b> 걸쳐서 이름만 보여요. ③ 뚜껑을 누르면 그 도서관이 큐브로 커지며 주인공이 되고, 원래 주인공은 자기 방향 가장자리로 물러나요. ④ <b>내 위치(기점)는 판 한가운데</b> 그대로. ⑤ 화면이 작아도 주인공 하나만 크게 그리니 겹치지 않아요 — 아래 "화면 크기"로 작은 휴대폰과 가로 웹(높이 412)을 바꿔 보세요.<br>
-      <b>이번 기준도 같이 적용.</b> 글자 500·400만(700 없음), 머리 띠 영어 표찰, 버튼은 무광 판, "도서관 찾기"도 노랑 대신 무광 판.
+      <b>D 결정(2026-11-18).</b> 큰 틀은 2번 "주인공 포커스 + 가장자리 걸침". ① 처음 주인공 기본값은 <b>가장 가까운 곳</b>, 최근 방문은 별도 설정(도서관 안 설정 + 홈에서 큐브 꾹 누르기). ② 검정 + 노랑은 로고에만 피함(앱에서는 씀). ③ 뚜껑에는 <b>이름만</b>(이름 줄이는 규칙은 디자인 뒤에). ④ 주인공은 더 크게, 기점은 더 치우쳐도 됨.<br>
+      <b>위치 추상화를 남기면서 크게 보이는 방법.</b> 주인공 도서관의 방향으로 판을 네 칸으로 나눠요 — <b>북동~남동(45°~135°)이면 기점을 왼쪽으로 밀고 오른쪽 넓은 칸에 주인공</b>, 북쪽(315°~45°)이면 기점을 아래로 밀고 위쪽에, 남쪽이면 기점을 위로, 서쪽이면 기점을 오른쪽으로. 칸 안에서도 실제 방향만큼 더 비켜요(북동이면 오른쪽 칸의 위쪽). 나머지 도서관 뚜껑은 <b>밀려난 기점에서 본 실제 방향</b>의 가장자리에 걸려요. 가로 화면(가로가 세로의 1.6배 넘음)에서는 위·아래 칸이 너무 낮아서 북·남도 동·서 칸으로 보내요.<br>
+      <b>눌러 보기.</b> 뚜껑 누르기 → 그 도서관이 주인공. <b>빈 판을 끌기</b> → 지도처럼 끈 반대쪽(왼쪽으로 끌면 오른쪽)에 있는 도서관이 주인공. <b>주인공 큐브를 꾹(0.6초) 누르기</b> → "처음 크게 보일 도서관" 설정. 움직임은 0.8초로 느리게 했어요.
     </div>
     <div class="bar">
-      <label>처음 주인공 <select id="v2rule"><option value="nearest" selected>가장 가까운 도서관</option><option value="recent">가장 최근 방문한 도서관</option></select></label>
       <label>화면 크기 <select id="v2size"><option value="390x844" selected>휴대폰 390×844</option><option value="360x640">작은 휴대폰 360×640</option><option value="844x412">가로 웹 844×412</option></select></label>
-      <label>기점 <select id="v2plinth"><option value="ink" selected>진한 매스(지금 확정)</option><option value="light">흰 큐브(검정 + 노랑 피함)</option></select></label>
+      <span class="v2set">설정: 처음 주인공 = <b id="v2ruleLbl">가장 가까운 곳(기본)</b></span>
     </div>
     <div class="preview-wrap">
       <div class="v2phone" id="v2phone">
@@ -630,8 +649,14 @@
         <div class="v2hd"><span class="v2label">HOME</span><span class="v2rv"></span><span class="v2rv r"></span></div>
         <div class="v2sb"><div class="v2field"><span>책 제목·저자 검색</span><button class="v2find" type="button">도서관 찾기</button></div></div>
         <div class="v2board" id="v2board">
-          <div class="v2grid"></div><div class="v2axis"></div>
+          <div class="v2grid" id="v2grid"></div><div class="v2axis" id="v2axisV"></div><div class="v2axis h" id="v2axisH"></div>
           <div class="v2plinth" id="v2plinthEl"><b>+</b><span>HERE · 3KM</span></div>
+          <div class="v2menu" id="v2menu" role="dialog" aria-label="처음 크게 보일 도서관">
+            <div class="v2menu-t">홈을 열면 처음 크게 보일 도서관</div>
+            <button type="button" data-rule="nearest">가장 가까운 곳 <small>기본</small></button>
+            <button type="button" data-rule="recent">최근 방문한 곳</button>
+            <div class="v2menu-n">도서관 페이지 ⋯ 메뉴에서도 바꿀 수 있어요</div>
+          </div>
         </div>
         <div class="v2sheet" id="v2sheet">
           <div class="grab"></div>
@@ -642,18 +667,16 @@
         <div class="v2tabs"><a class="on">홈</a><a>대출·반납</a><a>내 정보</a></div>
       </div>
       <div class="explain">
-        <h3>눌러 보기</h3>
+        <h3>이번에 정한 값 — 기본값(Claude)</h3>
         <ul>
-          <li>가장자리의 <b>뚜껑(이름)</b>을 누르면 그 도서관이 주인공이 돼요. 아래 창 제목·거리도 바뀌어요.</li>
-          <li>"처음 주인공"으로 <b>가까운 곳 / 최근 방문</b> 규칙을 바꿔 보세요(시안: 가까운 곳 = 무등 0.4km, 최근 방문 = 사직).</li>
-          <li>"화면 크기"를 <b>가로 웹 844×412</b>로 바꾸면 아래 창이 한 줄로 접히고, 주인공 큐브가 남은 높이에 맞춰 줄어요.</li>
+          <li><b>기점 위치</b>: 판 가장자리에서 12%(세로 칸이면 높이의 12%) 안쪽. 주인공 칸은 나머지 88%에서 기점 둘레 여백을 뺀 곳.</li>
+          <li><b>주인공 크기</b>: 칸의 92% 안에서 가장 크게(최대 1.7배). 390 화면에서 북쪽이면 폭 약 330px, 동쪽이면 약 280px(이전 v2는 약 238px).</li>
+          <li><b>칸 나누기</b>: 북 315°~45° · 동 45°~135° · 남 135°~225° · 서 225°~315°. 가로 화면에서는 북·남을 동·서로.</li>
+          <li><b>끌기</b>: 40px 넘게 끌면 고름(끈 반대 방향과 가장 가까운 방향의 도서관). 덜 끌면 제자리로.</li>
+          <li><b>꾹 누르기</b>: 0.6초. 설정은 기기에 저장(시안에선 화면 위 "설정:"에 보임).</li>
+          <li><b>움직임</b>: 0.8초, 끝으로 갈수록 천천히.</li>
         </ul>
-        <h3>정할 것(고를 때 같이 알려 주세요)</h3>
-        <ul>
-          <li><b>기점 모양</b>: 확정된 진한 매스는 노란 큐브 바로 옆에 오면 "검정 + 노랑"이 돼요. 그대로 둘지, 흰 큐브로 바꿀지.</li>
-          <li><b>뚜껑에 보이는 것</b>: 지금은 이름만. 거리(계기판 글자)를 함께 둘지.</li>
-        </ul>
-        <p class="v2note">기본값(Claude): 주인공 크기 = min(판 폭×0.8, 판 높이×0.62), 뚜껑은 가장자리 안쪽 30px까지, 주인공은 기점에서 실제 방향으로 비켜 남는 자리 안에 들어오게 조정. 색은 확정 규칙대로 가장 가까운 영업 중 = `fill1`, 나머지 `fill2`·`fill3` 교대. 도서관 이름·전화는 시안용.</p>
+        <p class="v2note">도서관 이름·전화·방위는 시안용이에요. 색은 확정 규칙대로 가장 가까운 영업 중 = `fill1`, 나머지 거리순 `fill2`·`fill3` 교대.</p>
       </div>
     </div>
   </section>
@@ -736,7 +759,7 @@ document.querySelectorAll(".hero-btn").forEach(btn=>{
   });
 });
 
-/* ===== 3. 미리보기 v2: 주인공 하나 크게 + 가장자리 뚜껑 ===== */
+/* ===== 3. 미리보기 v2(2차): 주인공 크게 + 기점은 반대쪽 + 가장자리 뚜껑 + 끌기 + 꾹 누르기 ===== */
 (function(){
   /* 방위각(도, 북=0 시계방향)·거리는 시안용 */
   const LIBS=[
@@ -747,9 +770,9 @@ document.querySelectorAll(".hero-btn").forEach(btn=>{
     {id:"cheomdan",short:"첨단", full:"첨단도서관(시안)",         km:2.8, bear:105, addr:"광주 광산구<br>(시안)", tel:"—"}
   ];
   const RECENT="sajik";
-  /* 색: 가장 가까운 영업 중 = fill1, 나머지 거리순 fill2·fill3 교대(확정 규칙) */
-  LIBS.slice().sort((a,b)=>a.km-b.km).forEach((l,i)=>{ l.tone = i===0 ? "fill1" : (i%2 ? "fill2" : "fill3"); });
-  const board=document.getElementById("v2board");
+  const byDist=LIBS.slice().sort((a,b)=>a.km-b.km);
+  byDist.forEach((l,i)=>{ l.tone = i===0 ? "fill1" : (i%2 ? "fill2" : "fill3"); });
+  const board=document.getElementById("v2board"), plinth=document.getElementById("v2plinthEl"), menu=document.getElementById("v2menu");
   const geo=`<svg class="geo" viewBox="0 0 220 206"><polygon points="110,200 18,148 76,132 164,180" fill="rgba(28,30,36,.18)" filter="url(#blur2)"/><polygon points="110,12 206,67.4 110,122.8 14,67.4" fill="var(--c-top)" stroke="rgba(0,0,0,.08)" stroke-width="1"/><polyline points="14,67.4 110,122.8 206,67.4" fill="none" stroke="var(--seam-hi)" stroke-width="1.2"/></svg>`;
   LIBS.forEach(l=>{
     const el=document.createElement("div");
@@ -759,77 +782,122 @@ document.querySelectorAll(".hero-btn").forEach(btn=>{
       <div class="face-left"><div class="l-top"><span class="l-badge"><i class="l-dot"></i>OPEN</span><span class="l-dist">${l.km}KM</span></div><div class="l-addr-wrap"><div class="l-lbl">ADDRESS</div><div class="l-addr">${l.addr}</div></div></div>
       <div class="face-right"><div><div class="r-hours">화~일<br>09:00 ~ 18:00</div><div class="r-closed">매주 월요일 휴관</div></div><div class="r-tel-wrap"><div class="r-lbl">TEL</div><div class="r-tel">${l.tel}</div></div></div></div>
       <div class="lid" role="button" aria-label="${l.full} 크게 보기"><svg viewBox="0 0 120 69"><polygon points="60,0 120,34.5 60,69 0,34.5" fill="var(--c-top)" stroke="var(--seam)" stroke-width="1"/><polyline points="0,34.5 60,69 120,34.5" fill="none" stroke="var(--seam-hi)" stroke-width="1"/></svg><div class="lname">${l.short}</div></div>`;
-    el.addEventListener("click",()=>setHero(l.id));
+    el.querySelector(".lid").addEventListener("click",e=>{ if(dragMoved) return; setHero(l.id); });
     board.appendChild(el);
   });
-  let hero=null;
-  function dirOf(l){ const a=l.bear*Math.PI/180; return [Math.sin(a), -Math.cos(a)]; }
+  let hero=byDist[0].id, rule="nearest";
+  const dirOf=b=>{ const a=b*Math.PI/180; return [Math.sin(a), -Math.cos(a)]; };
+  const norm=b=>((b%360)+360)%360;
+  function sectorOf(b, W, H){
+    b=norm(b);
+    let s = (b>=315||b<45) ? "N" : b<135 ? "E" : b<225 ? "S" : "W";
+    if(W>H*1.6 && (s==="N"||s==="S")) s = (b<180) ? "E" : "W";   /* 가로 화면: 북·남도 좌우 칸으로 */
+    return s;
+  }
   function layout(){
-    const W=board.clientWidth, H=board.clientHeight, C=[W/2,H/2], PW=29+10, PH=22+10;
-    /* 주인공은 기점을 피해 판의 절반(위/아래 또는 왼/오른)에 들어가는 가장 큰 크기 */
-    const sV=Math.min((W*.86)/220, (H/2-PH-6)/206, 1.5), sH=Math.min((W/2-PW-6)/220, (H*.86)/206, 1.5);
-    const vertical = sV>=sH, s=Math.max(.4, vertical?sV:sH), cw=220*s, ch=206*s;
-    const h=LIBS.find(l=>l.id===hero), [hdx,hdy]=dirOf(h);
-    let hx, hy;
-    if(vertical){
-      const up = hdy<=0.15;                                  /* 북쪽(또는 동·서)이면 위 반, 남쪽이면 아래 반 */
-      hy = up ? (C[1]-PH-ch) : (C[1]+PH);
-      hy = up ? Math.max(6, hy) : Math.min(H-ch-6, hy);
-      hx = C[0]-cw/2 + hdx*(W-cw)/2*0.9;                     /* 실제 방향 쪽으로 비켜 놓기 */
-    } else {
-      const right = hdx>=0;
-      hx = right ? (C[0]+PW) : (C[0]-PW-cw);
-      hy = C[1]-ch/2 + hdy*(H-ch)/2*0.9;
-    }
-    hx=Math.min(W-cw-4, Math.max(4, hx)); hy=Math.min(H-ch-4, Math.max(4, hy));
+    const W=board.clientWidth, H=board.clientHeight, h=LIBS.find(l=>l.id===hero), sec=sectorOf(h.bear,W,H);
+    const F=.12, PW=29, PH=22, GAP=10;
+    /* 기점: 주인공 반대쪽 가장자리 근처 */
+    const O = sec==="N" ? [W/2, H*(1-F)] : sec==="S" ? [W/2, H*F] : sec==="E" ? [W*F, H/2] : [W*(1-F), H/2];
+    /* 주인공 칸 */
+    const R = sec==="N" ? [6, 6, W-6, O[1]-PH-GAP] : sec==="S" ? [6, O[1]+PH+GAP, W-6, H-6]
+            : sec==="E" ? [O[0]+PW+GAP, 6, W-6, H-6] : [6, 6, O[0]-PW-GAP, H-6];
+    const rw=R[2]-R[0], rh=R[3]-R[1];
+    const s=Math.max(.4, Math.min(rw*.92/220, rh*.92/206, 1.7)), cw=220*s, ch=206*s;
+    const [hdx,hdy]=dirOf(h.bear);
+    /* 칸 안에서 실제 방향만큼 더 비키기 */
+    let hx=R[0]+(rw-cw)/2, hy=R[1]+(rh-ch)/2;
+    if(sec==="N"||sec==="S") hx += hdx*(rw-cw)/2; else hy += hdy*(rh-ch)/2;
+    hx=Math.min(R[2]-cw, Math.max(R[0], hx)); hy=Math.min(R[3]-ch, Math.max(R[1], hy));
+    plinth.style.left=O[0]+"px"; plinth.style.top=O[1]+"px";
+    document.getElementById("v2axisV").style.left=O[0]+"px"; document.getElementById("v2axisH").style.top=O[1]+"px";
+    document.getElementById("v2grid").style.backgroundPosition=`${O[0]-1}px ${O[1]-1}px`;
     const heroRect=[hx, hy+ch*0.05, hx+cw, hy+ch*0.92];
     const inHero=(x,y)=>x>heroRect[0]-62 && x<heroRect[2]+62 && y>heroRect[1]-36 && y<heroRect[3]+36;
+    const nearPlinth=(x,y)=>Math.abs(x-O[0])<29+62 && Math.abs(y-O[1])<22+36;
     const placed=[];
     LIBS.forEach(l=>{
-      const el=document.getElementById("v2-"+l.id), cube=el.querySelector(".iso-cube"), [dx,dy]=dirOf(l);
+      const el=document.getElementById("v2-"+l.id), cube=el.querySelector(".iso-cube"), [dx,dy]=dirOf(l.bear);
       if(l.id===hero){
         el.className="v2lib hero"; el.style.setProperty("--s",s);
         el.style.left=hx+"px"; el.style.top=hy+"px"; cube.style.left="0px"; cube.style.top="0px";
         return;
       }
       el.className="v2lib peek"; cube.style.left="-110px"; cube.style.top="-67px";
-      /* 방향선이 판 가장자리와 만나는 점, 안쪽으로 조금 */
-      const tx = dx>0 ? (W-C[0])/dx : dx<0 ? -C[0]/dx : Infinity;
-      const ty = dy>0 ? (H-C[1])/dy : dy<0 ? -C[1]/dy : Infinity;
+      /* 밀려난 기점에서 실제 방향으로 그은 선이 가장자리와 만나는 곳 */
+      const tx = dx>0 ? (W-O[0])/dx : dx<0 ? -O[0]/dx : Infinity;
+      const ty = dy>0 ? (H-O[1])/dy : dy<0 ? -O[1]/dy : Infinity;
       const t=Math.min(tx,ty), onSide = tx<ty;
-      let ex=C[0]+dx*t, ey=C[1]+dy*t;
-      ex = Math.min(W-30, Math.max(30, ex)); ey = Math.min(H-20, Math.max(20, ey));
+      let ex=O[0]+dx*t, ey=O[1]+dy*t;
       if(onSide) ex = dx>0 ? W-30 : 30; else ey = dy>0 ? H-20 : 20;
-      /* 주인공에 가리면 가장자리를 따라 비킨다 */
-      if(inHero(ex,ey)){
-        if(onSide){ const upY=heroRect[1]-40, dnY=heroRect[3]+40; ey = (Math.abs(upY-ey)<Math.abs(dnY-ey) && upY>20) || dnY>H-20 ? Math.max(20,upY) : dnY; }
-        else { const lx=heroRect[0]-66, rx=heroRect[2]+66; ex = (Math.abs(lx-ex)<Math.abs(rx-ex) && lx>30) || rx>W-30 ? Math.max(30,lx) : rx; }
+      ex=Math.min(W-30, Math.max(30, ex)); ey=Math.min(H-20, Math.max(20, ey));
+      for(let k=0;k<8;k++){
+        const hit = inHero(ex,ey) ? "hero" : nearPlinth(ex,ey) ? "plinth" : placed.find(q=>Math.abs(q[0]-ex)<118 && Math.abs(q[1]-ey)<64);
+        if(!hit) break;
+        if(onSide){ const box = hit==="hero" ? [heroRect[1]-40, heroRect[3]+40] : hit==="plinth" ? [O[1]-62, O[1]+62] : [hit[1]-66, hit[1]+66];
+          ey = (box[0]>20 && (Math.abs(box[0]-ey)<=Math.abs(box[1]-ey) || box[1]>H-20)) ? box[0] : Math.min(H-20, box[1]); }
+        else { const box = hit==="hero" ? [heroRect[0]-66, heroRect[2]+66] : hit==="plinth" ? [O[0]-96, O[0]+96] : [hit[0]-120, hit[0]+120];
+          ex = (box[0]>30 && (Math.abs(box[0]-ex)<=Math.abs(box[1]-ex) || box[1]>W-30)) ? box[0] : Math.min(W-30, box[1]); }
       }
-      /* 이미 놓인 뚜껑과 겹치면 가장자리를 따라 더 비킨다 */
-      for(let k=0;k<6;k++){ const hit=placed.find(q=>Math.abs(q[0]-ex)<118 && Math.abs(q[1]-ey)<64); if(!hit) break;
-        if(onSide) ey = ey>=hit[1] ? Math.min(H-20, hit[1]+66) : Math.max(20, hit[1]-66); else ex = ex>=hit[0] ? Math.min(W-30, hit[0]+120) : Math.max(30, hit[0]-120); }
       placed.push([ex,ey]);
       el.style.left=ex+"px"; el.style.top=ey+"px";
     });
-    document.getElementById("v2plinthEl").style.left=C[0]+"px"; document.getElementById("v2plinthEl").style.top=C[1]+"px";
     document.getElementById("v2title").textContent=h.full;
     document.getElementById("v2meta").textContent=`${h.km}KM · ${h.id===RECENT?"LAST VISIT · ":""}${h.tel}`;
   }
-  function setHero(id){ hero=id; layout(); }
+  function setHero(id){ hero=id; menu.classList.remove("on"); layout(); }
+
+  /* 빈 판 끌기: 지도처럼 끈 반대쪽의 도서관을 고른다 */
+  let drag=null, dragMoved=false;
+  board.addEventListener("pointerdown",e=>{
+    dragMoved=false;
+    if(e.target.closest(".v2menu")) return;
+    const onHeroCube=e.target.closest(".v2lib.hero");
+    if(onHeroCube){ startPress(e); return; }
+    if(e.target.closest(".lid")) { drag={x:e.clientX,y:e.clientY,id:e.pointerId,lid:true}; return; }
+    menu.classList.remove("on");
+    drag={x:e.clientX,y:e.clientY,id:e.pointerId}; board.setPointerCapture(e.pointerId); board.classList.add("dragging");
+  });
+  board.addEventListener("pointermove",e=>{
+    if(press && Math.hypot(e.clientX-press.x,e.clientY-press.y)>8) cancelPress();
+    if(!drag || drag.lid) return;
+    const dx=e.clientX-drag.x, dy=e.clientY-drag.y;
+    if(Math.hypot(dx,dy)>6) dragMoved=true;
+    board.style.setProperty("--px",dx+"px"); board.style.setProperty("--py",dy+"px");
+  });
+  function endDrag(e){
+    cancelPress();
+    if(!drag) return;
+    const dx=e.clientX-drag.x, dy=e.clientY-drag.y, wasLid=drag.lid; drag=null;
+    board.classList.remove("dragging"); board.style.setProperty("--px","0px"); board.style.setProperty("--py","0px");
+    if(wasLid || Math.hypot(dx,dy)<40) return;
+    const v=[-dx,-dy], len=Math.hypot(v[0],v[1]);
+    let best=null, bestCos=-2;
+    LIBS.forEach(l=>{ if(l.id===hero) return; const [ux,uy]=dirOf(l.bear); const c=(ux*v[0]+uy*v[1])/len; if(c>bestCos){bestCos=c;best=l;} });
+    if(best && bestCos>0.3) setHero(best.id);
+  }
+  board.addEventListener("pointerup",endDrag); board.addEventListener("pointercancel",endDrag);
+
+  /* 주인공 큐브 꾹 누르기: 처음 주인공 설정 */
+  let press=null;
+  function startPress(e){ const r=board.getBoundingClientRect(); press={x:e.clientX,y:e.clientY,t:setTimeout(()=>{
+      menu.style.left=Math.min(r.width-212, Math.max(8, e.clientX-r.left-100))+"px"; menu.style.top=Math.min(r.height-150, Math.max(8, e.clientY-r.top-20))+"px";
+      menu.querySelectorAll("button").forEach(b=>b.classList.toggle("on",b.dataset.rule===rule)); menu.classList.add("on"); press=null; },600)}; }
+  function cancelPress(){ if(press){ clearTimeout(press.t); press=null; } }
+  menu.querySelectorAll("button").forEach(b=>b.addEventListener("click",()=>{
+    rule=b.dataset.rule;
+    document.getElementById("v2ruleLbl").textContent = rule==="recent" ? "최근 방문한 곳" : "가장 가까운 곳(기본)";
+    setHero(rule==="recent" ? RECENT : byDist[0].id);
+  }));
+
   function applySize(){
     const [w,h]=document.getElementById("v2size").value.split("x").map(Number);
     const ph=document.getElementById("v2phone");
-    ph.style.setProperty("--W",w+"px"); ph.style.setProperty("--H",h+"px"); ph.classList.toggle("land", w>h);
+    ph.style.setProperty("--W",w+"px"); ph.style.setProperty("--H",h+"px"); ph.classList.toggle("land", w>h); menu.classList.remove("on");
     requestAnimationFrame(layout);
   }
-  function applyRule(){
-    const r=document.getElementById("v2rule").value;
-    setHero(r==="recent" ? RECENT : LIBS.slice().sort((a,b)=>a.km-b.km)[0].id);
-  }
   document.getElementById("v2size").addEventListener("change",applySize);
-  document.getElementById("v2rule").addEventListener("change",applyRule);
-  document.getElementById("v2plinth").addEventListener("change",e=>document.getElementById("v2plinthEl").classList.toggle("light",e.target.value==="light"));
-  hero=LIBS.slice().sort((a,b)=>a.km-b.km)[0].id; applySize();
+  applySize();
 })();
 </script>
 </body>
