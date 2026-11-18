@@ -12,6 +12,7 @@ import {
 // LOCAL-2-P1 #26: B의 실제 게시물 API(contracts/local-feed.md LOCAL-2 C2)
 import { fetchLibraryPosts, type FeedPost } from "../local-feed/api";
 import { formatDistance } from "./format";
+import { mixPopular } from "./popularMix";
 
 type Origin = "current" | "start" | "moved";
 type SectionStatus = "loading" | "ready" | "empty" | "error";
@@ -119,7 +120,8 @@ export function useHomeFeed(nearby: LibrarySummary[], origin: Origin): HomeFeed 
       setPopular({
         status: r.value.books.length ? "ready" : "empty",
         basisLabel: r.value.basis_label,
-        books: r.value.books.slice(0, POPULAR_MAX),
+        // 상위 10권을 고른 뒤 순서는 섞는다(순위 번호 없음, 같은 시리즈 벌림 — popularMix.ts)
+        books: mixPopular(r.value.books.slice(0, POPULAR_MAX)),
       });
     },
     [popularRunner]

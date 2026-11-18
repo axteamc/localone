@@ -67,7 +67,13 @@ const BLOCK_H_FULL_TEXT = 90;
 const QUAD_TOP = 10; // 판 위 여백
 const QUAD_STAGGER = 6; // 같은 줄 두 블록의 어긋남
 const QUAD_BOTTOM = 6; // 남쪽 블록 아래 끝과 창 위쪽 끝 사이
-const QUAD_MID = 50; // 북·남 줄 사이(룰러 36 + 여유). 기점 매스(62)는 블록 밑에 조금 깔릴 수 있다
+const PLINTH_W = 78;
+const PLINTH_H = 62;
+/** 북·남 줄 사이 = 기점 매스 높이 + 위아래 1px. 기점이 블록 글자를 덮지도, 블록에 가려지지도 않게(2026-11-18 D 지적 ②) */
+const QUAD_MID = PLINTH_H + 2;
+/** 한 줄 배치(W·E·MAIN): 블록 아래 끝(두께 그림자 8 포함)과 기점 위 끝 사이 */
+const UPPER_GAP = 8 + 8;
+const ORIGIN_RATIO = 0.4;
 
 export type QuadLayout = {
   /** 하단 창이 평소 높이(half)일 때 창 위로 보이는 판 높이 */
@@ -91,6 +97,21 @@ export function quadLayout(boardHeight: number): QuadLayout {
   const NE = QUAD_TOP;
   const NW = NE + QUAD_STAGGER;
   return { visible, blockH, top: { NW, NE, SW, SE }, originY: Math.round((NW + blockH + SW) / 2) };
+}
+
+export type UpperLayout = { blockH: number; top: number; originY: number };
+
+/**
+ * 한 줄 배치(dual·single)의 세로 자리. 퍼센트 자리를 그대로 쓰면 낮은 화면에서 블록이 기점 매스를 덮었다(D 지적 ②).
+ * 블록 아래 끝이 기점 위 끝보다 UPPER_GAP 위에 오게 하고, 자리가 모자라면 블록 높이를 줄인다.
+ */
+export function upperLayout(boardHeight: number, slot: FacadeSlot): UpperLayout {
+  const originY = Math.round(boardHeight * ORIGIN_RATIO);
+  const limit = originY - PLINTH_H / 2 - UPPER_GAP; // 블록 아래 끝 한계
+  const blockH = Math.max(BLOCK_H_MIN, Math.min(BLOCK_H, limit - QUAD_TOP));
+  const pct = slot === "MAIN" ? 0.08 : 0.14;
+  const top = Math.max(QUAD_TOP, Math.min(Math.round(boardHeight * pct), limit - blockH));
+  return { blockH, top, originY };
 }
 
 function FacadeGrid() {
@@ -221,6 +242,13 @@ export function FacadeHome(props: FacadeHomeProps) {
   const [boardH, setBoardH] = useState(0);
   const onLayout = (e: LayoutChangeEvent) => setBoardH(e.nativeEvent.layout.height);
   const quad = layout.kind === "quad" && boardH > 0 ? quadLayout(boardH) : null;
+  const upper = (slot: FacadeSlot) => (boardH > 0 && !quad ? upperLayout(boardH, slot) : null);
+  const originY = quad?.originY ?? (boardH > 0 ? Math.round(boardH * ORIGIN_RATIO) : undefined);
+  const placeOf = (slot: FacadeSlot): { top: number; height: number } | undefined => {
+    if (quad && slot in quad.top) return { top: quad.top[slot as keyof QuadLayout["top"]], height: quad.blockH };
+    const u = upper(slot);
+    return u ? { top: u.top, height: u.blockH } : undefined;
+  };
 
   // 보는 위치나 목록이 바뀌면 전환해 둔 자리를 처음(가장 가까운 곳)으로 되돌린다
   useEffect(() => {
@@ -234,8 +262,7 @@ export function FacadeHome(props: FacadeHomeProps) {
     <View style={styles.board} testID="facade-board" onLayout={onLayout}>
       <FacadeGrid />
       <View style={styles.axis} pointerEvents="none" />
-      <RulerTrack radiusKm={radiusKm} y={quad?.originY} />
-      <OriginPlinth title={originTitle} sub={originSub} y={quad?.originY} />
+      <RulerTrack radiusKm={radiusKm} y={originY} />
       {layout.groups.map((g) => {
         const idx = indices[g.slot] ?? 0;
         const shown = g.items[idx % g.items.length] as FacadeItem;
@@ -246,12 +273,14 @@ export function FacadeHome(props: FacadeHomeProps) {
             index={idx}
             tone={tones.get(shown.lib.id) ?? "fill1"}
             selected={selectedId === shown.lib.id}
-            place={quad && g.slot in quad.top ? { top: quad.top[g.slot as keyof QuadLayout["top"]], height: quad.blockH } : undefined}
+            place={placeOf(g.slot)}
             onOpen={onLibraryPress}
             onCycle={cycle}
           />
         );
       })}
+      {/* 기점은 블록 뒤에 깔리지 않게 맨 마지막(맨 위)에 그린다 */}
+      <OriginPlinth title={originTitle} sub={originSub} y={originY} />
     </View>
   );
 }
@@ -304,23 +333,24 @@ const styles = StyleSheet.create({
     position: "absolute",
     left: "50%",
     top: "40%",
-    width: 78,
-    height: 62,
-    marginLeft: -39,
-    marginTop: -31,
+    width: PLINTH_W,
+    height: PLINTH_H,
+    marginLeft: -PLINTH_W / 2,
+    marginTop: -PLINTH_H / 2,
+    zIndex: 2,
   },
   plinthSide: {
     position: "absolute",
     left: 6,
     top: 8,
-    width: 78,
-    height: 62,
+    width: PLINTH_W,
+    height: PLINTH_H,
     borderRadius: R.block,
     backgroundColor: C.reliefSideDark,
   },
   plinth: {
-    width: 78,
-    height: 62,
+    width: PLINTH_W,
+    height: PLINTH_H,
     borderRadius: R.block,
     backgroundColor: C.inkStrong,
     alignItems: "center",

@@ -57,18 +57,17 @@ export function PopularBooksRow(props: PopularBooksRowProps) {
                   <View style={[styles.cover, styles.coverEmpty]} />
                 </View>
               ))
-            : books.map((b, i) => (
+            : books.map((b) => (
                 <Pressable
                   key={b.isbn13}
                   accessibilityRole="button"
-                  accessibilityLabel={`${i + 1}위 ${b.title}`}
+                  accessibilityLabel={b.title}
                   testID="popular-book"
                   onPress={() => onPressBook(b)}
                   style={styles.book}
                 >
                   <View style={styles.cover}>
                     <BookCover book={b} />
-                    <Text style={styles.rank}>{i + 1}</Text>
                   </View>
                   <Text style={styles.bookTitle} numberOfLines={2}>
                     {b.title}
@@ -126,11 +125,6 @@ const styles = StyleSheet.create({
   coverEmpty: { backgroundColor: c.surface2 },
   coverText: { padding: 8, justifyContent: "center" },
   coverTitle: { fontSize: 13, lineHeight: 18, color: c.text },
-  rank: {
-    position: "absolute", left: 4, top: 4, minWidth: 24, paddingHorizontal: 3,
-    fontSize: 18, lineHeight: 24, fontWeight: "700", textAlign: "center",
-    color: c.text, backgroundColor: c.paper, borderRadius: tl,
-  },
   bookTitle: { marginTop: 4, fontSize: 13, lineHeight: 18, color: c.text },
   message: { alignItems: "flex-start", gap: 8, paddingVertical: 8 },
   messageText: { fontSize: 13, color: c.textSub },

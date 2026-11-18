@@ -4,7 +4,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react-native
 import React from "react";
 import { StyleSheet } from "react-native";
 import * as api from "../deps";
-import { quadLayout } from "../FacadeHome";
+import { quadLayout, upperLayout } from "../FacadeHome";
 import { HomeScreen } from "../HomeScreen";
 import { snapOffsets } from "../useHomeSheet";
 import { onFill, theme } from "../../../theme";
@@ -238,5 +238,20 @@ describe("VISIT-1 home facade", () => {
     expect(short.top.SE + short.blockH).toBeLessThanOrEqual(snapOffsets(450).half);
     expect(short.top.NE + short.blockH).toBeLessThan(short.originY);
     expect(short.originY).toBeLessThan(short.top.SW);
+  });
+
+  // D 지적 ②(2026-11-18): 화면이 작아지면 기점 매스(높이 62)가 블록에 가려졌다
+  test("origin plinth fits between block rows on every board height", () => {
+    for (const h of [360, 450, 520, 610, 700, 900]) {
+      const q = quadLayout(h);
+      if (q.blockH > 64) {
+        expect(q.originY - 31).toBeGreaterThanOrEqual(q.top.NW + q.blockH);
+        expect(q.originY + 31).toBeLessThanOrEqual(q.top.SW);
+      }
+      for (const slot of ["W", "E", "MAIN"] as const) {
+        const u = upperLayout(h, slot);
+        expect(u.top + u.blockH + 8).toBeLessThan(u.originY - 31);
+      }
+    }
   });
 });
