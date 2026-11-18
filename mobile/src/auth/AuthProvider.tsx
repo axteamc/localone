@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { rawRegisterSession } from "./apiFetch";
+import { abortInFlightRequests, rawRegisterSession } from "./apiFetch";
 import {
   SignInResult,
   startAppleSignIn,
@@ -25,7 +25,35 @@ export interface AuthContextValue {
   signInWithApple: () => Promise<SignInResult>;
 }
 
+/** AUTH-2 G9: useAuth() 모양은 그대로 두고, 로그아웃·탈퇴는 별도 컨텍스트로 낸다. */
+export interface AccountActionsValue {
+  signOut: () => Promise<void>;
+}
+
+export type SignOutCleanup = () => void | Promise<void>;
+
 const AuthContext = createContext<AuthContextValue | null>(null);
+const AccountActionsContext = createContext<AccountActionsValue | null>(null);
+
+// AUTH-2 G5: 기기 예약 알림 취소·화면 밖 캐시 비우기. 모듈 단위라 화면이 언마운트될 때 해제한다.
+const signOutCleanups = new Set<SignOutCleanup>();
+
+export function registerSignOutCleanup(fn: SignOutCleanup): () => void {
+  signOutCleanups.add(fn);
+  return () => {
+    signOutCleanups.delete(fn);
+  };
+}
+
+async function runSignOutCleanups(): Promise<void> {
+  const results = await Promise.allSettled(
+    Array.from(signOutCleanups).map(async (fn) => fn())
+  );
+  for (const result of results) {
+    // C6 #16: 하나가 실패해도 나머지는 돌고, 실패는 숨기지 않고 남긴다
+    if (result.status === "rejected") console.warn("[signOut cleanup]", result.reason);
+  }
+}
 
 async function parseErrorMessage(res: Response): Promise<string | undefined> {
   try {
@@ -237,6 +265,33 @@ export function AuthProvider({
     [completeProviderSignIn]
   );
 
+  const signOutRef = useRef<Promise<void> | null>(null);
+
+  // AUTH-2 G1 순서(계약 P4 골격): ① 진행 요청 중단 ② 세대·상태 비움 ③ 이 기기 세션 삭제 ④ 정화
+  const signOut = useCallback((): Promise<void> => {
+    if (signOutRef.current) return signOutRef.current; // #17 연타 1회
+    const run = (async () => {
+      abortInFlightRequests();
+      generationRef.current += 1;
+      if (mountedRef.current) {
+        setUserId(null);
+        setStatus("signedOut");
+      }
+      try {
+        // G2: local은 네트워크 요청 전에 기기 세션을 지운다(supabase-js 2.119.0)
+        const { error } = await supabase.auth.signOut({ scope: "local" });
+        if (error) console.warn("[signOut]", error); // #15
+      } catch (error) {
+        console.warn("[signOut]", error);
+      }
+      await runSignOutCleanups();
+    })().finally(() => {
+      signOutRef.current = null;
+    });
+    signOutRef.current = run;
+    return run;
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
@@ -247,7 +302,21 @@ export function AuthProvider({
     [status, userId, signInWithGoogle, signInWithApple]
   );
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  const actions = useMemo<AccountActionsValue>(() => ({ signOut }), [signOut]);
+
+  return (
+    <AuthContext.Provider value={value}>
+      <AccountActionsContext.Provider value={actions}>{children}</AccountActionsContext.Provider>
+    </AuthContext.Provider>
+  );
+}
+
+export function useAccountActions(): AccountActionsValue {
+  const ctx = useContext(AccountActionsContext);
+  if (!ctx) {
+    throw new Error("useAccountActions는 AuthProvider 안에서만 쓸 수 있어요.");
+  }
+  return ctx;
 }
 
 export function useAuth(): AuthContextValue {

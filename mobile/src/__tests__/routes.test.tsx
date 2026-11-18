@@ -192,6 +192,7 @@ describe("APP-0-P2 routes and tabs", () => {
     expect(mockRecordedStackScreens).toEqual([
       { name: "(tabs)", options: { headerShown: false } },
       { name: "login", options: { title: "" } },
+      { name: "settings", options: { title: "설정" } }, // AUTH-2 G6
     ]);
   });
 
@@ -208,6 +209,7 @@ describe("APP-0-P2 routes and tabs", () => {
     expect(meSignedOut.getByText("내 정보")).toBeTruthy();
     expect(meSignedOut.getByText("준비 중이에요")).toBeTruthy();
     expect(meSignedOut.getByText("로그인 안 함")).toBeTruthy();
+    expect(meSignedOut.queryByText("설정")).toBeNull(); // AUTH-2 G6: 로그인했을 때만
     await fireEvent.press(meSignedOut.getByText("로그인"));
     expect(mockPush).toHaveBeenCalledWith("/login");
 
@@ -219,6 +221,8 @@ describe("APP-0-P2 routes and tabs", () => {
     });
     const meSignedIn = await render(<MeTabScreen />);
     expect(meSignedIn.getByText("로그인함")).toBeTruthy();
+    await fireEvent.press(meSignedIn.getByText("설정"));
+    expect(mockPush).toHaveBeenCalledWith("/settings");
 
     mockUseLocalSearchParams.mockReturnValue({ libraryId: "101" });
     const lib = await render(<LibraryDetailStubScreen />);

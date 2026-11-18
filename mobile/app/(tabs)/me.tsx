@@ -1,4 +1,4 @@
-// TODO(연결): D(AUTH-2)
+// 스텁: MY-1-P2(A)가 이 화면을 바꾼다. 그때 머리줄 ⚙ 버튼이 router.push("/settings")를 부른다(auth.md AUTH-2 G6).
 import { useRouter } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../src/auth/AuthProvider";
@@ -22,6 +22,15 @@ export default function MeTabScreen() {
         >
           <Text style={styles.buttonText}>로그인</Text>
         </Pressable>
+        {status === "signedIn" && (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push("/settings")}
+            style={[styles.button, ACT.secondary]}
+          >
+            <Text style={[styles.buttonText, ACT.secondaryText]}>설정</Text>
+          </Pressable>
+        )}
       </View>
     </View>
   );
