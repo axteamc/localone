@@ -160,7 +160,7 @@
   .res-list-B .r-cov { width:44px; height:62px; }
   .res-list-B .r-main { flex:1; min-width:0; }
 
-  /* 1열 목록 보기 — 후보 C: 표지 위계 + 아래 계기판 띠 */
+  /* 1열 목록 보기 — 후보 C: 큰 표지(52×72) + 아래 점선 계기판 띠 + 오른쪽 계기판 연도 */
   .res-list-C { padding:0 12px 16px; }
   .res-list-C .r-item {
     display:flex; align-items:stretch; gap:11px; padding:10px 0;
@@ -168,10 +168,11 @@
   }
   .res-list-C .r-cov { width:52px; height:72px; }
   .res-list-C .r-main { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:space-between; }
-  .res-list-C .r- strip {
+  .res-list-C .r-strip {
     display:flex; justify-content:space-between; align-items:center;
-    padding-top:4px; border-top:1px dashed var(--seam);
+    padding-top:4px; margin-top:4px; border-top:1px dashed var(--seam);
   }
+  .res-list-C .r-right { flex:none; text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:2px; }
 
   /* ---------- 정할 것 2: 책 상세 머리 구성 후보 A / B / C ---------- */
   .d-pad { padding:12px 12px 24px; display:flex; flex-direction:column; gap:12px; }
@@ -288,10 +289,10 @@
 </section>
 
 <!-- ===== ② 중심 요소 1: 책 검색 결과 줄·카드 모양 ===== -->
-<section class="element" id="el-search-results" data-chosen="">
-  <h2>정할 것 1. 책 검색 결과(표지 2열 ↔ 목록 1열)의 줄 모양과 계기판 배치 <span class="status">결정 전</span></h2>
+<section class="element" id="el-search-results" data-chosen="C">
+  <h2>정할 것 1. 책 검색 결과(표지 2열 ↔ 목록 1열)의 줄 모양과 계기판 배치 <span class="status">확인 — C + 오른쪽 계기판 연도</span></h2>
   <div class="flow">
-    <b>정해진 것.</b> 검색창(곡률 9 <code>paper</code> + 1px 줄눈)과 오른쪽 무광 판 <code>검색</code> 버튼은 레시피 그대로예요. 결과가 나오면 기본 2열 표지 보기와 <code>☰ 목록으로</code> 1열 보기를 오가는 동작(계약 B11)은 그대로 유지해요. 아래 버튼으로 <b>1열 목록 보기</b>와 <b>2열 표지 보기</b>를 오가며 세 후보의 차이를 비교해 보세요.
+    <b>정해진 것.</b> 검색창(곡률 9 <code>paper</code> + 1px 줄눈)과 오른쪽 무광 판 <code>검색</code> 버튼은 레시피 그대로예요. 결과가 나오면 기본 2열 표지 보기와 <code>☰ 목록으로</code> 1열 보기를 오가는 동작(계약 B11)은 그대로 유지해요. <b>채택(D 결정): 후보 C(큰 표지 52×72 + 아래 점선 계기판 메타 띠)에 후보 A의 오른쪽 계기판 연도·ISBN 정렬을 결합.</b> 아래 선택 상자로 다른 후보도 다시 볼 수 있어요.
   </div>
   <div class="state-bar" id="resViewBar">
     <span>결과 보기 상태:</span>
@@ -299,9 +300,9 @@
     <button type="button" aria-pressed="false" data-resview="grid">2열 표지 보기 (기본 진입)</button>
   </div>
   <div class="pick">후보 다시 보기: <select data-for="el-search-results">
-    <option value="A">후보 A — 레시피 줄눈 행 + 오른쪽 계기판 연도 (추천)</option>
+    <option value="A">후보 A — 레시피 줄눈 행 + 오른쪽 계기판 연도 (추천이었음)</option>
     <option value="B">후보 B — 무광 정보 카드 행 (곡률 9 + 2px 받침)</option>
-    <option value="C">후보 C — 큰 표지 + 아래 계기판 메타 띠</option>
+    <option value="C" selected>후보 C — 큰 표지(52×72) + 아래 계기판 메타 띠 + 오른쪽 계기판 연도 (채택)</option>
   </select></div>
 
   <div class="cands">
@@ -457,9 +458,9 @@
       <p>표준 근거: P-31 1열 카드 피드 (인스타그램 홈, 페이스북)</p>
     </article>
 
-    <!-- 후보 C -->
+    <!-- 후보 C (채택: C + A의 오른쪽 계기판 연도) -->
     <article class="cand" data-id="C">
-      <h3>후보 C — 큰 표지(52×72) + 아래 계기판 메타 띠</h3>
+      <h3>후보 C — 큰 표지(52×72) + 아래 계기판 메타 띠 + 오른쪽 계기판 연도</h3>
       <div class="phone">
         <div class="hd"><span class="rvl"></span><button class="back" type="button">‹</button><span class="en">SEARCH</span><span class="rvr"></span></div>
         <div class="scr" data-screen="list">
@@ -475,25 +476,35 @@
             <div class="r-item">
               <div class="cov c3 r-cov"><span class="ct">채식주의자</span><span class="ca">한강</span></div>
               <div class="r-main">
-                <div><div class="t-name">채식주의자</div><div class="t-sub">한강 지음</div></div>
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                  <div style="min-width:0"><div class="t-name">채식주의자</div><div class="t-sub">한강 지음</div></div>
+                  <div class="r-right"><span class="gauge">2022</span><span class="gauge">9788936434595</span></div>
+                </div>
                 <div class="r-strip"><span class="t-sub">창비</span><span class="gauge">PUB 2022 · →</span></div>
               </div>
             </div>
             <div class="r-item">
               <div class="cov c1 r-cov"><span class="ct">채식주의자</span><span class="ca">한강</span></div>
               <div class="r-main">
-                <div><div class="t-name">채식주의자 (초판)</div><div class="t-sub">한강 지음</div></div>
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                  <div style="min-width:0"><div class="t-name">채식주의자 (초판)</div><div class="t-sub">한강 지음</div></div>
+                  <div class="r-right"><span class="gauge">2007</span><span class="gauge">9788936433598</span></div>
+                </div>
                 <div class="r-strip"><span class="t-sub">창비</span><span class="gauge">PUB 2007 · →</span></div>
               </div>
             </div>
             <div class="r-item">
               <div class="cov c2 r-cov"><span class="ct">큰글자도서</span><span class="ca">한강</span></div>
               <div class="r-main">
-                <div><div class="t-name">채식주의자 (큰글자도서)</div><div class="t-sub">한강 지음</div></div>
+                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+                  <div style="min-width:0"><div class="t-name">채식주의자 (큰글자도서)</div><div class="t-sub">한강 지음</div></div>
+                  <div class="r-right"><span class="gauge">2024</span><span class="gauge">9788936479589</span></div>
+                </div>
                 <div class="r-strip"><span class="t-sub">창비</span><span class="gauge">PUB 2024 · →</span></div>
               </div>
             </div>
           </div>
+          <div class="gauge" style="text-align:center;padding:8px 0 14px">END OF LIST · 여기까지예요</div>
         </div>
         <div class="scr hide" data-screen="grid">
           <div class="s-band">
@@ -505,36 +516,38 @@
             <button class="btn-sec" type="button" data-open="list" style="height:28px;font-size:10.5px">☰ 목록으로</button>
           </div>
           <div class="res-grid">
-            <div class="g-item"><div class="cov c3 g-cov"><span class="ct">채식주의자</span></div><div class="t-name">채식주의자</div><div class="gauge">2022 · →</div></div>
-            <div class="g-item"><div class="cov c1 g-cov"><span class="ct">채식주의자</span></div><div class="t-name">채식주의자 (초판)</div><div class="gauge">2007 · →</div></div>
+            <div class="g-item"><div class="cov c3 g-cov"><span class="ct">채식주의자</span><span class="ca">한강</span></div><div class="t-name">채식주의자</div><div class="g-foot"><span class="t-sub">한강</span><span class="gauge">2022</span></div></div>
+            <div class="g-item"><div class="cov c1 g-cov"><span class="ct">채식주의자</span><span class="ca">한강</span></div><div class="t-name">채식주의자 (초판)</div><div class="g-foot"><span class="t-sub">한강</span><span class="gauge">2007</span></div></div>
+            <div class="g-item"><div class="cov c2 g-cov"><span class="ct">큰글자도서</span><span class="ca">한강</span></div><div class="t-name">채식주의자 (큰글자도서)</div><div class="g-foot"><span class="t-sub">한강</span><span class="gauge">2024</span></div></div>
+            <div class="g-item"><div class="cov none g-cov"><span class="ct">소식자 채식주의자</span></div><div class="t-name">소식자 채식주의자</div><div class="g-foot"><span class="t-sub">한강</span><span class="gauge">2016</span></div></div>
           </div>
         </div>
       </div>
-      <p>표지 크기를 지금(52×74)처럼 유지하면서, 오른쪽 아래에 점선 줄눈과 계기판 띠(<code>PUB 2022 · →</code>)를 두어 도서관이용권 라벨처럼 꾸몄어요.</p>
+      <p>표지 크기를 52×72(앱 52×74)로 넉넉히 두면서, 오른쪽 위에는 후보 A의 계기판 연도·ISBN 정렬을 넣고 오른쪽 아래에는 점선 줄눈과 출판사·계기판 띠를 함께 둔 조합이에요(D 결정).</p>
       <span class="lbl">누르면 이렇게 이어져요</span>
       <p>행이나 오른쪽 <code>→</code>를 누르면 책 상세로 이동해요.</p>
       <span class="lbl">화면을 열어야 보이는 것</span>
       <ul>
-        <li>표지 52×72, 오른쪽 위 제목·저자 + 오른쪽 아래 점선 구분선과 계기판 라벨</li>
-        <li>행 안에 가로선이 하나 더 들어가 선이 2겹으로 보임</li>
+        <li>1열 목록: 표지 52×72(앱 52×74), 오른쪽 위 제목·저자 + 오른쪽 끝 계기판 연도·ISBN, 오른쪽 아래 점선 구분선과 출판사·계기판 라벨</li>
+        <li>2열 표지: 표지 아래 제목 + 저자(왼쪽) · 계기판 연도(오른쪽)</li>
       </ul>
       <span class="lbl">얻는 것 / 포기하는 것</span>
-      <p>표지가 조금 더 크고 라벨 느낌이 강해요. / 행마다 점선과 행 사이 실선이 겹쳐 규칙 3("칸 구분은 선보다 여백")에 비해 번잡해요.</p>
+      <p>표지가 큼직해 책을 알아보기 쉽고 오른쪽 계기판 연도와 하단 메타 띠로 도서 색인 카드 같은 밀도가 생겨요. / 행 높이가 후보 A보다 조금 더 높아요.</p>
       <span class="lbl">표준 근거</span>
-      <p>표준 근거: 새 패턴 — 도서관 색인 라벨처럼 행 아래에 계기판 줄을 따로 두는 배치</p>
+      <p>표준 근거: 새 패턴 — 도서관 색인 라벨처럼 큰 표지 옆에 오른쪽 계기판 연도와 아래 점선 계기판 줄을 함께 두는 배치</p>
     </article>
   </div>
 </section>
 
 <!-- ===== ③ 중심 요소 2: 책 상세 머리 구성 ===== -->
-<section class="element" id="el-detail-head" data-chosen="">
-  <h2>정할 것 2. 책 상세 위쪽(표지 · 제목 · 행동 버튼 2개) 구성 <span class="status">결정 전</span></h2>
+<section class="element" id="el-detail-head" data-chosen="B">
+  <h2>정할 것 2. 책 상세 위쪽(표지 · 제목 · 행동 버튼 2개) 구성 <span class="status">확인 — B 상단 무광 판 + 나란한 2버튼</span></h2>
   <div class="flow">
-    <b>정해진 것(바꾸지 않음).</b> 아래쪽 <b>소장 도서관 카드</b>는 S4에서 확정한 모양(무광 면 + 1px 줄눈 + 2px 받침 + 곡률 9 + 오른쪽 <code>실시간 ↗</code> 높이 38 + <code>주소·전화 ⌄</code> 접기) 그대로예요. 고르실 것은 그 위에 놓이는 <b>책 머리(표지·제목·저자·출판사·연도)와 두 버튼(<code>빌릴 예정에 저장</code> · <code>빌렸어요</code>)의 관계</b>예요. 각 화면에서 <code>빌릴 예정에 저장</code>이나 <code>주소·전화 ⌄</code>를 눌러 보세요.
+    <b>정해진 것(바꾸지 않음).</b> 아래쪽 <b>소장 도서관 카드</b>는 S4에서 확정한 모양(무광 면 + 1px 줄눈 + 2px 받침 + 곡률 9 + 오른쪽 <code>실시간 ↗</code> 높이 38 + <code>주소·전화 ⌄</code> 접기) 그대로예요. <b>채택(D 결정): 후보 B(상단 밝은 무광 판 <code>panelLit</code> 곡률 3 안에 책 머리와 나란한 2버튼 담기).</b> 아래 선택 상자로 다른 후보도 다시 볼 수 있어요.
   </div>
   <div class="pick">후보 다시 보기: <select data-for="el-detail-head">
-    <option value="A">후보 A — 유리판 위 왼쪽 표지·22/400 제목 + 무광 판 주 버튼·평면 보조 버튼 (추천)</option>
-    <option value="B">후보 B — 상단 밝은 무광 판(곡률 3) 안에 책 머리 + 나란한 2버튼 담기</option>
+    <option value="A">후보 A — 유리판 위 왼쪽 표지·22/400 제목 + 무광 판 주 버튼·평면 보조 버튼 (추천이었음)</option>
+    <option value="B" selected>후보 B — 상단 밝은 무광 판(곡률 3) 안에 책 머리 + 나란한 2버튼 담기 (채택)</option>
     <option value="C">후보 C — 표지 옆 오른쪽 칸에 제목과 두 버튼을 함께 넣기 (소장 카드 즉시 3곳)</option>
   </select></div>
 
@@ -876,18 +889,20 @@
     <!-- 3. 빈 소장 안내 (규칙 7: 화면에 무거운 표식은 맨 위 '빌릴 예정에 저장' 하나만) -->
     <div class="scr hide" data-defpane="empty">
       <div class="d-pad">
-        <div class="dh-A">
-          <div class="cov c1 d-cov"><span class="ct">소년이 온다</span><span class="ca">한강</span></div>
-          <div class="d-meta">
-            <div class="t-sec">소년이 온다</div>
-            <div class="t-name">한강</div>
-            <div class="t-sub">창비</div>
-            <div class="gauge">2014 · 9788936434120</div>
+        <div class="dh-B">
+          <div class="dh-row">
+            <div class="cov c1 d-cov"><span class="ct">소년이 온다</span><span class="ca">한강</span></div>
+            <div class="d-meta">
+              <div class="t-sec">소년이 온다</div>
+              <div class="t-name" style="margin-top:2px">한강</div>
+              <div class="t-sub">창비</div>
+              <div class="gauge" style="margin-top:2px">2014 · 9788936434120</div>
+            </div>
           </div>
-        </div>
-        <div class="d-acts">
-          <button class="btn-pri" type="button" style="width:100%">빌릴 예정에 저장</button>
-          <button class="btn-sec" type="button" style="width:100%">빌렸어요</button>
+          <div class="d-acts">
+            <button class="btn-pri" type="button">빌릴 예정에 저장</button>
+            <button class="btn-sec" type="button">빌렸어요</button>
+          </div>
         </div>
         <div class="sec-head" style="margin-top:4px">
           <div><div class="gauge">NEARBY · 3KM</div><div class="t-sec">가까운 도서관</div></div>
@@ -941,23 +956,23 @@
       <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
       <tr data-el="el-search-results">
         <td>1. 책 검색 결과(목록·표지) 줄 모양</td>
-        <td>— (추천: 후보 A 레시피 줄눈 행 + 오른쪽 계기판 연도)</td>
-        <td>—</td>
-        <td>—</td>
-        <td>(받기 전)</td>
-        <td>A: 유리판 위 평면 행 + 1px <code>seamHairline</code>, 표지 44×62(1열) / 3:4(2열), 제목 14/500 왼쪽, 연도 <code>type.gauge</code> 오른쪽 · B: 행마다 무광 카드(곡률 9 + 2px 받침) · C: 표지 52×72 + 아래 점선 계기판 띠</td>
+        <td>후보 C + A의 오른쪽 계기판 연도 (큰 표지 52×72 + 오른쪽 계기판 연도·ISBN + 아래 점선 계기판 메타 띠)</td>
+        <td>없음(받지 않음)</td>
+        <td>후보 A(레시피 줄눈 행만, Claude 추천이었음), 후보 B(무광 정보 카드 행)</td>
+        <td>D 결정: "1 - C + (A의 오른쪽 계기판 연도)"</td>
+        <td>1열: 유리판 위 평면 행 + 1px <code>seamHairline</code>, 표지 52×74, 오른쪽 위 제목(14/500)·저자 + 오른쪽 끝 연도·ISBN(<code>type.gauge</code>), 오른쪽 아래 점선 구분선 + 출판사·<code>PUB 연도 · →</code> 계기판 띠 · 2열: 표지 3:4 + 제목(14/500) + 저자(왼쪽)·연도(오른쪽 <code>type.gauge</code>)</td>
         <td>검색 → 2열 표지 ↔ <code>☰ 목록으로</code> 1열 전환(재호출 없음) → 누르면 책 상세</td>
-        <td><span class="st">결정 전</span></td>
+        <td><span class="st">확인</span></td>
       </tr>
       <tr data-el="el-detail-head">
         <td>2. 책 상세 위쪽(표지·제목·2버튼) 구성</td>
-        <td>— (추천: 후보 A 유리판 위 22/400 제목 + 무광 판 주 버튼·평면 보조 버튼)</td>
-        <td>—</td>
-        <td>—</td>
-        <td>(받기 전)</td>
-        <td>A: 유리판 위 표지 84×118 + 제목 <code>type.title</code>(22/400 <code>inkSoft</code>) + 연도 <code>type.gauge</code>, 아래 무광 판 주 버튼(<code>빌릴 예정에 저장</code>) + 평면 보조 버튼(<code>빌렸어요</code>) 세로 배치 · B: 상단 <code>panelLit</code> 판(곡률 3) 안에 머리 + 2버튼 가로 배치(제안: M10 ① 완화 필요) · C: 표지 옆 오른쪽 칸에 제목+2버튼 압축(제안: M10 ① 완화 필요)</td>
-        <td>책 상세 진입 → 표지·제목·2버튼 + 가까운 도서관(S4 카드) 확인 → 저장 시트 또는 대출 기록</td>
-        <td><span class="st">결정 전</span></td>
+        <td>후보 B — 상단 밝은 무광 판(<code>panelLit</code>, 곡률 3) 안에 책 머리 + 나란한 2버튼(좌 주 버튼 · 우 보조 버튼) 담기</td>
+        <td>없음(받지 않음)</td>
+        <td>후보 A(유리판 위 세로 2버튼, Claude 추천이었음), 후보 C(표지 옆 2버튼 압축)</td>
+        <td>D 결정: "2 - B"</td>
+        <td>상단 판(<code>panelLit</code>, 아래 1px <code>seamHairline</code> + <code>seamHighlight</code>, 곡률 3) 안에 표지 84×118 + 제목 <code>type.title</code>(22/400 <code>inkSoft</code>) + 저자·출판사 + 연도·ISBN(<code>type.gauge</code>), 그 아래 같은 판 안에 좌 주 버튼(무광 판 <code>빌릴 예정에 저장</code>) · 우 보조 버튼(평면 <code>빌렸어요</code>) 나란히 배치 (계약 LOAN-1 M10 ① 문구 개정)</td>
+        <td>책 상세 진입 → 상단 밝은 판(표지·제목·나란한 2버튼) + 아래 유리판(가까운 도서관 S4 카드) 확인 → 저장 시트 또는 대출 기록</td>
+        <td><span class="st">확인</span></td>
       </tr>
       <tr>
         <td>바탕 및 머리 띠</td>
