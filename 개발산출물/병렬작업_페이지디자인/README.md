@@ -30,13 +30,13 @@
 | 레인 | 하는 일 | 파일(진행 기록) | 추천 AI | 건드리는 코드 | 선행 조건 | 완료 |
 | --- | --- | --- | --- | --- | --- | --- |
 | **L0** D 세션 | 문서 PR 올리기, 로고 선택 받기, 공용 문서 합치기, PR 리뷰·머지 정리 | (이 README) | 시니어 | 없음(문서) | — | 진행 중 |
-| **L1** 공통 기반 | `actionColors` 무광 판(주·보조), 카드 질감 헬퍼, 곡률 정리 | [진행_L1_공통기반.md](진행_L1_공통기반.md) | 시니어 | `mobile/src/theme/` | 문서 PR 머지 | 대기 |
-| **L2** 홈 큐브 | 홈 큐브 파사드 코드, 계약 V3·V18 개정 | [진행_L2_홈큐브.md](진행_L2_홈큐브.md) | 시니어 | `library-visit/` + 계약 | 문서 PR 머지 | 대기 |
-| **L3a** 시안 | 책 검색·결과, 책 상세 감사 + 시안 | [진행_L3a_책검색_상세_시안.md](진행_L3a_책검색_상세_시안.md) | 시니어 | 없음(시안 HTML) | 문서 PR 머지 | 대기 |
-| **L3b** 시안 | 대출·반납, 내 정보 감사 + 시안 | [진행_L3b_대출_내정보_시안.md](진행_L3b_대출_내정보_시안.md) | 시니어 | 없음(시안 HTML) | 문서 PR 머지 | 대기 |
-| **L3c** 시안 | 글쓰기·글 상세, 설정, 방문 페이지 감사 + 시안 | [진행_L3c_글쓰기_설정_방문_시안.md](진행_L3c_글쓰기_설정_방문_시안.md) | 시니어 | 없음(시안 HTML) | 문서 PR 머지 | 대기 |
-| **L4** 페이지 코드 | D가 시안을 고른 페이지마다 세션 하나, PR 하나 | 페이지마다 `진행_L4_<페이지>.md`([템플릿](_템플릿_진행.md)) | 주니어 | 그 페이지 `features/<기능>/` | L1 머지 + 그 페이지 시안 결정 | 대기 |
-| **L5** 로그인·로고 | `login.tsx`, 로고 컴포넌트, `개발산출물/로고/` SVG 교체, 아이콘 PNG | [진행_L5_로그인_로고.md](진행_L5_로그인_로고.md) | 주니어 | `app/login.tsx`, `theme/Logo.tsx`, `assets` | **로고 선택** + L1 머지 | 대기 |
+| **L1** 공통 기반 | `actionColors` 무광 판(주·보조), 카드 질감 헬퍼, 곡률 정리 | [진행_L1_공통기반.md](진행_L1_공통기반.md) | 시니어 | `mobile/src/theme/` | 문서 PR 머지 | 완료 (#187 머지) |
+| **L2** 홈 큐브 | 홈 큐브 파사드 코드, 계약 V3·V18 개정 | [진행_L2_홈큐브.md](진행_L2_홈큐브.md) | 시니어 | `library-visit/` + 계약 | 문서 PR 머지 | 완료 (#191 머지) |
+| **L3a** 시안 | 책 검색·결과, 책 상세 감사 + 시안 | [진행_L3a_책검색_상세_시안.md](진행_L3a_책검색_상세_시안.md) | 시니어 | 없음(시안 HTML) | 문서 PR 머지 | 완료 (#188 머지, D 선택 1 = C + A 오른쪽 계기판 연도, 2 = B) |
+| **L3b** 시안 | 대출·반납, 내 정보 감사 + 시안 | [진행_L3b_대출_내정보_시안.md](진행_L3b_대출_내정보_시안.md) | 시니어 | 없음(시안 HTML) | 문서 PR 머지 | 완료 (#190 머지, D 선택 1 = A, 2 = A) |
+| **L3c** 시안 | 글쓰기·글 상세, 설정, 방문 페이지 감사 + 시안 | [진행_L3c_글쓰기_설정_방문_시안.md](진행_L3c_글쓰기_설정_방문_시안.md) | 시니어 | 없음(시안 HTML) | 문서 PR 머지 | 완료 (#193 머지, D 선택 1 = A, 2 = A + C, `DESIGN.md`·계약 반영) |
+| **L4** 페이지 코드 | D가 시안을 고른 페이지마다 세션 하나, PR 하나 | 페이지마다 `진행_L4_<페이지>.md`([템플릿](_템플릿_진행.md)) | 주니어 | 그 페이지 `features/<기능>/` | L1 머지 + 그 페이지 시안 결정 | 대기 — L3c 세 페이지 진행 파일 만듦(아래 표) |
+| **L5** 로그인·로고 | `login.tsx`, 로고 컴포넌트, `개발산출물/로고/` SVG 교체, 아이콘 PNG | [진행_L5_로그인_로고.md](진행_L5_로그인_로고.md) | 주니어 | `app/login.tsx`, `theme/Logo.tsx`, `assets` | **로고 선택** + L1 머지 | 완료 (#189 머지, 로고 I4) |
 | **L6** 후순위 | 도서관 페이지 ⋯ "처음 주인공" 설정, 이름 줄이는 규칙, 방문 모음(+전용 팔레트) | [진행_L6_후순위.md](진행_L6_후순위.md) | 시니어(이름 규칙·방문 모음) / 주니어(⋯ 설정) | — | L2 머지 + D 결정 | 대기 |
 
 완료 칸은 **D 세션이 레인 파일 맨 위 "상태" 줄을 보고** 갱신한다(레인 세션이 이 표를 고치지 않는다 — 충돌 방지).
@@ -53,15 +53,15 @@ L2 + L4가 같은 파일을 만질 수 있는 곳: 홈의 "도서관 찾기" 버
 
 ## L4 페이지 목록 (D가 시안을 고르면 하나씩 만든다)
 
-| 페이지 | 코드 | 시안 레인 |
-| --- | --- | --- |
-| 책 검색·결과 | `app/search.tsx`, `features/book-search/SearchScreen.tsx` 등 | L3a |
-| 책 상세 | `app/books/[isbn13].tsx`, `BookDetailScreen.tsx` 등 | L3a |
-| 대출·반납 | `app/(tabs)/loans.tsx`, `features/loan-assistant/` | L3b |
-| 내 정보 | `app/(tabs)/me.tsx`, `features/my-collection/` | L3b |
-| 글쓰기·글 상세 | `app/posts/new.tsx`, `app/posts/[postId].tsx`, `features/local-feed/` | L3c |
-| 설정 | `app/settings.tsx` | L3c |
-| 방문 페이지 | `app/libraries/[libraryId].tsx`, `VisitScreen.tsx` (레시피만, 도서관 룩은 M2) | L3c |
+| 페이지 | 코드 | 시안 레인 | 진행 파일 · 상태 |
+| --- | --- | --- | --- |
+| 책 검색·결과 | `app/search.tsx`, `features/book-search/SearchScreen.tsx` 등 | L3a | — (L3a 결정 반영 뒤 D 세션이 만듦) |
+| 책 상세 | `app/books/[isbn13].tsx`, `BookDetailScreen.tsx` 등 | L3a | — (L3a 결정 반영 뒤) |
+| 대출·반납 | `app/(tabs)/loans.tsx`, `features/loan-assistant/` | L3b | — (L3b 결정 반영 뒤) |
+| 내 정보 | `app/(tabs)/me.tsx`, `features/my-collection/` | L3b | — (L3b 결정 반영 뒤) |
+| 글쓰기·글 상세 | `app/posts/new.tsx`, `app/posts/[postId].tsx`, `features/local-feed/` | L3c | [진행_L4_글쓰기_글상세.md](진행_L4_글쓰기_글상세.md) · 대기 |
+| 설정 | `app/settings.tsx` | L3c | [진행_L4_설정.md](진행_L4_설정.md) · 대기 |
+| 방문 페이지 | `app/libraries/[libraryId].tsx`, `VisitScreen.tsx` (레시피만, 도서관 룩은 M2) | L3c | [진행_L4_방문페이지.md](진행_L4_방문페이지.md) · 대기 |
 
 `actionColors`를 쓰는 파일이 19개라 L1이 값 하나만 바꿔도 모든 버튼이 같이 바뀐다. 다만 `onFill(theme.colors.fill1)`처럼 노랑 채움을 직접 쓰는 곳(`HomeScreen`·`ComposeScreen`·`PostMenu`·`VisitScreen`·`AskDefaultCard`·`ReactionButton`)은 L1이 못 바꾸므로 **그 페이지의 L4(홈은 L2)가 고친다.**
 
