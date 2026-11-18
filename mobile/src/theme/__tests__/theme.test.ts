@@ -1,5 +1,5 @@
 import { describe, expect, test } from "@jest/globals";
-import { theme, getTheme, onFill, contrastRatio, darken, mix } from "../index";
+import { theme, getTheme, onFill, contrastRatio, darken, mix, actionColors, cardSurface, ledge } from "../index";
 
 describe("APP-0-P1 theme", () => {
   test("theme warm tokens match 디자인_기준", () => {
@@ -52,6 +52,38 @@ describe("APP-0-P1 theme", () => {
       expect(t.colors.pinClosed).toBe("#78736C");
       expect(t.radii.card).toBe(expected[look].card);
     }
+  });
+  test("actionColors: 주 버튼은 무광 판 + 2px 받침, 보조는 평평한 유리판(2026-11-18 주 버튼 색 B)", () => {
+    const c = theme.colors;
+    const act = actionColors(c);
+    expect(act.primary).toEqual({
+      backgroundColor: "#EFF1EF", borderWidth: 1, borderColor: "#C8C9C8", boxShadow: "0 2px 0 0 #B8B7B3",
+    });
+    expect(act.primaryText).toEqual({ color: "#2E333F" });
+    expect(act.primaryPressed).toEqual({ boxShadow: "0 0 0 0 transparent", transform: [{ translateY: 1 }] });
+    expect(act.secondary).toEqual({ backgroundColor: "#E9EAE9", borderWidth: 1, borderColor: "#C8C9C8" });
+    expect(act.secondaryText).toEqual({ color: "#1D1D1F" });
+    // 받침은 boxShadow로만: 레이아웃을 미는 한쪽 테두리를 쓰지 않는다
+    for (const s of [act.primary, act.secondary]) expect(s).not.toHaveProperty("borderBottomWidth");
+    // 노랑 채움은 버튼에 쓰지 않는다
+    expect(Object.values(act).map((s) => JSON.stringify(s)).join()).not.toContain(c.fill1);
+    // 주 글자는 판 위에서 읽혀야 한다(WCAG AA 4.5)
+    for (const look of ["warm", "toffee", "oxford", "modern"] as const) {
+      const lc = getTheme(look).colors;
+      expect(contrastRatio(lc.inkStrong, lc.panelLit)).toBeGreaterThanOrEqual(4.5);
+      expect(contrastRatio(lc.text, lc.panelFrosted)).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+  test("ledge and cardSurface: 소장 카드 무광 면 값", () => {
+    expect(ledge("#000000")).toBe("0 2px 0 0 #000000");
+    expect(ledge("#000000", 3)).toBe("0 3px 0 0 #000000");
+    expect(cardSurface()).toEqual({
+      backgroundColor: "#E9EAE9", borderWidth: 1, borderColor: "#C8C9C8", borderRadius: 9, boxShadow: "0 2px 0 0 #B8B7B3",
+    });
+    expect(cardSurface(theme, { onPanel: true }).backgroundColor).toBe("#EFF1EF");
+    const modern = cardSurface(getTheme("modern"));
+    expect(modern.borderRadius).toBe(6);
+    expect(modern.boxShadow).toBe("0 2px 0 0 #A5A5A4");
   });
   test("mix blends linearly and clamps the weight", () => {
     expect(mix("#000000", "#FFFFFF", 0.5)).toBe("#808080");

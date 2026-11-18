@@ -101,16 +101,57 @@ export function getTheme(look: LookPreset = DEFAULT_LOOK): Theme {
 }
 
 /**
- * 행동 버튼 색(2026-11-18 S4 D 결정 B, DESIGN.md 결정 기록 "주 행동 버튼").
- * 주 행동: 대표색 `fill1` 채움 + 1px 줄눈, 글자는 채움 대비 자동. 보조·카드 안 행동: `cream` 바탕 + `surface3` 테두리.
- * `inkStrong` 채움은 홈 기점·소식 칩 같은 구조에만 쓴다.
+ * 아래 2px 받침(번짐 0인 그림자). `boxShadow`는 웹 규격과 같아 레이아웃 크기에 들어가지 않으므로
+ * `borderBottomWidth`·바깥 View처럼 버튼 높이·글자 위치를 밀지 않는다(RN 0.76+ New Architecture: iOS·Android 9+, 웹은 CSS 그대로).
+ * 주의: 부모가 `overflow: "hidden"`이면 받침이 잘린다.
+ */
+export function ledge(color: string, depth = 2): string {
+  return `0 ${depth}px 0 0 ${color}`;
+}
+/** 받침을 없앤 값(누름 상태). "none" 대신 투명 그림자로 써서 네이티브 파서와 웹 모두 같은 형식을 쓴다. */
+const NO_LEDGE = "0 0 0 0 transparent";
+
+/**
+ * 행동 버튼 재질(2026-11-18 D 결정 "주 버튼 색(앱 전체)" B 무광 판, DESIGN.md "페이지 적용 레시피").
+ * - 주(primary): `panelLit` 판 + 1px `seamHairline` + 아래 2px `reliefBottomMid` 받침, 글자 `inkStrong`. 화면에 하나.
+ * - 보조(secondary): 받침 없는 평평한 `panelFrosted` + 1px `seamHairline`, 글자 `text`. 주보다 한 단 어둡고 평평.
+ * - 누름(primaryPressed): 받침이 사라지며 1px 내려앉음. `style={({ pressed }) => [s.btn, pressed && ACT.primaryPressed]}`.
+ * 곡률은 화면 스타일이 `radii.control`(완전한 필)로 준다. 노랑 `fill1` 채움은 버튼에 쓰지 않는다(색은 창 안에만, 규칙 5).
+ * 반환 모양(primary·primaryText·secondary·secondaryText)은 사용처가 펼쳐 쓰므로 유지한다.
  */
 export function actionColors(colors: ThemeColors) {
   return {
-    primary: { backgroundColor: colors.fill1, borderWidth: 1, borderColor: colors.seamHairline },
-    primaryText: { color: onFill(colors.fill1) },
-    secondary: { backgroundColor: colors.cream, borderWidth: 1, borderColor: colors.surface3 },
+    primary: {
+      backgroundColor: colors.panelLit,
+      borderWidth: 1,
+      borderColor: colors.seamHairline,
+      boxShadow: ledge(colors.reliefBottomMid),
+    },
+    primaryText: { color: colors.inkStrong },
+    primaryPressed: { boxShadow: NO_LEDGE, transform: [{ translateY: 1 }] },
+    secondary: { backgroundColor: colors.panelFrosted, borderWidth: 1, borderColor: colors.seamHairline },
     secondaryText: { color: colors.text },
+    /** 보조 누름: 받침이 없으니 판을 한 단 어둡게(`seamHairline` 쪽으로 30%). */
+    secondaryPressed: { backgroundColor: mix(colors.seamHairline, colors.panelFrosted, 0.3) },
+  } as const;
+}
+
+/**
+ * 정보·목록 카드 무광 면(DESIGN.md 결정 기록 "정보 카드 질감" D, 레시피 "카드(정보·목록)").
+ * 책 상세 소장 카드(`LibraryAvailabilityCard`)의 값을 뽑았다: 바탕 `panelFrosted`, 1px `seamHairline`,
+ * 아래 2px `reliefBottomMid` 받침, 곡률 `radii.infoCard`(아치 9 · modern 6), 그림자·하이라이트 없음.
+ * 화면 바탕이 유리판(`panelFrosted`)이면 `{ onPanel: true }`로 카드를 `panelLit`으로 한 단 밝힌다.
+ * 받침은 `ledge`(boxShadow)라 카드 높이에 들어가지 않는다 — 카드 사이 여백(12)에 받침 2px가 보인다.
+ * 사용: `card: { ...cardSurface(), padding: 12, gap: 6 }`
+ */
+export function cardSurface(t: Theme = theme, opts: { onPanel?: boolean } = {}) {
+  const c = t.colors;
+  return {
+    backgroundColor: opts.onPanel ? c.panelLit : c.panelFrosted,
+    borderWidth: 1,
+    borderColor: c.seamHairline,
+    borderRadius: t.radii.infoCard,
+    boxShadow: ledge(c.reliefBottomMid),
   } as const;
 }
 
