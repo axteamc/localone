@@ -314,7 +314,8 @@
     <div class="state" id="rfPos">새로고침 버튼(①②③): <button aria-pressed="true" data-rf="L">↻ 아이콘 왼쪽</button><button aria-pressed="false" data-rf="R">아이콘 오른쪽 ↻</button>
     </div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;align-items:flex-start">
-      <div class="phone" id="exPhone" style="margin:0"></div>
+      <div><div class="phone" id="exPhone" style="margin:0"></div>
+        <div class="state" style="margin-top:6px"><button id="pullBtn" hidden>⬆ 맨 아래에서 한 번 더 내리기</button></div></div>
       <dl class="note" style="flex:1;min-width:240px;margin-top:0"><dt>이럴 땐</dt><dd id="exWhen"></dd><dt>그대로인 곳 / 바뀌는 곳</dt><dd id="exKeep"></dd><dt>누르면</dt><dd class="flow" id="exNext"></dd></dl>
     </div>
   </section>
@@ -560,8 +561,10 @@
         b: function () { return TOP + PROF + tabs(0) + cards(FOUR) + NAV; } },
       { when: '끝까지 내려 다음 게시물을 불러오다 실패했을 때',
         keep: '이미 보이던 카드는 그대로. 맨 아래에만 안내',
-        next: '"↻ 새로고침"을 누르면 다음 게시물을 다시 불러와 아래에 이어 붙여요. 다 보면 맨 아래 "모두 봤어요"',
+        next: '"↻ 새로고침"을 누르거나, 맨 아래에서 화면을 한 번 더 위로 밀어 내리면(사용자 요청) 다음 게시물을 다시 불러와 아래에 이어 붙여요. 다 보면 맨 아래 "모두 봤어요". 아래 "맨 아래에서 한 번 더 내리기" 버튼으로 볼 수 있어요',
+        pull: true,
         a: function () { return TOP + tabs(0) + cards(FOUR) + '<div class="err inline">더 불러오지 못했어요 ' + RF + '</div>' + NAV; },
+        loading: function () { return TOP + tabs(0) + cards(FOUR) + '<div class="err inline" style="color:var(--text-sub)">다시 불러오는 중…</div>' + NAV; },
         b: function () { return TOP + tabs(0) + cards([[['f3', 150, '두 번째 읽는 중'], ['f2', 110, '반납 전 한 장']], [['f1', 110, '동네 서가 산책'], ['f3', 150, '밑줄 그은 곳']]]) + '<div class="err inline" style="color:var(--text-sub)">모두 봤어요</div>' + NAV; } },
       { when: '처음 가입해서 탭에 게시물이 하나도 없을 때',
         keep: '프로필과 탭은 그대로. 카드 자리에 정할 것 3에서 고른 안내',
@@ -598,7 +601,16 @@
       var n = P.querySelector('[data-next]');
       if (n && e.b) n.addEventListener('click', function () { show(i, true); });
       document.querySelectorAll('#exTabs button').forEach(function (b) { b.setAttribute('aria-pressed', +b.dataset.ex === i); });
+      var pull = document.getElementById('pullBtn');
+      pull.hidden = !(e.pull && !after);
     }
+    // ③ 맨 아래에서 한 번 더 내리면 다시 불러오기 (사용자 요청)
+    document.getElementById('pullBtn').addEventListener('click', function () {
+      var e = EX[2];
+      P.innerHTML = e.loading();
+      this.hidden = true;
+      setTimeout(function () { show(2, true); }, 1000);
+    });
     document.querySelectorAll('#exTabs button').forEach(function (b) { b.addEventListener('click', function () { show(+b.dataset.ex, false); }); });
     show(0, false);
     // 새로고침 아이콘 왼쪽/오른쪽 (사용자 요청으로 추가)
