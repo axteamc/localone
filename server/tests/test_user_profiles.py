@@ -187,8 +187,10 @@ def test_user_profiles_nickname_check(db_engine, nickname):
 
 def test_user_profiles_schema_and_foreign_key(db_engine):
     columns = {c["name"]: c for c in inspect(db_engine).get_columns("user_profiles")}
-    assert set(columns) == {"user_id", "nickname", "updated_at"}
-    assert all(not col["nullable"] for col in columns.values())
+    # MY-1-P1(my-collection C5)이 bio·avatar_url(NULL 허용)을 더했다. M1 3컬럼은 그대로 NOT NULL
+    assert set(columns) == {"user_id", "nickname", "updated_at", "bio", "avatar_url"}
+    assert all(not columns[name]["nullable"] for name in ("user_id", "nickname", "updated_at"))
+    assert columns["bio"]["nullable"] and columns["avatar_url"]["nullable"]
     assert columns["updated_at"]["default"] == "now()"
     assert columns["updated_at"]["type"].timezone is True
     with db_engine.begin() as conn:
