@@ -2,9 +2,11 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import React from "react";
+import { StyleSheet } from "react-native";
 import { useAuth } from "../../../auth/AuthProvider";
 import * as publicApi from "../../../lib/publicApi";
 import type { Book } from "../../../lib/publicApi";
+import { theme } from "../../../theme";
 import * as api from "../api";
 import type { Post, PostCreateInput } from "../api";
 import { ComposeScreen, PostMoreMenu, TEXT, titleAuthorText } from "../ComposeScreen";
@@ -14,8 +16,11 @@ const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockBack = jest.fn();
 const mockCanGoBack = jest.fn(() => true);
+let setNavOptionsImpl: ((opts: { headerLeft?: () => React.ReactNode }) => void) | null = null;
+const mockNav = { setOptions: (opts: { headerLeft?: () => React.ReactNode }) => setNavOptionsImpl?.(opts) };
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace, back: mockBack, canGoBack: mockCanGoBack }),
+  useNavigation: () => mockNav,
 }));
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")
@@ -104,17 +109,41 @@ function signedIn() {
 
 const submitButton = () => screen.getByRole("button", { name: /올리기|올리는 중/ });
 
+function ComposeWithHeader(props: React.ComponentProps<typeof ComposeScreen>) {
+  const [headerLeft, setHeaderLeft] = React.useState<(() => React.ReactNode) | null>(null);
+  setNavOptionsImpl = (opts) => {
+    if ("headerLeft" in opts) setHeaderLeft(() => opts.headerLeft ?? null);
+  };
+  return (
+    <>
+      {headerLeft ? headerLeft() : null}
+      <ComposeScreen {...props} />
+    </>
+  );
+}
+
 async function openCompose() {
-  await render(<ComposeScreen libraryId={101} />);
+  await render(<ComposeWithHeader libraryId={101} />);
   expect(await screen.findByText("정독도서관 피드에 올라가요")).toBeTruthy();
 }
 
+async function openAttachMenu() {
+  if (!screen.queryByTestId("attach-menu")) {
+    const slot = screen.queryByTestId("image-slot-button");
+    if (slot) await fireEvent.press(slot);
+    else await fireEvent.press(screen.getByText("이미지 바꾸기"));
+  }
+  expect(screen.getByTestId("attach-menu")).toBeTruthy();
+}
+
 async function chooseColor() {
+  await openAttachMenu();
   await fireEvent.press(screen.getByText("단색 배경"));
 }
 
 async function chooseBookCover(chosen: Book) {
   searchBooks.mockResolvedValue({ items: [chosen], next_start: null, source: "kakao", fallback_reason: null });
+  await openAttachMenu();
   await fireEvent.press(screen.getByText("책 표지"));
   await fireEvent.changeText(screen.getByLabelText("책 제목이나 저자"), "작별");
   await fireEvent.press(screen.getByText("찾기"));
@@ -123,6 +152,7 @@ async function chooseBookCover(chosen: Book) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  setNavOptionsImpl = null;
   signedIn();
   fetchLibrary.mockResolvedValue({ id: 101, name: "정독도서관" } as Awaited<ReturnType<typeof publicApi.fetchLibrary>>);
   createPost.mockImplementation(async (input) => postFrom(input));
@@ -131,10 +161,15 @@ beforeEach(() => {
 describe("올리기 버튼", () => {
   test("compose disables submit until image chosen", async () => {
     await openCompose();
+    expect(screen.queryByTestId("attach-menu")).toBeNull();
     expect(submitButton().props.accessibilityState).toEqual(expect.objectContaining({ disabled: true }));
     expect(screen.getByText(TEXT.needImage)).toBeTruthy();
     await fireEvent.press(submitButton());
     expect(createPost).not.toHaveBeenCalled();
+
+    await openAttachMenu();
+    await fireEvent.press(screen.getByLabelText("첨부 창 닫기"));
+    expect(screen.queryByTestId("attach-menu")).toBeNull();
 
     await chooseColor();
     expect(submitButton().props.accessibilityState).toEqual(expect.objectContaining({ disabled: false }));
@@ -207,11 +242,13 @@ describe("글자 자리", () => {
   test("photo and cover allow top mid bottom overlay position while color stays mid", async () => {
     pickPostImage.mockResolvedValue({ uri: "file:///p.jpg" });
     await openCompose();
+    await openAttachMenu();
     await fireEvent.press(screen.getByText("앨범에서 고르기"));
     await fireEvent.changeText(screen.getByLabelText("이미지 위 글자"), "그 밤은 길었다");
     expect(screen.getByTestId("compose-preview-text-mid")).toBeTruthy();
     const radios = screen.getAllByRole("radio");
     expect(radios.map((r) => r.props.accessibilityState.checked)).toEqual([false, true, false]);
+    expect(StyleSheet.flatten(radios[1]?.props.style)?.backgroundColor).not.toBe(theme.colors.fill1);
     await fireEvent.press(screen.getByText("위"));
     expect(screen.getByTestId("compose-preview-text-top")).toBeTruthy();
     await fireEvent.press(screen.getByText("아래"));
@@ -256,6 +293,7 @@ describe("막힐 때", () => {
     });
     createPost.mockRejectedValueOnce(new api.ApiCallError(0, "NETWORK", "x", ""));
     await openCompose();
+    await openAttachMenu();
     await fireEvent.press(screen.getByText("앨범에서 고르기"));
     await fireEvent.changeText(screen.getByLabelText("이미지 위 글자"), "문장");
     await fireEvent.press(screen.getByText(TEXT.openBody));
@@ -285,6 +323,7 @@ describe("막힐 때", () => {
     pickPostImage.mockResolvedValue({ uri: "file:///p.jpg" });
     uploadPostImage.mockRejectedValueOnce(new api.ApiCallError(413, "PAYLOAD_TOO_LARGE", "사진이 너무 커요.", ""));
     await openCompose();
+    await openAttachMenu();
     await fireEvent.press(screen.getByText("앨범에서 고르기"));
     await fireEvent.press(submitButton());
     expect(await screen.findByText(TEXT.tooLarge)).toBeTruthy();
@@ -310,6 +349,7 @@ describe("막힐 때", () => {
   test("pickPostImage failure shows notice", async () => {
     pickPostImage.mockRejectedValueOnce(new Error("permission denied"));
     await openCompose();
+    await openAttachMenu();
     await fireEvent.press(screen.getByText("앨범에서 고르기"));
     expect(await screen.findByText(TEXT.pickFailed)).toBeTruthy();
   });
@@ -328,6 +368,7 @@ describe("막힐 때", () => {
   test("camera unavailable shows album guidance", async () => {
     jest.mocked(picker.canUseCamera).mockReturnValue(false);
     await openCompose();
+    await openAttachMenu();
     expect(screen.queryByText("사진 찍기")).toBeNull();
     expect(screen.getByText("앨범에서 고르기")).toBeTruthy();
     jest.mocked(picker.canUseCamera).mockReturnValue(true);

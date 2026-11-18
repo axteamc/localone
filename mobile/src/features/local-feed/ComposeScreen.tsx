@@ -1,7 +1,7 @@
 // LOCAL-1-P2 글쓰기·올리기·내리기 (contracts/local-feed.md LOCAL-1 F13~F17, specs/local-feed/세부/LOCAL-1.md)
 import * as Crypto from "expo-crypto";
-import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigation, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -12,10 +12,11 @@ import {
   TextInput,
   View,
 } from "react-native";
+import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useAuth } from "../../auth/AuthProvider";
 import { fetchBook, fetchLibrary, searchBooks, type Book } from "../../lib/publicApi";
 import { ON_FILL_LIGHT } from "../../theme/tokens";
-import { onFill, theme, actionColors } from "../../theme";
+import { actionColors, cardSurface, onFill, panel, theme, type as T } from "../../theme";
 import {
   ApiCallError,
   BODY_MAX,
@@ -228,11 +229,19 @@ function Dialog(props: {
         <Text style={styles.dialogTitle}>{props.title}</Text>
         {props.error ? <Text style={styles.errorText}>{props.error}</Text> : null}
         <View style={styles.dialogRow}>
-          <Pressable accessibilityRole="button" onPress={props.onCancel} style={styles.dialogButton}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={props.onCancel}
+            style={({ pressed }) => [styles.dialogCancelBtn, pressed && ACT.secondaryPressed]}
+          >
             <Text style={styles.dialogCancel}>{props.cancel}</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" onPress={props.onConfirm} style={styles.dialogButton}>
-            <Text style={props.danger ? styles.menuDanger : styles.dialogConfirm}>{props.confirm}</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={props.onConfirm}
+            style={({ pressed }) => [styles.dialogConfirmBtn, pressed && ACT.primaryPressed]}
+          >
+            <Text style={props.danger ? styles.dialogDangerText : styles.dialogConfirm}>{props.confirm}</Text>
           </Pressable>
         </View>
       </View>
@@ -256,6 +265,7 @@ function BookFinder({ onPick, onClose }: { onPick: (book: Book) => void; onClose
   const [items, setItems] = useState<Book[] | null>(null);
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [focused, setFocused] = useState(false);
   const seq = useRef(0);
 
   const run = async () => {
@@ -276,26 +286,37 @@ function BookFinder({ onPick, onClose }: { onPick: (book: Book) => void; onClose
 
   return (
     <View style={styles.finder} testID="book-finder">
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>책 찾기</Text>
+      <View style={styles.finderHead}>
+        <View>
+          <Text style={T.gauge}>BOOK SEARCH</Text>
+          <Text style={T.title}>책 찾기</Text>
+        </View>
         <Pressable accessibilityRole="button" onPress={onClose} style={styles.headerSide}>
           <Text style={styles.link}>{TEXT.close}</Text>
         </Pressable>
       </View>
-      <TextInput
-        accessibilityLabel="책 제목이나 저자"
-        placeholder="책 제목이나 저자"
-        placeholderTextColor={C.textSub}
-        value={query}
-        onChangeText={setQuery}
-        onSubmitEditing={run}
-        returnKeyType="search"
-        autoFocus
-        style={styles.input}
-      />
-      <Pressable accessibilityRole="button" onPress={run} style={styles.pill}>
-        <Text style={styles.pillText}>찾기</Text>
-      </Pressable>
+      <View style={styles.finderBar}>
+        <TextInput
+          accessibilityLabel="책 제목이나 저자"
+          placeholder="책 제목이나 저자"
+          placeholderTextColor={C.inkMuted}
+          value={query}
+          onChangeText={setQuery}
+          onSubmitEditing={run}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          returnKeyType="search"
+          autoFocus
+          style={[styles.input, styles.finderInput, focused && styles.inputFocus]}
+        />
+        <Pressable
+          accessibilityRole="button"
+          onPress={run}
+          style={({ pressed }) => [styles.smallSecondary, pressed && ACT.secondaryPressed]}
+        >
+          <Text style={styles.smallSecondaryText}>찾기</Text>
+        </Pressable>
+      </View>
       {loading ? <ActivityIndicator color={C.inkStrong} /> : null}
       {failed ? <Text style={styles.errorText}>지금은 책을 찾을 수 없어요. 다시 시도해 주세요.</Text> : null}
       {items && items.length === 0 ? <Text style={styles.sub}>찾는 책이 없어요.</Text> : null}
@@ -322,6 +343,7 @@ export type ComposeScreenProps = { libraryId: number; isbn13?: string | null };
 
 export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
   const router = useRouter();
+  const navigation = useNavigation();
   const { status } = useAuth();
   const clientRequestId = useRef<string>(Crypto.randomUUID()).current; // 화면을 열 때 하나(F9)
 
@@ -333,6 +355,9 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
   const [bodyOpen, setBodyOpen] = useState(false);
   const [body, setBody] = useState("");
   const [finder, setFinder] = useState<null | "cover" | "attach">(null);
+  const [attachOpen, setAttachOpen] = useState(false);
+  const [overlayFocused, setOverlayFocused] = useState(false);
+  const [bodyFocused, setBodyFocused] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<SubmitError | null>(null);
@@ -389,6 +414,25 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
     if (dirty && !posted) setConfirmClose(true);
     else leave();
   };
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
+
+  useLayoutEffect(() => {
+    const nav = navigation as unknown as { setOptions?: (opts: Record<string, unknown>) => void };
+    nav?.setOptions?.({
+      headerBackVisible: false,
+      headerLeft: () => (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="닫기"
+          onPress={() => onCloseRef.current()}
+          style={styles.headerClose}
+        >
+          <Text style={styles.headerX}>✕</Text>
+        </Pressable>
+      ),
+    });
+  }, [navigation]);
 
   const choosePhoto = async (source: PickSource) => {
     setNotice(null);
@@ -447,9 +491,13 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
   if (invalidLibraryId) {
     return (
       <View style={[styles.screen, styles.center]}>
-        <Text style={styles.dialogTitle}>{TEXT.notFound}</Text>
-        <Pressable accessibilityRole="button" onPress={leave} style={styles.secondary}>
-          <Text style={styles.dialogCancel}>{TEXT.goBack}</Text>
+        <Text style={T.title}>{TEXT.notFound}</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={leave}
+          style={({ pressed }) => [styles.smallSecondary, pressed && ACT.secondaryPressed]}
+        >
+          <Text style={styles.smallSecondaryText}>{TEXT.goBack}</Text>
         </Pressable>
       </View>
     );
@@ -467,22 +515,45 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
     return (
       <View style={[styles.screen, styles.sheetBackdrop]}>
         <View style={styles.sheet} accessibilityRole="alert">
-          <Text style={styles.dialogTitle}>{TEXT.loginNeeded}</Text>
-          <Pressable accessibilityRole="button" onPress={() => router.push("/login")} style={styles.primary}>
+          <Text style={T.title}>{TEXT.loginNeeded}</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push("/login")}
+            style={({ pressed }) => [styles.primary, pressed && ACT.primaryPressed]}
+          >
             <Text style={styles.primaryText}>{TEXT.login}</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" onPress={leave} style={styles.secondary}>
-            <Text style={styles.dialogCancel}>{TEXT.close}</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={leave}
+            style={({ pressed }) => [styles.secondaryBtn, pressed && ACT.secondaryPressed]}
+          >
+            <Text style={styles.secondaryBtnText}>{TEXT.close}</Text>
           </Pressable>
         </View>
       </View>
     );
   }
 
+  const discardDialog = confirmClose ? (
+    <Dialog
+      title={TEXT.discardTitle}
+      cancel={TEXT.keepWriting}
+      confirm={TEXT.discard}
+      onCancel={() => setConfirmClose(false)}
+      onConfirm={() => {
+        setConfirmClose(false);
+        leave();
+      }}
+      danger
+    />
+  ) : null;
+
   if (finder) {
     return (
       <View style={styles.screen}>
         <BookFinder onPick={pickBook} onClose={() => setFinder(null)} />
+        {discardDialog}
       </View>
     );
   }
@@ -492,26 +563,24 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
   if (posted) {
     return (
       <View style={styles.screen}>
-        <View style={styles.header}>
-          <Pressable accessibilityRole="button" accessibilityLabel="닫기" onPress={leave} style={styles.headerSide}>
-            <Text style={styles.headerX}>✕</Text>
-          </Pressable>
-          <Text style={styles.headerTitle}>내 게시물</Text>
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.body}>
+          <View style={styles.postedHead}>
+            <View style={styles.pageHead}>
+              <Text style={T.gauge}>POSTED</Text>
+              <Text style={T.pageTitle}>내 게시물</Text>
+            </View>
+            {!withdrawnDone ? (
+              <PostMoreMenu
+                post={posted}
+                onWithdrawn={() => {
+                  setWithdrawnDone(true);
+                  showToast(TEXT.withdrawn);
+                }}
+              />
+            ) : null}
+          </View>
           {!withdrawnDone ? (
-            <PostMoreMenu
-              post={posted}
-              onWithdrawn={() => {
-                setWithdrawnDone(true);
-                showToast(TEXT.withdrawn);
-              }}
-            />
-          ) : (
-            <View style={styles.headerSide} />
-          )}
-        </View>
-        <ScrollView contentContainerStyle={styles.body}>
-          {!withdrawnDone ? (
-            <View testID="posted-card">
+            <View testID="posted-card" style={styles.postedCardWrap}>
               <PostImage
                 kind={posted.image_kind}
                 imageUrl={posted.image_url}
@@ -528,9 +597,9 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
           <Pressable
             accessibilityRole="button"
             onPress={() => router.replace(`/libraries/${libraryId}`)}
-            style={styles.secondary}
+            style={({ pressed }) => [styles.secondaryBtn, pressed && ACT.secondaryPressed]}
           >
-            <Text style={styles.link}>피드 보기</Text>
+            <Text style={styles.secondaryBtnText}>피드 보기</Text>
           </Pressable>
         </ScrollView>
         <Toast text={toast} />
@@ -543,134 +612,161 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
-        <Pressable accessibilityRole="button" accessibilityLabel="닫기" onPress={onClose} style={styles.headerSide}>
-          <Text style={styles.headerX}>✕</Text>
-        </Pressable>
-        <Text style={styles.headerTitle}>새 게시물</Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !canSubmit }}
-          disabled={!canSubmit}
-          onPress={() => void submit()}
-          style={[styles.submit, !canSubmit && styles.submitOff]}
-        >
-          <Text style={styles.submitText}>{submitting ? TEXT.submitting : TEXT.submit}</Text>
-        </Pressable>
-      </View>
-
       {error ? (
         <View style={styles.banner} accessibilityRole="alert">
           <Text style={styles.bannerText}>{error.message}</Text>
           {error.retryable ? (
-            <Pressable accessibilityRole="button" onPress={() => void submit()} disabled={submitting} style={styles.pill}>
-              <Text style={styles.pillText}>{TEXT.retry}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void submit()}
+              disabled={submitting}
+              style={({ pressed }) => [styles.smallSecondary, pressed && ACT.secondaryPressed]}
+            >
+              <Text style={styles.smallSecondaryText}>{TEXT.retry}</Text>
             </Pressable>
           ) : null}
         </View>
       ) : null}
-      {!picked ? <Text style={styles.hint}>{TEXT.needImage}</Text> : null}
 
-      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
-        <Text style={styles.step}>1. 이미지</Text>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+        <View style={styles.pageHead}>
+          <Text style={T.gauge}>{`NEW POST · ${libraryName ?? "이 도서관"}`}</Text>
+          <Text style={T.pageTitle}>새 게시물</Text>
+        </View>
+
         {!picked ? (
-          <View style={styles.choiceRow}>
-            {canUseCamera() ? (
-              <Choice label="사진 찍기" onPress={() => choosePhoto("camera")} />
-            ) : null}
-            <Choice label="앨범에서 고르기" onPress={() => choosePhoto("library")} />
-            <Choice label="책 표지" onPress={() => setFinder("cover")} />
-            <Choice label="단색 배경" onPress={() => setPicked({ kind: "color", token: COLOR_TOKENS[0] })} />
-          </View>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="이미지 고르기"
+            testID="image-slot-button"
+            onPress={() => setAttachOpen(true)}
+            style={styles.slotFrame}
+          >
+            <View style={styles.slotPlus}>
+              <Text style={styles.slotPlusText}>+</Text>
+            </View>
+            <Text style={T.gauge}>01 · IMAGE SLOT</Text>
+            <Text style={styles.slotSub}>눌러서 이미지 고르기</Text>
+          </Pressable>
         ) : (
-          <View>
-            <PostImage
-              testID="compose-preview"
-              kind={effectiveKind ?? "color"}
-              imageUrl={picked.kind === "photo" ? picked.uri : picked.kind === "cover" ? book?.cover_url ?? null : null}
-              color={coverMissing ? "fill3" : picked.kind === "color" ? picked.token : null}
-              text={previewText}
-              pos={pos}
-            />
+          <View style={styles.previewWrap}>
+            <Pressable accessibilityRole="button" accessibilityLabel="이미지 바꾸기" onPress={() => setAttachOpen(true)}>
+              <PostImage
+                testID="compose-preview"
+                kind={effectiveKind ?? "color"}
+                imageUrl={picked.kind === "photo" ? picked.uri : picked.kind === "cover" ? book?.cover_url ?? null : null}
+                color={coverMissing ? "fill3" : picked.kind === "color" ? picked.token : null}
+                text={previewText}
+                pos={pos}
+              />
+            </Pressable>
             {coverMissing ? (
               <Text style={styles.sub}>
                 {TEXT.noCover}
-                <Text accessibilityRole="link" style={styles.link} onPress={() => setPicked(null)}>
+                <Text accessibilityRole="link" style={styles.link} onPress={() => setAttachOpen(true)}>
                   {TEXT.switchImage}
                 </Text>
               </Text>
             ) : null}
-            {picked.kind === "color" ? (
-              <View style={styles.choiceRow}>
-                {COLOR_TOKENS.map((token) => (
-                  <Pressable
-                    key={token}
-                    accessibilityRole="button"
-                    accessibilityLabel={`색 ${token}`}
-                    accessibilityState={{ selected: picked.token === token }}
-                    onPress={() => setPicked({ kind: "color", token })}
-                    style={[
-                      styles.swatch,
-                      { backgroundColor: C[token] },
-                      picked.token === token && styles.swatchOn,
-                    ]}
-                  />
-                ))}
-              </View>
-            ) : null}
-            <Pressable accessibilityRole="button" onPress={() => setPicked(null)} style={styles.secondary}>
-              <Text style={styles.link}>이미지 바꾸기</Text>
-            </Pressable>
+            <View style={styles.previewMeta}>
+              {picked.kind === "color" ? (
+                <View style={styles.choiceRow}>
+                  {COLOR_TOKENS.map((token) => (
+                    <Pressable
+                      key={token}
+                      accessibilityRole="button"
+                      accessibilityLabel={`색 ${token}`}
+                      accessibilityState={{ selected: picked.token === token }}
+                      onPress={() => setPicked({ kind: "color", token })}
+                      style={[
+                        styles.swatch,
+                        { backgroundColor: C[token] },
+                        picked.token === token && styles.swatchOn,
+                      ]}
+                    />
+                  ))}
+                </View>
+              ) : (
+                <View />
+              )}
+              <Pressable accessibilityRole="button" onPress={() => setAttachOpen(true)} style={styles.textLinkWrap}>
+                <Text style={styles.link}>이미지 바꾸기</Text>
+              </Pressable>
+            </View>
           </View>
         )}
         {notice ? <Text style={styles.sub}>{notice}</Text> : null}
 
-        <Text style={styles.step}>2. 글자</Text>
+        <View style={styles.stepLine}>
+          <Text style={T.gauge}>02 · OVERLAY TEXT</Text>
+          <Text style={T.gauge}>MAX 80</Text>
+        </View>
         <TextInput
           accessibilityLabel="이미지 위 글자"
           placeholder="글자를 넣어 보세요"
-          placeholderTextColor={C.textSub}
+          placeholderTextColor={C.inkMuted}
           value={overlay}
           onChangeText={setOverlay}
+          onFocus={() => setOverlayFocused(true)}
+          onBlur={() => setOverlayFocused(false)}
           maxLength={OVERLAY_MAX}
-          style={styles.input}
+          style={[styles.input, overlayFocused && styles.inputFocus]}
         />
         {effectiveKind === "photo" || effectiveKind === "cover" ? (
           <View style={styles.choiceRow} accessibilityRole="radiogroup">
-            {(["top", "mid", "bot"] as const).map((p) => (
-              <Pressable
-                key={p}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: pos === p }}
-                onPress={() => setPos(p)}
-                style={[styles.pill, pos === p && styles.pillOn]}
-              >
-                <Text style={styles.pillText}>{POS_LABEL[p]}</Text>
-              </Pressable>
-            ))}
+            {(["top", "mid", "bot"] as const).map((p) => {
+              const active = pos === p;
+              return (
+                <Pressable
+                  key={p}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: active }}
+                  onPress={() => setPos(p)}
+                  style={({ pressed }) => [styles.pill, active && styles.pillOn, pressed && ACT.secondaryPressed]}
+                >
+                  <Text style={[styles.pillText, active && styles.pillTextOn]}>{POS_LABEL[p]}</Text>
+                </Pressable>
+              );
+            })}
           </View>
         ) : null}
 
-        <Text style={styles.step}>3. 감상</Text>
+        <View style={styles.stepLine}>
+          <Text style={T.gauge}>03 · BODY</Text>
+          {!bodyOpen ? (
+            <Pressable accessibilityRole="button" onPress={() => setBodyOpen(true)} style={styles.textLinkWrap}>
+              <Text style={styles.link}>{TEXT.openBody}</Text>
+            </Pressable>
+          ) : null}
+        </View>
         {bodyOpen ? (
           <TextInput
             accessibilityLabel="감상"
             placeholder="감상(선택)"
-            placeholderTextColor={C.textSub}
+            placeholderTextColor={C.inkMuted}
             value={body}
             onChangeText={setBody}
+            onFocus={() => setBodyFocused(true)}
+            onBlur={() => setBodyFocused(false)}
             maxLength={BODY_MAX}
             multiline
             autoFocus
-            style={[styles.input, styles.bodyInput]}
+            style={[styles.input, styles.bodyInput, bodyFocused && styles.inputFocus]}
           />
-        ) : (
-          <Pressable accessibilityRole="button" onPress={() => setBodyOpen(true)} style={styles.secondary}>
-            <Text style={styles.link}>{TEXT.openBody}</Text>
-          </Pressable>
-        )}
+        ) : null}
 
-        <Text style={styles.step}>4. 책·도서관</Text>
+        <View style={styles.stepLine}>
+          <Text style={T.gauge}>04 · BOOK &amp; LIBRARY</Text>
+          {!book ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setFinder("attach")}
+              style={({ pressed }) => [styles.smallSecondary, pressed && ACT.secondaryPressed]}
+            >
+              <Text style={styles.smallSecondaryText}>책 붙이기</Text>
+            </Pressable>
+          ) : null}
+        </View>
         <Text style={styles.sub}>{libraryLabel}</Text>
         {book ? (
           <View style={styles.bookAttached}>
@@ -678,93 +774,247 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
               📖 {book.title}
               {book.author ? ` · ${book.author}` : ""}
             </Text>
-            <Pressable accessibilityRole="button" onPress={() => setFinder(picked?.kind === "cover" ? "cover" : "attach")}>
-              <Text style={styles.link}>바꾸기</Text>
-            </Pressable>
-            {picked?.kind !== "cover" ? (
-              <Pressable accessibilityRole="button" onPress={() => setBook(null)}>
-                <Text style={styles.link}>빼기</Text>
+            <View style={styles.bookActions}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setFinder(picked?.kind === "cover" ? "cover" : "attach")}
+                style={styles.textLinkWrap}
+              >
+                <Text style={styles.link}>바꾸기</Text>
               </Pressable>
-            ) : null}
+              {picked?.kind !== "cover" ? (
+                <Pressable accessibilityRole="button" onPress={() => setBook(null)} style={styles.textLinkWrap}>
+                  <Text style={styles.link}>빼기</Text>
+                </Pressable>
+              ) : null}
+            </View>
           </View>
-        ) : (
-          <Pressable accessibilityRole="button" onPress={() => setFinder("attach")} style={styles.secondary}>
-            <Text style={styles.link}>책 붙이기</Text>
-          </Pressable>
-        )}
+        ) : null}
       </ScrollView>
 
-      {confirmClose ? (
-        <Dialog
-          title={TEXT.discardTitle}
-          cancel={TEXT.keepWriting}
-          confirm={TEXT.discard}
-          onCancel={() => setConfirmClose(false)}
-          onConfirm={() => {
-            setConfirmClose(false);
-            leave();
-          }}
-          danger
-        />
+      <View style={styles.dock}>
+        {!picked ? <Text style={[T.gauge, styles.dockHint]}>{TEXT.needImage}</Text> : null}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: !canSubmit }}
+          disabled={!canSubmit}
+          onPress={() => void submit()}
+          style={({ pressed }) => [
+            styles.submit,
+            !canSubmit && styles.submitOff,
+            canSubmit && pressed && ACT.primaryPressed,
+          ]}
+        >
+          <Text style={styles.submitText}>{submitting ? TEXT.submitting : TEXT.submit}</Text>
+        </Pressable>
+      </View>
+
+      {attachOpen ? (
+        <View style={styles.attachOverlay} testID="attach-overlay">
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="첨부 창 닫기"
+            style={StyleSheet.absoluteFill}
+            onPress={() => setAttachOpen(false)}
+          />
+          <View style={styles.attachPop} testID="attach-menu">
+            {canUseCamera() ? (
+              <AttachItem
+                icon="camera"
+                label="사진 찍기"
+                first
+                onPress={() => {
+                  setAttachOpen(false);
+                  void choosePhoto("camera");
+                }}
+              />
+            ) : null}
+            <AttachItem
+              icon="library"
+              label="앨범에서 고르기"
+              first={!canUseCamera()}
+              onPress={() => {
+                setAttachOpen(false);
+                void choosePhoto("library");
+              }}
+            />
+            <AttachItem
+              icon="book"
+              label="책 표지"
+              onPress={() => {
+                setAttachOpen(false);
+                setFinder("cover");
+              }}
+            />
+            <AttachItem
+              icon="color"
+              label="단색 배경"
+              onPress={() => {
+                setAttachOpen(false);
+                setPicked({ kind: "color", token: COLOR_TOKENS[0] });
+              }}
+            />
+          </View>
+        </View>
       ) : null}
+
+      {discardDialog}
       <Toast text={toast} />
     </View>
   );
 }
 
-function Choice({ label, onPress }: { label: string; onPress: () => void }) {
+type AttachIcon = "camera" | "library" | "book" | "color";
+
+function AttachGlyph({ kind }: { kind: AttachIcon }) {
+  const common = { stroke: C.inkStrong, fill: "none", strokeWidth: 1.7, strokeLinecap: "round" as const, strokeLinejoin: "round" as const };
+  if (kind === "camera") {
+    return (
+      <Svg width={16} height={16} viewBox="0 0 24 24">
+        <Path d="M4 7h3l2-2h6l2 2h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z" {...common} />
+        <Circle cx="12" cy="13" r="3.5" {...common} />
+      </Svg>
+    );
+  }
+  if (kind === "library") {
+    return (
+      <Svg width={16} height={16} viewBox="0 0 24 24">
+        <Rect x="3" y="4" width="18" height="16" rx="2" {...common} />
+        <Circle cx="8.5" cy="9.5" r="1.5" {...common} />
+        <Path d="M21 15l-5-5L5 20" {...common} />
+      </Svg>
+    );
+  }
+  if (kind === "book") {
+    return (
+      <Svg width={16} height={16} viewBox="0 0 24 24">
+        <Path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" {...common} />
+        <Path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" {...common} />
+      </Svg>
+    );
+  }
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={styles.choice}>
-      <Text style={styles.choiceText}>{label}</Text>
+    <Svg width={16} height={16} viewBox="0 0 24 24">
+      <Rect x="4" y="4" width="16" height="16" rx="4" {...common} />
+      <Path d="M9 12h6" {...common} />
+    </Svg>
+  );
+}
+
+function AttachItem({
+  icon,
+  label,
+  first = false,
+  onPress,
+}: {
+  icon: AttachIcon;
+  label: string;
+  first?: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.attachItem, first && styles.attachItemFirst, pressed && ACT.secondaryPressed]}
+    >
+      <AttachGlyph kind={icon} />
+      <Text style={styles.attachLabel}>{label}</Text>
     </Pressable>
   );
 }
 
+const NO_LEDGE = "0 0 0 0 transparent";
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: C.bg },
-  center: { alignItems: "center", justifyContent: "center" },
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: C.divider,
-  },
-  headerSide: { minWidth: 44, minHeight: 44, justifyContent: "center" },
-  headerX: { fontSize: 22, color: C.text },
-  headerTitle: { fontSize: 16, fontWeight: "500", color: C.text },
-  submit: {
-    ...ACT.primary,
-    borderRadius: theme.radii.control,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  submitOff: { opacity: 0.35 },
-  submitText: { ...ACT.primaryText, fontWeight: "500" },
-  hint: { textAlign: "right", paddingHorizontal: 16, paddingTop: 6, fontSize: 12, color: C.textSub },
+  screen: { flex: 1, minHeight: 0, backgroundColor: panel.backgroundColor },
+  scroll: { flex: 1, minHeight: 0 },
+  center: { alignItems: "center", justifyContent: "center", gap: 12 },
+  headerClose: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center", marginLeft: -8 },
+  headerSide: { minWidth: 44, minHeight: 44, justifyContent: "center", alignItems: "flex-end" },
+  headerX: { fontSize: 18, fontWeight: "400", color: C.inkStrong },
+  pageHead: { gap: 2 },
+  postedHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 3 },
+  postedCardWrap: { gap: 6 },
   banner: {
+    ...cardSurface(theme, { onPanel: true }),
     margin: 12,
     padding: 12,
     gap: 8,
-    borderRadius: theme.radii.inner,
-    backgroundColor: C.paper,
-    borderWidth: 1,
     borderColor: C.loanOut,
   },
   bannerText: { color: C.text, fontSize: 14 },
-  body: { padding: 16, gap: 10, paddingBottom: 48 },
-  step: { fontSize: 13, fontWeight: "500", color: C.textSub, marginTop: 8 },
-  choiceRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  choice: {
-    backgroundColor: C.paper,
+  body: { padding: 16, gap: 12, paddingBottom: 32 },
+  slotFrame: {
+    width: "100%",
+    maxWidth: 260,
+    aspectRatio: 4 / 5,
+    alignSelf: "center",
+    borderWidth: 1.5,
+    borderStyle: "dashed",
+    borderColor: C.seamHairline,
     borderRadius: theme.radii.card,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    backgroundColor: C.paper,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 16,
+    gap: 6,
   },
-  choiceText: { color: C.text, fontSize: 14, fontWeight: "500" },
+  slotPlus: {
+    width: 36,
+    height: 36,
+    borderRadius: theme.radii.control,
+    borderWidth: 1,
+    borderColor: C.seamHairline,
+    backgroundColor: C.panelLit,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 2,
+  },
+  slotPlusText: { fontSize: 20, fontWeight: "400", color: C.inkStrong, lineHeight: 22 },
+  slotSub: { fontSize: 13, color: C.inkMuted },
+  previewWrap: { gap: 8 },
+  previewMeta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  attachOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 12,
+    alignItems: "center",
+    justifyContent: "flex-start",
+    paddingTop: 120,
+    paddingHorizontal: 24,
+  },
+  attachPop: {
+    ...cardSurface(theme, { onPanel: true }),
+    width: "100%",
+    maxWidth: 280,
+    paddingVertical: 4,
+  },
+  attachItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    minHeight: 44,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderTopWidth: 1,
+    borderTopColor: C.seamHairline,
+  },
+  attachItemFirst: { borderTopWidth: 0 },
+  attachLabel: { fontSize: 14, fontWeight: "500", color: C.text },
+  stepLine: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    borderTopWidth: 1,
+    borderTopColor: C.seamHairline,
+    paddingTop: 10,
+  },
+  choiceRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   image: {
     width: "100%",
     maxWidth: 420,
@@ -786,72 +1036,142 @@ const styles = StyleSheet.create({
     textShadowRadius: 6,
     textShadowOffset: { width: 0, height: 1 },
   },
-  swatch: { width: 36, height: 36, borderRadius: theme.radii.control, borderWidth: 1, borderColor: C.divider },
-  swatchOn: { borderWidth: 3, borderColor: C.inkStrong },
+  swatch: { width: 32, height: 32, borderRadius: theme.radii.control, borderWidth: 1, borderColor: C.seamHairline },
+  swatchOn: { borderWidth: 2.5, borderColor: C.inkStrong },
   input: {
     backgroundColor: C.paper,
-    borderRadius: theme.radii.inner,
+    borderWidth: 1,
+    borderColor: C.seamHairline,
+    borderRadius: theme.radii.infoCard,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 15,
+    fontSize: 14,
     color: C.text,
   },
-  bodyInput: { minHeight: 120, textAlignVertical: "top" },
-  pill: {
-    alignSelf: "flex-start",
-    backgroundColor: C.paper,
-    borderRadius: theme.radii.pill,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+  inputFocus: {
+    borderColor: C.inkStrong,
+    borderWidth: 1.5,
   },
-  pillOn: { backgroundColor: C.fill1 },
-  pillText: { color: C.text, fontWeight: "500" },
-  secondary: { paddingVertical: 8 },
-  link: { color: C.inkStrong, fontWeight: "500", textDecorationLine: "underline" },
-  sub: { color: C.textSub, fontSize: 13, marginTop: 4 },
-  bookAttached: { flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap" },
-  bookTitle: { color: C.text, fontSize: 15, fontWeight: "500" },
-  finder: { flex: 1, padding: 12, gap: 10 },
-  bookRow: { paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.divider },
+  bodyInput: { minHeight: 112, textAlignVertical: "top" },
+  pill: {
+    ...ACT.secondary,
+    alignSelf: "flex-start",
+    borderRadius: theme.radii.control,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+  },
+  pillOn: { backgroundColor: C.panelLit, borderColor: C.inkStrong },
+  pillText: { color: C.inkMuted, fontSize: 13, fontWeight: "500" },
+  pillTextOn: { color: C.inkStrong },
+  smallSecondary: {
+    ...ACT.secondary,
+    borderRadius: theme.radii.control,
+    minHeight: 34,
+    paddingHorizontal: 12,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  smallSecondaryText: { ...ACT.secondaryText, fontSize: 13, fontWeight: "500" },
+  textLinkWrap: { minHeight: 32, justifyContent: "center", paddingHorizontal: 2 },
+  link: { color: C.inkStrong, fontSize: 13, fontWeight: "500" },
+  sub: { color: C.inkMuted, fontSize: 13 },
+  bookAttached: {
+    ...cardSurface(theme, { onPanel: true }),
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+    padding: 12,
+    flexWrap: "wrap",
+  },
+  bookActions: { flexDirection: "row", alignItems: "center", gap: 12 },
+  bookTitle: { color: C.text, fontSize: 14, fontWeight: "500", flexShrink: 1 },
+  finder: { flex: 1, padding: 16, gap: 12 },
+  finderHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
+  finderBar: { flexDirection: "row", alignItems: "center", gap: 8 },
+  finderInput: { flex: 1 },
+  bookRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: C.seamHairline, gap: 2 },
+  dock: {
+    flexShrink: 0,
+    backgroundColor: C.panelLit,
+    borderTopWidth: 1,
+    borderTopColor: C.seamHairline,
+    borderTopLeftRadius: theme.radii.block,
+    borderTopRightRadius: theme.radii.block,
+    paddingHorizontal: 16,
+    paddingTop: 10,
+    paddingBottom: 14,
+    gap: 6,
+  },
+  dockHint: { textAlign: "center" },
+  submit: {
+    ...ACT.primary,
+    borderRadius: theme.radii.control,
+    minHeight: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 20,
+  },
+  submitOff: { opacity: 0.4, boxShadow: NO_LEDGE },
+  submitText: { ...ACT.primaryText, fontSize: 15, fontWeight: "500" },
   scrim: {
     position: "absolute", top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: C.shadowFloat,
+    backgroundColor: C.shadowDeep,
     alignItems: "center",
     justifyContent: "center",
     padding: 24,
-    zIndex: 10,
+    zIndex: 20,
   },
-  dialog: { width: "100%", maxWidth: 360, backgroundColor: C.paper, borderRadius: theme.radii.card, padding: 20, gap: 12 },
-  dialogTitle: { fontSize: 16, fontWeight: "500", color: C.text, lineHeight: 22 },
+  dialog: {
+    ...cardSurface(theme, { onPanel: true }),
+    width: "100%",
+    maxWidth: 360,
+    padding: 18,
+    gap: 14,
+  },
+  dialogTitle: { ...T.name, lineHeight: 21 },
   dialogRow: { flexDirection: "row", justifyContent: "flex-end", gap: 8 },
-  dialogButton: { paddingHorizontal: 12, paddingVertical: 8 },
-  dialogCancel: { color: C.textSub, fontWeight: "500" },
-  dialogConfirm: { color: C.inkStrong, fontWeight: "500" },
+  dialogCancelBtn: {
+    ...ACT.secondary,
+    borderRadius: theme.radii.control,
+    minHeight: 38,
+    paddingHorizontal: 14,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dialogConfirmBtn: {
+    ...ACT.primary,
+    borderRadius: theme.radii.control,
+    minHeight: 38,
+    paddingHorizontal: 16,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  dialogCancel: { ...ACT.secondaryText, fontSize: 13, fontWeight: "500" },
+  dialogConfirm: { ...ACT.primaryText, fontSize: 13, fontWeight: "500" },
+  dialogDangerText: { color: C.loanOut, fontSize: 13, fontWeight: "500" },
   errorText: { color: C.loanOut, fontSize: 13 },
   moreButton: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
-  moreText: { fontSize: 22, color: C.text },
+  moreText: { fontSize: 22, color: C.inkStrong },
   menu: {
+    ...cardSurface(theme, { onPanel: true }),
     position: "absolute",
     right: 0,
     top: 44,
     minWidth: 160,
-    backgroundColor: C.paper,
-    borderRadius: theme.radii.inner,
     paddingVertical: 4,
     zIndex: 5,
-    shadowColor: C.shadowFloat,
-    shadowRadius: 8,
-    shadowOpacity: 1,
-    elevation: 4,
   },
   menuItem: { paddingHorizontal: 14, paddingVertical: 12 },
   menuDanger: { color: C.loanOut, fontWeight: "500" },
-  menuEmpty: { paddingHorizontal: 14, paddingVertical: 12, color: C.textSub },
-  sheetBackdrop: { justifyContent: "flex-end", backgroundColor: C.shadowSoft },
+  menuEmpty: { paddingHorizontal: 14, paddingVertical: 12, color: C.inkMuted },
+  sheetBackdrop: { justifyContent: "flex-end", backgroundColor: C.shadowDeep },
   sheet: {
-    backgroundColor: C.paper,
-    borderTopLeftRadius: theme.radii.card,
-    borderTopRightRadius: theme.radii.card,
+    backgroundColor: C.panelLit,
+    borderTopWidth: 1,
+    borderColor: C.seamHairline,
+    borderTopLeftRadius: theme.radii.infoCard,
+    borderTopRightRadius: theme.radii.infoCard,
     padding: 20,
     paddingBottom: 32,
     gap: 12,
@@ -859,18 +1179,27 @@ const styles = StyleSheet.create({
   primary: {
     ...ACT.primary,
     borderRadius: theme.radii.control,
-    paddingVertical: 12,
+    minHeight: 48,
     alignItems: "center",
+    justifyContent: "center",
   },
-  primaryText: { ...ACT.primaryText, fontWeight: "500" },
-  toast: {
-    position: "absolute",
-    bottom: 32,
-    alignSelf: "center",
-    backgroundColor: C.inkStrong,
+  primaryText: { ...ACT.primaryText, fontSize: 15, fontWeight: "500" },
+  secondaryBtn: {
+    ...ACT.secondary,
     borderRadius: theme.radii.control,
-    paddingHorizontal: 18,
-    paddingVertical: 10,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  toastText: { color: onFill(C.inkStrong), fontWeight: "500" },
+  secondaryBtnText: { ...ACT.secondaryText, fontSize: 14, fontWeight: "500" },
+  toast: {
+    ...cardSurface(theme, { onPanel: true }),
+    position: "absolute",
+    bottom: 84,
+    alignSelf: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    zIndex: 25,
+  },
+  toastText: { color: C.inkStrong, fontSize: 14, fontWeight: "500" },
 });

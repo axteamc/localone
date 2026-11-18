@@ -22,7 +22,7 @@ export default function RootLayout() {
           <Stack.Screen name="settings" options={{ title: "설정", ...headerOptions("SETTINGS") }} />
           <Stack.Screen name="search" options={headerOptions("SEARCH")} />
           <Stack.Screen name="books/[isbn13]" options={headerOptions("BOOK")} />
-          <Stack.Screen name="posts/new" options={headerOptions("POST")} />
+          <Stack.Screen name="posts/new" options={{ ...headerOptions("POST"), headerBackVisible: false }} />
         </Stack>
       </WebFrame>
     </AuthProvider>

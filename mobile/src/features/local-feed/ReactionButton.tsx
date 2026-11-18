@@ -2,7 +2,8 @@
 // 누르는 동안 한 번 더 눌러도 한 번만 보낸다. 로그인 안 했으면 서버에 묻지 않고 onLoginNeeded.
 import React, { useRef, useState } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
-import { onFill, theme } from "../../theme";
+import Svg, { Path } from "react-native-svg";
+import { theme } from "../../theme";
 import { setBookmark, setReaction } from "./api";
 import { toggleFailText } from "./PostMenu";
 
@@ -90,14 +91,21 @@ export function SaveButton(props: Common & { saved: boolean; onChange(saved: boo
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityLabel={props.saved ? SAVE_TEXT.saved : SAVE_TEXT.save}
       accessibilityState={{ selected: props.saved, busy: busy || !!props.authLoading }}
       onPress={press}
-      style={[styles.save, props.saved && styles.saveOn]}
+      style={styles.bookmark}
       testID="save-button"
     >
-      <Text style={[styles.saveText, props.saved && styles.saveTextOn]}>
-        {props.saved ? SAVE_TEXT.saved : SAVE_TEXT.save}
-      </Text>
+      <Svg width={20} height={20} viewBox="0 0 24 24">
+        <Path
+          d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"
+          fill={props.saved ? C.inkStrong : "none"}
+          stroke={C.inkStrong}
+          strokeWidth={1.8}
+          strokeLinejoin="round"
+        />
+      </Svg>
     </Pressable>
   );
 }
@@ -105,17 +113,13 @@ export function SaveButton(props: Common & { saved: boolean; onChange(saved: boo
 const styles = StyleSheet.create({
   action: { flexDirection: "row", alignItems: "center", gap: 4, minHeight: 44, paddingHorizontal: 8 },
   heart: { fontSize: 22, color: C.text },
-  heartOn: { color: C.fill1 },
+  heartOn: { color: C.inkStrong },
   count: { fontSize: 15, fontWeight: "500", color: C.text },
-  save: {
-    minHeight: 44,
-    paddingHorizontal: 20,
-    borderRadius: theme.radii.control,
-    backgroundColor: C.fill1,
+  bookmark: {
+    width: 44,
+    height: 44,
+    borderRadius: theme.radii.infoCard,
     alignItems: "center",
     justifyContent: "center",
   },
-  saveOn: { backgroundColor: C.inkStrong },
-  saveText: { fontSize: 15, fontWeight: "500", color: onFill(C.fill1) },
-  saveTextOn: { color: onFill(C.inkStrong) },
 });

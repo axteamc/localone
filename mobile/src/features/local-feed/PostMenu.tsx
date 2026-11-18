@@ -3,7 +3,7 @@
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
-import { onFill, theme, actionColors } from "../../theme";
+import { actionColors, cardSurface, theme, type as T } from "../../theme";
 import { ApiCallError, setBookmark, setReaction, type FeedPost, type PostReactionPatch } from "./api";
 import { shareNotice, sharePost } from "./share";
 
@@ -45,12 +45,16 @@ export function LoginPrompt({ onClose }: { onClose: () => void }) {
               onClose();
               router.push({ pathname: "/login" });
             }}
-            style={styles.primary}
+            style={({ pressed }) => [styles.primary, pressed && ACT.primaryPressed]}
           >
             <Text style={styles.primaryText}>{MENU_TEXT.login}</Text>
           </Pressable>
-          <Pressable accessibilityRole="button" onPress={onClose} style={styles.textButton}>
-            <Text style={styles.sub}>{MENU_TEXT.close}</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onClose}
+            style={({ pressed }) => [styles.secondary, pressed && ACT.secondaryPressed]}
+          >
+            <Text style={styles.secondaryText}>{MENU_TEXT.close}</Text>
           </Pressable>
         </View>
       </View>
@@ -200,38 +204,35 @@ function Row({ label, onPress }: { label: string; onPress: () => void }) {
 
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
-  scrim: { flex: 1, backgroundColor: C.shadowSoft, alignItems: "center", justifyContent: "center", padding: 24 },
+  scrim: { flex: 1, backgroundColor: C.shadowDeep, alignItems: "center", justifyContent: "center", padding: 24 },
   menu: {
+    ...cardSurface(theme, { onPanel: true }),
     width: "100%",
     maxWidth: 260,
-    backgroundColor: C.paper,
-    borderRadius: theme.radii.card,
     paddingVertical: 8,
-    shadowColor: C.shadowFloat,
-    shadowOpacity: 1,
-    shadowRadius: 12,
-    elevation: 8,
   },
   iconRow: { flexDirection: "row", justifyContent: "space-around", paddingHorizontal: 4 },
   iconButton: { alignItems: "center", justifyContent: "center", minWidth: 64, minHeight: 56, paddingVertical: 6 },
-  icon: { fontSize: 20, color: C.text },
-  iconOn: { color: C.fill1 },
-  iconLabel: { fontSize: 12, color: C.textSub, marginTop: 2 },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: C.divider, marginVertical: 4 },
+  icon: { fontSize: 20, color: C.inkMuted },
+  iconOn: { color: C.inkStrong },
+  iconLabel: { fontSize: 11, fontWeight: "500", color: C.inkMuted, marginTop: 2 },
+  divider: { height: 1, backgroundColor: C.seamHairline, marginVertical: 4 },
   row: { minHeight: 44, justifyContent: "center", paddingHorizontal: 16 },
-  rowText: { fontSize: 15, color: C.text, fontWeight: "500" },
-  sheetBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: C.shadowSoft },
+  rowText: { fontSize: 14, color: C.text, fontWeight: "500" },
+  sheetBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: C.shadowDeep },
   sheet: {
-    backgroundColor: C.paper,
-    borderTopLeftRadius: theme.radii.card,
-    borderTopRightRadius: theme.radii.card,
+    backgroundColor: C.panelLit,
+    borderTopWidth: 1,
+    borderColor: C.seamHairline,
+    borderTopLeftRadius: theme.radii.infoCard,
+    borderTopRightRadius: theme.radii.infoCard,
     padding: 20,
     paddingBottom: 32,
     gap: 12,
   },
-  sheetTitle: { fontSize: 16, fontWeight: "500", color: C.text },
-  primary: { ...ACT.primary, borderRadius: theme.radii.control, paddingVertical: 12, alignItems: "center" },
-  primaryText: { ...ACT.primaryText, fontWeight: "500" },
-  textButton: { paddingVertical: 8, minHeight: 44, justifyContent: "center", alignItems: "center" },
-  sub: { fontSize: 15, color: C.textSub },
+  sheetTitle: { ...T.title },
+  primary: { ...ACT.primary, borderRadius: theme.radii.control, minHeight: 48, justifyContent: "center", alignItems: "center" },
+  primaryText: { ...ACT.primaryText, fontSize: 15, fontWeight: "500" },
+  secondary: { ...ACT.secondary, borderRadius: theme.radii.control, minHeight: 44, justifyContent: "center", alignItems: "center" },
+  secondaryText: { ...ACT.secondaryText, fontSize: 15, fontWeight: "500" },
 });
