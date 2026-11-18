@@ -5,7 +5,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { createLatestRunner } from "../../lib/latest";
-import { theme, actionColors, type as T } from "../../theme";
+import { actionColors, cardSurface, theme, type as T } from "../../theme";
 import type { Loan } from "../loan-assistant/api";
 import {
   START_CONFLICT,
@@ -131,17 +131,27 @@ export function LoanPlansSection({ onLoanStarted }: { onLoanStarted?: () => void
     }
   };
 
+  const sectionGauge =
+    list.kind === "ready" ? `PLANNED · ${String(list.items.length).padStart(2, "0")}` : "PLANNED";
+
   return (
     <View testID="loan-plans" style={styles.section}>
-      <Text style={styles.title}>{PLANS_TITLE}</Text>
+      <View>
+        <Text style={styles.gauge} numberOfLines={1}>{sectionGauge}</Text>
+        <Text style={styles.title} numberOfLines={1}>{PLANS_TITLE}</Text>
+      </View>
 
       {list.kind === "loading" && <ActivityIndicator accessibilityLabel="불러오는 중" style={styles.busy} />}
 
       {list.kind === "error" && (
         <View style={styles.box}>
           <Text style={styles.text}>{PLANS_FAILED}</Text>
-          <Pressable accessibilityRole="button" onPress={() => void load()} style={styles.darkBtn}>
-            <Text style={styles.darkBtnText}>다시 시도</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void load()}
+            style={({ pressed }) => [styles.darkBtn, pressed && ACT.secondaryPressed]}
+          >
+            <Text style={styles.darkBtnText} numberOfLines={1}>다시 시도</Text>
           </Pressable>
         </View>
       )}
@@ -149,8 +159,12 @@ export function LoanPlansSection({ onLoanStarted }: { onLoanStarted?: () => void
       {list.kind === "ready" && list.items.length === 0 && list.nextCursor === null && (
         <View style={styles.box}>
           <Text style={styles.text}>{PLANS_EMPTY}</Text>
-          <Pressable accessibilityRole="button" onPress={() => router.push("/search")} style={styles.darkBtn}>
-            <Text style={styles.darkBtnText}>책 찾아보기</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => router.push("/search")}
+            style={({ pressed }) => [styles.darkBtn, pressed && ACT.secondaryPressed]}
+          >
+            <Text style={styles.darkBtnText} numberOfLines={1}>책 찾아보기</Text>
           </Pressable>
         </View>
       )}
@@ -168,29 +182,34 @@ export function LoanPlansSection({ onLoanStarted }: { onLoanStarted?: () => void
           const where = [plan.library.name, plan.library.area_label].filter(Boolean).join(" · ");
           return (
             <View key={plan.id} testID={`plan-${plan.id}`} style={styles.card}>
-              <BookCover book={plan.book} style={styles.cover} fontSize={9} />
-              <View style={styles.flex}>
-                <Text style={styles.bookTitle} numberOfLines={2}>
-                  {plan.book.title}
-                </Text>
-                {!!plan.book.author && <Text style={styles.meta}>{plan.book.author}</Text>}
-                <Text style={styles.meta}>{where}</Text>
+              <View style={styles.topRow}>
+                <BookCover book={plan.book} style={styles.cover} fontSize={9} />
+                <View style={styles.flex}>
+                  <Text style={styles.bookTitle} numberOfLines={2}>
+                    {plan.book.title}
+                  </Text>
+                  {!!plan.book.author && <Text style={styles.meta} numberOfLines={1}>{plan.book.author}</Text>}
+                  <Text style={styles.meta} numberOfLines={1}>{where}</Text>
+                </View>
               </View>
-              <StartLoanButton
-                variant="plan"
-                input={{ isbn13: plan.book.isbn13, libraryId: plan.library.id, planId: plan.id }}
-                onStarted={(loan) => loanStarted(plan.id, loan)}
-                onFailed={loanFailed}
-              />
-              <Pressable
-                accessibilityRole="button"
-                accessibilityState={{ disabled: busy }}
-                disabled={busy}
-                onPress={() => void release(plan.id)}
-                style={[styles.release, busy && styles.dim]}
-              >
-                <Text style={styles.releaseText}>빼기</Text>
-              </Pressable>
+              <View style={styles.actBar}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: busy }}
+                  disabled={busy}
+                  onPress={() => void release(plan.id)}
+                  hitSlop={6}
+                  style={({ pressed }) => [styles.release, pressed && !busy && styles.dim, busy && styles.dim]}
+                >
+                  <Text style={styles.releaseText} numberOfLines={1}>빼기</Text>
+                </Pressable>
+                <StartLoanButton
+                  variant="plan"
+                  input={{ isbn13: plan.book.isbn13, libraryId: plan.library.id, planId: plan.id }}
+                  onStarted={(loan) => loanStarted(plan.id, loan)}
+                  onFailed={loanFailed}
+                />
+              </View>
             </View>
           );
         })}
@@ -200,9 +219,9 @@ export function LoanPlansSection({ onLoanStarted }: { onLoanStarted?: () => void
           accessibilityRole="button"
           disabled={moreBusy}
           onPress={() => void loadMore()}
-          style={[styles.more, moreBusy && styles.dim]}
+          style={({ pressed }) => [styles.more, pressed && !moreBusy && ACT.secondaryPressed, moreBusy && styles.dim]}
         >
-          <Text style={styles.moreText}>더 보기</Text>
+          <Text style={styles.moreText} numberOfLines={1}>더 보기</Text>
         </Pressable>
       )}
     </View>
@@ -213,41 +232,38 @@ const c = theme.colors;
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   section: { gap: 10 },
+  gauge: { ...T.gauge },
   title: { ...T.title },
   busy: { marginVertical: 16 },
-  box: { backgroundColor: c.paper, borderRadius: theme.radii.card, padding: 16, gap: 12, alignItems: "flex-start" },
+  box: { ...cardSurface(theme, { onPanel: true }), padding: 16, gap: 12, alignItems: "flex-start" },
   text: { fontSize: 15, color: c.text, lineHeight: 22 },
   notice: { fontSize: 14, color: c.loanOut },
-  card: {
+  card: { ...cardSurface(theme, { onPanel: true }), padding: 12, gap: 8 },
+  topRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  cover: { width: 44, height: 62, flexShrink: 0 },
+  flex: { flex: 1, minWidth: 0, gap: 2 },
+  bookTitle: { ...T.name },
+  meta: { fontSize: 12, color: c.textSub },
+  actBar: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
-    gap: 12,
-    backgroundColor: c.paper,
-    borderRadius: theme.radii.card,
-    padding: 12,
+    gap: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: c.seamHairline,
   },
-  cover: { width: 44, height: 62 },
-  flex: { flex: 1 },
-  bookTitle: { fontSize: 15, fontWeight: "500", color: c.text },
-  meta: { fontSize: 13, color: c.textSub, marginTop: 2 },
-  release: {
-    borderWidth: 1,
-    borderColor: c.divider,
-    borderRadius: theme.radii.pill,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-  },
-  releaseText: { fontSize: 14, color: c.text, fontWeight: "500" },
+  release: { paddingVertical: 4, paddingHorizontal: 2, flexShrink: 0 },
+  releaseText: { fontSize: 13, color: c.inkMuted, fontWeight: "500" },
   dim: { opacity: 0.5 },
   more: {
     alignSelf: "center",
-    borderWidth: 1,
-    borderColor: c.divider,
+    ...ACT.secondary,
     borderRadius: theme.radii.control,
     paddingVertical: 8,
     paddingHorizontal: 18,
   },
-  moreText: { fontSize: 14, color: c.text, fontWeight: "500" },
+  moreText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "500" },
   darkBtn: {
     ...ACT.secondary,
     borderRadius: theme.radii.control,

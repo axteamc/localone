@@ -14,7 +14,7 @@ import type { LoanPlan } from "../../book-search/api";
 import { BookDetailScreen } from "../../book-search/BookDetailScreen";
 import * as api from "../api";
 import type { Loan, LoanPage } from "../api";
-import { ddayColors, ddayFormat } from "../dday";
+import { ddayColors, ddayFormat, ddayGauge } from "../dday";
 import { LOANS_EMPTY, LOANS_FAILED } from "../LoansSection";
 import { LOGIN_TO_LOAN, START_CONFLICT, START_FAILED } from "../StartLoanButton";
 
@@ -209,7 +209,7 @@ describe("LOAN-1-P2", () => {
     const moved = loan("l1", { plan_id: "p1", due_on: "2026-11-30", book: { ...loan("l1").book, title: "예정 책" } });
     listLoans.mockResolvedValue(page([moved]));
     startLoan.mockResolvedValueOnce(moved);
-    await fireEvent.press(within(screen.getByTestId("plan-p1")).getByText("빌렸어요"));
+    await fireEvent.press(within(screen.getByTestId("plan-p1")).getByText("빌렸어요->"));
     expect(startLoan).toHaveBeenCalledWith({ isbn13: BOY.isbn13, libraryId: 102, planId: "p1" });
     expect(await screen.findByText("내 대출에 추가했어요. 반납 예정일은 2026-11-30(추정)예요.")).toBeTruthy();
     expect(screen.queryByTestId("plan-p1")).toBeNull();
@@ -221,7 +221,7 @@ describe("LOAN-1-P2", () => {
     listLoanPlans.mockResolvedValue({ items: [], next_cursor: null });
     startLoan.mockRejectedValueOnce(conflict());
     const plansBefore = listLoanPlans.mock.calls.length;
-    await fireEvent.press(within(screen.getByTestId("plan-p2")).getByText("빌렸어요"));
+    await fireEvent.press(within(screen.getByTestId("plan-p2")).getByText("빌렸어요->"));
     expect(await screen.findByText(START_CONFLICT)).toBeTruthy();
     await waitFor(() => expect(listLoanPlans.mock.calls.length).toBe(plansBefore + 1));
     await waitFor(() => expect(listLoans).toHaveBeenCalledTimes(3));
@@ -240,10 +240,10 @@ describe("LOAN-1-P2", () => {
       ]));
       await render(<LoansTabScreen />);
       await screen.findByTestId("loan-a");
-      expect(within(screen.getByTestId("dday-a")).getByText("D-8")).toBeTruthy();
-      expect(within(screen.getByTestId("dday-b")).getByText("D-8")).toBeTruthy();
-      expect(within(screen.getByTestId("loan-a")).getByText("대출 2026-11-10 · 예정 2026-11-24 (추정)")).toBeTruthy();
-      expect(within(screen.getByTestId("loan-b")).getByText("대출 2026-11-10 · 예정 2026-11-24")).toBeTruthy();
+      expect(within(screen.getByTestId("dday-a")).getByText("D-08")).toBeTruthy();
+      expect(within(screen.getByTestId("dday-b")).getByText("D-08")).toBeTruthy();
+      expect(within(screen.getByTestId("loan-a")).getByText("2026.11.10 — 11.24 · 추정")).toBeTruthy();
+      expect(within(screen.getByTestId("loan-b")).getByText("2026.11.10 — 11.24")).toBeTruthy();
       expect(within(screen.getByTestId("loan-a")).getByText("정독도서관")).toBeTruthy();
     } finally {
       jest.useRealTimers();
@@ -252,22 +252,23 @@ describe("LOAN-1-P2", () => {
 
   test("ddayFormat and ddayColors cover all 4 stages with theme tokens", () => {
     const c = theme.colors;
-    const cases: [number, boolean, string, string, { bg: string; fg: string }][] = [
-      [-2, true, "연체 2일", "overdue", { bg: c.loanOut, fg: c.paper }],
-      [0, false, "오늘 반납", "urgent", { bg: c.inkStrong, fg: c.paper }],
-      [3, false, "D-3", "soon", { bg: c.fill1, fg: c.text }],
-      [8, false, "D-8", "normal", { bg: c.surface2, fg: c.text }],
+    const cases: [number, boolean, string, string, string, { bg: string; fg: string }][] = [
+      [-2, true, "연체 2일", "+02D", "overdue", { bg: c.loanOut, fg: c.loanOut }],
+      [0, false, "오늘 반납", "D-DAY", "urgent", { bg: c.inkStrong, fg: c.inkStrong }],
+      [3, false, "임박", "D-03", "soon", { bg: c.fill1, fg: c.inkStrong }],
+      [8, false, "여유", "D-08", "normal", { bg: c.surface3, fg: c.inkSoft }],
     ];
-    for (const [dDay, overdue, label, tone, colors] of cases) {
+    for (const [dDay, overdue, label, gauge, tone, colors] of cases) {
       const f = ddayFormat(dDay, overdue);
       expect(f).toEqual({ label, tone });
+      expect(ddayGauge(dDay, overdue)).toBe(gauge);
       expect(ddayColors(f.tone, c)).toEqual(colors);
     }
-    expect(ddayFormat(1, false)).toEqual({ label: "D-1", tone: "soon" });
-    expect(ddayFormat(4, false)).toEqual({ label: "D-4", tone: "normal" });
+    expect(ddayFormat(1, false)).toEqual({ label: "임박", tone: "soon" });
+    expect(ddayFormat(4, false)).toEqual({ label: "여유", tone: "normal" });
     expect(ddayFormat(-1, false).tone).toBe("overdue"); // 음수면 서버 표시가 빠져도 연체
-    // 4단계 색이 서로 달라야 구분된다
-    expect(new Set(cases.map(([, , , , col]) => col.bg)).size).toBe(4);
+    // 4단계 점 색이 서로 달라야 구분된다
+    expect(new Set(cases.map(([, , , , , col]) => col.bg)).size).toBe(4);
 
     // 색·곡률 하드코딩 금지: loan-assistant 소스에 #RRGGBB·rgb(·곡률 숫자 없음
     const dir = path.join(__dirname, "..");
@@ -329,7 +330,7 @@ describe("LOAN-1-P2", () => {
     listLoans.mockResolvedValueOnce(page([loan("fresh")]));
     await render(<LoansTabScreen />);
     await screen.findByTestId("plan-p9");
-    await fireEvent.press(within(screen.getByTestId("plan-p9")).getByText("빌렸어요"));
+    await fireEvent.press(within(screen.getByTestId("plan-p9")).getByText("빌렸어요->"));
     await screen.findByTestId("loan-fresh");
     await act(async () => slow.resolve(page([loan("stale")])));
     expect(screen.queryByTestId("loan-stale")).toBeNull();
@@ -393,7 +394,7 @@ describe("LOAN-1-P2", () => {
 
     const postDeferred = deferred<Loan>();
     startLoan.mockReturnValueOnce(postDeferred.promise);
-    await fireEvent.press(within(screen.getByTestId("plan-p1")).getByText("빌렸어요"));
+    await fireEvent.press(within(screen.getByTestId("plan-p1")).getByText("빌렸어요->"));
 
     // 전환 POST 진행 중 #16 재조회가 시작된 상황(예: 다른 예정 404 → load())
     const staleReload = deferred<{ items: LoanPlan[]; next_cursor: null }>();

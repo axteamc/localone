@@ -5,10 +5,10 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, AppState, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { createLatestRunner } from "../../lib/latest";
-import { theme, actionColors, type as T } from "../../theme";
+import { actionColors, cardSurface, ledge, theme, type as T } from "../../theme";
 import { BookCover } from "../book-search/SearchScreen";
 import { ApiCallError, listLoans, returnLoan, type Loan, type LoanPage, type LoanStatus } from "./api";
-import { ddayColors, ddayFormat } from "./dday";
+import { ddayColors, ddayFormat, ddayGauge } from "./dday";
 import { DueDateSheet, useOpenGeneration } from "./DueDateSheet";
 import { NOTIFICATIONS_SUPPORTED, openNotificationSettings } from "./notifications.platform";
 import { fetchAllOnLoan, syncLoanReminders } from "./reminders";
@@ -22,13 +22,21 @@ export const RETURN_TITLE = "이 책을 반납했나요?";
 export const returnBody = (loan: Loan) => `${loan.book.title}을 지난 대출로 옮길게요.`;
 export const RETURNED_NOTE = "반납 처리했어요. 지난 대출에서 다시 볼 수 있어요.";
 export const RETURN_FAILED = "반납 처리하지 못했어요. 다시 시도해 주세요.";
-export const WEB_NO_REMINDERS = "알림은 휴대폰 앱에서만 와요"; // T9
+export const WEB_NO_REMINDERS = "알림은 앱에서만 와요"; // T9
 export const REMINDERS_DENIED =
   "알림을 꺼 두셨어요. 알림이 오지 않아도 내 대출에서 D-day와 연체를 바로 볼 수 있어요."; // T11
 
+const formatDateRange = (startYmd: string, endYmd: string) => {
+  const start = startYmd.replace(/-/g, ".");
+  if (!endYmd) return start;
+  const end =
+    startYmd.slice(0, 4) === endYmd.slice(0, 4) ? endYmd.slice(5).replace(/-/g, ".") : endYmd.replace(/-/g, ".");
+  return `${start} — ${end}`;
+};
+
 export const loanDates = (loan: Loan) =>
-  `대출 ${loan.loaned_on} · 예정 ${loan.due_on}${loan.due_on_assumed ? " (추정)" : ""}`;
-export const returnedDates = (loan: Loan) => `대출 ${loan.loaned_on} · 반납 ${loan.returned_on ?? ""}`;
+  `${formatDateRange(loan.loaned_on, loan.due_on)}${loan.due_on_assumed ? " · 추정" : ""}`;
+export const returnedDates = (loan: Loan) => formatDateRange(loan.loaned_on, loan.returned_on ?? "");
 
 const TABS: [LoanStatus, string][] = [
   ["on_loan", "빌린 책"],
@@ -201,34 +209,52 @@ export function LoansSection({ refreshKey = 0 }: { refreshKey?: number }) {
   };
 
   const onLoan = tab === "on_loan";
+  const sectionGauge =
+    onLoan && list.kind === "ready"
+      ? `ACTIVE LOANS · ${String(list.items.length).padStart(2, "0")}`
+      : onLoan
+        ? "ACTIVE LOANS"
+        : "RETURNED HISTORY";
+
   return (
     <View testID="my-loans" style={styles.section}>
-      <Text style={styles.title}>{LOANS_TITLE}</Text>
+      <View style={styles.secHead}>
+        <View style={styles.secTitleWrap}>
+          <Text style={styles.gauge} numberOfLines={1}>{sectionGauge}</Text>
+          <Text style={styles.title} numberOfLines={1}>{LOANS_TITLE}</Text>
+        </View>
 
-      <View style={styles.tabs}>
-        {TABS.map(([status, label]) => {
-          const on = status === tab;
-          return (
-            <Pressable
-              key={status}
-              testID={`loans-tab-${status}`}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: on }}
-              onPress={() => switchTab(status)}
-              style={[styles.tab, on && styles.tabOn]}
-            >
-              <Text style={[styles.tabText, on && styles.tabTextOn]}>{label}</Text>
-            </Pressable>
-          );
-        })}
+        <View style={styles.tabs}>
+          {TABS.map(([status, label]) => {
+            const on = status === tab;
+            return (
+              <Pressable
+                key={status}
+                testID={`loans-tab-${status}`}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: on }}
+                onPress={() => switchTab(status)}
+                style={[styles.tab, on && styles.tabOn]}
+              >
+                <Text style={[styles.tabText, on && styles.tabTextOn]} numberOfLines={1}>{label}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
       </View>
 
-      {onLoan && !NOTIFICATIONS_SUPPORTED && <Text style={styles.hint}>{WEB_NO_REMINDERS}</Text>}
+      {onLoan && !NOTIFICATIONS_SUPPORTED && (
+        <Text style={styles.hint} numberOfLines={1}>{WEB_NO_REMINDERS}</Text>
+      )}
       {onLoan && remindersDenied && (
         <View testID="reminders-denied" style={styles.box}>
           <Text style={styles.text}>{REMINDERS_DENIED}</Text>
-          <Pressable accessibilityRole="button" onPress={openNotificationSettings} style={styles.btn}>
-            <Text style={styles.btnText}>알림 설정 열기</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={openNotificationSettings}
+            style={({ pressed }) => [styles.btn, pressed && ACT.secondaryPressed]}
+          >
+            <Text style={styles.btnText} numberOfLines={1}>알림 설정 열기</Text>
           </Pressable>
         </View>
       )}
@@ -238,8 +264,12 @@ export function LoansSection({ refreshKey = 0 }: { refreshKey?: number }) {
       {list.kind === "error" && (
         <View style={styles.box}>
           <Text style={styles.text}>{LOANS_FAILED}</Text>
-          <Pressable accessibilityRole="button" onPress={() => void load()} style={styles.btn}>
-            <Text style={styles.btnText}>다시 시도</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void load()}
+            style={({ pressed }) => [styles.btn, pressed && ACT.secondaryPressed]}
+          >
+            <Text style={styles.btnText} numberOfLines={1}>다시 시도</Text>
           </Pressable>
         </View>
       )}
@@ -284,9 +314,9 @@ export function LoansSection({ refreshKey = 0 }: { refreshKey?: number }) {
           accessibilityRole="button"
           disabled={moreBusy}
           onPress={() => void loadMore()}
-          style={[styles.more, moreBusy && styles.dim]}
+          style={({ pressed }) => [styles.more, pressed && !moreBusy && ACT.secondaryPressed, moreBusy && styles.dim]}
         >
-          <Text style={styles.moreText}>더 보기</Text>
+          <Text style={styles.moreText} numberOfLines={1}>더 보기</Text>
         </Pressable>
       )}
 
@@ -324,7 +354,10 @@ export function LoansSection({ refreshKey = 0 }: { refreshKey?: number }) {
 
 function LoanCard({ loan, onEdit, onReturn }: { loan: Loan; onEdit(): void; onReturn(): void }) {
   const { label, tone } = ddayFormat(loan.d_day, loan.is_overdue);
-  const pill = ddayColors(tone, theme.colors);
+  const gauge = ddayGauge(loan.d_day, loan.is_overdue);
+  const dday = ddayColors(tone, theme.colors);
+  const barGauge =
+    tone === "overdue" ? "OVERDUE · 기한 지남" : loan.due_on_assumed ? "ASSUMED +14D" : "DUE DATE";
   return (
     <View testID={`loan-${loan.id}`} style={styles.card}>
       <View style={styles.row}>
@@ -333,20 +366,25 @@ function LoanCard({ loan, onEdit, onReturn }: { loan: Loan; onEdit(): void; onRe
           <Text style={styles.bookTitle} numberOfLines={2}>
             {loan.book.title}
           </Text>
-          {!!loan.book.author && <Text style={styles.meta}>{loan.book.author}</Text>}
-          {!!loan.library && <Text style={styles.meta}>{loan.library.name}</Text>}
-          <Text style={styles.meta}>{loanDates(loan)}</Text>
+          {!!loan.book.author && <Text style={styles.meta} numberOfLines={1}>{loan.book.author}</Text>}
+          {!!loan.library && <Text style={styles.meta} numberOfLines={1}>{loan.library.name}</Text>}
+          <Text style={styles.dateGauge} numberOfLines={1}>{loanDates(loan)}</Text>
         </View>
-        <View testID={`dday-${loan.id}`} style={[styles.pill, { backgroundColor: pill.bg }]}>
-          <Text style={[styles.pillText, { color: pill.fg }]}>{label}</Text>
+        <View testID={`dday-${loan.id}`} style={styles.ddayBox}>
+          <Text style={[styles.ddayNum, { color: dday.fg }]} numberOfLines={1}>{gauge}</Text>
+          <View style={styles.ddayStatusRow}>
+            <View style={[styles.ddayDot, { backgroundColor: dday.bg }]} />
+            <Text style={styles.ddayLabel} numberOfLines={1}>{label}</Text>
+          </View>
+          <Pressable accessibilityRole="button" onPress={onEdit} hitSlop={6} style={styles.ddayEditBtn}>
+            <Text style={styles.ddayEditText} numberOfLines={1}>수정</Text>
+          </Pressable>
         </View>
       </View>
-      <View style={styles.actions}>
-        <Pressable accessibilityRole="button" onPress={onEdit} style={styles.action}>
-          <Text style={styles.actionText}>기한 수정</Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" onPress={onReturn} style={styles.action}>
-          <Text style={styles.actionText}>반납했어요</Text>
+      <View style={styles.actBar}>
+        <Text style={styles.gauge} numberOfLines={1}>{barGauge}</Text>
+        <Pressable accessibilityRole="button" onPress={onReturn} hitSlop={6} style={styles.linkBtn}>
+          <Text style={styles.linkText} numberOfLines={1}>반납-&gt;</Text>
         </Pressable>
       </View>
     </View>
@@ -355,18 +393,24 @@ function LoanCard({ loan, onEdit, onReturn }: { loan: Loan; onEdit(): void; onRe
 
 function ReturnedCard({ loan }: { loan: Loan }) {
   return (
-    <View testID={`returned-${loan.id}`} style={[styles.card, styles.row]}>
-      <BookCover book={loan.book} style={styles.cover} fontSize={9} />
-      <View style={styles.flex}>
-        <Text style={styles.bookTitle} numberOfLines={2}>
-          {loan.book.title}
-        </Text>
-        {!!loan.book.author && <Text style={styles.meta}>{loan.book.author}</Text>}
-        {!!loan.library && <Text style={styles.meta}>{loan.library.name}</Text>}
-        <Text style={styles.meta}>{returnedDates(loan)}</Text>
-      </View>
-      <View style={[styles.pill, styles.donePill]}>
-        <Text style={[styles.pillText, styles.doneText]}>반납 완료</Text>
+    <View testID={`returned-${loan.id}`} style={styles.card}>
+      <View style={styles.row}>
+        <BookCover book={loan.book} style={styles.cover} fontSize={9} />
+        <View style={styles.flex}>
+          <Text style={styles.bookTitle} numberOfLines={2}>
+            {loan.book.title}
+          </Text>
+          {!!loan.book.author && <Text style={styles.meta} numberOfLines={1}>{loan.book.author}</Text>}
+          {!!loan.library && <Text style={styles.meta} numberOfLines={1}>{loan.library.name}</Text>}
+          <Text style={styles.dateGauge} numberOfLines={1}>{returnedDates(loan)}</Text>
+        </View>
+        <View style={styles.ddayBox}>
+          <Text style={styles.gauge} numberOfLines={1}>DONE</Text>
+          <View style={styles.ddayStatusRow}>
+            <View style={[styles.ddayDot, { backgroundColor: c.surface3 }]} />
+            <Text style={styles.ddayLabel} numberOfLines={1}>반납 완료</Text>
+          </View>
+        </View>
       </View>
     </View>
   );
@@ -428,12 +472,18 @@ function ReturnConfirm({
     <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
       <View style={styles.center}>
         <View testID="return-confirm" style={styles.dialog}>
+          <Text style={styles.gauge} numberOfLines={1}>CONFIRM RETURN</Text>
           <Text style={styles.dialogTitle}>{RETURN_TITLE}</Text>
           <Text style={styles.text}>{returnBody(loan)}</Text>
           {!!error && <Text style={styles.notice}>{error}</Text>}
           <View style={styles.dialogActions}>
-            <Pressable accessibilityRole="button" disabled={busy} onPress={onCancel} style={styles.action}>
-              <Text style={styles.actionText}>취소</Text>
+            <Pressable
+              accessibilityRole="button"
+              disabled={busy}
+              onPress={onCancel}
+              style={({ pressed }) => [styles.btn, pressed && !busy && ACT.secondaryPressed, busy && styles.dim]}
+            >
+              <Text style={styles.btnText} numberOfLines={1}>취소</Text>
             </Pressable>
             <Pressable
               testID="return-confirm-ok"
@@ -441,9 +491,9 @@ function ReturnConfirm({
               accessibilityState={{ disabled: busy }}
               disabled={busy}
               onPress={() => void confirm()}
-              style={[styles.btn, busy && styles.dim]}
+              style={({ pressed }) => [styles.primaryBtn, pressed && !busy && ACT.primaryPressed, busy && styles.dim]}
             >
-              <Text style={styles.btnText}>{busy ? "처리 중…" : "반납했어요"}</Text>
+              <Text style={styles.primaryBtnText} numberOfLines={1}>{busy ? "처리 중…" : "반납했어요"}</Text>
             </Pressable>
           </View>
         </View>
@@ -456,52 +506,83 @@ const c = theme.colors;
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   section: { gap: 10 },
+  secHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
+  secTitleWrap: { flexShrink: 1, minWidth: 0 },
+  gauge: { ...T.gauge },
   title: { ...T.title },
-  tabs: { flexDirection: "row", gap: 8 },
+  tabs: {
+    flexDirection: "row",
+    backgroundColor: c.panelFrosted,
+    borderWidth: 1,
+    borderColor: c.seamHairline,
+    borderRadius: theme.radii.infoCard,
+    padding: 2,
+    gap: 2,
+    flexShrink: 0,
+  },
   tab: {
     borderWidth: 1,
-    borderColor: c.divider,
-    borderRadius: theme.radii.pill,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
+    borderColor: "transparent",
+    borderRadius: theme.radii.block,
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    flexShrink: 0,
   },
-  tabOn: { backgroundColor: c.inkStrong, borderColor: c.inkStrong },
-  tabText: { fontSize: 14, color: c.text, fontWeight: "500" },
-  tabTextOn: { color: c.paper },
+  tabOn: {
+    backgroundColor: c.panelLit,
+    borderColor: c.seamHairline,
+    boxShadow: ledge(c.reliefBottomMid, 1),
+  },
+  tabText: { fontSize: 12, color: c.inkMuted, fontWeight: "400" },
+  tabTextOn: { color: c.inkStrong, fontWeight: "500" },
   busy: { marginVertical: 16 },
-  box: { backgroundColor: c.paper, borderRadius: theme.radii.card, padding: 16, gap: 12, alignItems: "flex-start" },
+  box: { ...cardSurface(theme, { onPanel: true }), padding: 16, gap: 12, alignItems: "flex-start" },
   text: { fontSize: 15, color: c.text, lineHeight: 22 },
-  hint: { fontSize: 13, color: c.textSub },
+  hint: { ...T.gauge },
   notice: { fontSize: 14, color: c.loanOut },
-  card: { backgroundColor: c.paper, borderRadius: theme.radii.card, padding: 12, gap: 10 },
-  row: { flexDirection: "row", alignItems: "center", gap: 12 },
-  cover: { width: 44, height: 62 },
-  flex: { flex: 1 },
-  bookTitle: { fontSize: 15, fontWeight: "500", color: c.text },
-  meta: { fontSize: 13, color: c.textSub, marginTop: 2 },
-  pill: { borderRadius: theme.radii.pill, paddingVertical: 5, paddingHorizontal: 12 },
-  pillText: { fontSize: 13, fontWeight: "500" },
-  donePill: { backgroundColor: c.surface2 },
-  doneText: { color: c.inkSoft },
-  actions: { flexDirection: "row", justifyContent: "flex-end", gap: 8 },
-  action: {
-    borderWidth: 1,
-    borderColor: c.divider,
-    borderRadius: theme.radii.pill,
-    paddingVertical: 6,
-    paddingHorizontal: 14,
+  card: { ...cardSurface(theme, { onPanel: true }), padding: 12, gap: 8 },
+  row: { flexDirection: "row", alignItems: "center", gap: 10 },
+  cover: { width: 44, height: 62, flexShrink: 0 },
+  flex: { flex: 1, minWidth: 0, gap: 2 },
+  bookTitle: { ...T.name },
+  meta: { fontSize: 12, color: c.textSub },
+  dateGauge: { ...T.gauge, marginTop: 2 },
+  ddayBox: {
+    flexShrink: 0,
+    alignItems: "flex-end",
+    justifyContent: "center",
+    paddingLeft: 10,
+    borderLeftWidth: 1,
+    borderLeftColor: c.seamHairline,
+    minWidth: 68,
+    gap: 2,
   },
-  actionText: { fontSize: 14, color: c.text, fontWeight: "500" },
+  ddayNum: { fontSize: 13, fontWeight: "500", letterSpacing: 0.8 },
+  ddayStatusRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  ddayDot: { width: 6, height: 6, borderRadius: theme.radii.control },
+  ddayLabel: { fontSize: 12, fontWeight: "500", color: c.inkMuted },
+  ddayEditBtn: { paddingTop: 2 },
+  ddayEditText: { fontSize: 12, fontWeight: "500", color: c.inkStrong },
+  actBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: c.seamHairline,
+  },
+  linkBtn: { paddingVertical: 2, paddingHorizontal: 2, flexShrink: 0 },
+  linkText: { fontSize: 13, fontWeight: "500", color: c.inkStrong },
   dim: { opacity: 0.5 },
   more: {
     alignSelf: "center",
-    borderWidth: 1,
-    borderColor: c.divider,
+    ...ACT.secondary,
     borderRadius: theme.radii.control,
     paddingVertical: 8,
     paddingHorizontal: 18,
   },
-  moreText: { fontSize: 14, color: c.text, fontWeight: "500" },
+  moreText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "500" },
   btn: {
     ...ACT.secondary,
     borderRadius: theme.radii.control,
@@ -509,8 +590,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   btnText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "500" },
+  primaryBtn: {
+    ...ACT.primary,
+    borderRadius: theme.radii.control,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  primaryBtnText: { fontSize: 14, ...ACT.primaryText, fontWeight: "500" },
   center: { flex: 1, justifyContent: "center", padding: 24, backgroundColor: c.shadowFloat },
-  dialog: { backgroundColor: c.paper, borderRadius: theme.radii.card, padding: 20, gap: 12 },
-  dialogTitle: { fontSize: 17, fontWeight: "500", color: c.text },
+  dialog: { ...cardSurface(theme, { onPanel: true }), padding: 20, gap: 12 },
+  dialogTitle: { ...T.title },
   dialogActions: { flexDirection: "row", justifyContent: "flex-end", gap: 8 },
 });

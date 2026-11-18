@@ -26,10 +26,15 @@ export default function LoansTabScreen() {
   if (status !== "signedIn") {
     return (
       <View style={[styles.screen, styles.center]}>
-        <Text style={styles.title}>대출·반납</Text>
+        <Text style={styles.gauge} numberOfLines={1}>SIGN IN REQUIRED</Text>
+        <Text style={styles.title} numberOfLines={1}>대출·반납</Text>
         <Text style={styles.text}>{LOANS_LOGIN}</Text>
-        <Pressable accessibilityRole="button" onPress={() => router.push("/login")} style={styles.darkBtn}>
-          <Text style={styles.darkBtnText}>로그인</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push("/login")}
+          style={({ pressed }) => [styles.primaryBtn, pressed && ACT.primaryPressed]}
+        >
+          <Text style={styles.primaryBtnText} numberOfLines={1}>로그인</Text>
         </Pressable>
       </View>
     );
@@ -50,13 +55,16 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.panelFrosted },
   center: { alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
   pad: { padding: 16, paddingBottom: 32, gap: 24 },
+  gauge: { ...T.gauge },
   title: { ...T.pageTitle },
   text: { fontSize: 15, color: c.text, lineHeight: 22, textAlign: "center" },
-  darkBtn: {
+  primaryBtn: {
     ...ACT.primary,
     borderRadius: theme.radii.control,
-    paddingVertical: 8,
-    paddingHorizontal: 16,
+    height: 48,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  darkBtnText: { fontSize: 14, ...ACT.primaryText, fontWeight: "500" },
+  primaryBtnText: { fontSize: 15, ...ACT.primaryText, fontWeight: "500" },
 });
