@@ -43,3 +43,48 @@
 - Android 미실행: 이 PC에 에뮬레이터가 없음.
 - 실제 서버 + 로그인 화면 확인 미실행: 이 PC에서 Google 로그인을 띄우지 못함(LIB-3과 같은 사정).
 - 대출 카드의 "기한 수정"·"반납했어요"는 LOAN-2(`TODO(연결): C LOAN-2-P2`, `LoansSection.tsx`).
+
+---
+
+# 반납 비서 LOAN-2 검증서
+
+- 기능: `loan-assistant` LOAN-2(기한 수정·반납) · 담당: C · 대상 PR: #170(스택: #168 위) · 작성일: 2026-11-18
+- 기준: 02 LOAN-02·LOAN-03(AC-LOAN, AC-RETURN), AC-ISOLATION, AC-RACE, 계약서 LOAN-2 D+C 확정판(본문 `11f0bfaa`) C1 E1~E8·C6 R-#1~#7·P5.
+- 서버 시험은 격리된 로컬 Postgres 17 컨테이너, 앱 시험은 가짜 응답(jest 목). 실제 서버 + 로그인 화면 확인은 `미실행`(이 PC에서 Google 로그인을 띄우지 못함).
+
+## 1. 수용 기준 전수 점검
+
+| 요구사항 ID | AC | 준비 | 행동 | 기대 | 실제 (출력·화면) | 증거 (`파일:줄`·캡처) | 웹 | Android | iOS (D) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| LOAN-02 | AC-LOAN | 대출(대출일 11-16) | #21 전날 / `2026-02-30` 등 7가지 | 422 `due_on`, 행 그대로 | 시험 통과 | `loans.py` `parse_due_on`·`change_due_tx`, `test_change_due_before_loaned_is_422_unchanged`, `test_invalid_due_on_format_is_422_detail_due_on` | 해당 없음 | 해당 없음 | 대기 |
+| LOAN-02 | AC-LOAN | — | #21 정상·같은 값 두 번 | `due_on` 바뀜, `due_on_assumed false`, 같은 결과 | 시험 통과 | `test_change_due_sets_not_assumed` | 해당 없음 | 해당 없음 | 대기 |
+| LOAN-02 | AC-LOAN | 대출 11-10 | 시트에 11-09·02-30·11-31·형식 틀림 → 11-28 저장 | 보내지 않고 문구, 저장 뒤 시트 닫힘·(추정) 사라짐, 연타 한 번 | 시험 통과 | `DueDateSheet.tsx` `save`, `due date sheet blocks dates before loaned_on…` | 통과(가짜) | 미실행 | 대기 |
+| LOAN-03 | AC-RETURN | 대출 | #22 → 서버 날짜 바꿔 #22 | 200·200, `returned_on` 처음 값, 지난 대출로 이동 | 시험 통과 | `return_loan_tx`, `test_return_twice_keeps_first_date` | 해당 없음 | 해당 없음 | 대기 |
+| LOAN-03 | AC-RETURN | 도서관 있는 대출 | #22 | `library_return_stats` 0행(E4) | 시험 통과 | `test_return_does_not_write_stats` | 해당 없음 | 해당 없음 | 대기 |
+| LOAN-03 | AC-RETURN | 대출 2권 | 반납했어요 → 취소 / 확인 | 확인 창, 취소 시 0번, 확인 시 1번·빌린 책에서 제거·안내 | 시험 통과 | `LoansSection.tsx` `ReturnConfirm`, `return button asks confirmation…` | 통과(가짜) | 미실행 | 대기 |
+| — | AC-ISOLATION | B 대출 | A가 #21·#22 | 404, B 행 그대로 | 시험 통과 | `test_other_users_loan_is_404` | 해당 없음 | 해당 없음 | 대기 |
+| — | AC-RACE | 빌린 책 응답 지연 | 빌린 책 → 지난 대출 빠르게 | 지난 대출 화면 유지 | 시험 통과 | `createLatestRunner`, `loans section switches between on_loan and returned tabs…` | 통과 | 미실행 | 대기 |
+| — | 경합 | 같은 대출 | 반납·수정 동시(3회) | 500 없음, 반납 먼저면 409·예정일 그대로 / 수정 먼저면 수정 뒤 반납 | 시험 통과 | `test_return_and_change_race` | 해당 없음 | 해당 없음 | 대기 |
+| — | 실제 서버 + 로그인 | — | 기한 수정·반납 | 같은 화면 | 미실행 | Google 로그인 불가 | 미실행 | 미실행 | 대기 |
+
+## 2. 예외 상황 점검 (계약 C6)
+
+| 예외 # | 확인한 방법 | 화면 문구가 계약과 같은가 | 기록이 안 바뀌었나 | 결과 |
+| :--- | :--- | :--- | :--- | :--- |
+| R-#1 날짜·형식·`loan_id` | 서버 422 시험 3개, 앱 시트 사전 차단·422 수신 | 같음("대출일(YYYY-MM-DD) 이후 날짜를 골라 주세요.") | 행 그대로 | 통과 |
+| R-#2 반납 뒤 수정 | `test_change_due_after_return_is_409`, 앱 409 | 같음(시트 닫고 "이미 바뀐 내용이에요. 새로 고친 뒤 다시 시도해 주세요." + 다시 읽기) | 행 그대로 | 통과 |
+| R-#3 남의·없는 대출 | `test_other_users_loan_is_404`, 앱 반납 404 | 같음(창 닫고 같은 문구 + 다시 읽기) | 상대 행 그대로 | 통과 |
+| R-#4 반납 두 번 | `test_return_twice_keeps_first_date` | — | 첫 `returned_on` | 통과 |
+| R-#5 동시 | `test_return_and_change_race` | — | CHECK 통과, 500 없음 | 통과 |
+| R-#6 탈퇴 | `test_withdrawn_is_403_unchanged` | — | 행 그대로 | 통과 |
+| R-#7 반납 | 앱 확인 시험, `test_return_does_not_write_stats` | 같음("반납 처리했어요. 지난 대출에서 다시 볼 수 있어요.") | 집계 0행 | 통과 |
+| (E6) 실패 503 | `due date sheet handles 409…`, `return button asks…` | 같음(시트·창 유지 + "예정일을 바꾸지 못했어요…"/"반납 처리하지 못했어요…") | — | 통과 |
+
+## 3. 명세서와 달라진 점
+
+- 없음.
+
+## 4. 남은 문제
+
+- Android 미실행(에뮬레이터 없음), 실제 서버 + 로그인 화면 확인 미실행.
+- 기한 수정·반납 뒤 기기 알림 다시 맞추기는 LOAN-3(`TODO(연결): C LOAN-3-P1`, `LoansSection.tsx`).
