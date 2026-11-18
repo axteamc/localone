@@ -311,6 +311,8 @@
     <div class="state" id="exTabs">
       <button aria-pressed="true" data-ex="0">① 게시물을 못 불러옴</button><button aria-pressed="false" data-ex="1">② 내 프로필만 못 불러옴</button><button aria-pressed="false" data-ex="2">③ 더 내리다 못 불러옴</button><button aria-pressed="false" data-ex="3">④ 하나도 없음</button><button aria-pressed="false" data-ex="4">⑤ 좋아요 취소를 두 번 빠르게</button><button aria-pressed="false" data-ex="5">⑥ 좋아요 취소가 안 됨</button><button aria-pressed="false" data-ex="6">⑦ 로그인 안 함</button><button aria-pressed="false" data-ex="7">⑧ 불러오는 중</button>
     </div>
+    <div class="state" id="rfPos">새로고침 버튼(①②③): <button aria-pressed="true" data-rf="L">↻ 아이콘 왼쪽</button><button aria-pressed="false" data-rf="R">아이콘 오른쪽 ↻</button>
+    </div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;align-items:flex-start">
       <div class="phone" id="exPhone" style="margin:0"></div>
       <dl class="note" style="flex:1;min-width:240px;margin-top:0"><dt>이럴 땐</dt><dd id="exWhen"></dd><dt>그대로인 곳 / 바뀌는 곳</dt><dd id="exKeep"></dd><dt>누르면</dt><dd class="flow" id="exNext"></dd></dl>
@@ -599,6 +601,15 @@
     }
     document.querySelectorAll('#exTabs button').forEach(function (b) { b.addEventListener('click', function () { show(+b.dataset.ex, false); }); });
     show(0, false);
+    // 새로고침 아이콘 왼쪽/오른쪽 (사용자 요청으로 추가)
+    document.querySelectorAll('#rfPos button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        RF = b.dataset.rf === 'R' ? '<button class="refresh" data-next>새로고침 ↻</button>' : '<button class="refresh" data-next>↻ 새로고침</button>';
+        document.querySelectorAll('#rfPos button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        var cur = document.querySelector('#exTabs button[aria-pressed="true"]');
+        show(cur ? +cur.dataset.ex : 0, false);
+      });
+    });
   })();
 </script>
 </body>
