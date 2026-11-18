@@ -5,7 +5,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
 import { fetchRecommendations, type RecommendationResponse } from "../../lib/publicApi";
-import { theme } from "../../theme";
+import { actionColors, cardSurface, theme, type } from "../../theme";
 import {
   clearRecentBooks,
   listRecentBooks,
@@ -98,9 +98,13 @@ export function SearchEntry({ onOpenBook }: { onOpenBook(isbn13: string): void }
       {recent.length > 0 && (
         <View testID="recent-section">
           <View style={styles.head}>
-            <Text style={styles.headText}>최근 본 도서</Text>
+            <Text style={styles.headText} numberOfLines={1}>
+              최근 본 도서
+            </Text>
             <Pressable accessibilityRole="button" onPress={() => void clearAll()} hitSlop={8}>
-              <Text style={styles.headSub}>전체 삭제</Text>
+              <Text style={styles.headSub} numberOfLines={1}>
+                전체 삭제
+              </Text>
             </Pressable>
           </View>
           <ScrollView
@@ -129,20 +133,29 @@ export function SearchEntry({ onOpenBook }: { onOpenBook(isbn13: string): void }
       )}
 
       <View testID="popular-section">
-        <View style={styles.head}>
-          <Text style={styles.headText}>
-            인기 도서{" "}
-            {popular.kind === "ready" && (
-              <Text style={styles.headSub}>{popular.data.basis_label}</Text>
-            )}
+        {/* 칸 제목과 기준 글자(계기판)는 다른 줄(DESIGN.md 레시피 "표찰·숫자", C-74) */}
+        <View style={[styles.head, popular.kind === "ready" && styles.headTight]}>
+          <Text style={styles.headText} numberOfLines={1}>
+            인기 도서
           </Text>
         </View>
+        {popular.kind === "ready" && (
+          <Text style={styles.basis} numberOfLines={1}>
+            {popular.data.basis_label}
+          </Text>
+        )}
         {popular.kind === "loading" && <Text style={styles.muted}>불러오는 중이에요</Text>}
         {popular.kind === "error" && (
           <View style={styles.stateBox}>
             <Text style={styles.stateText}>인기 도서를 불러오지 못했어요</Text>
-            <Pressable accessibilityRole="button" onPress={() => void loadPopular()} style={styles.stateBtn}>
-              <Text style={styles.stateBtnText}>다시 해 보기</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void loadPopular()}
+              style={({ pressed }) => [styles.stateBtn, pressed && ACT.secondaryPressed]}
+            >
+              <Text style={styles.stateBtnText} numberOfLines={1}>
+                다시 해 보기
+              </Text>
             </Pressable>
           </View>
         )}
@@ -173,20 +186,23 @@ export function SearchEntry({ onOpenBook }: { onOpenBook(isbn13: string): void }
 }
 
 const c = theme.colors;
+const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   wrap: { paddingHorizontal: 16, paddingBottom: 24 },
-  head: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginTop: 16, marginBottom: 8 },
-  headText: { fontSize: 15, fontWeight: "500", color: c.text },
+  head: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginTop: 20, marginBottom: 10 },
+  headTight: { marginBottom: 2 },
+  headText: { ...type.title, flexShrink: 1 },
   headSub: { fontSize: 13, fontWeight: "400", color: c.textSub },
+  basis: { ...type.gauge, marginBottom: 10 },
   pills: { gap: 6, paddingBottom: 4 },
   pill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     backgroundColor: c.paper,
-    borderColor: c.surface3,
+    borderColor: c.seamHairline,
     borderWidth: 1,
-    borderRadius: theme.radii.pill,
+    borderRadius: theme.radii.control,
     paddingVertical: 5,
     paddingHorizontal: 12,
   },
@@ -195,11 +211,11 @@ const styles = StyleSheet.create({
   rankRow: { flexDirection: "row", gap: 12 },
   rankCol: { flex: 1 },
   rankItem: { flexDirection: "row", alignItems: "center", paddingVertical: 6 },
-  rankNo: { width: 22, fontSize: 14, fontWeight: "500", color: c.inkStrong },
+  rankNo: { ...type.gauge, fontSize: 11, width: 22 },
   rankTitle: { flex: 1, fontSize: 14, color: c.text },
   muted: { fontSize: 13, color: c.textSub, paddingVertical: 8 },
-  stateBox: { backgroundColor: c.cream, borderRadius: theme.radii.card, padding: 16, gap: 10, alignItems: "flex-start" },
+  stateBox: { ...cardSurface(theme, { onPanel: true }), padding: 16, gap: 10, alignItems: "flex-start" },
   stateText: { fontSize: 14, color: c.text },
-  stateBtn: { backgroundColor: c.inkStrong, borderRadius: theme.radii.control, paddingVertical: 8, paddingHorizontal: 16 },
-  stateBtnText: { fontSize: 14, color: c.paper, fontWeight: "500" },
+  stateBtn: { ...ACT.secondary, borderRadius: theme.radii.control, paddingVertical: 8, paddingHorizontal: 16 },
+  stateBtnText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "500" },
 });

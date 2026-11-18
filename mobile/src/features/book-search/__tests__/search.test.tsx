@@ -322,8 +322,13 @@ describe("검색 결과", () => {
     await typeAndSearch("해리");
     await screen.findByTestId(`book-${book(1).isbn13}`);
     await fireEvent.press(screen.getByText("☰ 목록으로"));
-    expect(screen.getByText("창비 · 2014")).toBeTruthy();
-    expect(screen.getByText("창비")).toBeTruthy();
+    // 출판사와 연도를 한 줄에 섞지 않는다(C-74 B11): 출판사 · 오른쪽 계기판 연도 · `PUB 연도 · →` 띠
+    expect(screen.queryByText("창비 · 2014")).toBeNull();
+    expect(screen.getAllByText("창비")).toHaveLength(2);
+    expect(screen.getByText("2014")).toBeTruthy();
+    expect(screen.getByText("PUB 2014 · →")).toBeTruthy();
+    // `pub_year`가 null이면 연도·PUB 띠를 숨긴다
+    expect(screen.getAllByText(/^PUB /)).toHaveLength(1);
   });
 
   test("double tap opens results once", async () => {
