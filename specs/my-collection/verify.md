@@ -3,8 +3,8 @@
 - 기능: `my-collection` · 담당: A · 대상 커밋/PR: `d7710a0` / #177 · 작성일: 2026-11-18
 - 기준: 요구사항 ID는 아직 부여되지 않음(`개발산출물/02_요구사항_정의서.md` "ID 미부여(C-46 F4)" — 새 프로필 3탭·좋아요·북마크 모음). 그래서 계약서 `contracts/my-collection.md` MY-1 요구 항목(Y·Y-O)과 §7(P5) 테스트 표, 세부 명세 `specs/my-collection/세부/MY-1.md` 결정·예외를 기준으로 점검한다.
 - 실행하지 않은 항목은 `미실행`으로 적는다. 가짜 응답 화면 테스트와 실제 서버 연결 테스트는 구분한다.
-  - 서버: 실제 Postgres 17(도커 `localone-test-db`)에 대해 `uv run pytest -W error` — 398 passed.
-  - 앱: jest 가짜 응답 시험(`my-collection.test.tsx` 22개, 앱 전체 393 passed) + 웹·Android 에뮬레이터(`localone35`, Expo Go)에서 **가짜 로그인·가짜 응답**(계약 C7 모양) 미리보기 눈 확인. 실제 서버·Google 로그인을 붙인 화면 확인은 `미실행`(이 PC에서 Google 로그인 불가).
+  - 서버: 실제 Postgres 17(도커 `localone-test-db`)에 대해 `uv run pytest -W error` — main 합친 뒤 438 passed.
+  - 앱: jest 가짜 응답 시험(`my-collection.test.tsx` 22개, main 합친 뒤 앱 전체 443 passed, 이 기능 23개) + 웹·Android 에뮬레이터(`localone35`, Expo Go)에서 **가짜 로그인·가짜 응답**(계약 C7 모양) 미리보기 눈 확인. 실제 서버·Google 로그인을 붙인 화면 확인은 `미실행`(이 PC에서 Google 로그인 불가).
 
 ## 1. 수용 기준 전수 점검
 
@@ -48,6 +48,6 @@
 ## 4. 남은 문제
 
 - 실제 서버 + Google 로그인을 붙인 화면 확인 `미실행` — 이 PC에서 Google 로그인을 띄울 수 없음. 웹·Android는 계약 C7 모양 가짜 로그인·가짜 응답으로만 확인.
-- ⚙ 설정·로그아웃 화면 연결 대기 — `TODO(연결): D(AUTH-2)` (`MyCollectionScreen.tsx:95`, `useMyCollection.ts:236`).
+- ⚙ → 설정 화면(`/settings`) 연결 완료(#178) — 시험 `settings gear opens settings screen when signed in`. 실제 설정 화면을 열어 본 것은 `미실행`(미리보기 뒤 합침).
 - iOS 확인 D 대기(`needs-ios`).
 - 버그 리포트 이슈 없음.

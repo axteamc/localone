@@ -233,7 +233,7 @@ export function useMyCollection() {
   };
 
   // ─────────── 계정 전환·로그아웃 정화(Y7) ───────────
-  // TODO(연결): D(AUTH-2) registerSignOutCleanup — 머지 전에는 useAuth().userId 변화로 비운다
+  // 계정 데이터는 이 훅 상태에만 둔다 → useAuth().userId 변화로 비운다(auth.md AUTH-2 C7: registerSignOutCleanup 불필요)
 
   useEffect(() => {
     profileRunner.cancel();

@@ -92,8 +92,8 @@ export function MyCollectionScreen() {
           state={my.profile}
           onEdit={() => my.showNotice(MY_TEXT.editSoon)}
           onRetry={my.retryProfile}
-          // TODO(연결): D(AUTH-2) 설정·로그아웃 화면 — 연결 전에는 눌러도 아무 화면도 열지 않는다
-          onSettings={() => undefined}
+          // ⚙ → 설정·로그아웃(auth.md AUTH-2 G6). 이 머리는 로그인했을 때만 보인다
+          onSettings={() => router.push("/settings")}
         />
         <CollectionTabs active={my.activeTab} onSelect={my.selectTab} />
         <TabBody

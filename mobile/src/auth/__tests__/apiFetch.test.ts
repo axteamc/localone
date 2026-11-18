@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { apiFetch } from "../apiFetch";
+import { abortInFlightRequests, apiFetch, onAccountWithdrawn } from "../apiFetch";
 import { supabase } from "../supabase";
 
 jest.mock("../supabase", () => ({
@@ -193,5 +193,141 @@ describe("apiFetch (AUTH-1-P5)", () => {
     const res = await apiFetch("http://localhost:8000/api/v1/me");
     expect(res.status).toBe(200);
     expect(fetchMock.mock.calls[0]?.[0]).toBe("http://localhost:8000/api/v1/me");
+  });
+});
+
+describe("apiFetch abort on sign-out (AUTH-2-P2)", () => {
+  const fetchMock =
+    jest.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+
+  // 신호가 끊기면 거부하고, 아니면 resolveNext로 응답을 준다(실제 fetch 모양)
+  let resolveNext: ((res: Response) => void) | null = null;
+  function hangingFetch(_input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    return new Promise<Response>((resolve, reject) => {
+      resolveNext = resolve;
+      init?.signal?.addEventListener("abort", () => {
+        const e = new Error("aborted");
+        e.name = "AbortError";
+        reject(e);
+      });
+    });
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    resolveNext = null;
+    globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
+    mockedGetSession.mockResolvedValue({
+      data: { session: { access_token: "token-initial" } as never },
+      error: null,
+    });
+  });
+
+  test("apiFetch_aborts_in_flight_on_signout", async () => {
+    fetchMock.mockImplementationOnce(hangingFetch);
+    const pending = apiFetch("/api/v1/me/loan-plans");
+    await new Promise<void>((r) => setImmediate(r));
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    abortInFlightRequests();
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(mockedRefreshSession).not.toHaveBeenCalled();
+
+    // 이후 새 요청은 정상
+    fetchMock.mockResolvedValueOnce(makeJsonResponse(200, { ok: true }));
+    const after = await apiFetch("/api/v1/me");
+    expect(after.status).toBe(200);
+  });
+
+  test("apiFetch_drops_response_that_arrived_after_signout", async () => {
+    // 갱신 중 로그아웃: 갱신이 끝나도 원 요청을 다시 보내지 않는다
+    let finishRefresh!: () => void;
+    mockedRefreshSession.mockReturnValueOnce(
+      new Promise((resolve) => {
+        finishRefresh = () =>
+          resolve({ data: { session: { access_token: "t2" } as never, user: null }, error: null });
+      }) as never
+    );
+    fetchMock.mockResolvedValueOnce(
+      makeJsonResponse(401, { error: { code: "AUTH_EXPIRED", message: "x", detail: "" } })
+    );
+    const pending = apiFetch("/api/v1/me");
+    await new Promise<void>((r) => setImmediate(r));
+    expect(mockedRefreshSession).toHaveBeenCalledTimes(1);
+    abortInFlightRequests();
+    finishRefresh();
+    await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  test("apiFetch_respects_caller_signal", async () => {
+    fetchMock.mockImplementationOnce(hangingFetch);
+    const callerA = new AbortController();
+    const a = apiFetch("/api/v1/a", { signal: callerA.signal });
+    await new Promise<void>((r) => setImmediate(r));
+    const resolveA = resolveNext;
+    fetchMock.mockImplementationOnce(hangingFetch);
+    const b = apiFetch("/api/v1/b");
+    await new Promise<void>((r) => setImmediate(r));
+    const resolveB = resolveNext!;
+
+    callerA.abort();
+    await expect(a).rejects.toMatchObject({ name: "AbortError" });
+    resolveB(makeJsonResponse(200, { ok: true }));
+    await expect(b).resolves.toMatchObject({ status: 200 });
+    expect(resolveA).not.toBeNull();
+
+    // 이미 끊긴 신호로 부르면 보내지도 않는다
+    const already = new AbortController();
+    already.abort();
+    await expect(apiFetch("/api/v1/c", { signal: already.signal })).rejects.toMatchObject({
+      name: "AbortError",
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("apiFetch account withdrawn signal (AUTH-3-P2)", () => {
+  const fetchMock =
+    jest.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
+    mockedGetSession.mockResolvedValue({
+      data: { session: { access_token: "token-initial" } as never },
+      error: null,
+    });
+  });
+
+  test("apiFetch_account_withdrawn_signs_out", async () => {
+    const listener = jest.fn<() => void>();
+    const off = onAccountWithdrawn(listener);
+    try {
+      fetchMock.mockResolvedValueOnce(
+        makeJsonResponse(403, { error: { code: "ACCOUNT_WITHDRAWN", message: "탈퇴한 계정이에요.", detail: "" } })
+      );
+      const res = await apiFetch("/api/v1/me/loan-plans");
+      expect(res.status).toBe(403);
+      expect(await res.json()).toMatchObject({ error: { code: "ACCOUNT_WITHDRAWN" } }); // 본문은 그대로
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      // 다른 403·성공은 알리지 않는다
+      fetchMock.mockResolvedValueOnce(
+        makeJsonResponse(403, { error: { code: "FORBIDDEN", message: "x", detail: "" } })
+      );
+      fetchMock.mockResolvedValueOnce(makeJsonResponse(200, { ok: true }));
+      await apiFetch("/api/v1/a");
+      await apiFetch("/api/v1/b");
+      expect(listener).toHaveBeenCalledTimes(1);
+    } finally {
+      off();
+    }
+    // 해제 뒤에는 불리지 않는다
+    fetchMock.mockResolvedValueOnce(
+      makeJsonResponse(403, { error: { code: "ACCOUNT_WITHDRAWN", message: "x", detail: "" } })
+    );
+    await apiFetch("/api/v1/c");
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });

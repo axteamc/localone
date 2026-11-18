@@ -305,9 +305,10 @@ describe("LOAN-1-P2", () => {
 
     // 더 보기: 다음 쪽을 이어 붙이고, 끝나면 버튼이 사라진다
     listLoans.mockReset();
-    listLoans
-      .mockResolvedValueOnce(page([loan("x1", { d_day: 1 })], "cur-1"))
-      .mockResolvedValueOnce(page([loan("x2", { d_day: 5 })]));
+    // 커서별 응답(알림 맞추기도 빌린 책을 끝 페이지까지 읽으므로 호출 순서가 아니라 커서로 답한다, LOAN-3 T4)
+    listLoans.mockImplementation(async (_status, p) =>
+      p.cursor === "cur-1" ? page([loan("x2", { d_day: 5 })]) : page([loan("x1", { d_day: 1 })], "cur-1")
+    );
     await render(<LoansTabScreen />);
     await screen.findByTestId("loan-x1");
     await fireEvent.press(screen.getByText("더 보기"));

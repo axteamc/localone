@@ -14,7 +14,7 @@
 
 - **주니어(A·B·C) 영역 테이블은 존재·목적·소유자 컬럼·핵심 제약까지만 적는다.** 컬럼 세부·길이·개수는 세부 명세서가 정하고 계약서가 옮긴다. D 영역 테이블은 컬럼 수준까지 적는다.
 - 공통 규칙(전부 `기본값(Claude)`, 근거: AUTH-1 계약서 §3.4):
-  - 개인 데이터의 소유자 컬럼은 `user_id uuid NOT NULL REFERENCES users(id)`. `ON DELETE`는 AUTH-3 계약서가 정하기 전까지 `NO ACTION`.
+  - 개인 데이터의 소유자 컬럼은 `user_id uuid NOT NULL REFERENCES users(id)`. `ON DELETE`는 `NO ACTION`(AUTH-3 계약서 C5: 탈퇴는 `users` 행을 지우지 않고 `withdrawn`으로 두며, 테이블마다 삭제·상태 전환을 C5 표대로 한다. 새 테이블은 그 표에 행을 더한다).
   - 개인·공개 행의 기본 키는 `uuid`(`gen_random_uuid()`), 공공 참조 데이터(도서관·도서)는 `bigint GENERATED ALWAYS AS IDENTITY`. 이유: 개인·공개 행의 id는 주소에 드러나므로 순번으로 남의 것을 짐작하지 못하게 한다.
   - 시각은 `timestamptz`, 서울 날짜는 `date`(서버가 KST로 계산해 넣는다, NFR-03). 상태값은 `text` + `CHECK`(영문 소문자).
   - 모든 테이블에 `ENABLE ROW LEVEL SECURITY`, 정책 없음(§4).
@@ -213,7 +213,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | R14 공감 하나 | `post_reactions` PK | 두 번 눌러도 한 행 | `확정` |
 | R15 집계에 user id 없음 | `library_return_stats`에 `user_id` 컬럼 없음 | 컬럼 목록에 `user_id`·`loan_id`가 없음 | `미확인(임시)` Q-49 |
 | R16 모음은 본인만 | `post_bookmarks` 읽기는 `user_id = :current_user`만 | 남의 id로 조회하면 내 것만 나옴 | `미확인(임시)` Q-56 |
-| R12 탈퇴 | `ON DELETE` 동작과 지울 순서 | AUTH-3 계약서에서 | `미확인(임시)`(AUTH-3, Q-23) |
+| R12 탈퇴 | `ON DELETE` 동작과 지울 순서 | `NO ACTION` 유지, 순서는 AUTH-3 계약서 C5 표(`users` 상태 → 게시물 철회 → 개인 행 삭제 → 프로필 익명화, `loans`는 `loan_plans`보다 먼저) | 순서·처리 `기본값(Claude)`(AUTH-3) · 보관 기간 `미확인(임시)`(Q-23, 출시 관문) |
 
 ## 6. 서버에 저장하지 않는 것·파생 값
 

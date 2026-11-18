@@ -62,21 +62,50 @@ export async function rawRegisterSession(accessToken: string): Promise<Response>
   });
 }
 
-/**
- * 인증 헤더를 붙여 서버 API를 호출한다.
- * - 401 AUTH_EXPIRED: refreshSession() 1회 후 원 요청 1회 재전송
- * - 401 AUTH_NOT_REGISTERED: POST /api/v1/auth/session(raw) 1회 후 원 요청 1회 재전송
- * - 복구 실패 시 원 요청을 다시 보내지 않고 실패 응답을 그대로 반환한다.
- * - 전체 복구·재전송은 요청당 최대 1회만 수행한다.
- */
-export async function apiFetch(
-  path: string,
-  init?: RequestInit
-): Promise<Response> {
-  const url = resolveUrl(path);
+// AUTH-2 G1 ①: 로그아웃 순간 진행 중인 요청을 모두 끊는다(이전 사용자의 응답이 화면에 쓰이지 않게).
+const inFlight = new Set<AbortController>();
+
+export function abortInFlightRequests(): void {
+  for (const controller of Array.from(inFlight)) controller.abort();
+}
+
+// AUTH-3 W2: 어느 요청이든 403 ACCOUNT_WITHDRAWN이면 알린다(다른 기기에서 탈퇴 → 이 기기 로그아웃).
+const withdrawnListeners = new Set<() => void>();
+
+export function onAccountWithdrawn(listener: () => void): () => void {
+  withdrawnListeners.add(listener);
+  return () => {
+    withdrawnListeners.delete(listener);
+  };
+}
+
+async function notifyIfWithdrawn(response: Response): Promise<void> {
+  if (response.status !== 403 || (await readErrorCode(response)) !== "ACCOUNT_WITHDRAWN") return;
+  for (const listener of Array.from(withdrawnListeners)) {
+    try {
+      listener();
+    } catch (error) {
+      console.warn("[onAccountWithdrawn]", error);
+    }
+  }
+}
+
+function signedOutAbortError(): Error {
+  const error = new Error("로그아웃해서 요청을 멈췄어요.");
+  error.name = "AbortError";
+  return error;
+}
+
+function throwIfAborted(signal: AbortSignal): void {
+  if (signal.aborted) throw signedOutAbortError();
+}
+
+async function send(url: string, init: RequestInit | undefined, signal: AbortSignal): Promise<Response> {
   const initialToken = await getAccessToken();
+  throwIfAborted(signal);
   const firstResponse = await fetch(url, {
     ...init,
+    signal,
     headers: buildAuthHeaders(init?.headers, initialToken),
   });
 
@@ -88,12 +117,14 @@ export async function apiFetch(
 
   if (errorCode === "AUTH_EXPIRED") {
     const { data, error } = await supabase.auth.refreshSession();
+    throwIfAborted(signal);
     const refreshedToken = data?.session?.access_token ?? null;
     if (error || !refreshedToken) {
       return firstResponse;
     }
     return fetch(url, {
       ...init,
+      signal,
       headers: buildAuthHeaders(init?.headers, refreshedToken),
     });
   }
@@ -103,14 +134,47 @@ export async function apiFetch(
       return firstResponse;
     }
     const regResponse = await rawRegisterSession(initialToken);
+    throwIfAborted(signal);
     if (!regResponse.ok) {
       return regResponse;
     }
     return fetch(url, {
       ...init,
+      signal,
       headers: buildAuthHeaders(init?.headers, initialToken),
     });
   }
 
   return firstResponse;
+}
+
+/**
+ * 인증 헤더를 붙여 서버 API를 호출한다.
+ * - 401 AUTH_EXPIRED: refreshSession() 1회 후 원 요청 1회 재전송
+ * - 401 AUTH_NOT_REGISTERED: POST /api/v1/auth/session(raw) 1회 후 원 요청 1회 재전송
+ * - 복구 실패 시 원 요청을 다시 보내지 않고 실패 응답을 그대로 반환한다.
+ * - 전체 복구·재전송은 요청당 최대 1회만 수행한다.
+ * - 로그아웃(abortInFlightRequests)이나 호출자의 init.signal로 끊기면 AbortError를 던진다(AUTH-2 #14).
+ */
+export async function apiFetch(
+  path: string,
+  init?: RequestInit
+): Promise<Response> {
+  const url = resolveUrl(path);
+  const controller = new AbortController();
+  const callerSignal = init?.signal ?? null;
+  const onCallerAbort = () => controller.abort();
+  if (callerSignal?.aborted) controller.abort();
+  else callerSignal?.addEventListener("abort", onCallerAbort);
+  inFlight.add(controller);
+  try {
+    const response = await send(url, init, controller.signal);
+    // 응답이 먼저 도착했어도 그사이 로그아웃했으면 이전 사용자의 응답을 넘기지 않는다
+    throwIfAborted(controller.signal);
+    await notifyIfWithdrawn(response);
+    return response;
+  } finally {
+    inFlight.delete(controller);
+    callerSignal?.removeEventListener("abort", onCallerAbort);
+  }
 }

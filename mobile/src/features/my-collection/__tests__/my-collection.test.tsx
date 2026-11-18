@@ -223,6 +223,13 @@ describe("MY-1-P2 잠금 테스트", () => {
     expect(screen.queryByText(/팔로우/)).toBeNull();
   });
 
+  // auth.md AUTH-2 G6·C7 (#178): 로그인했을 때 머리 ⚙ → /settings
+  test("settings gear opens settings screen when signed in", async () => {
+    await show();
+    await fireEvent.press(screen.getByLabelText(MY_TEXT.settings));
+    expect(mockPush).toHaveBeenCalledWith("/settings");
+  });
+
   test("section errors are isolated and retry refetches failed section only", async () => {
     fetchMyProfile.mockRejectedValueOnce(unavailable());
     const view = await show();

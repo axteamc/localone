@@ -1,12 +1,13 @@
-"""내 대출: 목록(#19)·빌렸어요(#20). loan-assistant LOAN-1.
+"""내 대출: 목록(#19)·빌렸어요(#20)·예정일 고치기(#21)·반납(#22). loan-assistant LOAN-1·LOAN-2.
 
-대출은 사용자가 "빌렸어요"를 눌러야 시작한다(M1). 대출일은 서버 서울 날짜만 쓰고(M2),
-연체·D-day는 저장하지 않고 응답 때 계산한다(M4). #21·#22는 LOAN-2.
+대출은 사용자가 "빌렸어요"를 눌러야 시작한다(M1). 대출일·반납일은 서버 서울 날짜만 쓰고(M2·E3),
+연체·D-day는 저장하지 않고 응답 때 계산한다(M4). M1에서는 반납 집계(library_return_stats)에 쓰지 않는다(E4).
 """
 
 import base64
 import binascii
 import json
+import re
 from datetime import date, timedelta
 from typing import Any, Literal
 from uuid import UUID
@@ -207,3 +208,89 @@ async def start_loan(
 
     row, created = await run_db(request.app.state.engine, tx)
     return JSONResponse(status_code=201 if created else 200, content=loan_public(row, today))
+
+
+# ─────────── LOAN-2: 공통 ───────────
+
+DATE_PATTERN = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")
+
+
+def select_loan(c: Connection, loan_id: UUID) -> Any:
+    return c.execute(text(f"SELECT {LOAN_COLUMNS} {LOAN_JOINS} WHERE o.id = :id"), {"id": loan_id}).one()
+
+
+# ─────────── #21 예정일 고치기 ───────────
+
+
+class DueChange(BaseModel):
+    model_config = ConfigDict(extra="ignore")  # due_on 밖의 필드는 무시(C3)
+
+    due_on: str
+
+
+def parse_due_on(value: str) -> date:
+    """`YYYY-MM-DD`만 받는다. 달력에 없는 날(2026-02-30)도 422 `due_on`(R-#1)."""
+    if not DATE_PATTERN.match(value):
+        raise validation_error("due_on")
+    try:
+        return date.fromisoformat(value)
+    except ValueError as exc:
+        raise validation_error("due_on") from exc
+
+
+def change_due_tx(c: Connection, uid: UUID, loan_id: UUID, due_on: date) -> Any:
+    lock_active_user(c, uid)
+    row = c.execute(
+        text("SELECT id, loaned_on, status FROM loans WHERE id = :id AND user_id = :uid FOR UPDATE"),
+        {"id": loan_id, "uid": uid},
+    ).first()
+    if row is None:
+        raise ApiError(404, "NOT_FOUND", MSG_NOT_FOUND)  # 남의 것 = 없는 것(R-#3)
+    if row.status == "returned":
+        raise ApiError(409, "CONFLICT", MSG_CONFLICT)  # R-#2
+    if due_on < row.loaned_on:
+        raise validation_error("due_on")  # E1
+    c.execute(
+        text("UPDATE loans SET due_on = :d, due_on_assumed = false, updated_at = now() WHERE id = :id"),
+        {"d": due_on, "id": loan_id},
+    )
+    return select_loan(c, loan_id)
+
+
+@router.patch("/{loan_id}")
+async def change_due_date(
+    request: Request, loan_id: UUID, body: DueChange, user: CurrentUser = Depends(get_current_user)
+) -> dict[str, Any]:
+    due_on = parse_due_on(body.due_on)
+    today = today_kst()
+    row = await run_db(request.app.state.engine, lambda c: change_due_tx(c, user.id, loan_id, due_on))
+    return loan_public(row, today)
+
+
+# ─────────── #22 반납했어요 ───────────
+
+
+def return_loan_tx(c: Connection, uid: UUID, loan_id: UUID, today: date) -> Any:
+    lock_active_user(c, uid)
+    row = c.execute(
+        text("SELECT id, status FROM loans WHERE id = :id AND user_id = :uid FOR UPDATE"),
+        {"id": loan_id, "uid": uid},
+    ).first()
+    if row is None:
+        raise ApiError(404, "NOT_FOUND", MSG_NOT_FOUND)
+    if row.status == "on_loan":  # 이미 반납했으면 그대로(멱등: 첫 returned_on 유지, E3)
+        c.execute(
+            text("UPDATE loans SET status = 'returned', returned_on = :r, updated_at = now() WHERE id = :id"),
+            {"r": today, "id": loan_id},
+        )
+    # 반납 집계(library_return_stats)에는 쓰지 않는다(E4, Q-49)
+    return select_loan(c, loan_id)
+
+
+@router.post("/{loan_id}/return")
+async def return_loan(
+    request: Request, loan_id: UUID, user: CurrentUser = Depends(get_current_user)
+) -> dict[str, Any]:
+    today = today_kst()
+    row = await run_db(request.app.state.engine, lambda c: return_loan_tx(c, user.id, loan_id, today))
+    return loan_public(row, today)
