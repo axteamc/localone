@@ -39,3 +39,7 @@ YES24_SEARCH_URL_TEMPLATE = "https://www.yes24.com/Product/Search?domain=BOOK&qu
 LIBRARY_SEARCH_LIMIT = 20  # 05 §11 LIB-0 조회 엔진 정책 수치
 LIBRARY_QUERY_MAX_CHARS = 30  # 같은 절
 BOOK_DESCRIPTION_MAX_CHARS = 2_000  # 같은 절, K21
+
+# ── [loan-assistant-C] ──
+LOAN_DEFAULT_DAYS = 14  # loan-assistant LOAN-1 M3: 반납 예정일 기본 = 대출일 + 14일(추정, 도서관 공식 기간 아님)
+# ── [/loan-assistant-C] ──
