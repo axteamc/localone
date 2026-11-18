@@ -18,7 +18,7 @@
     --ink-muted:#6B6B66; --ink-soft:#4D4D4B; --pin-closed:#78736C;
     --panel-frosted:#E9EAE9; --panel-lit:#EFF1EF; --seam:#C8C9C8; --rivet:#8E8D8D;
     --relief-mid:#B8B7B3; --relief-dark:#999896; --divider:#C4C4C1;
-    --shadow-cast:rgba(28,30,36,.22); --seam-hi:rgba(255,255,255,.68);
+    --shadow-cast:rgba(28,30,36,.22); --shadow-faint:rgba(28,30,36,.09); --seam-hi:rgba(255,255,255,.68);
     --on-ink:#FFFFFF; --cover-a:#8B6F5A; --cover-b:#3E6B4E; --cover-c:#C9B48A; --cover-d:#5A4A3C;
     --r-block:3px; --r-card:18px; --r-info:9px; --r-pill:18px;
   }
@@ -177,13 +177,15 @@
   .col480 { width:480px; margin:0 auto; height:100%; display:flex; flex-direction:column; position:relative; z-index:2; box-shadow:0 0 0 1px var(--seam), 0 10px 30px var(--shadow-cast); }
   .wallbg { position:absolute; inset:0; background:var(--bg); background-image:linear-gradient(var(--seam) 1px, transparent 1px), linear-gradient(90deg, var(--seam) 1px, transparent 1px); background-size:150px 120px; opacity:.55; }
   .cap960 { max-width:960px; margin:0 auto; width:100%; }
-  /* A+C 채택: 벽 격자(120×120 고정 칸)에 4칸 폭 480 앱 판이 칸 줄눈에 맞춰 걸림 */
-  .wall { position:absolute; inset:0; background-color:var(--panel-frosted); background-image:linear-gradient(var(--seam) 1px, transparent 1px), linear-gradient(90deg, var(--seam) 1px, transparent 1px); background-size:120px 120px, 120px 120px; background-position:0 0, 50% 0; }
-  .hung { width:480px; margin:0 auto; height:100%; display:flex; flex-direction:column; position:relative; z-index:2; background:var(--panel-frosted); box-shadow:0 0 0 1px var(--seam), 3px 4px 0 var(--relief-mid); }
-  .hung::before, .hung::after { content:""; position:absolute; top:6px; width:5px; height:5px; border-radius:3px; background:var(--rivet); z-index:6; }
-  .hung::before { left:6px; } .hung::after { right:6px; }
-  .hung .board { background:transparent; }
-  .hung .grid { left:0; right:0; }
+  /* A+C 채택(2차): 파사드 격자가 화면 전체를 같은 질감으로 채우고, 룰러도 끝까지. 패널(머리·검색·아래 창·탭)만 폭 480 + 옅은 그림자 */
+  .acwall { position:absolute; inset:0; background:var(--panel-frosted); }
+  .acwall .grid { position:absolute; top:0; bottom:auto; left:50%; right:auto; width:auto; transform:translateX(-50%); display:grid; grid-template-columns:repeat(12,120px); grid-template-rows:repeat(6,120px); }
+  .acwall .axis { top:0; bottom:0; }
+  .acwall .ruler { left:0; right:0; }
+  .accol { position:relative; width:480px; margin:0 auto; height:100%; display:flex; flex-direction:column; z-index:2; }
+  .accol .panel { background:var(--panel-frosted); box-shadow:0 0 0 1px var(--seam), 0 6px 18px var(--shadow-faint); position:relative; z-index:4; }
+  .accol .mid { flex:1; position:relative; }
+  .accol .sheet.glass { box-shadow:0 0 0 1px var(--seam), 0 -6px 18px var(--shadow-faint); }
 
   /* 표 */
   table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-info); overflow:hidden; }
@@ -218,12 +220,13 @@
   </select></div>
   <div class="cands wide">
     <article class="cand" data-id="AC">
-      <h3>채택 — A+C: 벽 격자 어딘가에 걸려 있는 앱</h3>
+      <h3>채택 — A+C: 같은 격자가 화면을 채우고, 패널만 A만큼</h3>
       <div class="bwrap"><div class="browser"><div class="vp" data-wide="AC"></div></div></div>
-      <p>바깥 벽은 C처럼 <b>크기가 고정된 격자 칸(120×120)</b>이 화면 끝까지 반복되고, 앱은 A처럼 폭 480이지만 <b>벽 칸 4개에 딱 맞춰</b> 걸려 있어요. 앱 안 파사드 격자 줄눈이 벽 줄눈과 이어져요.</p>
-      <ul><li>경계: 큰 그림자 대신 1px 줄눈 + 블록과 같은 얇은 두께(3·4px `reliefBottomMid`) + 위 모서리 리벳 2개 → "벽에 볼트로 걸린 판"</li>
-        <li>색: 벽과 앱 모두 `panelFrosted` 바탕, 같은 줄눈색. 벽에는 블록·글자가 없어서 앱만 "내용이 있는 칸"으로 읽혀요</li>
-        <li>휴대폰(480 이하)에서는 벽이 없고 앱이 화면을 채워요(지금과 같음)</li></ul>
+      <p>파사드 격자(칸 120×120, 리벳 포함)와 룰러가 C처럼 <b>화면 전체를 같은 질감으로</b> 채워요. 벽과 파사드 구간의 구분이 없어요. 블록·머리·검색·아래 창·탭만 A처럼 <b>폭 480 안에만</b> 있어요.</p>
+      <ul><li>경계: 패널(머리+검색 띠, 아래 창+탭)에만 1px 줄눈 + 아주 옅은 그림자(`rgba(28,30,36,.09)`, 6px 아래 18px 번짐). 후보 A(.22, 30px)보다 옅게</li>
+        <li>파사드 구간은 따로 판을 깔지 않아요 — 블록이 화면 전체 격자 위에 바로 놓여요</li>
+        <li>룰러는 화면 끝까지, 기점은 화면 가운데(=앱 가운데)</li>
+        <li>휴대폰(480 이하)에서는 지금과 같음</li></ul>
       <span class="lbl">누르면 이렇게 이어져요</span>
       <p>모든 화면이 같은 자리(벽 칸 4개)에서 바뀌어요. 휴대폰과 동작·배치가 같아요.</p>
       <span class="lbl">화면을 열어야 보이는 것</span>
@@ -415,8 +418,8 @@
 </section>
 
 <!-- ===== 중심 요소 3-1: 제목 굵기 (연속값: 기준 + 3단계) ===== -->
-<section class="element" id="el-tweight" data-kind="continuous" data-chosen="">
-  <h2>정할 것 3-1. 제목 굵기를 아주 조금 올리기 <span class="status">결정 전</span></h2>
+<section class="element" id="el-tweight" data-kind="continuous" data-chosen="w2">
+  <h2>정할 것 3-1. 제목 굵기를 아주 조금 올리기 <span class="status">확인</span></h2>
   <div class="flow"><b>정해진 것.</b> 글자 규칙은 2단계, 제목은 한 줄 전체를 같은 굵기로("이 동네 인기 도서", "대출·반납"). 크기 20~22·색 `inkSoft`는 그대로, 굵기만 바뀌어요. 「대출·반납」을 눌러 화면 제목도 보세요.
     <br><b>단계 값:</b> 기준 300(Light) → 1단계 350 → 2단계 400(Regular) → 3단계 500(Medium). 이 시안 화면은 Windows 글꼴이라 350·500을 획 두께로 흉내 냈어요. 앱에서 350은 Noto Sans KR 가변 글꼴이 필요하고(Android에서 가변 글꼴 굵기 지원이 불안정), 300·400·500은 고정 굵기 파일로 바로 돼요.</div>
   <div class="pick">다시 보기: <select data-for="el-tweight">
@@ -489,10 +492,10 @@
   <h2>명세</h2>
   <div class="wide"><table>
     <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
-    <tr data-el="el-wide"><td>1. 넓은 화면</td><td>A+C 벽 격자에 걸린 앱</td><td>없음</td><td>A 단독(벽과 앱이 따로), B 판 폭 960, C 단독(판 전체 폭)</td><td>"A+C : 앱과 외부 격자의 경계를 더 구분감 없게 하고 색감도 조금 더 비슷하게 맞춰서 격자 어딘가에 걸려있는 걸 보는 느낌으로"</td><td>앱 폭 480 = 벽 칸 4개, 벽 칸 120×120 고정·반복(가운데 줄눈 정렬), 벽·앱 바탕 `panelFrosted`, 경계 1px `seamHairline` + 3·4px `reliefBottomMid`, 위 모서리 리벳 2개. 480 이하는 벽 없음</td><td>휴대폰과 같음</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-wide"><td>1. 넓은 화면</td><td>A+C 벽 격자에 걸린 앱</td><td>없음</td><td>A 단독(벽과 앱이 따로), B 판 폭 960, C 단독(판 전체 폭)</td><td>"A+C : 앱과 외부 격자의 경계를 더 구분감 없게 하고 색감도 조금 더 비슷하게 맞춰서 격자 어딘가에 걸려있는 걸 보는 느낌으로" → 2차: "C처럼 동일한 격자가 다 채워졌는데 나머지 섹션과 파사드가 존재하는 구간은 A만큼만 존재 … 앱과 외부 격자는 원래 후보 A처럼 약간의 그림자만 주는데, 조금 더 옅게"</td><td>파사드 격자 칸 120×120(리벳 포함)이 화면 전체에 같은 질감으로(가운데 줄눈 정렬), 룰러 화면 끝까지. 블록·패널(머리+검색, 아래 창+탭)은 폭 480 = 격자 4칸. 패널 경계 1px `seamHairline` + 그림자 `rgba(28,30,36,.09)` 0 6px 18px. 480 이하는 지금과 같음</td><td>휴대폰과 같음</td><td><span class="st">확인</span></td></tr>
     <tr data-el="el-frame"><td>2. 머리·검색·탭 재질</td><td>A 같은 유리판 + 줄눈</td><td>없음</td><td>B 머리 없이 판이 위까지, C 진한 받침 띠</td><td>"후보 A로 하고 머리 띠 글자를 도형화 혹은 영어로 작성"</td><td>띠 바탕 `panelFrosted` #E9EAE9, 경계 1px `seamHairline` #C8C9C8 + 밝은 선 `seamHighlight`, 지금 탭 2px `inkStrong`, 아래 창 `panelLit` 곡률 3, 다른 화면 바탕 줄눈 격자 옅게</td><td>탭 → 같은 재질 화면</td><td><span class="st">확인</span></td></tr>
     <tr data-el="el-label"><td>2-1. 머리 띠 표찰</td><td>① 영어 표찰(HOME · LOANS · MY, 뒤로가기 화면은 BOOK · LIBRARY)</td><td>없음</td><td>② 도형만, ③ 도형 + 영어</td><td>"후보 1 영어만"</td><td>① 10px 자간 +32% 500 `inkMuted` · ② 아치·책등 도형 14×18, 1.5px `inkStrong` · ③ 둘 다, 띠 양 끝 리벳</td><td>탭 → 표찰만 바뀜</td><td><span class="st">확인</span></td></tr>
-    <tr data-el="el-tweight"><td>3-1. 제목 굵기</td><td>— (추천: 400)</td><td>—</td><td>—</td><td>—</td><td>300 · 350 · 400 · 500, 크기 20~22·`inkSoft` 그대로, 한 줄 같은 굵기</td><td>—</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-tweight"><td>3-1. 제목 굵기</td><td>400</td><td>없음</td><td>300, 350, 500</td><td>"글자 2단계 : 400"</td><td>제목 400(Regular), 크기 20~22·`inkSoft` 그대로, 한 줄 같은 굵기</td><td>—</td><td><span class="st">확인</span></td></tr>
     <tr data-el="el-type"><td>3. 글자 규칙 강도</td><td>2단계(제목 굵기는 3-1에서)</td><td>없음</td><td>기준, 1단계, 3단계, 2단계 절충(파사드 700·"인기 도서"만 700)</td><td>"글자와 공간 규칙은 그냥 2단계 … 지금은 너무 많이 줬고 … 그 부분만 굵기 준 것도 별로야" (앞서 절충안 요청: "2단계의 절충안 버전. 굵게 쓰는 곳을 아예 없앴는데 현재 시안 기준이면 '인기 도서' 글자까지도 굵게 써도 될 거 같음. 다만 굵기의 격차를 줘서 파사드가 더 눈에 띄고 아래 창의 글자는 무게감을 줄여주도록 설계"</td><td>파사드: 이름 12.5/700, 방위·거리 8~8.5/700 자간 +14% 대문자. 아래 창: 제목 20 "이 동네" 300 `inkSoft` + "인기 도서" 700 `text`, 기준 줄 8/400 자간 +12%, 책 제목 9.5/300 `inkSoft`. 글꼴 Noto Sans KR 300 추가) → 채택 2단계: 제목 20~22 `inkSoft` 한 줄 같은 굵기, 이름 12/500, 표찰 8~8.5/500 자간 +14% 대문자, 700 없음</td><td>—</td><td><span class="st">확인</span></td></tr>
     <tr><td>인기 도서 순서</td><td>번호 없음, 받을 때마다 섞기, 같은 시리즈 벌림</td><td>—</td><td>순위 번호 표시</td><td>"끔찍한 번호 표시 제거 … 매번 랜덤으로 섞는게 나을지도"</td><td>상위 10권</td><td>—</td><td><span class="st">확인</span></td></tr>
     <tr><td>현위치 마커</td><td>블록 위에 그림, 줄 사이 = 마커 높이 + 2</td><td>—</td><td>—</td><td>"화면 크기가 작아지면 겹치면서 가려지는 문제"</td><td>마커 78×62, 줄 사이 64</td><td>—</td><td><span class="st">확인</span></td></tr>
@@ -592,11 +595,23 @@
     return '<div class="sheet glass" style="height:150px"><div class="' + (cap ? 'cap960' : '') + '"><div class="grab"></div><div class="shead"><span class="stitle">이 동네 <b>인기 도서</b></span><span class="sbasis">중앙도서관 · 최근 30일 대출</span></div><div class="covers">' + c + '</div></div></div>';
   }
   function wideSearch(cap) { return '<div class="sb glass"><div class="sfield ' + (cap ? 'cap960' : '') + '"><span>책 제목·저자 검색</span><b class="findbtn">도서관 찾기</b></div></div>'; }
+  function acWall() {
+    var g = ''; for (var i = 0; i < 72; i++) g += '<div class="bay"></div>';
+    return '<div class="acwall"><div class="grid">' + g + '</div><div class="axis"></div>' +
+      '<div class="ruler" style="top:252px"><div class="ticks"></div><div class="rlab"><span>W 1.5km</span><span>0.5km</span><span>0.5km</span><span>E 1.5km</span></div></div>' +
+      '<div class="plinth" style="top:242px;z-index:5"><b>+</b><span class="pt">현위치</span><span class="ps">3km</span></div></div>';
+  }
+  function acBlocks() {
+    return '<div class="t2 tw2" style="position:absolute;inset:0;font-size:14px">' +
+      blk('8px', 22, '214px', 'NW 311°', '전남광주통합특별시교육청중앙도서관', '광주 동구 장동로 23-16', '276m', 'fill1', true) +
+      blk('calc(50% + 14px)', 14, '214px', 'N 005°', '광주광역시립산수도서관', '광주 동구 경양로 355', '841m', 'fill2', false) +
+      blk('8px', 232, '214px', 'SW 237°', '광주광역시립사직도서관', '광주 남구 제중로 56', '1.5km', 'fill2', true) + '</div>';
+  }
   var wideTabs = '<div class="tabs glass"><a class="on">홈</a><a>대출·반납</a><a>내 정보</a></div>';
   document.querySelectorAll('[data-wide]').forEach(function (vp) {
     var k = vp.dataset.wide;
     if (k === 'AC') {
-      vp.innerHTML = '<div class="wall"></div><div class="hung t2"><div class="hd glass"><span class="rvl"></span>' + label('en', 'home') + '<span class="rvr"></span></div>' + wideSearch(false) + wideBoard('A') + wideSheet(false) + wideTabs + '</div>';
+      vp.innerHTML = acWall() + '<div class="accol t2 tw2"><div class="panel"><div class="hd glass"><span class="rvl"></span>' + label('en', 'home') + '<span class="rvr"></span></div>' + wideSearch(false) + '</div><div class="mid">' + acBlocks() + '</div><div class="panel" style="box-shadow:none">' + wideSheet(false) + wideTabs + '</div></div>';
     } else if (k === 'A') {
       vp.innerHTML = '<div class="wallbg"></div><div class="col480"><div class="hd glass">홈</div>' + wideSearch(false) + wideBoard('A') + wideSheet(false) + wideTabs + '</div>';
     } else if (k === 'B') {
