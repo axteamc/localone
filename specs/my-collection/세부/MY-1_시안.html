@@ -203,15 +203,15 @@
   <section class="element" id="el-2" data-chosen="D">
     <h2>정할 것 2. "좋아요" 탭에서 좋아요를 취소하면 그 카드를 어떻게 할까<span class="status" data-status>결정 전</span></h2>
     <p style="margin:0;font-size:14px">맨 앞 화면이 말씀하신 합친 안이에요. ③을 누르고 4초 기다리면 안내와 흐린 카드가 함께 사라져요. 카드를 길게 누르면 메뉴가 떠요. "북마크" 탭에서 북마크를 해제할 때도 똑같이 움직여요. 아래 버튼을 순서대로 눌러 보세요.</p>
-    <div class="state">순서: <button aria-pressed="true" data-step="0">① 좋아요 탭</button><button aria-pressed="false" data-step="1">② "소년이 온다" 카드 길게 누름</button><button aria-pressed="false" data-step="2">③ "좋아요 취소" 누른 뒤</button><button aria-pressed="false" data-step="3">④ 4초 뒤 / 다른 탭 갔다 돌아옴</button></div>
+    <div class="state">순서: <button aria-pressed="true" data-step="0">① 좋아요 탭</button><button aria-pressed="false" data-step="1">② "소년이 온다" 카드 길게 누름</button><button aria-pressed="false" data-step="2">③ "좋아요 취소" 누른 뒤</button><button aria-pressed="false" data-step="3">④ 4초 안에 "정독도서관 창가"도 취소</button><button aria-pressed="false" data-step="4">⑤ 4초 뒤 / 다른 탭 갔다 돌아옴</button></div>
     <div class="cands">
       <article class="cand" data-id="D">
         <h3>흐리게 남고 "되돌리기", 안내가 사라지면 빠짐 <span class="badge" style="background:var(--fill3)">합친 안</span></h3>
         <div class="phone" data-phone2></div>
         <dl class="note">
           <dt>무엇이 다른가</dt><dd>1번처럼 아래에 "좋아요를 취소했어요 · 되돌리기"가 4초 뜨고, 그동안 카드는 2번처럼 자리에 흐리게 "취소함"으로 남아요. 안내가 사라지면 카드도 빠져요.</dd>
-          <dt>누르면 이렇게 이어져요</dt><dd class="flow">카드를 길게 누름 → "좋아요 취소" → 카드가 흐려지고 아래에 "되돌리기"가 뜸 → 4초 안에 "되돌리기"를 누르면 카드가 원래대로 → 안 누르면 4초 뒤 안내와 카드가 함께 사라지고 남은 카드가 자리를 채움.</dd>
-          <dt>화면을 열어야 보이는 것</dt><dd>③에서 카드 4개(하나 흐림) + 아래 안내. ④(4초 뒤)에서 3개.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">카드를 길게 누름 → "좋아요 취소" → 카드가 흐려지고 아래에 "되돌리기"가 뜸 → 4초 안에 "되돌리기"를 누르면 카드가 원래대로 → 안 누르면 4초 뒤 안내와 카드가 함께 사라지고 남은 카드가 자리를 채움. 4초 안에 다른 카드도 취소하면 앞서 흐려 둔 카드는 바로 빠지고, 새로 취소한 카드만 흐리게 남음.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>③에서 카드 4개(하나 흐림) + 아래 안내. ④에서 "소년이 온다"는 빠지고 "정독도서관 창가"만 흐림. ⑤(4초 뒤)에서 2개.</dd>
           <dt>얻는 것 / 포기하는 것</dt><dd>무엇을 취소했는지 눈으로 보면서 되돌릴 수 있음 / 4초 동안 흐린 카드가 섞여 보이고, 여러 개를 빨리 빼면 흐린 카드가 여럿 생김</dd>
         </dl>
       </article>
@@ -264,7 +264,8 @@
       <li>사용자가 "좋아요" 탭에서 카드를 길게 누르면 동네한권이 "좋아요 취소" 메뉴를 띄운다.</li>
       <li>사용자가 "좋아요 취소"를 누르면 동네한권이 그 카드를 자리에 흐리게 "취소함"으로 남기고, 아래에 "좋아요를 취소했어요 · 되돌리기"를 4초 동안 보여 준다.</li>
       <li>사용자가 4초 안에 "되돌리기"를 누르면 동네한권이 좋아요를 다시 켜고 카드를 원래대로 되돌린다.</li>
-      <li>4초가 지나면 동네한권이 안내와 흐린 카드를 함께 지우고 남은 카드로 자리를 채운다. "북마크" 탭의 북마크 해제도 똑같다.</li>
+      <li>4초가 지나면 동네한권이 안내와 흐린 카드를 함께 지우고 남은 카드로 자리를 채운다.</li>
+      <li>사용자가 4초 안에 다른 카드도 취소하면 동네한권이 앞서 흐려 둔 카드를 바로 지우고, 새로 취소한 카드만 흐리게 남긴다. "북마크" 탭의 북마크 해제도 똑같다.</li>
       <li>(정할 것 3을 고르면 여기를 이어서 쓴다)</li>
     </ol>
   </section>
@@ -276,7 +277,7 @@
     <table>
       <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값</th></tr>
       <tr><td>1. 위쪽 내 프로필 배치 (Y-O1)</td><td>확인</td><td>채택: 왼쪽 사진 + 옆에 이름 / 차선 없음 / 탈락: 가운데 큰 사진, 한 줄로 작게</td><td>"공백은 적고 있을 건 다 잘 보이고 깔끔해 보여"</td><td>A 사진 64 / B 88 / C 36, 원형</td></tr>
-      <tr><td>2. 좋아요·북마크 해제 뒤 목록 (Y-O4)</td><td>확인</td><td>채택: 합친 안(흐리게 남고 "되돌리기", 4초 뒤 함께 빠짐) / 차선 없음 / 탈락: 바로 빠지고 "되돌리기", 흐리게 남았다가 다음에 빠짐, 바로 빠짐·안내 없음</td><td>"사라지기 전에 게시글 보고 고민돼서 되돌릴 수도 있고, 되돌리기만 남겨 두기는 좀 그렇긴 해"</td><td>안내 4초, 흐린 카드 투명도 45% + "취소함" 표시, 카드 길게 누르면 메뉴. 북마크 해제도 같음("북마크를 해제했어요")</td></tr>
+      <tr><td>2. 좋아요·북마크 해제 뒤 목록 (Y-O4)</td><td>확인</td><td>채택: 합친 안(흐리게 남고 "되돌리기", 4초 뒤 함께 빠짐) / 차선 없음 / 탈락: 바로 빠지고 "되돌리기", 흐리게 남았다가 다음에 빠짐, 바로 빠짐·안내 없음</td><td>"사라지기 전에 게시글 보고 고민돼서 되돌릴 수도 있고, 되돌리기만 남겨 두기는 좀 그렇긴 해" / "다른 거는 너무 딱딱하거나 설명이 모자란데 지금 고른 안은 그런 단점이 없거나 적어" / 연달아 취소: "전에 취소 누른 거 바로 없어지는 식으로"</td><td>안내 4초, 흐린 카드 투명도 45% + "취소함" 표시, 흐린 카드는 한 번에 하나(다음 취소 시 앞 카드 바로 빠짐), 카드 길게 누르면 메뉴. 북마크 해제도 같음("북마크를 해제했어요")</td></tr>
       <tr><td>3. 탭이 비었을 때 (Y-O3)</td><td>결정 전</td><td>—</td><td>—</td><td>—</td></tr>
       <tr><td>탭 바 모양 (Y-O2)</td><td>기본값(Claude)</td><td>글자 + 고른 탭 밑줄(<code>ink-strong</code> 2), 내리면 맨 위에 붙음</td><td>묻지 않음</td><td>글자 14</td></tr>
       <tr><td>탭 오갈 때 (Y-O2)</td><td>기본값(Claude)</td><td>불러온 탭은 기억, 아래로 당기면 새로</td><td>묻지 않음</td><td>—</td></tr>
@@ -349,8 +350,26 @@
     var el2 = document.getElementById('el-2');
     var LIKED = [
       [{ c: 'f2', h: 150, t: '마음에 남은 문장' }, { c: 'f2', h: 150, t: '소년이 온다', target: 1 }],
-      [{ c: 'f3', h: 110, t: '이번 주 다 읽음' }, { c: 'f1', h: 110, t: '정독도서관 창가' }]
+      [{ c: 'f3', h: 110, t: '이번 주 다 읽음' }, { c: 'f1', h: 110, t: '정독도서관 창가', target: 2 }]
     ];
+    // 카드 상태: 'n' 보통, 'o' 길게 누름, 'd' 흐림, 'g' 빠짐
+    // step 0 처음, 1 길게 누름, 2 첫 취소, 2.5 첫 취소 4초 뒤, 3 4초 안에 둘째 취소, 4 끝(4초 뒤 / 탭 갔다 옴)
+    function cardState(id, step, which) {
+      var late = id === 'B' || id === 'D';
+      if (which === 1) {
+        if (step < 1) return 'n';
+        if (step === 1) return 'o';
+        if (step === 2) return late ? 'd' : 'g';
+        if (step === 3) return id === 'B' ? 'd' : 'g'; // D: 다음 취소를 누르면 앞서 흐려 둔 카드는 바로 빠짐
+        return 'g';
+      }
+      if (which === 2) {
+        if (step < 3) return 'n';
+        if (step === 3) return late ? 'd' : 'g';
+        return 'g';
+      }
+      return 'n';
+    }
     function render(phone, id, step) {
       var h = '<div class="sbar">9:41</div><div class="topbar"><span class="ttl">내 정보</span><button class="gear">⚙</button></div><div class="body">'
         + '<div class="profA"><div class="avatar">👤</div><div class="meta"><div class="nick">이웃-0000</div><div class="bio">동네 도서관 산책을 좋아해요</div><button class="editbtn">프로필 수정</button></div></div>'
@@ -358,21 +377,21 @@
       LIKED.forEach(function (col) {
         h += '<div class="col">';
         col.forEach(function (k) {
-          var late = id === 'B' || id === 'D';
-          var gone = k.target && ((step >= 2 && !late) || (step >= 3 && late));
-          if (gone) return;
-          var dim = k.target && step === 2 && late;
-          var cls = 'card ' + k.c + (k.target && step === 1 ? ' target' : '') + (dim ? ' dim' : '');
+          var st = cardState(id, step, k.target || 0);
+          if (st === 'g') return;
+          var dim = st === 'd';
+          var cls = 'card ' + k.c + (st === 'o' ? ' target' : '') + (dim ? ' dim' : '');
           h += '<div class="' + cls + '" style="height:' + k.h + 'px">' + (dim ? '<span class="tag">취소함</span>' : '') + k.t + '</div>';
         });
         h += '</div>';
       });
       h += '</div></div></div><div class="nav"><span>홈</span><span>대출·반납</span><span class="on">내 정보</span></div>';
       if (step === 1) h += '<div class="menu"><div class="pick">좋아요 취소</div><div>게시물 보기</div><div>닫기</div></div>';
-      if (step === 2 && (id === 'A' || id === 'D')) h += '<div class="toast">좋아요를 취소했어요<span class="undo">되돌리기</span></div>';
+      var undo = (step === 2 || step === 3) && (id === 'A' || id === 'D');
+      if (undo) h += '<div class="toast">좋아요를 취소했어요<span class="undo">되돌리기</span></div>';
       phone.innerHTML = h;
       clearTimeout(phone._t);
-      if (step === 2 && (id === 'A' || id === 'D')) phone._t = setTimeout(function () { render(phone, id, 3); }, 4000);
+      if (undo) phone._t = setTimeout(function () { render(phone, id, step === 2 ? 2.5 : 4); }, 4000);
     }
     function show(step) {
       el2.querySelectorAll('.cand').forEach(function (c) { render(c.querySelector('[data-phone2]'), c.dataset.id, step); });
