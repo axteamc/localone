@@ -2,7 +2,7 @@
 // 새 날짜 패키지 없이 순수 React Native(Modal·TextInput·Pressable)로 만든다. 날짜는 "YYYY-MM-DD" 글자로만 다룬다.
 import { useEffect, useLayoutEffect, useRef, useState, type MutableRefObject } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { theme } from "../../theme";
+import { actionColors, theme, type as T } from "../../theme";
 import { ApiCallError, changeDueDate, type Loan } from "./api";
 
 export const SHEET_TITLE = "반납 예정일 고치기";
@@ -69,6 +69,7 @@ export function DueDateSheet({ loan, onClose, onSaved, onChanged, onLateResult }
   const [value, setValue] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [focused, setFocused] = useState(false);
   const sending = useRef(false);
   const gen = useOpenGeneration(loan, () => {
     sending.current = false;
@@ -119,11 +120,11 @@ export function DueDateSheet({ loan, onClose, onSaved, onChanged, onLateResult }
         <View testID="due-sheet" style={styles.sheet}>
           <View style={styles.head}>
             <View style={styles.flex}>
-              <Text style={styles.title}>{SHEET_TITLE}</Text>
               <Text style={styles.sub}>{sheetSubtitle(loan)}</Text>
+              <Text style={styles.title} numberOfLines={1}>{SHEET_TITLE}</Text>
             </View>
             <Pressable accessibilityRole="button" onPress={onClose} hitSlop={8}>
-              <Text style={styles.close}>닫기</Text>
+              <Text style={styles.close} numberOfLines={1}>닫기</Text>
             </Pressable>
           </View>
 
@@ -142,9 +143,9 @@ export function DueDateSheet({ loan, onClose, onSaved, onChanged, onLateResult }
                     setValue(next);
                     setError(null);
                   }}
-                  style={[styles.chip, off && styles.dim]}
+                  style={({ pressed }) => [styles.chip, pressed && !off && ACT.secondaryPressed, off && styles.dim]}
                 >
-                  <Text style={styles.chipText}>{label}</Text>
+                  <Text style={styles.chipText} numberOfLines={1}>{label}</Text>
                 </Pressable>
               );
             })}
@@ -157,13 +158,15 @@ export function DueDateSheet({ loan, onClose, onSaved, onChanged, onLateResult }
               setValue(t);
               setError(null);
             }}
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
             placeholder="YYYY-MM-DD"
             placeholderTextColor={theme.colors.textSub}
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="numbers-and-punctuation"
             maxLength={10}
-            style={styles.input}
+            style={[styles.input, focused && styles.inputFocused]}
           />
           {!!error && <Text style={styles.error}>{error}</Text>}
 
@@ -173,9 +176,9 @@ export function DueDateSheet({ loan, onClose, onSaved, onChanged, onLateResult }
             accessibilityState={{ disabled: busy }}
             disabled={busy}
             onPress={() => void save()}
-            style={[styles.save, busy && styles.dim]}
+            style={({ pressed }) => [styles.save, pressed && !busy && ACT.primaryPressed, busy && styles.dim]}
           >
-            <Text style={styles.saveText}>{busy ? "저장 중…" : "저장"}</Text>
+            <Text style={styles.saveText} numberOfLines={1}>{busy ? "저장 중…" : "저장"}</Text>
           </Pressable>
         </View>
       </View>
@@ -184,45 +187,55 @@ export function DueDateSheet({ loan, onClose, onSaved, onChanged, onLateResult }
 }
 
 const c = theme.colors;
+const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   backdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: c.shadowFloat },
   sheet: {
-    backgroundColor: c.paper,
-    borderTopLeftRadius: theme.radii.card,
-    borderTopRightRadius: theme.radii.card,
+    backgroundColor: c.panelLit,
+    borderTopWidth: 1,
+    borderColor: c.seamHairline,
+    borderTopLeftRadius: theme.radii.infoCard,
+    borderTopRightRadius: theme.radii.infoCard,
     padding: 20,
     paddingBottom: 32,
     gap: 14,
   },
   head: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   flex: { flex: 1 },
-  title: { fontSize: 17, fontWeight: "500", color: c.text },
-  sub: { fontSize: 13, color: c.textSub, marginTop: 4 },
-  close: { fontSize: 15, color: c.text, fontWeight: "500" },
+  title: { ...T.title, marginTop: 2 },
+  sub: { fontSize: 12, fontWeight: "500", color: c.inkMuted },
+  close: { fontSize: 14, color: c.inkStrong, fontWeight: "500" },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
-    borderWidth: 1,
-    borderColor: c.divider,
-    borderRadius: theme.radii.pill,
+    ...ACT.secondary,
+    borderRadius: theme.radii.control,
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
-  chipText: { fontSize: 14, color: c.text, fontWeight: "500" },
+  chipText: { fontSize: 13, ...ACT.secondaryText, fontWeight: "500" },
   input: {
-    backgroundColor: c.cream,
-    borderRadius: theme.radii.pill,
+    backgroundColor: c.paper,
+    borderWidth: 1,
+    borderColor: c.seamHairline,
+    borderRadius: theme.radii.infoCard,
     paddingVertical: 10,
-    paddingHorizontal: 16,
-    fontSize: 16,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    fontWeight: "500",
     color: c.text,
+  },
+  inputFocused: {
+    borderWidth: 1.5,
+    borderColor: c.inkStrong,
   },
   error: { fontSize: 14, color: c.loanOut },
   save: {
-    backgroundColor: c.inkStrong,
-    borderRadius: theme.radii.inner,
-    paddingVertical: 14,
+    ...ACT.primary,
+    borderRadius: theme.radii.control,
+    height: 48,
     alignItems: "center",
+    justifyContent: "center",
   },
-  saveText: { color: c.paper, fontSize: 16, fontWeight: "500" },
+  saveText: { ...ACT.primaryText, fontSize: 15, fontWeight: "500" },
   dim: { opacity: 0.5 },
 });

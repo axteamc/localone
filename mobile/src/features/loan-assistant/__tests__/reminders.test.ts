@@ -216,7 +216,7 @@ describe("LOAN-3-P1", () => {
     expect(await screen.findByText(REMINDERS_DENIED)).toBeTruthy();
     expect(mockDevice.scheduled.size).toBe(0);
     expect(cancelAllLoan).not.toHaveBeenCalled(); // 예약을 시도하지 않는다
-    expect(screen.getByText("D-8")).toBeTruthy(); // 대출 목록·D-day는 그대로
+    expect(screen.getByText("D-08")).toBeTruthy(); // 대출 목록·D-day는 그대로
     expect(screen.queryByText(WEB_NO_REMINDERS)).toBeNull();
     await fireEvent.press(screen.getByText("알림 설정 열기"));
     expect(openSettings).toHaveBeenCalledTimes(1);
@@ -360,7 +360,7 @@ describe("LOAN-3 full-list sync (PR #172 review)", () => {
       const more = deferredPage();
       moreGate = more;
       await fireEvent.press(screen.getByText("더 보기"));
-      await fireEvent.press(screen.getAllByText("기한 수정")[0]!);
+      await fireEvent.press(screen.getAllByText("수정")[0]!);
       await fireEvent.changeText(screen.getByTestId("due-input"), "2026-11-25");
       const patch = deferredPage() as unknown as { promise: Promise<Loan>; resolve(l: Loan): void };
       jest.mocked(api.changeDueDate).mockReturnValueOnce(patch.promise);
@@ -377,7 +377,7 @@ describe("LOAN-3 full-list sync (PR #172 review)", () => {
       }
       // 저장 결과는 최신 목록으로 합쳐지고 첫 페이지부터 다시 읽어 서버 커서를 받는다
       await waitFor(() =>
-        expect(within(screen.getByTestId("loan-a")).getByText("대출 2026-11-10 · 예정 2026-11-25")).toBeTruthy()
+        expect(within(screen.getByTestId("loan-a")).getByText("2026.11.10 — 11.25")).toBeTruthy()
       );
       // 예약 대상은 화면 페이지와 무관하게 a(새 예정일)·b 모두
       await waitFor(() => expect(loanIds()).toEqual(["a", "b"]));
