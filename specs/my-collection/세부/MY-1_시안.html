@@ -97,7 +97,7 @@
 
 <main>
   <!-- ===== 중심 요소 1 ===== -->
-  <section class="element" id="el-1" data-chosen="">
+  <section class="element" id="el-1" data-chosen="A">
     <h2>정할 것 1. "내 정보" 탭을 열면 위쪽 내 프로필을 어떻게 놓을까<span class="status" data-status>결정 전</span></h2>
     <div class="state">소개: <button aria-pressed="true" data-bio="1">소개 있음</button><button aria-pressed="false" data-bio="0">소개 없음</button>
       &nbsp; 화면: <button aria-pressed="true" data-scroll="0">처음 열었을 때</button><button aria-pressed="false" data-scroll="1">아래로 내렸을 때</button>
@@ -196,7 +196,11 @@
     <h2>처음부터 끝까지 이렇게 써요</h2>
     <ol>
       <li>사용자가 하단 "내 정보" 탭을 누르면 동네한권이 위쪽 내 프로필과 "내 게시물" 탭의 카드를 보여 준다.</li>
-      <li>(정할 것 1을 고르면 여기를 이어서 쓴다)</li>
+      <li>동네한권이 위쪽 왼쪽에 내 사진, 그 옆에 이름·한 줄 소개·"프로필 수정" 버튼을 보여 주고, 바로 아래 탭과 카드를 보여 준다.</li>
+      <li>사용자가 화면을 아래로 내리면 동네한권이 프로필을 위로 밀어 올리고 탭을 화면 맨 위에 붙여 둔다.</li>
+      <li>사용자가 카드를 누르면 동네한권이 그 게시물 상세를 연다.</li>
+      <li>사용자가 오른쪽 위 ⚙를 누르면 동네한권이 설정(로그아웃 포함)으로 보낸다.</li>
+      <li>(정할 것 2를 고르면 여기를 이어서 쓴다)</li>
     </ol>
   </section>
 
@@ -206,7 +210,7 @@
     <p>다시 비교하기: <select id="pick"><option value="">채택안 보기</option><option value="A">왼쪽 사진 + 옆에 이름</option><option value="B">가운데 큰 사진</option><option value="C">한 줄로 작게</option></select></p>
     <table>
       <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값</th></tr>
-      <tr><td>1. 위쪽 내 프로필 배치 (Y-O1)</td><td>결정 전</td><td>— (추천: 왼쪽 사진 + 옆에 이름)</td><td>—</td><td>A 사진 64 / B 88 / C 36, 원형</td></tr>
+      <tr><td>1. 위쪽 내 프로필 배치 (Y-O1)</td><td>확인</td><td>채택: 왼쪽 사진 + 옆에 이름 / 차선 없음 / 탈락: 가운데 큰 사진, 한 줄로 작게</td><td>"공백은 적고 있을 건 다 잘 보이고 깔끔해 보여"</td><td>A 사진 64 / B 88 / C 36, 원형</td></tr>
       <tr><td>2. 좋아요·북마크 해제 뒤 목록 (Y-O4)</td><td>결정 전</td><td>—</td><td>—</td><td>—</td></tr>
       <tr><td>3. 탭이 비었을 때 (Y-O3)</td><td>결정 전</td><td>—</td><td>—</td><td>—</td></tr>
       <tr><td>탭 바 모양 (Y-O2)</td><td>기본값(Claude)</td><td>글자 + 고른 탭 밑줄(<code>ink-strong</code> 2), 내리면 맨 위에 붙음</td><td>묻지 않음</td><td>글자 14</td></tr>
