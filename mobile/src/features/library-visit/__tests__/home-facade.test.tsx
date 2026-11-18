@@ -4,7 +4,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react-native
 import React from "react";
 import { StyleSheet } from "react-native";
 import * as api from "../deps";
-import { quadLayout } from "../FacadeHome";
+import { BLOCK_W_MAX, horizontalPlace, quadLayout, upperLayout } from "../FacadeHome";
 import { HomeScreen } from "../HomeScreen";
 import { snapOffsets } from "../useHomeSheet";
 import { onFill, theme } from "../../../theme";
@@ -238,5 +238,37 @@ describe("VISIT-1 home facade", () => {
     expect(short.top.SE + short.blockH).toBeLessThanOrEqual(snapOffsets(450).half);
     expect(short.top.NE + short.blockH).toBeLessThan(short.originY);
     expect(short.originY).toBeLessThan(short.top.SW);
+  });
+
+  // 2026-11-18 D: 태블릿·가로 휴대폰처럼 넓은 판에서는 블록이 늘어나지 않고 가운데 축 양옆에 붙는다
+  test("blocks keep max width and hug the center axis on wide boards", () => {
+    for (const w of [820, 1180]) {
+      const west = horizontalPlace("NW", w);
+      const east = horizontalPlace("NE", w);
+      expect(west.width).toBe(BLOCK_W_MAX);
+      expect(east.width).toBe(BLOCK_W_MAX);
+      expect(west.left + west.width).toBeLessThanOrEqual(w / 2);
+      expect(w / 2 - (west.left + west.width)).toBeLessThan(10);
+      expect(east.left - w / 2).toBeLessThan(10);
+    }
+    // 휴대폰(390)에서는 지금 자리(왼쪽 16, 폭 44%)와 거의 같다
+    const phone = horizontalPlace("NW", 390);
+    expect(Math.abs(phone.left - 16)).toBeLessThanOrEqual(1);
+    expect(phone.width).toBe(172);
+  });
+
+  // D 지적 ②(2026-11-18): 화면이 작아지면 기점 매스(높이 62)가 블록에 가려졌다
+  test("origin plinth fits between block rows on every board height", () => {
+    for (const h of [360, 450, 520, 610, 700, 900]) {
+      const q = quadLayout(h);
+      if (q.blockH > 64) {
+        expect(q.originY - 31).toBeGreaterThanOrEqual(q.top.NW + q.blockH);
+        expect(q.originY + 31).toBeLessThanOrEqual(q.top.SW);
+      }
+      for (const slot of ["W", "E", "MAIN"] as const) {
+        const u = upperLayout(h, slot);
+        expect(u.top + u.blockH + 8).toBeLessThan(u.originY - 31);
+      }
+    }
   });
 });

@@ -2,7 +2,7 @@
 // 지도는 쓰지 않는다. 색·곡률은 theme 토큰만 쓴다.
 import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type ViewStyle } from "react-native";
-import { onFill, theme } from "../../theme";
+import { onFill, theme, type as T } from "../../theme";
 import type { LatLng, LibrarySummary } from "./deps";
 import {
   assignSpineTones,
@@ -59,6 +59,23 @@ const SLOT_STYLE: Record<FacadeSlot, ViewStyle> = {
   MAIN: { left: 28, right: 34, top: "8%" },
 };
 
+/** 넓은 화면(태블릿·가로 휴대폰)에서 블록이 늘어나지 않게 폭 상한, 가운데 축 양옆에 붙인다(2026-11-18 D) */
+export const BLOCK_W_MAX = 300;
+const AXIS_GAP_W = 7; // 서쪽 블록 오른쪽 끝 ~ 축(휴대폰에서 지금 자리와 같다)
+const AXIS_GAP_E = 2; // 축 ~ 동쪽 블록 왼쪽 끝
+
+/** 판 폭에 따른 블록 가로 자리. 휴대폰(폭 44% ≤ 300)에서는 지금 퍼센트 자리와 거의 같다 */
+export function horizontalPlace(slot: FacadeSlot, boardWidth: number): { left: number; width: number } {
+  const mid = boardWidth / 2;
+  if (slot === "MAIN") {
+    const width = Math.min(boardWidth - 62, BLOCK_W_MAX + 60);
+    return { left: Math.round(mid - width / 2 - 3), width };
+  }
+  const width = Math.min(Math.round(boardWidth * 0.44), BLOCK_W_MAX);
+  const west = slot === "NW" || slot === "SW" || slot === "W";
+  return { left: Math.round(west ? mid - AXIS_GAP_W - width : mid + AXIS_GAP_E), width };
+}
+
 const BLOCK_H = 104;
 /** 작은 화면에서 줄일 수 있는 블록 높이 하한(코드·이름·거리 줄이 남는 높이) */
 const BLOCK_H_MIN = 64;
@@ -67,7 +84,13 @@ const BLOCK_H_FULL_TEXT = 90;
 const QUAD_TOP = 10; // 판 위 여백
 const QUAD_STAGGER = 6; // 같은 줄 두 블록의 어긋남
 const QUAD_BOTTOM = 6; // 남쪽 블록 아래 끝과 창 위쪽 끝 사이
-const QUAD_MID = 50; // 북·남 줄 사이(룰러 36 + 여유). 기점 매스(62)는 블록 밑에 조금 깔릴 수 있다
+const PLINTH_W = 78;
+const PLINTH_H = 62;
+/** 북·남 줄 사이 = 기점 매스 높이 + 위아래 1px. 기점이 블록 글자를 덮지도, 블록에 가려지지도 않게(2026-11-18 D 지적 ②) */
+const QUAD_MID = PLINTH_H + 2;
+/** 한 줄 배치(W·E·MAIN): 블록 아래 끝(두께 그림자 8 포함)과 기점 위 끝 사이 */
+const UPPER_GAP = 8 + 8;
+const ORIGIN_RATIO = 0.4;
 
 export type QuadLayout = {
   /** 하단 창이 평소 높이(half)일 때 창 위로 보이는 판 높이 */
@@ -91,6 +114,21 @@ export function quadLayout(boardHeight: number): QuadLayout {
   const NE = QUAD_TOP;
   const NW = NE + QUAD_STAGGER;
   return { visible, blockH, top: { NW, NE, SW, SE }, originY: Math.round((NW + blockH + SW) / 2) };
+}
+
+export type UpperLayout = { blockH: number; top: number; originY: number };
+
+/**
+ * 한 줄 배치(dual·single)의 세로 자리. 퍼센트 자리를 그대로 쓰면 낮은 화면에서 블록이 기점 매스를 덮었다(D 지적 ②).
+ * 블록 아래 끝이 기점 위 끝보다 UPPER_GAP 위에 오게 하고, 자리가 모자라면 블록 높이를 줄인다.
+ */
+export function upperLayout(boardHeight: number, slot: FacadeSlot): UpperLayout {
+  const originY = Math.round(boardHeight * ORIGIN_RATIO);
+  const limit = originY - PLINTH_H / 2 - UPPER_GAP; // 블록 아래 끝 한계
+  const blockH = Math.max(BLOCK_H_MIN, Math.min(BLOCK_H, limit - QUAD_TOP));
+  const pct = slot === "MAIN" ? 0.08 : 0.14;
+  const top = Math.max(QUAD_TOP, Math.min(Math.round(boardHeight * pct), limit - blockH));
+  return { blockH, top, originY };
 }
 
 function FacadeGrid() {
@@ -152,19 +190,22 @@ type BlockProps = {
   selected: boolean;
   /** 네 칸 배치에서 판 높이를 잰 뒤의 세로 자리·높이 */
   place?: { top: number; height: number };
+  /** 판 폭을 잰 뒤의 가로 자리 */
+  hplace?: { left: number; width: number };
   onOpen(lib: LibrarySummary): void;
   onCycle(slot: FacadeSlot, count: number): void;
 };
 
-function ReliefLibraryBlock({ group, index, tone, selected, place, onOpen, onCycle }: BlockProps) {
+function ReliefLibraryBlock({ group, index, tone, selected, place, hplace, onOpen, onCycle }: BlockProps) {
   const item: FacadeItem = group.items[index % group.items.length] as FacadeItem;
   const count = group.items.length;
   const closed = item.lib.today.is_closed === true;
   const h = place?.height ?? BLOCK_H;
   const sub = h >= BLOCK_H_FULL_TEXT ? item.lib.area_label ?? item.lib.address ?? "" : "";
   const placed: ViewStyle | null = place ? { top: place.top, bottom: undefined, height: h } : null;
+  const across: ViewStyle | null = hplace ? { left: hplace.left, right: undefined, width: hplace.width } : null;
   return (
-    <View style={[styles.blockWrap, SLOT_STYLE[group.slot], placed]} testID={`facade-block-${group.slot}`}>
+    <View style={[styles.blockWrap, SLOT_STYLE[group.slot], placed, across]} testID={`facade-block-${group.slot}`}>
       {count > 1 ? <View style={[styles.slab, { height: h }]} /> : null}
       <View style={[styles.layer, { left: 3, top: 4, height: h, backgroundColor: C.surface3 }]} />
       <View style={[styles.layer, { left: 6, top: 8, height: h, backgroundColor: C.reliefSideDark }]} />
@@ -219,8 +260,19 @@ export function FacadeHome(props: FacadeHomeProps) {
   const tones = useMemo(() => assignSpineTones(layout), [layout]);
   const [indices, setIndices] = useState<Partial<Record<FacadeSlot, number>>>({});
   const [boardH, setBoardH] = useState(0);
-  const onLayout = (e: LayoutChangeEvent) => setBoardH(e.nativeEvent.layout.height);
+  const [boardW, setBoardW] = useState(0);
+  const onLayout = (e: LayoutChangeEvent) => {
+    setBoardH(e.nativeEvent.layout.height);
+    setBoardW(e.nativeEvent.layout.width);
+  };
   const quad = layout.kind === "quad" && boardH > 0 ? quadLayout(boardH) : null;
+  const upper = (slot: FacadeSlot) => (boardH > 0 && !quad ? upperLayout(boardH, slot) : null);
+  const originY = quad?.originY ?? (boardH > 0 ? Math.round(boardH * ORIGIN_RATIO) : undefined);
+  const placeOf = (slot: FacadeSlot): { top: number; height: number } | undefined => {
+    if (quad && slot in quad.top) return { top: quad.top[slot as keyof QuadLayout["top"]], height: quad.blockH };
+    const u = upper(slot);
+    return u ? { top: u.top, height: u.blockH } : undefined;
+  };
 
   // 보는 위치나 목록이 바뀌면 전환해 둔 자리를 처음(가장 가까운 곳)으로 되돌린다
   useEffect(() => {
@@ -234,8 +286,7 @@ export function FacadeHome(props: FacadeHomeProps) {
     <View style={styles.board} testID="facade-board" onLayout={onLayout}>
       <FacadeGrid />
       <View style={styles.axis} pointerEvents="none" />
-      <RulerTrack radiusKm={radiusKm} y={quad?.originY} />
-      <OriginPlinth title={originTitle} sub={originSub} y={quad?.originY} />
+      <RulerTrack radiusKm={radiusKm} y={originY} />
       {layout.groups.map((g) => {
         const idx = indices[g.slot] ?? 0;
         const shown = g.items[idx % g.items.length] as FacadeItem;
@@ -246,12 +297,15 @@ export function FacadeHome(props: FacadeHomeProps) {
             index={idx}
             tone={tones.get(shown.lib.id) ?? "fill1"}
             selected={selectedId === shown.lib.id}
-            place={quad && g.slot in quad.top ? { top: quad.top[g.slot as keyof QuadLayout["top"]], height: quad.blockH } : undefined}
+            place={placeOf(g.slot)}
+            hplace={boardW > 0 ? horizontalPlace(g.slot, boardW) : undefined}
             onOpen={onLibraryPress}
             onCycle={cycle}
           />
         );
       })}
+      {/* 기점은 블록 뒤에 깔리지 않게 맨 마지막(맨 위)에 그린다 */}
+      <OriginPlinth title={originTitle} sub={originSub} y={originY} />
     </View>
   );
 }
@@ -299,28 +353,29 @@ const styles = StyleSheet.create({
   tick: { width: 1, height: 7, backgroundColor: C.inkStrong, opacity: 0.45 },
   tickMajor: { height: 14, opacity: 0.72 },
   rulerLabels: { flexDirection: "row", justifyContent: "space-between", paddingBottom: 2 },
-  rulerText: { fontSize: 10, color: C.inkMuted },
+  rulerText: { ...T.gauge, fontSize: 9, letterSpacing: 1 },
   plinthWrap: {
     position: "absolute",
     left: "50%",
     top: "40%",
-    width: 78,
-    height: 62,
-    marginLeft: -39,
-    marginTop: -31,
+    width: PLINTH_W,
+    height: PLINTH_H,
+    marginLeft: -PLINTH_W / 2,
+    marginTop: -PLINTH_H / 2,
+    zIndex: 2,
   },
   plinthSide: {
     position: "absolute",
     left: 6,
     top: 8,
-    width: 78,
-    height: 62,
+    width: PLINTH_W,
+    height: PLINTH_H,
     borderRadius: R.block,
     backgroundColor: C.reliefSideDark,
   },
   plinth: {
-    width: 78,
-    height: 62,
+    width: PLINTH_W,
+    height: PLINTH_H,
     borderRadius: R.block,
     backgroundColor: C.inkStrong,
     alignItems: "center",
@@ -334,8 +389,8 @@ const styles = StyleSheet.create({
   cross: { width: 18, height: 18, marginBottom: 4 },
   crossV: { position: "absolute", left: 8, top: 0, width: 2.5, height: 18, backgroundColor: C.paper },
   crossH: { position: "absolute", top: 8, left: 0, width: 18, height: 2.5, backgroundColor: C.paper },
-  plinthTitle: { fontSize: 10, fontWeight: "700", color: onFill(C.inkStrong) },
-  plinthSub: { fontSize: 9, color: onFill(C.inkStrong), opacity: 0.75 },
+  plinthTitle: { fontSize: 10, fontWeight: "500", color: onFill(C.inkStrong) },
+  plinthSub: { ...T.gauge, fontSize: 8.5, letterSpacing: 1, color: onFill(C.inkStrong), opacity: 0.75 },
   blockWrap: { position: "absolute", height: BLOCK_H },
   layer: { position: "absolute", width: "100%", height: BLOCK_H, borderRadius: R.block },
   slab: {
@@ -379,7 +434,7 @@ const styles = StyleSheet.create({
   },
   blockBody: { flex: 1, paddingVertical: BODY_PAD_V, paddingHorizontal: BODY_PAD_H, justifyContent: "space-between" },
   blockHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 4, minHeight: PILL_H },
-  code: { fontSize: 10.5, fontWeight: "700", color: C.inkMuted },
+  code: { ...T.gauge, fontSize: 9.5 },
   // 블록 테두리 1 + 몸통 여백만큼 안쪽, 머리 줄과 같은 높이(예전 머리 줄 안 자리와 같다)
   stackPill: {
     position: "absolute",
@@ -391,8 +446,8 @@ const styles = StyleSheet.create({
     borderRadius: R.block,
     backgroundColor: C.inkStrong,
   },
-  stackText: { fontSize: 10, fontWeight: "700", color: onFill(C.inkStrong) },
-  name: { fontSize: 14, fontWeight: "700", color: C.text },
+  stackText: { fontSize: 10, fontWeight: "500", color: onFill(C.inkStrong) },
+  name: { ...T.name },
   area: { fontSize: 11, color: C.inkMuted },
   edge: {
     flexDirection: "row",
@@ -402,6 +457,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: C.seamHairline,
   },
-  edgeText: { fontSize: 11, fontWeight: "700", color: C.text },
+  edgeText: { ...T.gauge, fontSize: 9.5, color: C.inkSoft },
   closedText: { color: C.pinClosed },
 });

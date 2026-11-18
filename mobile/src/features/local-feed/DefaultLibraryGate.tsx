@@ -122,5 +122,5 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 6,
   },
-  noticeText: { fontSize: 15, fontWeight: "700", color: C.text },
+  noticeText: { fontSize: 15, fontWeight: "500", color: C.text },
 });

@@ -2,7 +2,7 @@
 // 칸 제목 → 도서관 이름 알약(최대 3개) → 그 도서관 게시물 2열. 카드는 B의 PostCard를 그대로 쓴다.
 import React, { useCallback, useState } from "react";
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
-import { theme } from "../../theme";
+import { theme, type as T } from "../../theme";
 import type { FeedPost } from "../local-feed/api";
 import { PostCard } from "../local-feed/PostCard";
 import type { HomeFeed } from "./useHomeFeed";
@@ -117,7 +117,7 @@ const c = theme.colors;
 
 const styles = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginTop: 18 },
-  title: { fontSize: 15, fontWeight: "700", color: c.text },
+  title: { ...T.title },
   sub: { fontSize: 12, color: c.textSub },
   hint: { fontSize: 12, color: c.textSub, marginTop: 2 },
   pills: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8, marginBottom: 10 },

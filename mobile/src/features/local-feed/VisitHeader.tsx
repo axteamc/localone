@@ -90,15 +90,15 @@ const styles = StyleSheet.create({
   back: { alignSelf: "flex-start", minWidth: 44, minHeight: 36, justifyContent: "center" },
   backText: {
     color: C.text,
-    fontWeight: "800",
+    fontWeight: "500",
     textShadowColor: C.shadowSoft,
     textShadowRadius: 4,
     textShadowOffset: { width: 0, height: 1 },
   },
-  name: { fontSize: 24, fontWeight: "800", color: C.text },
+  name: { fontSize: 24, fontWeight: "500", color: C.text },
   infoRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 36 },
   info: { flex: 1, fontSize: 16, color: C.textSub },
-  closed: { fontWeight: "800", color: C.text },
+  closed: { fontWeight: "500", color: C.text },
   moreSpace: { minWidth: 44, minHeight: 36 },
   one: {
     position: "absolute",
@@ -118,5 +118,5 @@ const styles = StyleSheet.create({
     elevation: 3,
     zIndex: 5,
   },
-  nameSmall: { flex: 1, fontSize: 20, fontWeight: "800", color: C.text },
+  nameSmall: { flex: 1, fontSize: 20, fontWeight: "500", color: C.text },
 });

@@ -1,0 +1,688 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>홈 파사드 공통화 시안</title>
+<!--
+  D 요청(2026-11-18): ① 넓은 화면에서 파사드가 끝없이 늘어남 ④ 머리·탭 띠와 파사드가 따로 놂(프로젝트 공통으로 파사드 재질)
+  ⑤ 글자와 공간의 느낌(레퍼런스 3장: 하라 켄야 WHITE, NIKI CLUB 라벨, 마츠야 긴자 파사드)을 규칙으로.
+  ②·③은 코드로 고침(libproject fix/home-facade-polish 9012d73). 기록 문서: DESIGN.md "제안 — 홈 파사드 공통화".
+  색은 warm 룩 토큰과 그 파생값(mobile/src/theme, getTheme('warm'))만 쓴다.
+-->
+<style>
+  :root {
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+    --cream:#EFEFE7; --paper:#EFF1F1; --ink-strong:#2E333F; --text:#1D1D1F; --sub:#71716F;
+    --ink-muted:#6B6B66; --ink-soft:#4D4D4B; --pin-closed:#78736C;
+    --panel-frosted:#E9EAE9; --panel-lit:#EFF1EF; --seam:#C8C9C8; --rivet:#8E8D8D;
+    --relief-mid:#B8B7B3; --relief-dark:#999896; --divider:#C4C4C1;
+    --shadow-cast:rgba(28,30,36,.22); --shadow-faint:rgba(28,30,36,.09); --seam-hi:rgba(255,255,255,.68);
+    --on-ink:#FFFFFF; --cover-a:#8B6F5A; --cover-b:#3E6B4E; --cover-c:#C9B48A; --cover-d:#5A4A3C;
+    --r-block:3px; --r-card:18px; --r-info:9px; --r-pill:18px;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif; line-height:1.5; }
+  header.page, main { max-width:1320px; margin:0 auto; padding:0 16px; }
+  header.page { padding-top:22px; }
+  h1 { font-size:22px; margin:0 0 4px; font-weight:400; letter-spacing:-.01em; }
+  h2 { font-size:18px; margin:0 0 4px; font-weight:500; } h3 { font-size:15px; margin:0 0 8px; }
+  .how, .flow { background:var(--cream); border-radius:var(--r-info); padding:12px 16px; margin:10px 0 0; font-size:14px; border:1px solid var(--seam); }
+  section.element { margin-top:40px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:var(--r-pill); background:var(--surface2); margin-left:6px; font-weight:400; }
+  .pick { margin:8px 0 0; font-size:14px; }
+  .pick select { font:inherit; padding:4px 8px; border-radius:8px; border:1px solid var(--surface3); background:var(--paper); }
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; margin-top:12px; }
+  .cands.wide { grid-template-columns:1fr; }
+  .cands.four { grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); }
+  .cands.four .phone { width:276px; }
+  .cand { background:var(--paper); border-radius:var(--r-info); padding:14px; border:3px solid transparent; }
+  .cand.recommended { border-color:var(--fill1); } .cand.chosen { border-color:var(--ink-strong); }
+  .badge { display:inline-block; font-size:12px; font-weight:700; padding:1px 9px; border-radius:var(--r-pill); background:var(--fill1); margin-left:6px; }
+  .badge.adopted { background:var(--ink-strong); color:var(--paper); }
+  .cand p, .cand li { font-size:13.5px; margin:6px 0; } .cand ul { padding-left:18px; margin:4px 0; }
+  .lbl { font-weight:700; font-size:12.5px; color:var(--sub); margin-top:10px; display:block; }
+  .twocol { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:14px; }
+  @media (max-width:900px){ .twocol { grid-template-columns:1fr; } }
+
+  /* ---------- 휴대폰 ---------- */
+  .phone { width:300px; height:620px; margin:0 auto 10px; border-radius:30px; border:6px solid var(--ink-strong); position:relative; overflow:hidden; background:var(--bg); font-size:12px; }
+  .scr { position:absolute; inset:0; display:flex; flex-direction:column; }
+  .hide { display:none !important; }
+  .statusbar { height:18px; flex:none; }
+  .tbtn { cursor:pointer; }
+
+  /* 머리 띠 */
+  .hd { flex:none; height:40px; display:flex; align-items:center; padding:0 14px; font-size:16px; }
+  .hd.cream { background:var(--cream); border-bottom:1px solid var(--divider); }
+  .hd.glass { background:var(--panel-frosted); border-bottom:1px solid var(--seam); position:relative; }
+  .hd.glass::after { content:""; position:absolute; left:12px; right:12px; bottom:-1px; height:1px; background:var(--seam-hi); transform:translateY(1px); }
+  .hd.ink { background:var(--ink-strong); color:var(--on-ink); }
+  .hd .rv { position:absolute; width:4px; height:4px; border-radius:2px; background:var(--rivet); }
+
+  /* 검색 띠 */
+  .sb { flex:none; padding:8px 10px; }
+  .sb.cream { background:var(--bg); }
+  .sb.glass { background:var(--panel-frosted); border-bottom:1px solid var(--seam); }
+  .sb.ink { background:var(--bg); }
+  .sfield { height:36px; border-radius:var(--r-info); background:var(--paper); border:1px solid var(--seam); display:flex; align-items:center; padding:0 6px 0 12px; color:var(--sub); font-size:12px; }
+  .sfield span { flex:1; }
+  .findbtn { background:var(--fill1); border:1px solid var(--seam); border-radius:6px; padding:4px 8px; font-size:11px; font-weight:700; color:var(--text); }
+
+  /* 파사드 판 */
+  .board { position:relative; flex:1; background:var(--panel-frosted); overflow:hidden; }
+  .grid { position:absolute; left:10px; right:10px; top:6px; bottom:6px; display:grid; grid-template-columns:repeat(4,1fr); grid-template-rows:repeat(4,1fr); border-top:1px solid var(--seam); border-left:1px solid var(--seam); }
+  .grid.fixed { grid-template-columns:repeat(9,150px); grid-auto-rows:120px; grid-template-rows:none; left:50%; right:auto; width:auto; transform:translateX(-50%); border-left:1px solid var(--seam); }
+  .bay { border-right:1px solid var(--seam); border-bottom:1px solid var(--seam); position:relative; }
+  .bay::before, .bay::after { content:""; position:absolute; top:5px; width:3px; height:3px; border-radius:2px; background:var(--rivet); }
+  .bay::before { left:5px; } .bay::after { right:5px; }
+  .axis { position:absolute; top:6px; bottom:6px; left:50%; width:1px; background:var(--seam); }
+  .ruler { position:absolute; left:10px; right:10px; height:30px; background:var(--paper); border-top:1px solid var(--surface3); border-bottom:1px solid var(--surface3); padding:0 8px; }
+  .ticks { height:11px; background:repeating-linear-gradient(90deg, var(--ink-muted) 0 1px, transparent 1px 7px); opacity:.55; margin:0 -1px; }
+  .rlab { display:flex; justify-content:space-between; font-size:8.5px; color:var(--ink-muted); margin-top:3px; }
+  .plinth { position:absolute; left:50%; width:62px; height:50px; margin-left:-31px; background:var(--ink-strong); color:var(--on-ink); border-radius:var(--r-block); display:flex; flex-direction:column; align-items:center; justify-content:center; box-shadow:5px 7px 0 var(--relief-dark); z-index:3; }
+  .plinth b { font-size:18px; line-height:16px; font-weight:300; }
+  .plinth .pt { font-size:8.5px; font-weight:700; } .plinth .ps { font-size:7.5px; opacity:.75; }
+  .blk { position:absolute; height:84px; display:flex; background:var(--paper); border:1px solid var(--seam); border-radius:var(--r-block); box-shadow:3px 4px 0 var(--surface3), 6px 8px 0 var(--relief-dark); z-index:2; }
+  .spine { width:12px; border-right:1px solid var(--seam); position:relative; flex:none; }
+  .spine::after { content:""; position:absolute; top:7px; left:2px; right:2px; height:17px; background:var(--paper); opacity:.88; border-radius:6px 6px 2px 2px; }
+  .bb { flex:1; min-width:0; padding:6px 7px; display:flex; flex-direction:column; justify-content:space-between; }
+  .code { font-size:8.5px; font-weight:700; color:var(--ink-muted); display:flex; justify-content:space-between; }
+  .pill { background:var(--ink-strong); color:var(--on-ink); font-size:8px; padding:0 4px; border-radius:var(--r-block); }
+  .nm { font-size:11.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ad { font-size:9px; color:var(--ink-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ed { font-size:9px; font-weight:700; border-top:1px solid var(--seam); padding-top:3px; }
+  .giant { position:absolute; right:-58px; top:96px; font-size:230px; line-height:1; font-weight:200; color:var(--surface3); z-index:1; pointer-events:none; }
+
+  /* 아래 창 */
+  .sheet { flex:none; height:210px; background:var(--cream); border-top-left-radius:16px; border-top-right-radius:16px; margin-top:-16px; position:relative; z-index:4; padding:8px 12px 0; box-shadow:0 -2px 8px var(--shadow-cast); }
+  .sheet.glass { background:var(--panel-lit); border:1px solid var(--seam); border-bottom:0; border-radius:var(--r-block) var(--r-block) 0 0; box-shadow:0 -1px 0 var(--seam-hi), 0 -4px 10px var(--shadow-cast); }
+  .grab { width:34px; height:3px; border-radius:2px; background:var(--surface3); margin:0 auto 8px; }
+  .shead { display:flex; justify-content:space-between; align-items:baseline; gap:6px; }
+  .stitle { font-size:13px; font-weight:700; }
+  .sbasis { font-size:9px; color:var(--sub); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .covers { display:flex; gap:8px; margin-top:8px; }
+  .cv { width:62px; flex:none; }
+  .cv i { display:block; width:62px; height:88px; border-radius:5px 9px 9px 5px; }
+  .cv span { display:block; font-size:9.5px; margin-top:3px; line-height:1.3; }
+
+  /* 하단 탭 */
+  .tabs { flex:none; height:46px; display:flex; position:relative; z-index:5; }
+  .tabs a { flex:1; display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-muted); cursor:pointer; text-decoration:none; position:relative; }
+  .tabs a.on { color:var(--ink-strong); font-weight:700; }
+  .tabs.cream { background:var(--cream); border-top:1px solid var(--divider); }
+  .tabs.glass { background:var(--panel-frosted); border-top:1px solid var(--seam); }
+  .tabs.glass a + a { border-left:1px solid var(--seam); }
+  .tabs.glass a.on::before { content:""; position:absolute; top:-1px; left:30%; right:30%; height:2px; background:var(--ink-strong); }
+  .tabs.ink { background:var(--ink-strong); }
+  .tabs.ink a { color:var(--relief-mid); } .tabs.ink a.on { color:var(--on-ink); }
+  .tabs.ink a.on::before { content:""; position:absolute; bottom:8px; width:4px; height:4px; border-radius:2px; background:var(--fill1); }
+
+  /* 대출·반납(다른 화면에 번지는 모습) */
+  .page { flex:1; padding:12px; overflow:hidden; }
+  .page.glass { background:var(--panel-frosted); background-image:linear-gradient(var(--seam) 1px, transparent 1px), linear-gradient(90deg, var(--seam) 1px, transparent 1px); background-size:100% 25%, 25% 100%; background-position:0 0, -1px 0; }
+  .page.cream { background:var(--bg); }
+  .page.ink { background:var(--bg); }
+  .ptitle { font-size:14px; font-weight:700; margin:4px 0 8px; }
+  .loan { background:var(--panel-frosted); border:1px solid var(--seam); border-radius:var(--r-info); box-shadow:0 2px 0 var(--relief-mid); padding:9px 10px; margin-bottom:9px; display:flex; gap:9px; align-items:center; }
+  .page.cream .loan, .page.ink .loan { background:var(--paper); }
+  .loan i { width:30px; height:42px; border-radius:3px 5px 5px 3px; flex:none; }
+  .loan b { display:block; font-size:12px; } .loan small { font-size:9.5px; color:var(--sub); }
+  .loan .due { margin-left:auto; font-size:11px; font-weight:700; }
+
+  /* ---------- 글자 단계 ---------- */
+  .t1 .code, .t2 .code, .t3 .code, .t1 .ed, .t2 .ed, .t3 .ed, .t1 .rlab, .t2 .rlab, .t3 .rlab, .t1 .ps, .t2 .ps, .t3 .ps { letter-spacing:.14em; font-weight:500; text-transform:uppercase; }
+  .t1 .code, .t2 .code, .t3 .code { font-size:8px; }
+  .t1 .ed, .t2 .ed, .t3 .ed { font-size:8.5px; color:var(--ink-soft); }
+  .t2 .nm, .t3 .nm { font-weight:500; font-size:12px; letter-spacing:-.01em; }
+  .t2 .stitle, .t3 .stitle { font-size:20px; font-weight:300; color:var(--ink-soft); letter-spacing:-.02em; }
+  .t2 .sbasis, .t3 .sbasis { font-size:8px; letter-spacing:.12em; }
+  .t2 .shead, .t3 .shead { flex-direction:column; align-items:flex-start; gap:0; }
+  .t2 .hd, .t3 .hd { font-size:10px; letter-spacing:.24em; font-weight:500; color:var(--ink-muted); }
+  .t2 .ptitle, .t3 .ptitle { font-size:22px; font-weight:300; color:var(--ink-soft); margin:2px 0 10px; letter-spacing:-.02em; }
+  .t2 .loan b, .t3 .loan b { font-weight:500; }
+  .t2 .loan .due, .t3 .loan .due { font-size:9px; letter-spacing:.14em; font-weight:500; }
+  .t3 .stitle { font-size:24px; font-weight:200; }
+
+  /* 절충안(2단계 절충, 채택): 파사드는 무겁게, 아래 창은 가볍게 */
+  .t4 .nm { font-size:12.5px; font-weight:700; letter-spacing:-.01em; }
+  .t4 .code { font-weight:700; color:var(--ink-soft); }
+  .t4 .ed { font-weight:700; color:var(--text); }
+  .t4 .shead { flex-direction:column; align-items:flex-start; gap:0; }
+  .t4 .stitle { font-size:20px; font-weight:300; color:var(--ink-soft); letter-spacing:-.02em; }
+  .t4 .stitle b { font-weight:700; color:var(--text); }
+  .t4 .sbasis { font-size:8px; letter-spacing:.12em; }
+  .t4 .cv span { font-weight:300; color:var(--ink-soft); }
+  .t4 .ptitle { font-size:22px; font-weight:300; color:var(--ink-soft); margin:2px 0 10px; letter-spacing:-.02em; }
+  .t4 .ptitle b { font-weight:700; color:var(--text); }
+  .t4 .loan b { font-weight:400; } .t4 .loan .due { font-size:9px; letter-spacing:.14em; font-weight:700; }
+  .t2 .stitle b, .t3 .stitle b { font-weight:inherit; color:inherit; }
+  /* 3-1 제목 굵기 단계(시안 화면의 Windows 글꼴은 300·400만 있어 350·500은 획 두께로 흉내) */
+  .tw1 .stitle, .tw1 .ptitle { -webkit-text-stroke:.18px currentColor; }
+  .tw2 .stitle, .tw2 .ptitle { font-weight:400; }
+  .tw3 .stitle, .tw3 .ptitle { font-weight:400; -webkit-text-stroke:.3px currentColor; }
+  /* 머리 띠 표찰 */
+  .hl { display:flex; align-items:center; gap:8px; }
+  .hl .en { font-size:10px; letter-spacing:.32em; font-weight:500; color:var(--ink-muted); }
+  .hl svg { display:block; }
+  .hd.glass .rvl, .hd.glass .rvr { position:absolute; top:50%; width:4px; height:4px; margin-top:-2px; border-radius:2px; background:var(--rivet); }
+  .hd.glass .rvl { left:5px; } .hd.glass .rvr { right:5px; }
+
+  /* ---------- 넓은 화면(브라우저) ---------- */
+  .bwrap { width:100%; overflow-x:auto; }
+  .browser { width:800px; height:390px; border:6px solid var(--ink-strong); border-radius:10px; overflow:hidden; position:relative; background:var(--bg); margin:0 auto 10px; }
+  .vp { width:1280px; height:624px; transform:scale(.6156); transform-origin:0 0; position:absolute; left:0; top:0; display:flex; flex-direction:column; }
+  .vp .board { flex:1; }
+  .col480 { width:480px; margin:0 auto; height:100%; display:flex; flex-direction:column; position:relative; z-index:2; box-shadow:0 0 0 1px var(--seam), 0 10px 30px var(--shadow-cast); }
+  .wallbg { position:absolute; inset:0; background:var(--bg); background-image:linear-gradient(var(--seam) 1px, transparent 1px), linear-gradient(90deg, var(--seam) 1px, transparent 1px); background-size:150px 120px; opacity:.55; }
+  .cap960 { max-width:960px; margin:0 auto; width:100%; }
+  /* A+C 채택(2차): 파사드 격자가 화면 전체를 같은 질감으로 채우고, 룰러도 끝까지. 패널(머리·검색·아래 창·탭)만 폭 480 + 옅은 그림자 */
+  .acwall { position:absolute; inset:0; background:var(--panel-frosted); }
+  .acwall .grid { position:absolute; top:0; bottom:auto; left:50%; right:auto; width:auto; transform:translateX(-50%); display:grid; grid-template-columns:repeat(12,120px); grid-template-rows:repeat(6,120px); }
+  .acwall .axis { top:0; bottom:0; }
+  .acwall .ruler { left:0; right:0; }
+  .accol { position:relative; width:480px; margin:0 auto; height:100%; display:flex; flex-direction:column; z-index:2; }
+  .accol .panel { background:var(--panel-frosted); box-shadow:0 0 0 1px var(--seam), 0 6px 18px var(--shadow-faint); position:relative; z-index:4; }
+  .accol .mid { flex:1; position:relative; }
+  .accol .sheet.glass { box-shadow:0 0 0 1px var(--seam), 0 -6px 18px var(--shadow-faint); }
+
+  /* 태블릿 세로(820×1180)를 줄여 그림 */
+  .tab { width:344px; height:496px; border:6px solid var(--ink-strong); border-radius:18px; overflow:hidden; position:relative; background:var(--bg); margin:0 auto 10px; }
+  .tab .vp { width:820px; height:1180px; transform:scale(.4049); }
+  /* 표 */
+  table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-info); overflow:hidden; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--surface2); }
+  th { background:var(--surface2); }
+  .st { font-size:12px; padding:1px 8px; border-radius:var(--r-pill); background:var(--surface2); white-space:nowrap; }
+  #spec, #rules { margin-top:40px; }
+  .wide { overflow-x:auto; }
+  .rule { background:var(--paper); border:1px solid var(--seam); border-radius:var(--r-info); padding:12px 14px; margin:10px 0; }
+  .rule h3 { margin:0 0 4px; } .rule p { margin:4px 0; font-size:14px; }
+  .rule .src { font-size:12px; letter-spacing:.12em; color:var(--ink-muted); text-transform:uppercase; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>홈 파사드 공통화 시안 — 넓은 화면 · 머리와 탭의 재질 · 글자와 공간</h1>
+  <div class="how"><b>보는 법.</b> 정할 것이 세 개예요. 하나씩 따로 고르면 돼요. 휴대폰 아래 탭(홈 · 대출·반납)을 누르면 <b>다른 화면에 어떻게 번지는지</b> 볼 수 있어요. 노란 테두리가 추천이에요.
+    <br>②(현위치 마커 가려짐)·③(인기 도서 번호 제거 + 섞기)은 이미 코드로 고쳤어요 — 이 시안의 홈 화면에도 번호 없이 그렸어요.
+    <br>맨 아래 <a href="#rules">「글자와 공간 규칙」</a>이 ⑤ 레퍼런스 분석이에요. 정할 것 3은 이 규칙을 얼마나 세게 적용할지 고르는 칸이에요.</div>
+</header>
+<main>
+
+<!-- ===== 중심 요소 1: 넓은 화면 ===== -->
+<section class="element" id="el-wide" data-chosen="A">
+  <h2>정할 것 1. 넓은 화면(노트북 웹 시연)에서 파사드를 어떻게 둘까 <span class="status">확인</span></h2>
+  <div class="flow"><b>지금.</b> 판은 화면 폭을 다 쓰고, 격자 4칸과 블록(폭 44%)이 같이 늘어나요. 2400px 화면에서는 블록 하나가 1000px가 넘어요. 아래 세 화면은 모두 1280×624 웹 화면을 줄여 그렸어요(머리·탭은 정할 것 2의 추천안 A로 임시 표시).</div>
+  <div class="pick">다시 보기: <select data-for="el-wide">
+    <option value="AC">탈락 — A+C</option>
+    <option value="A">후보 A — 앱 폭 480 칼럼</option>
+    <option value="B">후보 B — 판 폭 상한 960</option>
+    <option value="C">후보 C — 격자 칸 반복(블록 폭 고정)</option>
+  </select></div>
+  <div class="cands wide">
+    <article class="cand" data-id="AC">
+      <h3>탈락 — A+C 2차: 같은 격자가 화면을 채우고, 패널만 A만큼</h3>
+      <div class="bwrap"><div class="browser"><div class="vp" data-wide="AC"></div></div></div>
+      <p>파사드 격자(칸 120×120, 리벳 포함)와 룰러가 C처럼 <b>화면 전체를 같은 질감으로</b> 채워요. 벽과 파사드 구간의 구분이 없어요. 블록·머리·검색·아래 창·탭만 A처럼 <b>폭 480 안에만</b> 있어요.</p>
+      <ul><li>경계: 패널(머리+검색 띠, 아래 창+탭)에만 1px 줄눈 + 아주 옅은 그림자(`rgba(28,30,36,.09)`, 6px 아래 18px 번짐). 후보 A(.22, 30px)보다 옅게</li>
+        <li>파사드 구간은 따로 판을 깔지 않아요 — 블록이 화면 전체 격자 위에 바로 놓여요</li>
+        <li>룰러는 화면 끝까지, 기점은 화면 가운데(=앱 가운데)</li>
+        <li>휴대폰(480 이하)에서는 지금과 같음</li></ul>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>모든 화면이 같은 자리(벽 칸 4개)에서 바뀌어요. 휴대폰과 동작·배치가 같아요.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>1280 화면에서 벽 칸이 앱 양옆으로 약 3.3칸씩</li><li>창 크기를 바꿔도 칸 크기는 그대로, 칸 수만 바뀜(앱은 늘 가운데 줄눈에 맞춤)</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>휴대폰 시안과 같은 화면 + 넓은 화면에서도 건물 파사드 느낌. / 넓은 화면의 폭을 내용에는 쓰지 않아요.</p>
+    </article>
+    <article class="cand" data-id="A">
+      <h3>후보 A — 앱 전체를 폭 480 칼럼으로 가운데에</h3>
+      <div class="bwrap"><div class="browser"><div class="vp" data-wide="A"></div></div></div>
+      <p>휴대폰 화면 그대로를 가운데 480 칼럼에 세우고, 양옆은 같은 격자가 흐릿하게 이어지는 벽이에요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>모든 화면이 같은 칼럼 안에서 열려요. 휴대폰과 동작·배치가 100% 같아요.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>1280 화면에서 양옆 400씩이 벽(비어 있음)</li><li>칼럼 그림자로 "앱이 벽에 걸린 판"처럼 보임</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>휴대폰 시안과 똑같이 보여서 다시 맞출 일이 없어요. / 넓은 화면을 휴대폰 흉내로만 써서 "웹 시연"의 시원함이 없어요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 판(과 검색·아래 창)만 최대 폭 960</h3>
+      <div class="bwrap"><div class="browser"><div class="vp" data-wide="B"></div></div></div>
+      <p>검색 띠·파사드·아래 창을 960까지만 넓히고 가운데에 둬요. 블록은 최대 300, 가운데 축 쪽으로 붙어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>휴대폰과 같은 흐름. 960보다 넓으면 양옆은 맨 바탕(`bg`)이에요.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>격자 4칸은 960 안에서 늘어남(칸 하나 약 235)</li><li>머리·탭 띠는 화면 끝까지, 내용만 960</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>가장 흔한 웹 방식이라 어색함이 없어요. / 판이 "벽에 붙은 건물"이 아니라 "가운데 놓인 상자"로 보여 파사드 느낌이 약해요.</p>
+    </article>
+    <article class="cand recommended" data-id="C">
+      <h3>후보 C — 격자 칸 크기를 고정하고 칸 수가 늘어남 <span class="badge">추천</span></h3>
+      <div class="bwrap"><div class="browser"><div class="vp" data-wide="C"></div></div></div>
+      <p>격자 칸 하나는 150×120 그대로, 화면이 넓으면 칸이 <b>더 생겨요</b>. 블록은 폭 300으로 고정해 가운데 축 양옆에 붙고, 룰러는 화면 끝까지 이어져요. 아래 창 내용은 960까지만.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>휴대폰과 같은 흐름. 블록·기점·룰러의 관계(축 기준 방위)는 그대로라 넓어져도 읽는 법이 같아요.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>1280 화면에서 격자 8칸, 2400 화면에서 16칸(칸 크기 같음)</li><li>블록이 늘어나지 않아 글자 줄이 길게 비지 않음</li><li>휴대폰(390)에서는 칸이 2~3개 반 — 지금처럼 4칸을 맞추려면 칸 폭을 화면/4로 두고 150을 최대값으로(넓어질 때만 반복)</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>건물이 길어질 때 판을 늘리지 않고 <b>같은 패널을 더 붙이는</b> 방식이라(마츠야 긴자 파사드) 넓은 화면이 오히려 더 건축적으로 보여요. / 양옆 칸이 비어 있어 넓은 화면에서 "빈 벽"이 많아요(규칙 1 "비워 둔 곳이 그릇"으로 의도한 빈 곳).</p>
+      <p><b>추천 이유:</b> ⑤ 레퍼런스의 마츠야 긴자 파사드처럼 모듈은 크기를 지키고 개수로 길이를 만든다는 원칙이 그대로 맞고, 블록 글자 줄이 늘어나 보기 흉해지는 원인(폭 %)을 없애요.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 1-1: 손가락으로 쓰는 넓은 화면 (결정 확인용) ===== -->
+<section class="element" id="el-tablet" data-chosen="cap">
+  <h2>정할 것 1-1. 태블릿 세로·넓은 휴대폰에서는 <span class="status">확인</span></h2>
+  <div class="flow"><b>정해진 것(2026-11-18 D).</b> 480 칼럼(A)은 <b>마우스로 쓰는 웹(노트북·데스크톱)에서만</b> 켜요. 태블릿·휴대폰 브라우저와 앱은 화면을 꽉 채우고, 파사드 블록만 <b>폭 최대 300</b>으로 묶어 가운데 축 양옆에 붙여요. 휴대폰(390)에서는 지금과 같아요(폭 44% = 172).</div>
+  <div class="pick">다시 보기: <select data-for="el-tablet">
+    <option value="cap">채택 — 블록 폭 최대 300, 축 양옆</option>
+    <option value="now">고치기 전 — 블록 폭 44%</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand" data-id="cap">
+      <h3>채택 — 블록 폭 최대 300, 축 양옆</h3>
+      <div class="tab"><div class="vp" data-wide="T"></div></div>
+      <p>격자 4칸·룰러는 화면 폭만큼, 블록은 300에서 멈추고 가운데 축(기점) 양옆에 붙어요. 아래 창 인기 도서는 한 줄에 더 많이 보여요(8권 남짓).</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>휴대폰과 같음.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span><ul><li>820 화면: 블록 300 + 축까지 7·2px, 양 바깥 칸은 비어 있음</li><li>앱은 세로 고정(app.json `orientation: portrait`)이라 가로 휴대폰은 웹 브라우저에서만 생겨요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>글자 줄이 길게 비지 않고 기점 주변에 모여 읽혀요. / 양 바깥 칸이 비어 보여요.</p>
+    </article>
+    <article class="cand" data-id="now">
+      <h3>고치기 전 — 블록 폭 44%</h3>
+      <div class="tab"><div class="vp" data-wide="T0"></div></div>
+      <p>블록이 화면 폭의 44%라 820에서 약 360, 이름 뒤로 빈 줄이 길어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>같음.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span><ul><li>화면이 넓을수록 블록이 계속 늘어남</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>화면을 꽉 채워요. / ① 문제(무한정 길어짐)가 그대로예요.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 중심 요소 2: 머리·탭 재질 ===== -->
+<section class="element" id="el-frame" data-chosen="A">
+  <h2>정할 것 2. 위 머리 띠 · 검색 띠 · 아래 탭의 재질 (모든 화면 공통) <span class="status">확인</span></h2>
+  <div class="flow"><b>지금.</b> 머리와 탭은 `cream` 단색 띠, 검색 띠는 `bg`, 파사드는 프로스티드 유리판(`panelFrosted`) + 줄눈 + 리벳 + 두께 있는 블록이에요. 색 차이보다 <b>재질의 종류</b>가 달라서 따로 놀아 보여요. 맨 왼쪽은 비교용 지금 모습이에요(후보 아님). 글자는 지금 그대로(정할 것 3 기준).</div>
+  <div class="pick">다시 보기: <select data-for="el-frame">
+    <option value="A">후보 A — 같은 유리판 + 줄눈</option>
+    <option value="B">후보 B — 머리 없이 판이 위까지</option>
+    <option value="C">후보 C — 진한 받침 띠</option>
+  </select></div>
+  <div class="cands four">
+    <article class="cand" data-id="now" style="opacity:.85">
+      <h3>비교: 지금</h3>
+      <div class="phone" data-phone="frame:cream,type:0"></div>
+      <p>머리·탭 `cream`, 검색 띠 `bg`, 아래 창 `cream` 둥근 시트(곡률 16).</p>
+    </article>
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 머리·검색·탭이 파사드와 같은 유리판 <span class="badge">추천</span></h3>
+      <div class="phone" data-phone="frame:glass,type:0"></div>
+      <p>세 띠 모두 `panelFrosted` + 1px 줄눈(`seamHairline`) + 줄눈 아래 밝은 선. 탭 칸 사이도 줄눈, 지금 탭은 위에 2px 진한 눈금. 아래 창은 둥근 시트 대신 곡률 3의 판(블록과 같은 곡률).</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>탭을 누르면 다른 화면도 같은 유리판 위에 정보 카드(곡률 9, S4 확정)가 놓여요. 「대출·반납」을 눌러 보세요.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>다른 화면 바탕에도 줄눈 격자가 아주 옅게(칸 4×4) 보임</li><li>색은 스파인·책 표지·주 버튼(`fill1`)에만</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>화면 전체가 한 건물의 벽처럼 이어져요. 85:10:5 색 배정이 화면 테두리까지 지켜져요. / 띠와 내용의 경계가 줄눈 1px라 약해서, 스크롤할 때 머리가 덜 도드라져요.</p>
+      <p><b>추천 이유:</b> 레퍼런스 3장의 공통점인 "구조는 무채색 한 재질, 색은 창 안에만"을 가장 그대로 옮겨요. 곡률·색 토큰을 새로 만들지 않고 이미 있는 파생값만 써요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 머리 띠를 없애고 판이 위까지</h3>
+      <div class="phone" data-phone="frame:none,type:0"></div>
+      <p>"홈" 머리 띠를 없애고 파사드 판이 상태 막대 바로 아래부터 시작해요. 검색창은 판 위에 볼트로 붙은 패널처럼 떠 있어요. 다른 화면은 화면 이름을 머리 띠 대신 본문 맨 위 큰 글자로.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>탭을 누르면 머리 띠 없이 바로 본문. 뒤로가기가 있는 화면(상세)만 "‹" 한 줄 머리.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>홈에서 판이 40px 더 높아짐</li><li>화면 이름이 본문 맨 위 글자로 내려감</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>가장 몰입감 있고 판이 커져요. / expo-router 머리를 화면마다 끄고 직접 그려야 해서 손이 많이 가고, 웹 새로고침·뒤로가기 감각이 약해져요.</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 머리·탭을 진한 받침 띠(`inkStrong`)로</h3>
+      <div class="phone" data-phone="frame:ink,type:0"></div>
+      <p>위아래 띠를 기점 매스와 같은 진한색으로 칠해 판을 위아래로 "물고" 있는 틀처럼. 지금 탭은 노란 점.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>모든 화면이 진한 틀 안에 들어가요.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>진한 면이 화면의 약 15%</li><li>기점 매스·주 버튼과 진한 띠가 경쟁</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>경계가 가장 또렷하고 단단해 보여요. / "검정 채움 강조는 화면에 하나"(확정)·85:10:5와 충돌해요. 기점이 덜 보여요.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 중심 요소 2-1: 머리 띠 표찰 ===== -->
+<section class="element" id="el-label" data-chosen="en">
+  <h2>정할 것 2-1. 머리 띠 글자를 도형으로? 영어로? <span class="status">확인</span></h2>
+  <div class="flow"><b>정해진 것.</b> 재질은 A(유리판 + 줄눈), 머리 띠 글자는 한글 "홈" 대신 도형화 또는 영어(D 결정). 아래 탭 글자는 한글 그대로예요. 글자는 정할 것 3 채택안(2단계)으로 그렸어요. 「대출·반납」을 눌러 다른 화면 표찰도 보세요.</div>
+  <div class="pick">다시 보기: <select data-for="el-label">
+    <option value="en">후보 ① 영어 표찰</option>
+    <option value="shape">후보 ② 도형만</option>
+    <option value="both">후보 ③ 도형 + 영어</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="en">
+      <h3>후보 ① 영어 표찰 — HOME · LOANS · MY <span class="badge">추천</span></h3>
+      <div class="phone" data-phone="frame:glass,type:2,label:en"></div>
+      <p>자간을 넓힌 작은 대문자(10px, 자간 +32%, 500, `inkMuted`). 계기판 목소리(규칙 4)와 같은 말투라 방위 `NW 311°`와 한 가족으로 보여요. 띠 양 끝에 리벳.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>탭 → 표찰만 LOANS · MY로 바뀜. 화면 이름(한글)은 탭과 본문 제목이 맡아요.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span><ul><li>책 상세·방문 페이지처럼 뒤로가기가 있는 화면은 "‹" + 표찰(BOOK · LIBRARY)</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>가장 조용하고 레퍼런스(HARA KENYA, MATSUYA GINZA)와 같은 말투. / 영어라 뜻을 바로 못 읽는 사람이 있을 수 있지만, 아래 탭 한글이 같은 뜻을 받쳐요.</p>
+      <p><b>추천 이유:</b> 머리 띠는 정보가 아니라 "건물 표찰"이라, 읽히는 것보다 같은 목소리로 반복되는 게 중요해요. 도형은 화면이 늘 때마다 새로 그려야 하고 뜻이 갈려요.</p>
+    </article>
+    <article class="cand" data-id="shape">
+      <h3>후보 ② 도형만</h3>
+      <div class="phone" data-phone="frame:glass,type:2,label:shape"></div>
+      <p>확정된 도서관 아이콘 아치(위 23 · 아래 6 곡률)를 줄인 도형. 홈은 아치, 대출·반납은 책등 두 개, 내 정보는 원. `inkStrong` 1.5px 선.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>탭 → 도형만 바뀜.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span><ul><li>도형 14×18, 띠 왼쪽 줄눈에 맞춤</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>가장 건축적이고 Vodder 아치 언어와 이어져요. / 도형이 무엇을 뜻하는지는 탭을 봐야 알아요. 화면이 늘 때마다 도형을 새로 정해야 해요.</p>
+    </article>
+    <article class="cand" data-id="both">
+      <h3>후보 ③ 도형 + 영어</h3>
+      <div class="phone" data-phone="frame:glass,type:2,label:both"></div>
+      <p>② 도형 옆에 ① 영어 표찰. 건물 입구의 픽토그램 + 글자 사인처럼.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>탭 → 도형과 글자가 같이 바뀜.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span><ul><li>도형 14×18 + 8px 띄움 + 표찰</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>뜻이 가장 분명해요. / 띠 하나에 요소가 둘이라 가장 덜 조용해요.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 중심 요소 3: 글자 체계 강도 (연속값: 기준 + 3단계) ===== -->
+<section class="element" id="el-type" data-kind="continuous" data-chosen="t2">
+  <h2>정할 것 3. 「글자와 공간 규칙」을 얼마나 세게 적용할까 <span class="status">확인</span></h2>
+  <div class="flow"><b>단계가 바뀌면 바뀌는 값.</b> 기준(지금) → 1단계: 숫자·라틴 글자(방위 `NW 311°`, 거리, 룰러)를 "계기판 목소리"로(8~8.5px, 자간 +14%, 굵기 500, 대문자). → 2단계: 1단계 + 제목을 "크게·가볍게"(20~22px 굵기 300, `inkSoft` 회색), 굵게(700) 쓰는 곳 없앰, 글자 크기 3단계만(22 · 12 · 8). → 3단계: 2단계 + 화면 가장자리에서 잘리는 큰 글자("책", 230px 굵기 200, `surface3`)를 판 뒤에. 머리·탭은 정할 것 2 추천안 A로 임시 표시.</div>
+  <div class="pick">다시 보기: <select data-for="el-type">
+    <option value="t4">탈락 — 2단계 절충(굵기 격차)</option>
+    <option value="t0">기준 — 지금</option>
+    <option value="t1">1단계 — 계기판 목소리만</option>
+    <option value="t2">2단계 — 크게·가볍게</option>
+    <option value="t3">3단계 — 잘린 큰 글자까지</option>
+  </select></div>
+  <div class="cands four">
+    <article class="cand" data-id="t4">
+      <h3>탈락 — 2단계 절충: 굵기 격차로 파사드는 무겁게, 아래 창은 가볍게</h3>
+      <div class="phone" data-phone="frame:glass,type:4,label:en"></div>
+      <p>굵게(700)를 없애지 않고 <b>어디에 쓰는지</b>로 위계를 만들어요. 파사드(도서관 이름·방위·거리)는 700, 아래 창은 300~400으로 무게를 빼요. 칸 제목은 "이 동네"를 300, "인기 도서"만 700으로 한 줄 안에서 굵기 대비.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>그대로. 「대출·반납」 제목도 "대출·반납" 300 + 개수만 700.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span><ul><li>도서관 이름 12.5/700, 방위·거리 계기판 목소리 8~8.5/700</li><li>칸 제목 20: "이 동네" 300 `inkSoft` + "인기 도서" 700 `text`</li><li>책 제목 9.5/300 `inkSoft`, 기준 도서관 줄 8/400 자간 +12%</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>눈이 먼저 파사드로 가고, 아래 창은 조용히 받쳐요. / 규칙 1("700 쓰지 않음")을 "700은 주인공 층과 제목의 핵심 낱말에만"으로 바꿔요.</p>
+    </article>
+    <article class="cand" data-id="t0">
+      <h3>기준 — 지금</h3>
+      <div class="phone" data-phone="frame:glass,type:0"></div>
+      <p>이름·제목 모두 굵게(700), 크기 단계 6개(15·14·12·11·10.5·10).</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>그대로.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span><ul><li>강조가 모두 굵기라 어디가 먼저인지 비슷함</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>바꿀 것 없음. / 레퍼런스 느낌은 없음.</p>
+    </article>
+    <article class="cand" data-id="t1">
+      <h3>1단계 — 계기판 목소리만</h3>
+      <div class="phone" data-phone="frame:glass,type:1"></div>
+      <p>한글은 그대로 두고, 숫자·라틴 글자만 작게·넓게·회색으로. 두 목소리가 갈라져요(NIKI CLUB 라벨).</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>그대로. 대출 화면의 "D-3"도 계기판 목소리.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span><ul><li>`NW 311°` → <span style="letter-spacing:.14em;font-size:11px">NW 311°</span></li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>위험 없이 정돈돼 보여요. / 제목 위계는 그대로라 변화가 작아요.</p>
+    </article>
+    <article class="cand recommended" data-id="t2">
+      <h3>2단계 — 크게·가볍게 <span class="badge">추천</span></h3>
+      <div class="phone" data-phone="frame:glass,type:2"></div>
+      <p>제목은 크게 키우되 가늘고 회색으로(HARA KENYA). 굵게 쓰는 곳이 없어지고, 크기 차이만으로 순서가 생겨요. 머리 띠 "홈"은 자간 넓은 작은 표찰.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>그대로. 「대출·반납」 화면 제목도 22/300.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span><ul><li>"이 동네 인기 도서" 13/700 → 20/300, 기준 도서관 줄은 그 아래 계기판 목소리</li><li>도서관 이름 11.5/700 → 12/500</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>레퍼런스의 "조용한데 존재감 있는" 느낌이 가장 많이 와요. / Noto Sans KR 300 글꼴을 앱에 더 실어야 해요(무료 OFL). 작은 글자가 많아 저시력 사용자는 읽기 조금 어려워요(8px 줄은 장식성 정보만).</p>
+      <p><b>추천 이유:</b> 규칙 1~5를 다 쓰면서 화면 구조는 그대로라 위험이 작아요. 3단계의 잘린 큰 글자는 화면마다 의미를 정해야 해서(도서관 이름 첫 글자? "책"?) 먼저 2단계로 써 보고 정하는 게 나아요.</p>
+    </article>
+    <article class="cand" data-id="t3">
+      <h3>3단계 — 잘린 큰 글자까지</h3>
+      <div class="phone" data-phone="frame:glass,type:3"></div>
+      <p>2단계 + 판 뒤에 화면 밖으로 잘리는 큰 "책"(白처럼). 화면이 더 큰 공간을 들여다보는 창이 돼요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>그대로. 큰 글자는 누를 수 없고 블록 뒤에 깔려요.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span><ul><li>큰 글자는 `surface3`(블록보다 뒤, 빈 남동쪽 칸)이라 블록 글자 대비에 영향 없음</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>가장 인상적이고 기억에 남아요. / 장식 요소가 하나 늘어 "장황한 연출 없음"(확정 원칙)과 부딪힐 수 있어요.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 중심 요소 3-1: 제목 굵기 (연속값: 기준 + 3단계) ===== -->
+<section class="element" id="el-tweight" data-kind="continuous" data-chosen="w2">
+  <h2>정할 것 3-1. 제목 굵기를 아주 조금 올리기 <span class="status">확인</span></h2>
+  <div class="flow"><b>정해진 것.</b> 글자 규칙은 2단계, 제목은 한 줄 전체를 같은 굵기로("이 동네 인기 도서", "대출·반납"). 크기 20~22·색 `inkSoft`는 그대로, 굵기만 바뀌어요. 「대출·반납」을 눌러 화면 제목도 보세요.
+    <br><b>단계 값:</b> 기준 300(Light) → 1단계 350 → 2단계 400(Regular) → 3단계 500(Medium). 이 시안 화면은 Windows 글꼴이라 350·500을 획 두께로 흉내 냈어요. 앱에서 350은 Noto Sans KR 가변 글꼴이 필요하고(Android에서 가변 글꼴 굵기 지원이 불안정), 300·400·500은 고정 굵기 파일로 바로 돼요.</div>
+  <div class="pick">다시 보기: <select data-for="el-tweight">
+    <option value="w0">기준 — 300</option>
+    <option value="w1">1단계 — 350</option>
+    <option value="w2">2단계 — 400</option>
+    <option value="w3">3단계 — 500</option>
+  </select></div>
+  <div class="cands four">
+    <article class="cand" data-id="w0">
+      <h3>기준 — 300 (2단계 그대로)</h3>
+      <div class="phone" data-phone="frame:glass,type:2,label:en"></div>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>가장 조용해요. / 제목이 바탕에 녹아 칸 시작이 약해요.</p>
+    </article>
+    <article class="cand" data-id="w1">
+      <h3>1단계 — 350</h3>
+      <div class="phone" data-phone="frame:glass,type:2,label:en,tw:1"></div>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>"아주 미세하게"에 가장 가까워요. / 앱에서 가변 글꼴이 필요하고 Android에서 400으로 반올림될 수 있어요.</p>
+    </article>
+    <article class="cand recommended" data-id="w2">
+      <h3>2단계 — 400 <span class="badge">추천</span></h3>
+      <div class="phone" data-phone="frame:glass,type:2,label:en,tw:2"></div>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>칸 시작이 또렷해지고 아직 가벼워요. 고정 굵기 파일이라 모든 기기에서 같게 보여요. / 300보다 HARA KENYA 느낌은 조금 줄어요.</p>
+      <p><b>추천 이유:</b> 300과 한 단계 차이라 미세하면서, 기기마다 다르게 보일 위험이 없어요.</p>
+    </article>
+    <article class="cand" data-id="w3">
+      <h3>3단계 — 500</h3>
+      <div class="phone" data-phone="frame:glass,type:2,label:en,tw:3"></div>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>제목이 분명해요. / 파사드 도서관 이름(12/500)과 같은 굵기라 "크게·가볍게" 느낌이 거의 사라져요.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 글자와 공간 규칙 (⑤ 분석) ===== -->
+<section id="rules">
+  <h2>글자와 공간 규칙 — 레퍼런스 3장에서 뽑은 것 <span class="status">제안</span></h2>
+  <div class="how">세 장은 겉모습(가는 글꼴·넓은 자간)이 아니라 <b>태도</b>가 같아요: <b>글자는 꾸밈이 아니라 공간을 짓는 부재(部材)이고, 비워 둔 곳은 남은 자리가 아니라 내용을 받는 그릇이다.</b> 하라 켄야가 말하는 "空(엠프티니스)" — 의미를 밀어 넣지 않고 보는 사람이 채울 자리를 남기는 것 — 이 세 장을 묶어요. 아래 7개는 그 태도를 화면에서 판단할 수 있게 쪼갠 규칙이에요.</div>
+
+  <div class="rule"><div class="src">HARA KENYA &lt;WHITE&gt;</div><h3>1. 크기와 무게를 떼어 놓는다 — 크게 쓰되 가볍게</h3>
+    <p>그 장의 제목은 크지만 가늘고 회색이에요. 존재감은 크기로 만들고, 압박은 굵기와 명도로 빼요. "조용히 큰 목소리"예요.</p>
+    <p><b>규칙:</b> 화면 제목·칸 제목은 크게(20~22), `inkSoft`, 한 줄 전체를 같은 굵기로(굵기 값은 정할 것 3-1). 굵게(700)는 쓰지 않는다. 강조가 필요하면 크기를 키운다. <b>검사:</b> 한 화면에 700이 남아 있으면 이유를 적는다.</p></div>
+
+  <div class="rule"><div class="src">白 / 백</div><h3>2. 크기의 중간 단계를 없앤다 — 극단의 두세 단계</h3>
+    <p>거대한 白 옆의 아주 작은 '백'. 비슷한 크기가 여럿이면 서로 다투지만, 차이가 크면 순서가 저절로 생겨요.</p>
+    <p><b>규칙:</b> 글자 크기는 제목 22 · 본문 12~14 · 표찰 8~9 세 단계. 이웃한 두 단계는 1.5배 이상 차이. <b>검사:</b> 한 화면의 서로 다른 글자 크기가 4개를 넘으면 줄인다.</p></div>
+
+  <div class="rule"><div class="src">MATSUYA GINZA</div><h3>3. 글자는 격자에 기댄다 — 띄우지 않고 앉힌다</h3>
+    <p>로고는 건물 패널 띠 안에 앉아 있고, 라벨 글자는 줄 경계에 붙어 있어요. 글자가 공중에 떠 있지 않고 구조에 기대니 차분해요.</p>
+    <p><b>규칙:</b> 글자는 왼쪽 정렬, 줄눈·카드 가장자리·축 중 하나에 맞춘다. 가운데 정렬은 기점 매스·빈 화면 안내처럼 "축 위의 물체"에만. 여백은 4의 배수, 칸 사이는 선보다 여백으로 나눈다.</p></div>
+
+  <div class="rule"><div class="src">NIKI CLUB</div><h3>4. 두 목소리를 나눈다 — 사람의 말과 계기판의 말</h3>
+    <p>세로 가타카나(상품의 이름, 사람의 말)와 작은 가로 라틴 글자(성분·용량, 기록의 말)가 서로 다른 축을 써서 섞이지 않아요.</p>
+    <p><b>규칙:</b> 한글 이름·문장은 사람의 목소리(본문 크기, 자간 0~-1%). 방위·거리·날짜·개수·영문 표찰은 계기판의 목소리(8~9px, 자간 +12~14%, 굵기 500, 대문자, `inkMuted`). 한 줄 안에 두 목소리를 섞지 않는다.</p></div>
+
+  <div class="rule"><div class="src">MATSUYA GINZA</div><h3>5. 색은 창 안에만 산다</h3>
+    <p>건물은 흰 격자 패널뿐이고 색은 쇼윈도 안의 물건에만 있어요. 그래서 색이 귀해 보여요.</p>
+    <p><b>규칙:</b> 머리·탭·바탕·카드 같은 구조는 무채색 한 재질(`panelFrosted` 계열 + 줄눈). 색(`fill1~3`)은 스파인·책 표지·사진·주 버튼처럼 "창 안"에만. 확정된 85:10:5를 화면 테두리까지 넓힌 것.</p></div>
+
+  <div class="rule"><div class="src">白 (잘린 글자)</div><h3>6. 프레임은 끝이 아니다 <span class="st">선택</span></h3>
+    <p>白이 화면 가장자리에서 잘려 있어 화면이 "전부"가 아니라 "더 큰 공간의 일부"가 돼요.</p>
+    <p><b>규칙:</b> 화면마다 하나까지, 누를 수 없는 큰 요소가 가장자리에서 잘려도 된다(정할 것 3의 3단계). 넓은 화면에서 격자가 끝까지 이어지는 것(정할 것 1 후보 C)도 같은 생각이에요.</p></div>
+
+  <div class="rule"><div class="src">+F</div><h3>7. 무거운 표식은 하나만</h3>
+    <p>하얀 파사드에 검은 +F 하나. 무거운 것이 하나라서 무겁게 보여요.</p>
+    <p><b>규칙:</b> 이미 확정된 "진한 채움 강조는 화면에 하나"와 같은 원칙. 홈에서는 기점 매스, 다른 화면에서는 주 버튼 하나.</p></div>
+</section>
+
+<!-- ===== 명세 패널 ===== -->
+<section id="spec">
+  <h2>명세</h2>
+  <div class="wide"><table>
+    <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
+    <tr data-el="el-wide"><td>1. 넓은 화면</td><td>A 앱 폭 480 칼럼(바깥 옅은 줄눈 격자, 리벳 없음)</td><td>없음</td><td>A+C 1차·2차(리벳 격자가 화면 전체 — "너무 공격적이고 차갑게 느껴져"), B 판 폭 960, C 단독</td><td>"A+C : 앱과 외부 격자의 경계를 더 구분감 없게 하고 색감도 조금 더 비슷하게 맞춰서 격자 어딘가에 걸려있는 걸 보는 느낌으로" → 2차: "C처럼 동일한 격자가 다 채워졌는데 나머지 섹션과 파사드가 존재하는 구간은 A만큼만 존재 … 앱과 외부 격자는 원래 후보 A처럼 약간의 그림자만 주는데, 조금 더 옅게"</td><td>파사드 격자 칸 120×120(리벳 포함)이 화면 전체에 같은 질감으로(가운데 줄눈 정렬), 룰러 화면 끝까지. 블록·패널(머리+검색, 아래 창+탭)은 폭 480 = 격자 4칸. 패널 경계 1px `seamHairline` + 그림자 `rgba(28,30,36,.09)` 0 6px 18px. 480 이하는 지금과 같음</td><td>휴대폰과 같음</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-frame"><td>2. 머리·검색·탭 재질</td><td>A 같은 유리판 + 줄눈</td><td>없음</td><td>B 머리 없이 판이 위까지, C 진한 받침 띠</td><td>"후보 A로 하고 머리 띠 글자를 도형화 혹은 영어로 작성"</td><td>띠 바탕 `panelFrosted` #E9EAE9, 경계 1px `seamHairline` #C8C9C8 + 밝은 선 `seamHighlight`, 지금 탭 2px `inkStrong`, 아래 창 `panelLit` 곡률 3, 다른 화면 바탕 줄눈 격자 옅게</td><td>탭 → 같은 재질 화면</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-tablet"><td>1-1. 손가락으로 쓰는 넓은 화면</td><td>480 칼럼은 마우스 웹에서만, 그 밖은 꽉 채우고 파사드 블록 폭 최대 300·축 양옆</td><td>없음</td><td>블록 폭 44%(무한정 늘어남)</td><td>"1번 진행하고, 2번은 추천대로 하자"</td><td>칼럼 조건 `(hover: hover) and (pointer: fine)` + 폭 &gt; 480. 블록 폭 min(44%, 300), 서쪽 블록 오른쪽 끝 = 축 - 7, 동쪽 블록 왼쪽 끝 = 축 + 2, MAIN 폭 min(판 - 62, 360)</td><td>휴대폰과 같음</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-label"><td>2-1. 머리 띠 표찰</td><td>① 영어 표찰(HOME · LOANS · MY, 뒤로가기 화면은 BOOK · LIBRARY)</td><td>없음</td><td>② 도형만, ③ 도형 + 영어</td><td>"후보 1 영어만"</td><td>① 10px 자간 +32% 500 `inkMuted` · ② 아치·책등 도형 14×18, 1.5px `inkStrong` · ③ 둘 다, 띠 양 끝 리벳</td><td>탭 → 표찰만 바뀜</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-tweight"><td>3-1. 제목 굵기</td><td>400</td><td>없음</td><td>300, 350, 500</td><td>"글자 2단계 : 400"</td><td>제목 400(Regular), 크기 20~22·`inkSoft` 그대로, 한 줄 같은 굵기</td><td>—</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-type"><td>3. 글자 규칙 강도</td><td>2단계(제목 굵기는 3-1에서)</td><td>없음</td><td>기준, 1단계, 3단계, 2단계 절충(파사드 700·"인기 도서"만 700)</td><td>"글자와 공간 규칙은 그냥 2단계 … 지금은 너무 많이 줬고 … 그 부분만 굵기 준 것도 별로야" (앞서 절충안 요청: "2단계의 절충안 버전. 굵게 쓰는 곳을 아예 없앴는데 현재 시안 기준이면 '인기 도서' 글자까지도 굵게 써도 될 거 같음. 다만 굵기의 격차를 줘서 파사드가 더 눈에 띄고 아래 창의 글자는 무게감을 줄여주도록 설계"</td><td>파사드: 이름 12.5/700, 방위·거리 8~8.5/700 자간 +14% 대문자. 아래 창: 제목 20 "이 동네" 300 `inkSoft` + "인기 도서" 700 `text`, 기준 줄 8/400 자간 +12%, 책 제목 9.5/300 `inkSoft`. 글꼴 Noto Sans KR 300 추가) → 채택 2단계: 제목 20~22 `inkSoft` 한 줄 같은 굵기, 이름 12/500, 표찰 8~8.5/500 자간 +14% 대문자, 700 없음</td><td>—</td><td><span class="st">확인</span></td></tr>
+    <tr><td>인기 도서 순서</td><td>번호 없음, 받을 때마다 섞기, 같은 시리즈 벌림</td><td>—</td><td>순위 번호 표시</td><td>"끔찍한 번호 표시 제거 … 매번 랜덤으로 섞는게 나을지도"</td><td>상위 10권</td><td>—</td><td><span class="st">확인</span></td></tr>
+    <tr><td>현위치 마커</td><td>블록 위에 그림, 줄 사이 = 마커 높이 + 2</td><td>—</td><td>—</td><td>"화면 크기가 작아지면 겹치면서 가려지는 문제"</td><td>마커 78×62, 줄 사이 64</td><td>—</td><td><span class="st">확인</span></td></tr>
+  </table></div>
+</section>
+</main>
+
+<script>
+  /* ---------- 휴대폰 화면 만들기 ---------- */
+  var COV = ['var(--cover-a)','var(--fill3)','var(--cover-b)','var(--cover-d)','var(--cover-c)'];
+  var BOOKS = ['모순', '트렌드 코리아 2027', '화산귀환 9', '렛뎀 이론', '화산귀환 10'];
+  function blk(x, y, w, code, name, addr, dist, tone, pill) {
+    return '<div class="blk" style="left:' + x + ';top:' + y + 'px;width:' + w + '">' +
+      '<div class="spine" style="background:var(--' + tone + ')"></div><div class="bb">' +
+      '<div class="code"><span>' + code + '</span>' + (pill ? '<span class="pill">+2곳 ↻</span>' : '') + '</div>' +
+      '<div class="nm">' + name + '</div><div class="ad">' + addr + '</div><div class="ed">' + dist + '</div></div></div>';
+  }
+  function board(opt) {
+    var g = ''; for (var i = 0; i < 16; i++) g += '<div class="bay"></div>';
+    return '<div class="board">' + (opt.type === 3 ? '<div class="giant">책</div>' : '') +
+      '<div class="grid">' + g + '</div><div class="axis"></div>' +
+      '<div class="ruler" style="top:112px"><div class="ticks"></div><div class="rlab"><span>W 1.5km</span><span>0.5km</span><span>0.5km</span><span>E 1.5km</span></div></div>' +
+      blk('8px', 14, '45%', 'NW 311°', '전남광주통합특별시교육청중앙도서관', '광주 동구 장동로 23-16', '276m', 'fill1', true) +
+      blk('calc(50% + 6px)', 8, 'calc(50% - 14px)', 'N 005°', '광주광역시립산수도서관', '광주 동구 경양로 355', '841m', 'fill2', false) +
+      blk('8px', 160, '45%', 'SW 237°', '광주광역시립사직도서관', '광주 남구 제중로 56', '1.5km', 'fill2', true) +
+      '<div class="plinth" style="top:102px"><b>+</b><span class="pt">현위치</span><span class="ps">3km</span></div></div>';
+  }
+  function sheet(opt) {
+    var c = ''; for (var i = 0; i < 4; i++) c += '<div class="cv"><i style="background:' + COV[i] + '"></i><span>' + BOOKS[i] + '</span></div>';
+    return '<div class="sheet' + (opt.frame === 'cream' ? '' : ' glass') + '"><div class="grab"></div><div class="shead"><span class="stitle">이 동네 <b>인기 도서</b></span><span class="sbasis">중앙도서관 · 최근 30일 대출</span></div><div class="covers">' + c + '</div></div>';
+  }
+  var EN = { home: 'HOME', loans: 'LOANS' };
+  var SHAPE = {
+    home: '<svg width="14" height="18" viewBox="0 0 14 18"><path d="M1 17V7a6 6 0 0 1 12 0v10z" fill="none" stroke="var(--ink-strong)" stroke-width="1.5"/></svg>',
+    loans: '<svg width="16" height="18" viewBox="0 0 16 18"><rect x="1" y="2" width="5" height="15" rx="1" fill="none" stroke="var(--ink-strong)" stroke-width="1.5"/><rect x="9" y="1" width="5" height="16" rx="1" fill="none" stroke="var(--ink-strong)" stroke-width="1.5"/></svg>'
+  };
+  function label(kind, page) {
+    var en = '<span class="en">' + EN[page] + '</span>';
+    return '<span class="hl">' + (kind === 'shape' ? SHAPE[page] : kind === 'both' ? SHAPE[page] + en : en) + '</span>';
+  }
+  function head(opt, title, page) {
+    if (opt.frame === 'none') return '';
+    var inner = opt.label ? '<span class="rvl"></span>' + label(opt.label, page) + '<span class="rvr"></span>' : title;
+    return '<div class="hd ' + opt.frame + '">' + inner + '</div>';
+  }
+  function tabs(opt, on) {
+    var f = opt.frame === 'none' ? 'glass' : opt.frame;
+    return '<div class="tabs ' + f + '"><a data-tab="home" class="' + (on === 'home' ? 'on' : '') + '">홈</a><a data-tab="loans" class="' + (on === 'loans' ? 'on' : '') + '">대출·반납</a><a class="">내 정보</a></div>';
+  }
+  function search(opt) {
+    var f = opt.frame === 'none' ? 'glass' : opt.frame;
+    return '<div class="sb ' + f + '"><div class="sfield"><span>책 제목·저자 검색</span><b class="findbtn">도서관 찾기</b></div></div>';
+  }
+  function loans(opt) {
+    var f = opt.frame === 'none' ? 'glass' : opt.frame;
+    var rows = [['렛뎀 이론', '중앙도서관', 'D-3'], ['모순', '산수도서관', 'D-9'], ['화산귀환 9', '사직도서관', 'D-12']];
+    var r = rows.map(function (x, i) { return '<div class="loan"><i style="background:' + COV[i + 1] + '"></i><div><b>' + x[0] + '</b><small>' + x[1] + '</small></div><span class="due">' + x[2] + '</span></div>'; }).join('');
+    return '<div class="page ' + f + '">' + (opt.frame === 'none' || opt.type >= 2 ? (opt.type === 4 ? '<div class="ptitle">대출·반납 <b>3권</b></div>' : '<div class="ptitle">대출·반납</div>') : '<div class="ptitle">내 대출 3권</div>') + r + '</div>';
+  }
+  function phone(el) {
+    var o = {}; el.dataset.phone.split(',').forEach(function (kv) { var p = kv.split(':'); o[p[0]] = p[1]; });
+    o.type = +o.type;
+    el.classList.add('t' + o.type); if (o.type === 4) el.classList.add('t1'); if (o.tw) el.classList.add('tw' + o.tw);
+    el.innerHTML =
+      '<div class="scr" data-screen="home"><div class="statusbar" style="background:var(--' + (o.frame === 'ink' ? 'ink-strong' : o.frame === 'cream' ? 'cream' : 'panel-frosted') + ')"></div>' +
+        head(o, '홈', 'home') + search(o) + board(o) + sheet(o) + tabs(o, 'home') + '</div>' +
+      '<div class="scr hide" data-screen="loans"><div class="statusbar" style="background:var(--' + (o.frame === 'ink' ? 'ink-strong' : o.frame === 'cream' ? 'cream' : 'panel-frosted') + ')"></div>' +
+        head(o, '대출·반납', 'loans') + loans(o) + tabs(o, 'loans') + '</div>';
+  }
+  document.querySelectorAll('[data-phone]').forEach(phone);
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-tab]'); if (!t) return;
+    var ph = t.closest('.phone');
+    ph.querySelectorAll('.scr').forEach(function (s) { s.classList.toggle('hide', s.dataset.screen !== t.dataset.tab); });
+  });
+
+  /* ---------- 넓은 화면 ---------- */
+  function wideBoard(kind) {
+    var cols = kind === 'B' ? 4 : 0, g = '', i;
+    if (kind === 'C') { for (i = 0; i < 9 * 4; i++) g += '<div class="bay"></div>'; }
+    else { for (i = 0; i < 16; i++) g += '<div class="bay"></div>'; }
+    var gridCls = kind === 'C' ? 'grid fixed' : 'grid';
+    var bw = kind === 'C' || kind === 'B' ? '300px' : '45%';
+    var nwX = kind === 'A' ? '8px' : 'calc(50% - 351px)';
+    var neX = kind === 'A' ? 'calc(50% + 6px)' : 'calc(50% + 51px)';
+    var neW = kind === 'A' ? 'calc(50% - 14px)' : '300px';
+    var rl = '<div class="ruler" style="top:178px"><div class="ticks"></div><div class="rlab"><span>W 1.5km</span><span>0.5km</span><span>0.5km</span><span>E 1.5km</span></div></div>';
+    return '<div class="board' + (kind === 'B' ? ' cap960' : '') + '" style="flex:1;font-size:14px">' +
+      '<div class="' + gridCls + '">' + g + '</div><div class="axis"></div>' + rl +
+      blk(nwX, 40, bw, 'NW 311°', '전남광주통합특별시교육청중앙도서관', '광주 동구 장동로 23-16', '276m', 'fill1', true) +
+      blk(neX, 30, neW, 'N 005°', '광주광역시립산수도서관', '광주 동구 경양로 355', '841m', 'fill2', false) +
+      blk(nwX, 240, bw, 'SW 237°', '광주광역시립사직도서관', '광주 남구 제중로 56', '1.5km', 'fill2', true) +
+      '<div class="plinth" style="top:168px"><b>+</b><span class="pt">현위치</span><span class="ps">3km</span></div></div>';
+  }
+  function wideSheet(cap) {
+    var c = ''; for (var i = 0; i < 5; i++) c += '<div class="cv"><i style="background:' + COV[i] + '"></i><span>' + BOOKS[i] + '</span></div>';
+    return '<div class="sheet glass" style="height:150px"><div class="' + (cap ? 'cap960' : '') + '"><div class="grab"></div><div class="shead"><span class="stitle">이 동네 <b>인기 도서</b></span><span class="sbasis">중앙도서관 · 최근 30일 대출</span></div><div class="covers">' + c + '</div></div></div>';
+  }
+  function wideSearch(cap) { return '<div class="sb glass"><div class="sfield ' + (cap ? 'cap960' : '') + '"><span>책 제목·저자 검색</span><b class="findbtn">도서관 찾기</b></div></div>'; }
+  function acWall() {
+    var g = ''; for (var i = 0; i < 72; i++) g += '<div class="bay"></div>';
+    return '<div class="acwall"><div class="grid">' + g + '</div><div class="axis"></div>' +
+      '<div class="ruler" style="top:252px"><div class="ticks"></div><div class="rlab"><span>W 1.5km</span><span>0.5km</span><span>0.5km</span><span>E 1.5km</span></div></div>' +
+      '<div class="plinth" style="top:242px;z-index:5"><b>+</b><span class="pt">현위치</span><span class="ps">3km</span></div></div>';
+  }
+  function acBlocks() {
+    return '<div class="t2 tw2" style="position:absolute;inset:0;font-size:14px">' +
+      blk('8px', 22, '214px', 'NW 311°', '전남광주통합특별시교육청중앙도서관', '광주 동구 장동로 23-16', '276m', 'fill1', true) +
+      blk('calc(50% + 14px)', 14, '214px', 'N 005°', '광주광역시립산수도서관', '광주 동구 경양로 355', '841m', 'fill2', false) +
+      blk('8px', 232, '214px', 'SW 237°', '광주광역시립사직도서관', '광주 남구 제중로 56', '1.5km', 'fill2', true) + '</div>';
+  }
+  var wideTabs = '<div class="tabs glass"><a class="on">홈</a><a>대출·반납</a><a>내 정보</a></div>';
+  document.querySelectorAll('[data-wide]').forEach(function (vp) {
+    var k = vp.dataset.wide;
+    if (k === 'T' || k === 'T0') {
+      var g = ''; for (var i = 0; i < 16; i++) g += '<div class="bay"></div>';
+      var cap = k === 'T';
+      var w = cap ? '300px' : '44%';
+      var wx = cap ? 'calc(50% - 307px)' : '16px';
+      var ex = cap ? 'calc(50% + 2px)' : 'calc(56% - 22px)';
+      var board = '<div class="board t2" style="flex:1;font-size:14px"><div class="grid">' + g + '</div><div class="axis"></div>' +
+        '<div class="ruler" style="top:236px"><div class="ticks"></div><div class="rlab"><span>W 1.5KM</span><span>0.5KM</span><span>0.5KM</span><span>E 1.5KM</span></div></div>' +
+        blk(wx, 40, w, 'NW 311°', '전남광주통합특별시교육청중앙도서관', '광주 동구 장동로 23-16', '276M', 'fill1', true) +
+        blk(ex, 30, w, 'N 005°', '광주광역시립산수도서관', '광주 동구 경양로 355', '841M', 'fill2', false) +
+        blk(wx, 330, w, 'SW 237°', '광주광역시립사직도서관', '광주 남구 제중로 56', '1.5KM', 'fill2', true) +
+        '<div class="plinth" style="top:226px"><b>+</b><span class="pt">현위치</span><span class="ps">3KM</span></div></div>';
+      var c = ''; for (var j = 0; j < 8; j++) c += '<div class="cv"><i style="background:' + COV[j % 5] + '"></i><span>' + BOOKS[j % 5] + '</span></div>';
+      var sh = '<div class="sheet glass t2 tw2" style="height:470px"><div class="grab"></div><div class="shead"><span class="stitle">이 동네 인기 도서</span><span class="sbasis">중앙도서관 · 최근 30일 대출</span></div><div class="covers">' + c + '</div></div>';
+      vp.innerHTML = '<div class="hd glass"><span class="rvl"></span>' + label('en', 'home') + '<span class="rvr"></span></div>' + wideSearch(false) + board + sh + wideTabs;
+    } else if (k === 'AC') {
+      vp.innerHTML = acWall() + '<div class="accol t2 tw2"><div class="panel"><div class="hd glass"><span class="rvl"></span>' + label('en', 'home') + '<span class="rvr"></span></div>' + wideSearch(false) + '</div><div class="mid">' + acBlocks() + '</div><div class="panel" style="box-shadow:none">' + wideSheet(false) + wideTabs + '</div></div>';
+    } else if (k === 'A') {
+      vp.innerHTML = '<div class="wallbg"></div><div class="col480"><div class="hd glass">홈</div>' + wideSearch(false) + wideBoard('A') + wideSheet(false) + wideTabs + '</div>';
+    } else if (k === 'B') {
+      vp.innerHTML = '<div class="hd glass">홈</div>' + wideSearch(true) + '<div style="flex:1;display:flex;background:var(--bg)"><div class="cap960" style="display:flex;box-shadow:0 0 0 1px var(--seam), 0 8px 24px var(--shadow-cast)">' + wideBoard('B') + '</div></div>' + wideSheet(true) + wideTabs;
+    } else {
+      vp.innerHTML = '<div class="hd glass">홈</div>' + wideSearch(true) + wideBoard('C') + wideSheet(true) + wideTabs;
+    }
+  });
+
+  /* ---------- 채택 표시 / 다시 보기 ---------- */
+  function mark(el, id) {
+    el.querySelectorAll('.cand').forEach(function (c) {
+      c.classList.toggle('chosen', c.dataset.id === id);
+      var old = c.querySelector('.badge.adopted'); if (old) old.remove();
+      if (id && c.dataset.id === el.dataset.chosen) { var s = document.createElement('span'); s.className = 'badge adopted'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+    });
+    var sel = el.querySelector('select[data-for]'); if (sel && id) sel.value = id;
+  }
+  document.querySelectorAll('section.element').forEach(function (el) {
+    mark(el, el.dataset.chosen || '');
+    var sel = el.querySelector('select[data-for]');
+    if (sel) { if (!el.dataset.chosen) sel.insertAdjacentHTML('afterbegin', '<option value="" selected>(아직 고르지 않음)</option>');
+      sel.addEventListener('change', function () { mark(el, sel.value || el.dataset.chosen); var c = el.querySelector('.cand[data-id="' + sel.value + '"]'); if (c) c.scrollIntoView({ behavior: 'smooth', block: 'center' }); }); }
+  });
+</script>
+</body>
+</html>

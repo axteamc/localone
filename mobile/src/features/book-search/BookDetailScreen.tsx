@@ -304,7 +304,7 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
-  scopeBtnText: { fontSize: 14, color: c.text, fontWeight: "600" },
+  scopeBtnText: { fontSize: 14, color: c.text, fontWeight: "500" },
   summary: { fontSize: 13, color: c.textSub },
   footer: { fontSize: 12, color: c.textSub, marginTop: 2 },
   stateBoxInline: {
@@ -320,7 +320,7 @@ const styles = StyleSheet.create({
   pad: { padding: 16, paddingBottom: 32 },
   head: { flexDirection: "row", gap: 14 },
   cover: { width: 84, height: 118 },
-  title: { fontSize: 19, fontWeight: "700", color: c.text, lineHeight: 26 },
+  title: { fontSize: 19, fontWeight: "500", color: c.text, lineHeight: 26 },
   sub: { fontSize: 14, color: c.textSub, marginTop: 4 },
   saveBtn: {
     marginTop: 16,
@@ -329,7 +329,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
   },
-  saveBtnText: { ...ACT.primaryText, fontSize: 16, fontWeight: "700" },
+  saveBtnText: { ...ACT.primaryText, fontSize: 16, fontWeight: "500" },
   note: {
     marginTop: 10,
     backgroundColor: c.paper,
@@ -339,7 +339,7 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
   },
   noteText: { fontSize: 15, color: c.text },
-  section: { fontSize: 15, fontWeight: "700", color: c.text, marginTop: 24, marginBottom: 6 },
+  section: { fontSize: 15, fontWeight: "500", color: c.text, marginTop: 24, marginBottom: 6 },
   desc: { fontSize: 15, color: c.inkSoft, lineHeight: 23 },
   stateBox: {
     margin: 16,
@@ -356,5 +356,5 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
-  darkBtnText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "700" },
+  darkBtnText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "500" },
 });

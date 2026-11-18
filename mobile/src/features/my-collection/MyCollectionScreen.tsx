@@ -254,7 +254,7 @@ function ReloadButton({ onPress }: { onPress(): void }) {
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: C.bg },
+  screen: { flex: 1, backgroundColor: C.panelFrosted },
   center: { alignItems: "center", justifyContent: "center", padding: 24, gap: 8 },
   content: { paddingBottom: 80 },
   loginTitle: { fontSize: 17, fontWeight: "500", color: C.text, textAlign: "center" },

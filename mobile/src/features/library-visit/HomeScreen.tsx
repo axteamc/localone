@@ -176,15 +176,15 @@ export function HomeScreen() {
 
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: theme.colors.bg },
+  screen: { flex: 1, backgroundColor: theme.colors.panelFrosted },
   // 건축 프레임 바: 파사드 상단 줄눈에 맞물리는 직각 가까운 모서리 + 1px 줄눈선 + 오른쪽 마이크로 베벨 "도서관 찾기" 태그
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
     marginHorizontal: 10,
-    marginTop: 10,
-    marginBottom: 6,
+    marginTop: 8,
+    marginBottom: 8,
     paddingVertical: 6,
     paddingRight: 6,
     borderWidth: 1,
@@ -202,7 +202,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.seamHairline,
     backgroundColor: theme.colors.fill1,
   },
-  findText: { fontSize: 12, fontWeight: "700", color: onFill(theme.colors.fill1) }, // 채움 위 글자색 자동(디자인_기준 §2, 사후 검토 ③-5)
+  findText: { fontSize: 12, fontWeight: "500", color: onFill(theme.colors.fill1) }, // 채움 위 글자색 자동(디자인_기준 §2, 사후 검토 ③-5)
   body: { flex: 1, overflow: "hidden" },
   card: { alignItems: "center", gap: 10, padding: 20 },
   cardText: { fontSize: 15, textAlign: "center", color: theme.colors.text },
@@ -212,7 +212,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radii.control,
     ...ACT.primary,
   },
-  buttonText: { fontWeight: "700", ...ACT.primaryText },
+  buttonText: { fontWeight: "500", ...ACT.primaryText },
   ghostButton: {
     paddingVertical: 8,
     paddingHorizontal: 14,

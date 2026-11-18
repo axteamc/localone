@@ -1,7 +1,8 @@
 import { Stack, useRouter } from "expo-router";
 import { useEffect } from "react";
 import { AuthProvider } from "../src/auth/AuthProvider";
-import { theme } from "../src/theme";
+import { headerOptions } from "../src/theme/HeaderLabel";
+import { WebFrame } from "../src/theme/WebFrame";
 // ── [loan-assistant-C] ──
 import { subscribeNotificationTap } from "../src/features/loan-assistant/notifications.platform";
 // ── [/loan-assistant-C] ──
@@ -13,12 +14,17 @@ export default function RootLayout() {
   // ── [/loan-assistant-C] ──
   return (
     <AuthProvider>
-      {/* 머리 띠는 탭 화면과 같은 cream(순백 금지, 2026-11-18 S4 기본값) */}
-      <Stack screenOptions={{ title: "동네한권", headerStyle: { backgroundColor: theme.colors.cream } }}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="login" options={{ title: "" }} />
-        <Stack.Screen name="settings" options={{ title: "설정" }} />
-      </Stack>
+      {/* 넓은 웹 화면은 폭 480 칼럼(2026-11-18 D 결정). 머리 띠는 파사드와 같은 유리판 + 영어 표찰 */}
+      <WebFrame>
+        <Stack screenOptions={{ title: "동네한권", ...headerOptions("LOCALONE") }}>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="login" options={{ title: "", ...headerOptions("") }} />
+          <Stack.Screen name="settings" options={{ title: "설정", ...headerOptions("SETTINGS") }} />
+          <Stack.Screen name="search" options={headerOptions("SEARCH")} />
+          <Stack.Screen name="books/[isbn13]" options={headerOptions("BOOK")} />
+          <Stack.Screen name="posts/new" options={headerOptions("POST")} />
+        </Stack>
+      </WebFrame>
     </AuthProvider>
   );
 }
