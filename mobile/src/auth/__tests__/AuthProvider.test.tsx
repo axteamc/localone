@@ -8,13 +8,20 @@ import {
   useAccountActions,
   useAuth,
 } from "../AuthProvider";
-import { abortInFlightRequests, rawRegisterSession } from "../apiFetch";
+import {
+  abortInFlightRequests,
+  apiFetch,
+  onAccountWithdrawn,
+  rawRegisterSession,
+} from "../apiFetch";
 import { startGoogleSignIn, watchAppForeground } from "../platform";
 import { supabase } from "../supabase";
 
 jest.mock("../apiFetch", () => ({
   rawRegisterSession: jest.fn(),
   abortInFlightRequests: jest.fn(),
+  apiFetch: jest.fn(),
+  onAccountWithdrawn: jest.fn(() => jest.fn()),
 }));
 
 jest.mock("../platform", () => ({
@@ -40,6 +47,8 @@ const mockedGetSession = jest.mocked(supabase.auth.getSession);
 const mockedOnAuthStateChange = jest.mocked(supabase.auth.onAuthStateChange);
 const mockedSignOut = jest.mocked(supabase.auth.signOut);
 const mockedAbortInFlight = jest.mocked(abortInFlightRequests);
+const mockedApiFetch = jest.mocked(apiFetch);
+const mockedOnAccountWithdrawn = jest.mocked(onAccountWithdrawn);
 
 function makeJsonResponse(status: number, body: unknown): Response {
   return new Response(JSON.stringify(body), {
@@ -434,5 +443,157 @@ describe("AuthProvider signOut (AUTH-2-P2)", () => {
     } finally {
       err.mockRestore();
     }
+  });
+});
+
+describe("AuthProvider withdrawAccount (AUTH-3-P2)", () => {
+  const uid = "00000000-0000-4000-8000-00000000000a";
+  type Captured = { auth: ReturnType<typeof useAuth>; actions: ReturnType<typeof useAccountActions> };
+
+  function ActionsProbe({ onReady }: { onReady: (c: Captured) => void }) {
+    const auth = useAuth();
+    const actions = useAccountActions();
+    React.useEffect(() => {
+      onReady({ auth, actions });
+    }, [auth, actions, onReady]);
+    return <Text testID="probe">{`${auth.status}:${auth.userId ?? "none"}`}</Text>;
+  }
+
+  async function renderSignedIn() {
+    let captured: Captured | null = null;
+    mockedGetSession.mockResolvedValueOnce({
+      data: { session: { access_token: "tok-1", user: { id: uid } } as never },
+      error: null,
+    });
+    mockedRawRegisterSession.mockResolvedValueOnce(
+      makeJsonResponse(200, { user_id: uid, status: "active", is_new: false })
+    );
+    const view = await render(
+      <AuthProvider>
+        <ActionsProbe onReady={(c) => { captured = c; }} />
+      </AuthProvider>
+    );
+    await waitFor(() => expect(view.getByTestId("probe").props.children).toBe(`signedIn:${uid}`));
+    return { view, get: () => captured! };
+  }
+
+  const withdrawnBody = { error: { code: "ACCOUNT_WITHDRAWN", message: "탈퇴한 계정이에요.", detail: "" } };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockedWatchAppForeground.mockReturnValue(jest.fn());
+    mockedOnAuthStateChange.mockReturnValue({
+      data: { subscription: { unsubscribe: jest.fn() } as never },
+    });
+    mockedOnAccountWithdrawn.mockImplementation(() => jest.fn());
+    mockedSignOut.mockResolvedValue({ error: null });
+  });
+
+  test("withdraw_success_signs_out", async () => {
+    mockedApiFetch.mockResolvedValueOnce(
+      makeJsonResponse(200, { user_id: uid, status: "withdrawn", withdrawn_at: "2026-11-18T10:00:00+09:00" })
+    );
+    const { view, get } = await renderSignedIn();
+    let res: unknown;
+    await act(async () => {
+      res = await get().actions.withdrawAccount();
+    });
+    expect(res).toEqual({ ok: true });
+    expect(mockedApiFetch).toHaveBeenCalledWith("/api/v1/me", { method: "DELETE" });
+    expect(mockedAbortInFlight).toHaveBeenCalledTimes(1);
+    expect(mockedSignOut).toHaveBeenCalledWith({ scope: "local" });
+    expect(view.getByTestId("probe").props.children).toBe("signedOut:none");
+  });
+
+  test("withdraw_already_withdrawn_counts_as_success", async () => {
+    mockedApiFetch.mockResolvedValueOnce(makeJsonResponse(403, withdrawnBody));
+    const { view, get } = await renderSignedIn();
+    let res: unknown;
+    await act(async () => {
+      res = await get().actions.withdrawAccount();
+    });
+    expect(res).toEqual({ ok: true });
+    expect(view.getByTestId("probe").props.children).toBe("signedOut:none");
+  });
+
+  test("withdraw_failure_keeps_session", async () => {
+    const { view, get } = await renderSignedIn();
+    const cases: Array<[() => void, string]> = [
+      [
+        () =>
+          mockedApiFetch.mockResolvedValueOnce(
+            makeJsonResponse(503, {
+              error: { code: "DB_UNAVAILABLE", message: "데이터베이스에 연결하지 못했어요.", detail: "" },
+            })
+          ),
+        "데이터베이스에 연결하지 못했어요.",
+      ],
+      [
+        () => mockedApiFetch.mockResolvedValueOnce(new Response("oops", { status: 500 })),
+        "탈퇴하지 못했어요. 다시 시도해 주세요.",
+      ],
+      [
+        () => mockedApiFetch.mockRejectedValueOnce(new TypeError("Network request failed")),
+        "서버에 연결하지 못했어요.",
+      ],
+      [
+        () =>
+          mockedApiFetch.mockResolvedValueOnce(
+            makeJsonResponse(403, { error: { code: "FORBIDDEN", message: "", detail: "" } })
+          ),
+        "탈퇴하지 못했어요. 다시 시도해 주세요.",
+      ],
+    ];
+    for (const [arrange, message] of cases) {
+      arrange();
+      let res: unknown;
+      await act(async () => {
+        res = await get().actions.withdrawAccount();
+      });
+      expect(res).toEqual({ ok: false, errorMessage: message });
+    }
+    expect(mockedSignOut).not.toHaveBeenCalled();
+    expect(view.getByTestId("probe").props.children).toBe(`signedIn:${uid}`);
+  });
+
+  test("withdraw_twice_sends_once", async () => {
+    let finish!: (r: Response) => void;
+    mockedApiFetch.mockReturnValueOnce(
+      new Promise<Response>((resolve) => {
+        finish = resolve;
+      })
+    );
+    const { get } = await renderSignedIn();
+    let a: Promise<unknown> | undefined;
+    let b: Promise<unknown> | undefined;
+    await act(async () => {
+      a = get().actions.withdrawAccount();
+      b = get().actions.withdrawAccount();
+    });
+    expect(a).toBe(b);
+    await act(async () => {
+      finish(makeJsonResponse(200, { user_id: uid, status: "withdrawn", withdrawn_at: "x" }));
+      await a;
+    });
+    expect(mockedApiFetch).toHaveBeenCalledTimes(1);
+    expect(mockedSignOut).toHaveBeenCalledTimes(1);
+  });
+
+  test("account_withdrawn_signal_signs_out (#23)", async () => {
+    let listener: (() => void) | undefined;
+    const unsubscribe = jest.fn<() => void>();
+    mockedOnAccountWithdrawn.mockImplementation((fn: () => void) => {
+      listener = fn;
+      return unsubscribe;
+    });
+    const { view } = await renderSignedIn();
+    expect(listener).toBeDefined();
+    await act(async () => {
+      listener!();
+    });
+    await waitFor(() => expect(view.getByTestId("probe").props.children).toBe("signedOut:none"));
+    expect(mockedSignOut).toHaveBeenCalledWith({ scope: "local" });
+    await view.unmount();
+    expect(unsubscribe).toHaveBeenCalled();
   });
 });
