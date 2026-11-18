@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MY-1 시안</title>
+<!--
+  my-collection MY-1 시안 (../team/prompts/1_기획.md 1B 2단계 시안 사이클).
+  색·곡률은 개발산출물/디자인_기준.md 토큰(warm, M1 기본)을 :root 한 곳에만 두고 나머지는 변수로만 쓴다.
+  후보 비교는 세 후보 모두 같은 가짜 데이터(닉네임·소개·게시물 4개)를 쓴다.
+-->
+<style>
+  :root {
+    /* 개발산출물/디자인_기준.md 토큰 (warm, M1 기본) — 직접 값은 여기에만 */
+    --bg: #E1E1DE; --surface2: #D0CEC8; --surface3: #BFBCB5;
+    --fill1: #E9C970; --fill2: #EDC9A9; --fill3: #B3BFB5;
+    --cream: #EFEFE7; --paper: #EFF1F1; --ink-strong: #2E333F;
+    --text: #1D1D1F; --text-sub: #707070; --line: #C4C4C1;
+    --r-card: 18px; --r-pill: 18px; --r-control: 9999px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; line-height: 1.5; }
+  header.page { padding: 20px 16px 8px; max-width: 1240px; margin: 0 auto; }
+  header.page h1 { font-size: 20px; margin: 0 0 4px; }
+  .how { background: var(--cream); border-radius: var(--r-card); padding: 12px 16px; margin: 8px 0 0; }
+  main { max-width: 1240px; margin: 0 auto; padding: 0 16px 40px; }
+  section.element { margin-top: 24px; }
+  section.element > h2 { font-size: 17px; margin: 0 0 4px; }
+  .status { display: inline-block; font-size: 12px; padding: 2px 10px; border-radius: var(--r-pill); background: var(--surface2); margin-left: 6px; }
+  .cands { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; margin-top: 12px; }
+  .cand { background: var(--paper); border-radius: var(--r-card); padding: 14px; border: 3px solid transparent; }
+  .cand.recommended { border-color: var(--fill1); }
+  .cand.chosen { border-color: var(--ink-strong); }
+  .cand h3 { margin: 0 0 8px; font-size: 15px; }
+  .badge { font-size: 12px; padding: 1px 8px; border-radius: var(--r-pill); background: var(--fill1); margin-left: 6px; }
+  .badge.chosen { background: var(--ink-strong); color: var(--paper); }
+  .state button { font: inherit; font-size: 14px; border: 0; border-radius: var(--r-pill); padding: 4px 12px; background: var(--surface2); cursor: pointer; margin: 2px; }
+  .state button[aria-pressed="true"] { background: var(--ink-strong); color: var(--paper); }
+  .note { font-size: 14px; margin-top: 10px; }
+  .note dt { font-weight: 700; margin-top: 6px; }
+  .note dd { margin: 0; }
+  .flow { background: var(--cream); border-radius: 12px; padding: 8px 10px; }
+
+  /* ---- 휴대폰 화면 ---- */
+  .phone { position: relative; width: 100%; max-width: 330px; height: 600px; margin: 0 auto; background: var(--bg); border-radius: 26px; border: 6px solid var(--ink-strong); overflow: hidden; display: flex; flex-direction: column; }
+  .sbar { height: 22px; font-size: 11px; padding: 3px 14px 0; color: var(--text); flex: none; }
+  .topbar { display: flex; align-items: center; justify-content: space-between; padding: 4px 14px; flex: none; }
+  .topbar .ttl { font-size: 17px; font-weight: 700; }
+  .gear { width: 30px; height: 30px; border-radius: var(--r-control); border: 0; background: transparent; font-size: 18px; cursor: pointer; color: var(--text); }
+  .body { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+  .avatar { border-radius: 50%; background: var(--surface3); display: flex; align-items: center; justify-content: center; color: var(--paper); flex: none; }
+  .nick { font-weight: 700; color: var(--text); }
+  .bio { color: var(--text-sub); font-size: 13px; }
+  .editbtn { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--paper); color: var(--text); border-radius: var(--r-control); padding: 5px 12px; cursor: pointer; }
+  .editlink { font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--text-sub); text-decoration: underline; cursor: pointer; padding: 0; }
+
+  /* A: 왼쪽 사진 + 옆 글 */
+  .profA { display: flex; gap: 12px; align-items: center; padding: 8px 14px 12px; }
+  .profA .avatar { width: 64px; height: 64px; font-size: 26px; }
+  .profA .meta { flex: 1; min-width: 0; }
+  .profA .nick { font-size: 17px; }
+  .profA .editbtn { margin-top: 6px; }
+  /* B: 가운데 큰 사진 */
+  .profB { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 6px 14px 12px; gap: 4px; }
+  .profB .avatar { width: 88px; height: 88px; font-size: 36px; }
+  .profB .nick { font-size: 18px; margin-top: 4px; }
+  .profB .editbtn { width: 100%; margin-top: 8px; padding: 8px; }
+  /* C: 한 줄로 작게 */
+  .profC { display: flex; gap: 10px; align-items: center; padding: 4px 14px 8px; }
+  .profC .avatar { width: 36px; height: 36px; font-size: 15px; }
+  .profC .meta { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .profC .nick { font-size: 15px; }
+  .profC .bio { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
+
+  .tabbar { display: flex; border-bottom: 1px solid var(--line); background: var(--bg); flex: none; }
+  .tabbar span { flex: 1; text-align: center; padding: 8px 0; font-size: 14px; color: var(--text-sub); cursor: pointer; }
+  .tabbar span.on { color: var(--text); font-weight: 700; box-shadow: inset 0 -2px 0 var(--ink-strong); }
+  .feed { flex: 1; overflow: hidden; padding: 12px 12px 0; }
+  .feedin { display: grid; grid-template-columns: 1fr 1fr; column-gap: 12px; align-content: start; }
+  .col { display: flex; flex-direction: column; gap: 12px; }
+  .card { border-radius: var(--r-card); padding: 10px; display: flex; align-items: flex-end; font-size: 12px; font-weight: 700; color: var(--text); }
+  .card.f1 { background: var(--fill1); } .card.f2 { background: var(--fill2); } .card.f3 { background: var(--fill3); }
+  .nav { height: 52px; flex: none; display: flex; border-top: 1px solid var(--line); background: var(--paper); font-size: 11px; }
+  .nav span { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-sub); }
+  .nav span.on { color: var(--text); font-weight: 700; }
+  .menu { position: absolute; left: 0; right: 0; bottom: 52px; background: var(--paper); border-radius: var(--r-card) var(--r-card) 0 0; padding: 10px 14px 14px; box-shadow: 0 -2px 10px var(--line); }
+  .menu div { padding: 9px 4px; font-size: 14px; border-bottom: 1px solid var(--surface2); }
+  .menu div:last-child { border-bottom: 0; color: var(--text-sub); }
+  .menu .pick { font-weight: 700; }
+  .card { position: relative; }
+  .card.dim { opacity: .45; }
+  .card .tag { position: absolute; top: 8px; left: 8px; background: var(--paper); border-radius: var(--r-pill); padding: 1px 8px; font-size: 11px; font-weight: 400; }
+  .card.target { outline: 3px solid var(--ink-strong); outline-offset: -3px; }
+  .toast .undo { text-decoration: underline; margin-left: 8px; font-weight: 700; }
+  .empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 24px 40px; gap: 10px; }
+  .empty .ico { width: 56px; height: 56px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 24px; }
+  .empty .msg { font-size: 15px; font-weight: 700; color: var(--text); }
+  .empty .sub { font-size: 13px; color: var(--text-sub); }
+  .empty .go { font: inherit; font-size: 14px; border: 0; border-radius: var(--r-control); padding: 9px 16px; background: var(--ink-strong); color: var(--paper); cursor: pointer; }
+  .steps3 { display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--text-sub); }
+  .steps3 span { background: var(--paper); border-radius: 12px; padding: 6px 6px; }
+  .err { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 30px 20px; text-align: center; font-size: 14px; color: var(--text); }
+  .err.inline { flex-direction: row; justify-content: center; padding: 10px; font-size: 13px; }
+  .refresh { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--paper); color: var(--text); border-radius: var(--r-control); padding: 5px 12px; cursor: pointer; }
+  .sk { background: var(--surface2); border-radius: var(--r-card); }
+  .skl { background: var(--surface2); border-radius: var(--r-pill); height: 12px; }
+  .toast { position: absolute; left: 16px; right: 16px; bottom: 64px; background: var(--ink-strong); color: var(--paper); border-radius: var(--r-pill); padding: 8px 12px; font-size: 13px; text-align: center; }
+
+  #spec, #except, #fullflow { background: var(--paper); border-radius: var(--r-card); padding: 14px 16px; margin-top: 28px; }
+  #spec table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  #spec th, #spec td { text-align: left; padding: 6px; border-bottom: 1px solid var(--surface2); vertical-align: top; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>내 정보 모음 · MY-1 시안</h1>
+  <p class="how">화면 3개를 비교해 보세요. 화면마다 아래에 <b>누르면 어떻게 이어지는지</b>를 적어 뒀어요. 화면 위 버튼으로 <b>소개가 없을 때</b>, <b>아래로 내렸을 때</b> 모습을 바꿔 볼 수 있고, 화면 안의 <b>프로필 수정</b>·<b>탭</b>도 눌러 볼 수 있어요. <b>추천</b> 표시가 있는 화면이 Claude의 추천이에요. 고르는 건 직접 해 주세요.</p>
+</header>
+
+<main>
+  <!-- ===== 중심 요소 1 ===== -->
+  <section class="element" id="el-1" data-chosen="A">
+    <h2>정할 것 1. "내 정보" 탭을 열면 위쪽 내 프로필을 어떻게 놓을까<span class="status" data-status>결정 전</span></h2>
+    <div class="state">소개: <button aria-pressed="true" data-bio="1">소개 있음</button><button aria-pressed="false" data-bio="0">소개 없음</button>
+      &nbsp; 화면: <button aria-pressed="true" data-scroll="0">처음 열었을 때</button><button aria-pressed="false" data-scroll="1">아래로 내렸을 때</button>
+    </div>
+
+    <div class="cands">
+      <!-- 후보 A (추천) -->
+      <article class="cand recommended" data-id="A">
+        <h3>왼쪽 사진 + 옆에 이름 <span class="badge">추천</span></h3>
+        <div class="phone" data-phone>
+          <div class="sbar">9:41</div>
+          <div class="topbar"><span class="ttl">내 정보</span><button class="gear" title="설정">⚙</button></div>
+          <div class="body">
+            <div class="profA" data-prof>
+              <div class="avatar">👤</div>
+              <div class="meta">
+                <div class="nick">이웃-0000</div>
+                <div class="bio" data-biotext>동네 도서관 산책을 좋아해요</div>
+                <button class="editbtn" data-edit>프로필 수정</button>
+              </div>
+            </div>
+            <div class="tabbar" data-tabs><span class="on">내 게시물</span><span>좋아요</span><span>북마크</span></div>
+            <div class="feed" data-feed></div>
+          </div>
+          <div class="nav"><span>홈</span><span>대출·반납</span><span class="on">내 정보</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>사진이 왼쪽에 중간 크기로 있고, 이름·소개·"프로필 수정"이 사진 옆에 모여 있어요. 프로필이 낮아서 첫 화면에 게시물 카드가 많이 보여요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">"내 정보" 탭을 누름 → 위에 내 사진·이름, 바로 아래 탭과 내 게시물 카드 → 아래로 내리면 프로필은 위로 사라지고 탭은 맨 위에 붙어 있음 → 카드를 누르면 게시물 상세로. 오른쪽 위 ⚙를 누르면 설정·로그아웃으로 가요.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>첫 화면 카드 4개가 거의 다 보임. 프로필 높이 약 90.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>내 정보와 카드가 둘 다 잘 보임 / 사진이 크지 않아 "내 공간" 느낌은 덜함</dd>
+          <dt>추천 이유</dt><dd>이 탭에 오는 이유는 대부분 모아 둔 게시물을 다시 보려는 것이라, 프로필은 알아볼 만큼만 두고 카드를 먼저 보여 주는 게 맞아서요.</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 B -->
+      <article class="cand" data-id="B">
+        <h3>가운데 큰 사진</h3>
+        <div class="phone" data-phone>
+          <div class="sbar">9:41</div>
+          <div class="topbar"><span class="ttl">내 정보</span><button class="gear" title="설정">⚙</button></div>
+          <div class="body">
+            <div class="profB" data-prof>
+              <div class="avatar">👤</div>
+              <div class="nick">이웃-0000</div>
+              <div class="bio" data-biotext>동네 도서관 산책을 좋아해요</div>
+              <button class="editbtn" data-edit>프로필 수정</button>
+            </div>
+            <div class="tabbar" data-tabs><span class="on">내 게시물</span><span>좋아요</span><span>북마크</span></div>
+            <div class="feed" data-feed></div>
+          </div>
+          <div class="nav"><span>홈</span><span>대출·반납</span><span class="on">내 정보</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>큰 사진이 가운데, 그 아래 이름·소개, 넓은 "프로필 수정" 버튼이 있어요. 프로필이 화면 위쪽 3분의 1쯤을 차지해요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">"내 정보" 탭을 누름 → 큰 내 사진과 이름이 먼저 보임 → 카드는 아래로 조금 내려야 다 보임 → 내리면 프로필이 사라지고 탭이 맨 위에 붙음 → 카드를 누르면 게시물 상세로.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>첫 화면에 카드 윗부분 2개 정도만 보임. 프로필 높이 약 190.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>"내 공간"이라는 느낌이 큼 / 게시물을 보려면 한 번 내려야 함</dd>
+        </dl>
+      </article>
+
+      <!-- 후보 C -->
+      <article class="cand" data-id="C">
+        <h3>한 줄로 작게</h3>
+        <div class="phone" data-phone>
+          <div class="sbar">9:41</div>
+          <div class="topbar"><span class="ttl">내 정보</span><button class="gear" title="설정">⚙</button></div>
+          <div class="body">
+            <div class="profC" data-prof data-keep>
+              <div class="avatar">👤</div>
+              <div class="meta">
+                <span class="nick">이웃-0000</span>
+                <span class="bio" data-biotext>동네 도서관 산책을 좋아해요</span>
+              </div>
+              <button class="editlink" data-edit>수정</button>
+            </div>
+            <div class="tabbar" data-tabs><span class="on">내 게시물</span><span>좋아요</span><span>북마크</span></div>
+            <div class="feed" data-feed></div>
+          </div>
+          <div class="nav"><span>홈</span><span>대출·반납</span><span class="on">내 정보</span></div>
+        </div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>작은 사진·이름·소개가 한 줄에 들어가고 "수정"은 글자 링크예요. 내려도 이 한 줄이 위에 계속 남아요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">"내 정보" 탭을 누름 → 맨 위 한 줄에 내 이름, 바로 아래 탭과 카드가 화면 대부분 → 내려도 이름 줄과 탭이 같이 위에 붙어 있음 → 카드를 누르면 게시물 상세로.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>첫 화면 카드가 가장 많이 보임. 소개가 길면 한 줄에서 잘림(…). 프로필 높이 약 48.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>카드를 가장 넓게 봄 / 사진이 작고 소개가 잘려 내 프로필이 잘 안 보임</dd>
+        </dl>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===== 중심 요소 2 ===== -->
+  <section class="element" id="el-2" data-chosen="D">
+    <h2>정할 것 2. "좋아요" 탭에서 좋아요를 취소하면 그 카드를 어떻게 할까<span class="status" data-status>결정 전</span></h2>
+    <p style="margin:0;font-size:14px">맨 앞 화면이 말씀하신 합친 안이에요. ③을 누르고 4초 기다리면 안내와 흐린 카드가 함께 사라져요. 카드를 길게 누르면 메뉴가 떠요. "북마크" 탭에서 북마크를 해제할 때도 똑같이 움직여요. 아래 버튼을 순서대로 눌러 보세요.</p>
+    <div class="state">순서: <button aria-pressed="true" data-step="0">① 좋아요 탭</button><button aria-pressed="false" data-step="1">② "소년이 온다" 카드 길게 누름</button><button aria-pressed="false" data-step="2">③ "좋아요 취소" 누른 뒤</button><button aria-pressed="false" data-step="3">④ 4초 안에 "정독도서관 창가"도 취소</button><button aria-pressed="false" data-step="4">⑤ 4초 뒤 / 다른 탭 갔다 돌아옴</button></div>
+    <div class="cands">
+      <article class="cand" data-id="D">
+        <h3>흐리게 남고 "되돌리기", 안내가 사라지면 빠짐 <span class="badge" style="background:var(--fill3)">합친 안</span></h3>
+        <div class="phone" data-phone2></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>1번처럼 아래에 "좋아요를 취소했어요 · 되돌리기"가 4초 뜨고, 그동안 카드는 2번처럼 자리에 흐리게 "취소함"으로 남아요. 안내가 사라지면 카드도 빠져요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">카드를 길게 누름 → "좋아요 취소" → 카드가 흐려지고 아래에 "되돌리기"가 뜸 → 4초 안에 "되돌리기"를 누르면 카드가 원래대로 → 안 누르면 4초 뒤 안내와 카드가 함께 사라지고 남은 카드가 자리를 채움. 4초 안에 다른 카드도 취소하면 앞서 흐려 둔 카드는 바로 빠지고, 새로 취소한 카드만 흐리게 남음.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>③에서 카드 4개(하나 흐림) + 아래 안내. ④에서 "소년이 온다"는 빠지고 "정독도서관 창가"만 흐림. ⑤(4초 뒤)에서 2개.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>무엇을 취소했는지 눈으로 보면서 되돌릴 수 있음 / 4초 동안 흐린 카드가 섞여 보이고, 여러 개를 빨리 빼면 흐린 카드가 여럿 생김</dd>
+        </dl>
+      </article>
+      <article class="cand recommended" data-id="A">
+        <h3>바로 빠지고 "되돌리기" <span class="badge">추천</span></h3>
+        <div class="phone" data-phone2></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>취소하자마자 카드가 목록에서 빠지고, 아래에 "좋아요를 취소했어요 · 되돌리기"가 4초 떠요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">카드를 길게 누름 → 메뉴에서 "좋아요 취소" → 카드가 바로 빠지고 남은 카드가 자리를 채움 → 실수였으면 "되돌리기"를 눌러 원래 자리로. 사용자는 정리하듯 여러 개를 연달아 뺄 수 있어요.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>③에서 카드 3개만 남고 아래 안내가 뜸. ④에서도 3개.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>목록이 늘 "지금 좋아요한 것"만 / 잘못 누르면 4초 안에 되돌려야 함</dd>
+          <dt>추천 이유</dt><dd>이 탭은 내가 모은 것을 다시 보는 곳이라, 취소한 카드가 남아 있으면 정리하던 사람이 헷갈려요. 실수는 "되돌리기"로 막을 수 있어요.</dd>
+        </dl>
+      </article>
+      <article class="cand" data-id="B">
+        <h3>흐리게 남았다가 다음에 빠짐</h3>
+        <div class="phone" data-phone2></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>취소해도 카드가 그 자리에 흐리게 남고 "취소함" 표시가 붙어요. 다른 탭에 갔다 오거나 화면을 당기면 그때 빠져요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">카드를 길게 누름 → "좋아요 취소" → 카드가 흐려짐(자리 그대로) → 다시 길게 눌러 "좋아요"를 누르면 원래대로 → 탭을 바꿨다 오면 흐린 카드가 사라짐.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>③에서 카드 4개 그대로(하나 흐림). ④에서 3개.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>자리가 안 바뀌어 실수해도 찾기 쉬움 / 잠깐 동안 취소한 카드가 섞여 보임</dd>
+        </dl>
+      </article>
+      <article class="cand" data-id="C">
+        <h3>바로 빠짐, 안내 없음</h3>
+        <div class="phone" data-phone2></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>취소하자마자 카드가 빠지고 아무 안내도 뜨지 않아요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">카드를 길게 누름 → "좋아요 취소" → 카드가 조용히 빠짐 → 실수였으면 그 게시물을 다시 찾아가 좋아요를 눌러야 함.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>③에서 카드 3개, 안내 없음. ④에서도 3개.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>가장 단순하고 조용함 / 잘못 누르면 바로 되돌릴 방법이 없음</dd>
+        </dl>
+      </article>
+    </div>
+    <p>다시 비교하기: <select id="pick2"><option value="">채택안 보기</option><option value="A">바로 빠지고 "되돌리기"</option><option value="B">흐리게 남았다가 다음에 빠짐</option><option value="C">바로 빠짐, 안내 없음</option><option value="D">흐리게 남고 "되돌리기"(합친 안)</option></select></p>
+  </section>
+
+  <!-- ===== 중심 요소 3 ===== -->
+  <section class="element" id="el-3" data-chosen="A">
+    <h2>정할 것 3. 탭에 아무것도 없을 때 무엇을 보여 주고 어디로 이어질까<span class="status" data-status>결정 전</span></h2>
+    <p style="margin:0;font-size:14px">처음 가입한 사람은 세 탭이 모두 비어 있어요. 아래 버튼으로 탭을 바꿔 보고, 화면 안의 버튼도 눌러 보세요.</p>
+    <div class="state">탭: <button aria-pressed="true" data-etab="0">내 게시물</button><button aria-pressed="false" data-etab="1">좋아요</button><button aria-pressed="false" data-etab="2">북마크</button>
+      &nbsp; 버튼 글자: <button aria-pressed="false" data-arrow="1">화살표 있음 "→"</button><button aria-pressed="true" data-arrow="0">화살표 없음 (채택)</button></div>
+    <div class="cands">
+      <article class="cand recommended" data-id="A">
+        <h3>안내 + 홈으로 가는 버튼 <span class="badge">추천</span></h3>
+        <div class="phone" data-phone3></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>탭마다 무엇을 하면 여기가 채워지는지 한 줄 안내가 있고, 그 아래 "가까운 도서관 둘러보기" 버튼이 있어요(화살표 없음).</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">빈 탭을 봄 → "가까운 도서관 둘러보기"를 누름 → 홈 탭으로 바뀜 → 도서관 블록을 눌러 방문 페이지로 → 거기서 글을 올리거나 좋아요·북마크를 누르면 이 탭에 모여요.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>탭마다 안내 문구가 다름. 버튼은 세 탭 모두 같은 곳(홈)으로 감.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>처음 온 사람이 다음에 뭘 할지 바로 앎 / 버튼 하나가 늘어 화면이 조금 붐빔</dd>
+          <dt>추천 이유</dt><dd>글쓰기·좋아요·북마크는 모두 도서관 방문 페이지에서 하니까, 빈 탭에서 그쪽으로 한 번에 보내는 게 가장 짧은 길이에요.</dd>
+        </dl>
+      </article>
+      <article class="cand" data-id="B">
+        <h3>안내 한 줄만</h3>
+        <div class="phone" data-phone3></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>탭마다 짧은 안내 한 줄만 있고 버튼은 없어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">빈 탭을 봄 → 안내를 읽음 → 아래 "홈" 탭을 직접 눌러 도서관으로 감.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>탭마다 안내 문구가 다름. 누를 곳 없음.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>가장 조용하고 깔끔함 / 처음 온 사람은 어디로 가야 할지 스스로 찾아야 함</dd>
+        </dl>
+      </article>
+      <article class="cand" data-id="C">
+        <h3>그림으로 순서 안내 + 버튼</h3>
+        <div class="phone" data-phone3></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>"도서관 들어가기 → ♡ 누르기 → 여기 모임"처럼 세 칸 그림으로 순서를 보여 주고, 아래에 같은 버튼이 있어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">빈 탭을 봄 → 세 칸 그림으로 하는 법을 봄 → "가까운 도서관 둘러보기 →"를 누름 → 홈 탭으로 바뀜.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>탭마다 가운데 그림이 다름(✎ 글쓰기 / ♡ 좋아요 / 🔖 북마크).</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>처음 쓰는 사람이 방법까지 알 수 있음 / 빈 화면이 가장 꽉 차고 길어짐</dd>
+        </dl>
+      </article>
+    </div>
+    <p>다시 비교하기: <select id="pick3"><option value="">채택안 보기</option><option value="A">안내 + 홈으로 가는 버튼</option><option value="B">안내 한 줄만</option><option value="C">그림으로 순서 안내 + 버튼</option></select></p>
+  </section>
+
+  <!-- ===== 잘 안 될 때 (예외, 1B 3단계) — VISIT-1·VISIT-1b 시안과 같은 표현: 안내 + "↻ 새로고침", 안 된 칸만 바뀌고 나머지는 그대로 ===== -->
+  <section id="except">
+    <h2>잘 안 될 때 보이는 화면</h2>
+    <p style="margin:0;font-size:14px">버튼을 하나씩 눌러 보세요. 화면 안의 버튼(새로고침·로그인 등)을 누르면 다음 모습도 볼 수 있어요. 문구는 Claude가 먼저 넣어 둔 거예요.</p>
+    <div class="state" id="exTabs">
+      <button aria-pressed="true" data-ex="0">① 게시물을 못 불러옴</button><button aria-pressed="false" data-ex="1">② 내 프로필만 못 불러옴</button><button aria-pressed="false" data-ex="2">③ 더 내리다 못 불러옴</button><button aria-pressed="false" data-ex="3">④ 하나도 없음</button><button aria-pressed="false" data-ex="4">⑤ 좋아요 취소를 두 번 빠르게</button><button aria-pressed="false" data-ex="5">⑥ 좋아요 취소가 안 됨</button><button aria-pressed="false" data-ex="6">⑦ 로그인 안 함</button><button aria-pressed="false" data-ex="7">⑧ 불러오는 중</button>
+    </div>
+    <div class="state" id="rfPos">새로고침 버튼(①②③): <button aria-pressed="true" data-rf="L">↻ 아이콘 왼쪽</button><button aria-pressed="false" data-rf="R">아이콘 오른쪽 ↻</button>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;align-items:flex-start">
+      <div><div class="phone" id="exPhone" style="margin:0"></div>
+        <div class="state" style="margin-top:6px"><button id="pullBtn" hidden>⬆ 맨 아래에서 한 번 더 내리기</button></div></div>
+      <dl class="note" style="flex:1;min-width:240px;margin-top:0"><dt>이럴 땐</dt><dd id="exWhen"></dd><dt>그대로인 곳 / 바뀌는 곳</dt><dd id="exKeep"></dd><dt>누르면</dt><dd class="flow" id="exNext"></dd></dl>
+    </div>
+  </section>
+
+  <!-- ===== 처음부터 끝까지 (세부 명세서 2. 유저 플로우와 같게) ===== -->
+  <section id="fullflow">
+    <h2>처음부터 끝까지 이렇게 써요</h2>
+    <ol>
+      <li>사용자가 하단 "내 정보" 탭을 누르면 동네한권이 위쪽 내 프로필과 "내 게시물" 탭의 카드를 보여 준다.</li>
+      <li>동네한권이 위쪽 왼쪽에 내 사진을, 그 옆에 이름·한 줄 소개·"프로필 수정" 버튼을 보여 주고, 바로 아래 탭과 카드를 보여 준다. 한 줄 소개가 없으면 동네한권이 그 줄을 숨긴다.</li>
+      <li>사용자가 "프로필 수정"을 누르면 동네한권이 "프로필 수정은 곧 열려요" 안내를 잠깐 보여 준다.</li>
+      <li>사용자가 "좋아요"나 "북마크" 탭을 누르면 동네한권이 그 탭의 카드를 보여 주고, 한 번 불러온 탭은 기억해 둔다.</li>
+      <li>사용자가 화면을 아래로 내리면 동네한권이 프로필을 위로 밀어 올리고 탭을 화면 맨 위에 붙여 둔다.</li>
+      <li>사용자가 끝까지 내리면 동네한권이 다음 게시물을 이어서 불러와 아래에 붙인다.</li>
+      <li>사용자가 카드를 누르면 동네한권이 그 게시물 상세를 연다.</li>
+      <li>사용자가 오른쪽 위 ⚙를 누르면 동네한권이 설정(로그아웃 포함)으로 보낸다.</li>
+      <li>사용자가 "좋아요" 탭에서 카드를 길게 누르면 동네한권이 "좋아요 취소" 메뉴를 띄운다.</li>
+      <li>사용자가 "좋아요 취소"를 누르면 동네한권이 그 카드를 자리에 흐리게 "취소함"으로 남기고, 아래에 "좋아요를 취소했어요 · 되돌리기"를 4초 동안 보여 준다.</li>
+      <li>사용자가 4초 안에 "되돌리기"를 누르면 동네한권이 좋아요를 다시 켜고 카드를 원래대로 되돌린다.</li>
+      <li>4초가 지나면 동네한권이 안내와 흐린 카드를 함께 지우고 남은 카드로 자리를 채운다.</li>
+      <li>사용자가 4초 안에 다른 카드도 취소하면 동네한권이 앞서 흐려 둔 카드를 바로 지우고, 새로 취소한 카드만 흐리게 남긴다. "북마크" 탭의 북마크 해제도 똑같다.</li>
+      <li>탭에 게시물이 하나도 없으면 동네한권이 그 탭에 맞는 안내 한 줄과 "가까운 도서관 둘러보기" 버튼을 보여 준다.</li>
+      <li>사용자가 "가까운 도서관 둘러보기"를 누르면 동네한권이 홈 탭으로 보낸다. 사용자는 도서관 블록을 눌러 방문 페이지에서 글을 올리거나 좋아요·북마크를 누른다.</li>
+    </ol>
+  </section>
+
+  <!-- ===== 명세 패널 (세부 명세서 확인 목록·결정 기록과 같게) ===== -->
+  <section id="spec">
+    <h2>명세</h2>
+    <p>다시 비교하기: <select id="pick"><option value="">채택안 보기</option><option value="A">왼쪽 사진 + 옆에 이름</option><option value="B">가운데 큰 사진</option><option value="C">한 줄로 작게</option></select></p>
+    <table>
+      <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값</th></tr>
+      <tr><td>1. 위쪽 내 프로필 배치 (Y-O1)</td><td>확인</td><td>채택: 왼쪽 사진 + 옆에 이름 / 차선 없음 / 탈락: 가운데 큰 사진, 한 줄로 작게</td><td>"공백은 적고 있을 건 다 잘 보이고 깔끔해 보여"</td><td>A 사진 64 / B 88 / C 36, 원형</td></tr>
+      <tr><td>2. 좋아요·북마크 해제 뒤 목록 (Y-O4)</td><td>확인</td><td>채택: 합친 안(흐리게 남고 "되돌리기", 4초 뒤 함께 빠짐) / 차선 없음 / 탈락: 바로 빠지고 "되돌리기", 흐리게 남았다가 다음에 빠짐, 바로 빠짐·안내 없음</td><td>"사라지기 전에 게시글 보고 고민돼서 되돌릴 수도 있고, 되돌리기만 남겨 두기는 좀 그렇긴 해" / "다른 거는 너무 딱딱하거나 설명이 모자란데 지금 고른 안은 그런 단점이 없거나 적어" / 연달아 취소: "전에 취소 누른 거 바로 없어지는 식으로"</td><td>안내 4초, 흐린 카드 투명도 45% + "취소함" 표시, 흐린 카드는 한 번에 하나(다음 취소 시 앞 카드 바로 빠짐), 카드 길게 누르면 메뉴. 북마크 해제도 같음("북마크를 해제했어요")</td></tr>
+      <tr><td>3. 탭이 비었을 때 (Y-O3)</td><td>확인</td><td>채택: 안내 + 홈으로 가는 버튼(화살표 없음) / 차선 없음 / 탈락: 안내 한 줄만, 그림으로 순서 안내 + 버튼</td><td>"화살표 없는 게 좋고, 2번이 너무 불친절한 거 같고, 3번은 여기다 설명 안 적어도 될 거 적은 거 같아"</td><td>버튼 "가까운 도서관 둘러보기"(채움 <code>ink-strong</code>, 필 곡률), 세 탭 모두 홈 탭으로. 문구: 내 게시물 "아직 올린 게시물이 없어요 / 도서관 방문 페이지에서 첫 글을 올려 보세요", 좋아요 "아직 좋아요한 게시물이 없어요 / 마음에 드는 게시물에 ♡를 누르면 여기 모여요", 북마크 "아직 북마크한 게시물이 없어요 / 다시 보고 싶은 게시물을 북마크하면 여기 모여요"</td></tr>
+      <tr><td>탭 바 모양 (Y-O2)</td><td>기본값(Claude)</td><td>글자 + 고른 탭 밑줄(<code>ink-strong</code> 2), 내리면 맨 위에 붙음</td><td>묻지 않음</td><td>글자 14</td></tr>
+      <tr><td>탭 오갈 때 (Y-O2)</td><td>기본값(Claude)</td><td>불러온 탭은 기억, 아래로 당기면 새로</td><td>묻지 않음</td><td>—</td></tr>
+      <tr><td>다음 묶음 (Y-O5)</td><td>기본값(Claude)</td><td>끝까지 내리면 자동으로 이어 불러옴</td><td>묻지 않음</td><td>한 번에 20개</td></tr>
+      <tr><td>소개가 없을 때 (Y-O1)</td><td>기본값(Claude)</td><td>소개 줄을 숨김</td><td>묻지 않음</td><td>—</td></tr>
+      <tr><td>프로필 수정 누름 (Y-O1)</td><td>기본값(Claude)</td><td>아래 안내 "프로필 수정은 곧 열려요" 2초</td><td>묻지 않음</td><td>—</td></tr>
+      <tr><td>설정·로그아웃 자리 (Y-O1)</td><td>기본값(Claude)</td><td>오른쪽 위 ⚙ (설정 화면은 따로 만들어짐)</td><td>묻지 않음</td><td>30×30</td></tr>
+      <tr><td>게시물 카드</td><td>정해짐</td><td>게시물 카드 2열 그대로, 누르면 게시물 상세</td><td>—</td><td>열 간격 12, 좌우 12, 곡률 <code>--r-card</code></td></tr>
+    </table>
+  </section>
+</main>
+
+<script>
+  // 세 후보 모두 같은 게시물 8개 (내렸을 때도 아래가 비지 않게)
+  var CARDS = [
+    [{ c: 'f2', h: 150, t: '마음에 남은 문장' }, { c: 'f1', h: 110, t: '정독도서관 창가' }, { c: 'f3', h: 150, t: '두 번째 읽는 중' }, { c: 'f2', h: 110, t: '반납 전 한 장' }],
+    [{ c: 'f3', h: 110, t: '이번 주 다 읽음' }, { c: 'f2', h: 150, t: '소년이 온다' }, { c: 'f1', h: 110, t: '동네 서가 산책' }, { c: 'f3', h: 150, t: '밑줄 그은 곳' }]
+  ];
+  // 카드 묶음(.feedin)을 창(.feed) 안에서 위로 밀어 "내린 모습"을 만든다 — 창 밖으로 넘친 부분은 탭 아래에서 잘린다
+  document.querySelectorAll('[data-feed]').forEach(function (f) {
+    var inner = document.createElement('div'); inner.className = 'feedin';
+    CARDS.forEach(function (col) {
+      var d = document.createElement('div'); d.className = 'col';
+      col.forEach(function (k) { var c = document.createElement('div'); c.className = 'card ' + k.c; c.style.height = k.h + 'px'; c.textContent = k.t; d.appendChild(c); });
+      inner.appendChild(d);
+    });
+    f.appendChild(inner);
+  });
+
+  var el = document.getElementById('el-1');
+  function press(sel, b) { el.querySelectorAll(sel).forEach(function (x) { x.setAttribute('aria-pressed', x === b); }); }
+  // 소개 있음/없음
+  el.querySelectorAll('[data-bio]').forEach(function (b) {
+    b.addEventListener('click', function () { press('[data-bio]', b); el.querySelectorAll('[data-biotext]').forEach(function (t) { t.hidden = b.dataset.bio === '0'; }); });
+  });
+  // 처음 / 내렸을 때: A·B는 프로필이 위로 사라지고 탭이 맨 위, C는 한 줄이 남음
+  el.querySelectorAll('[data-scroll]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      press('[data-scroll]', b);
+      var down = b.dataset.scroll === '1';
+      el.querySelectorAll('[data-prof]').forEach(function (p) { if (!p.hasAttribute('data-keep')) p.hidden = down; });
+      el.querySelectorAll('.feedin').forEach(function (f) { f.style.transform = down ? 'translateY(-130px)' : 'none'; });
+    });
+  });
+  // 탭 누르기
+  el.querySelectorAll('[data-tabs]').forEach(function (t) {
+    t.querySelectorAll('span').forEach(function (s) { s.addEventListener('click', function () { t.querySelectorAll('span').forEach(function (x) { x.classList.toggle('on', x === s); }); }); });
+  });
+  // 프로필 수정 누르기 → 안내
+  el.querySelectorAll('[data-edit]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var ph = b.closest('[data-phone]'); if (ph.querySelector('.toast')) return;
+      var t = document.createElement('div'); t.className = 'toast'; t.textContent = '프로필 수정은 곧 열려요'; ph.appendChild(t);
+      setTimeout(function () { t.remove(); }, 2000);
+    });
+  });
+  // 채택안 표시
+  function mark(id) {
+    el.querySelectorAll('.cand').forEach(function (c) {
+      c.classList.toggle('chosen', c.dataset.id === id);
+      var old = c.querySelector('.badge.chosen'); if (old) old.remove();
+      if (c.dataset.id === id) { var s = document.createElement('span'); s.className = 'badge chosen'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+    });
+    el.querySelector('[data-status]').textContent = id ? '확인' : '결정 전';
+  }
+  mark(el.dataset.chosen);
+  document.getElementById('pick').addEventListener('change', function (e) { mark(e.target.value || el.dataset.chosen); });
+  // ===== 정할 것 2: 좋아요 탭에서 좋아요 취소 =====
+  (function () {
+    var el2 = document.getElementById('el-2');
+    var LIKED = [
+      [{ c: 'f2', h: 150, t: '마음에 남은 문장' }, { c: 'f2', h: 150, t: '소년이 온다', target: 1 }],
+      [{ c: 'f3', h: 110, t: '이번 주 다 읽음' }, { c: 'f1', h: 110, t: '정독도서관 창가', target: 2 }]
+    ];
+    // 카드 상태: 'n' 보통, 'o' 길게 누름, 'd' 흐림, 'g' 빠짐
+    // step 0 처음, 1 길게 누름, 2 첫 취소, 2.5 첫 취소 4초 뒤, 3 4초 안에 둘째 취소, 4 끝(4초 뒤 / 탭 갔다 옴)
+    function cardState(id, step, which, restored) {
+      var late = id === 'B' || id === 'D';
+      // [D 보완] 되돌리기를 누른 뒤: 방금 취소한 카드만 원래 자리로 돌아옴(③에서 누르면 모두 원래대로, ④에서 누르면 앞서 빠진 카드는 빠진 채)
+      if (restored) return (step === 3 && which === 1) ? 'g' : 'n';
+      if (which === 1) {
+        if (step < 1) return 'n';
+        if (step === 1) return 'o';
+        if (step === 2) return late ? 'd' : 'g';
+        if (step === 3) return id === 'B' ? 'd' : 'g'; // D: 다음 취소를 누르면 앞서 흐려 둔 카드는 바로 빠짐
+        return 'g';
+      }
+      if (which === 2) {
+        if (step < 3) return 'n';
+        if (step === 3) return late ? 'd' : 'g';
+        return 'g';
+      }
+      return 'n';
+    }
+    function render(phone, id, step, restored) {
+      var h ='<div class="sbar">9:41</div><div class="topbar"><span class="ttl">내 정보</span><button class="gear">⚙</button></div><div class="body">'
+        + '<div class="profA"><div class="avatar">👤</div><div class="meta"><div class="nick">이웃-0000</div><div class="bio">동네 도서관 산책을 좋아해요</div><button class="editbtn">프로필 수정</button></div></div>'
+        + '<div class="tabbar"><span>내 게시물</span><span class="on">좋아요</span><span>북마크</span></div><div class="feed"><div class="feedin">';
+      LIKED.forEach(function (col) {
+        h += '<div class="col">';
+        col.forEach(function (k) {
+          var st = cardState(id, step, k.target || 0, restored);
+          if (st === 'g') return;
+          var dim = st === 'd';
+          var cls = 'card ' + k.c + (st === 'o' ? ' target' : '') + (dim ? ' dim' : '');
+          h += '<div class="' + cls + '" style="height:' + k.h + 'px">' + (dim ? '<span class="tag">취소함</span>' : '') + k.t + '</div>';
+        });
+        h += '</div>';
+      });
+      h += '</div></div></div><div class="nav"><span>홈</span><span>대출·반납</span><span class="on">내 정보</span></div>';
+      // 카드 메뉴는 방문 페이지 피드와 같은 작은 창(local-feed H10): 위 아이콘 3개 + 책 줄. 켜진 ♥를 누르면 좋아요 취소
+      if (step === 1) h += '<div class="menu"><div style="display:flex;justify-content:space-around"><span class="pick">♥ 좋아요 (누르면 취소)</span><span>🔖 북마크</span><span>↗ 공유</span></div><div>📖 소년이 온다 검색</div><div>👤 한강의 다른 책</div></div>';
+      var undo = !restored && (step === 2 || step === 3) && (id === 'A' || id === 'D');
+      if (undo) h += '<div class="toast">좋아요를 취소했어요<span class="undo" role="button" tabindex="0">되돌리기</span></div>';
+      phone.innerHTML = h;
+      clearTimeout(phone._t);
+      if (undo) {
+        phone._t = setTimeout(function () { render(phone, id, step === 2 ? 2.5 : 4); }, 4000);
+        // [D 보완] 4초 안에 되돌리기 → 빠짐 타이머를 끄고 카드를 원래 자리·보통 모습으로 되돌림(첫 누름만 받음)
+        var u = phone.querySelector('.undo');
+        var done = false;
+        var restore = function () { if (done) return; done = true; clearTimeout(phone._t); render(phone, id, step, true); };
+        u.addEventListener('click', restore);
+        u.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); restore(); } });
+      }
+    }
+    function show(step) {
+      el2.querySelectorAll('.cand').forEach(function (c) { render(c.querySelector('[data-phone2]'), c.dataset.id, step); });
+      el2.querySelectorAll('[data-step]').forEach(function (b) { b.setAttribute('aria-pressed', +b.dataset.step === step); });
+    }
+    el2.querySelectorAll('[data-step]').forEach(function (b) { b.addEventListener('click', function () { show(+b.dataset.step); }); });
+    show(0);
+    function mark2(id) {
+      el2.querySelectorAll('.cand').forEach(function (c) {
+        c.classList.toggle('chosen', c.dataset.id === id);
+        var old = c.querySelector('.badge.chosen'); if (old) old.remove();
+        if (c.dataset.id === id) { var s = document.createElement('span'); s.className = 'badge chosen'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+      });
+      el2.querySelector('[data-status]').textContent = id ? '확인' : '결정 전';
+    }
+    mark2(el2.dataset.chosen);
+    document.getElementById('pick2').addEventListener('change', function (e) { mark2(e.target.value || el2.dataset.chosen); });
+  })();
+  // ===== 정할 것 3: 탭이 비었을 때 =====
+  (function () {
+    var el3 = document.getElementById('el-3');
+    var TABS = ['내 게시물', '좋아요', '북마크'];
+    var MSG = [
+      { ico: '✎', msg: '아직 올린 게시물이 없어요', sub: '도서관 방문 페이지에서 첫 글을 올려 보세요', step: '글 올리기' },
+      { ico: '♡', msg: '아직 좋아요한 게시물이 없어요', sub: '마음에 드는 게시물에 ♡를 누르면 여기 모여요', step: '♡ 누르기' },
+      { ico: '🔖', msg: '아직 북마크한 게시물이 없어요', sub: '다시 보고 싶은 게시물을 북마크하면 여기 모여요', step: '북마크 누르기' }
+    ];
+    var arrow = false; // 사용자: "화살표 없는 게 좋고"
+    function render(phone, id, t, moved) {
+      var h = '<div class="sbar">9:41</div><div class="topbar"><span class="ttl">' + (moved ? '홈' : '내 정보') + '</span>' + (moved ? '' : '<button class="gear">⚙</button>') + '</div><div class="body">';
+      if (moved) {
+        h += '<div class="empty"><div class="sub">홈 화면(도서관 블록)으로 바뀌었어요</div><div class="sub">도서관 블록을 누르면 방문 페이지로 가요</div></div>';
+      } else {
+        h += '<div class="profA"><div class="avatar">👤</div><div class="meta"><div class="nick">이웃-0000</div><button class="editbtn">프로필 수정</button></div></div><div class="tabbar">';
+        TABS.forEach(function (n, i) { h += '<span' + (i === t ? ' class="on"' : '') + '>' + n + '</span>'; });
+        var m = MSG[t];
+        h += '</div><div class="empty"><div class="ico">' + m.ico + '</div><div class="msg">' + m.msg + '</div>';
+        if (id !== 'C') h += '<div class="sub">' + m.sub + '</div>';
+        if (id === 'C') h += '<div class="steps3"><span>도서관 들어가기</span>→<span>' + m.step + '</span>→<span>여기 모임</span></div>';
+        if (id !== 'B') h += '<button class="go" data-go>가까운 도서관 둘러보기' + (arrow ? ' →' : '') + '</button>';
+        h += '</div>';
+      }
+      h += '</div><div class="nav"><span' + (moved ? ' class="on"' : '') + '>홈</span><span>대출·반납</span><span' + (moved ? '' : ' class="on"') + '>내 정보</span></div>';
+      phone.innerHTML = h;
+      var go = phone.querySelector('[data-go]');
+      if (go) go.addEventListener('click', function () { render(phone, id, t, true); });
+    }
+    function show(t) {
+      el3.querySelectorAll('.cand').forEach(function (c) { render(c.querySelector('[data-phone3]'), c.dataset.id, t, false); });
+      el3.querySelectorAll('[data-etab]').forEach(function (b) { b.setAttribute('aria-pressed', +b.dataset.etab === t); });
+    }
+    el3.querySelectorAll('[data-etab]').forEach(function (b) { b.addEventListener('click', function () { show(+b.dataset.etab); }); });
+    // 버튼 글자 화살표 있음/없음 (사용자 요청으로 추가)
+    el3.querySelectorAll('[data-arrow]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        arrow = b.dataset.arrow === '1';
+        el3.querySelectorAll('[data-arrow]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        var cur = el3.querySelector('[data-etab][aria-pressed="true"]');
+        show(cur ? +cur.dataset.etab : 0);
+      });
+    });
+    show(0);
+    function mark3(id) {
+      el3.querySelectorAll('.cand').forEach(function (c) {
+        c.classList.toggle('chosen', c.dataset.id === id);
+        var old = c.querySelector('.badge.chosen'); if (old) old.remove();
+        if (c.dataset.id === id) { var s = document.createElement('span'); s.className = 'badge chosen'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+      });
+      el3.querySelector('[data-status]').textContent = id ? '확인' : '결정 전';
+    }
+    mark3(el3.dataset.chosen);
+    document.getElementById('pick3').addEventListener('change', function (e) { mark3(e.target.value || el3.dataset.chosen); });
+  })();
+  // ===== 잘 안 될 때 =====
+  (function () {
+    var P = document.getElementById('exPhone');
+    var TOP = '<div class="sbar">9:41</div><div class="topbar"><span class="ttl">내 정보</span><button class="gear">⚙</button></div><div class="body">';
+    var PROF = '<div class="profA"><div class="avatar">👤</div><div class="meta"><div class="nick">이웃-0000</div><div class="bio">동네 도서관 산책을 좋아해요</div><button class="editbtn">프로필 수정</button></div></div>';
+    var NAV = '</div><div class="nav"><span>홈</span><span>대출·반납</span><span class="on">내 정보</span></div>';
+    function tabs(t) { var n = ['내 게시물', '좋아요', '북마크'], h = '<div class="tabbar">'; n.forEach(function (x, i) { h += '<span' + (i === t ? ' class="on"' : '') + '>' + x + '</span>'; }); return h + '</div>'; }
+    function cards(list) {
+      var h = '<div class="feed"><div class="feedin">';
+      list.forEach(function (col) { h += '<div class="col">'; col.forEach(function (k) { h += '<div class="card ' + k[0] + (k[3] || '') + '" style="height:' + k[1] + 'px">' + (k[4] || '') + k[2] + '</div>'; }); h += '</div>'; });
+      return h + '</div></div>';
+    }
+    var FOUR = [[['f2', 150, '마음에 남은 문장'], ['f2', 150, '소년이 온다']], [['f3', 110, '이번 주 다 읽음'], ['f1', 110, '정독도서관 창가']]];
+    var RF = '<button class="refresh" data-next>↻ 새로고침</button>';
+    var EX = [
+      { when: '인터넷이 끊기거나 동네한권이 게시물 목록을 받지 못했을 때',
+        keep: '위쪽 내 프로필과 탭은 그대로. 카드 자리만 안내로 바뀜',
+        next: '"↻ 새로고침"을 누르면 그 탭만 다시 불러와 카드가 보여요',
+        a: function () { return TOP + PROF + tabs(0) + '<div class="err">게시물을 불러오지 못했어요' + RF + '</div>' + NAV; },
+        b: function () { return TOP + PROF + tabs(0) + cards(FOUR) + NAV; } },
+      { when: '게시물은 받았는데 내 프로필(사진·이름)만 받지 못했을 때',
+        keep: '탭과 카드는 그대로. 프로필 자리만 한 줄 안내로 바뀜',
+        next: '"↻ 새로고침"을 누르면 프로필만 다시 불러와요',
+        a: function () { return TOP + '<div class="err inline">내 정보를 불러오지 못했어요 ' + RF + '</div>' + tabs(0) + cards(FOUR) + NAV; },
+        b: function () { return TOP + PROF + tabs(0) + cards(FOUR) + NAV; } },
+      { when: '끝까지 내려 다음 게시물을 불러오다 실패했을 때',
+        keep: '이미 보이던 카드는 그대로. 맨 아래에만 안내',
+        next: '"↻ 새로고침"을 누르거나, 맨 아래에서 화면을 한 번 더 위로 밀어 내리면(사용자 요청) 다음 게시물을 다시 불러와 아래에 이어 붙여요. 다 보면 맨 아래 "모두 봤어요". 아래 "맨 아래에서 한 번 더 내리기" 버튼으로 볼 수 있어요',
+        pull: true,
+        a: function () { return TOP + tabs(0) + cards(FOUR) + '<div class="err inline">더 불러오지 못했어요 ' + RF + '</div>' + NAV; },
+        loading: function () { return TOP + tabs(0) + cards(FOUR) + '<div class="err inline" style="color:var(--text-sub)">다시 불러오는 중…</div>' + NAV; },
+        // [D 보완] 다시 불러오기 성공: 이미 보이던 4개(FOUR)는 그대로 두고 새 4개를 아래에 이어 붙임(명세 정상 흐름 6·계약 Y-O5)
+        b: function () { return TOP + tabs(0) + cards([FOUR[0].concat([['f3', 150, '두 번째 읽는 중'], ['f2', 110, '반납 전 한 장']]), FOUR[1].concat([['f1', 110, '동네 서가 산책'], ['f3', 150, '밑줄 그은 곳']])]) + '<div class="err inline" style="color:var(--text-sub)">모두 봤어요</div>' + NAV; } },
+      { when: '처음 가입해서 탭에 게시물이 하나도 없을 때',
+        keep: '프로필과 탭은 그대로. 카드 자리에 정할 것 3에서 고른 안내',
+        next: '"가까운 도서관 둘러보기"를 누르면 홈 탭으로 가요',
+        a: function () { return TOP + PROF + tabs(1) + '<div class="empty"><div class="ico">♡</div><div class="msg">아직 좋아요한 게시물이 없어요</div><div class="sub">마음에 드는 게시물에 ♡를 누르면 여기 모여요</div><button class="go" data-next>가까운 도서관 둘러보기</button></div>' + NAV; },
+        b: function () { return '<div class="sbar">9:41</div><div class="topbar"><span class="ttl">홈</span></div><div class="body"><div class="empty"><div class="sub">홈 화면(도서관 블록)으로 바뀌었어요</div></div></div><div class="nav"><span class="on">홈</span><span>대출·반납</span><span>내 정보</span></div>'; } },
+      { when: '메뉴에서 "좋아요 취소"를 빠르게 두 번 눌렀을 때 (되돌리기를 두 번 눌러도 같음)',
+        keep: '첫 번째 누름만 받음. 흐린 카드 하나, 안내 하나만 보임',
+        next: '4초 뒤 그 카드 하나만 빠져요. 다른 카드가 같이 빠지지 않아요',
+        a: function () { return TOP + PROF + tabs(1) + cards([[['f2', 150, '마음에 남은 문장'], ['f2', 150, '소년이 온다', ' dim', '<span class="tag">취소함</span>']], [['f3', 110, '이번 주 다 읽음'], ['f1', 110, '정독도서관 창가']]]) + NAV + '<div class="toast">좋아요를 취소했어요<span class="undo" data-next>되돌리기</span></div>'; },
+        b: function () { return TOP + PROF + tabs(1) + cards(FOUR) + NAV; } },
+      { when: '"좋아요 취소"를 눌렀는데 동네한권이 처리하지 못했을 때',
+        keep: '카드는 흐려지지 않고 원래대로. 좋아요도 그대로 켜져 있음',
+        next: '아래 안내를 보고 다시 길게 눌러 취소하면 돼요',
+        a: function () { return TOP + PROF + tabs(1) + cards(FOUR) + NAV + '<div class="toast">좋아요를 취소하지 못했어요. 다시 해 주세요</div>'; },
+        b: null },
+      { when: '로그인하지 않고 "내 정보" 탭을 눌렀을 때 (남의 좋아요·북마크는 누구도 볼 수 없음)',
+        keep: '프로필·탭·카드 대신 로그인 안내만. 아무것도 불러오지 않음',
+        next: '"로그인"을 누르면 로그인 화면으로 가고, 로그인하면 내 게시물 탭이 열려요',
+        a: function () { return TOP + '<div class="empty"><div class="ico">👤</div><div class="msg">로그인하면 내 정보를 볼 수 있어요</div><div class="sub">내가 올린 게시물과 좋아요·북마크한 게시물을 모아 봐요</div><button class="go" data-next>로그인</button></div>' + NAV; },
+        b: function () { return TOP + PROF + tabs(0) + cards(FOUR) + NAV; } },
+      { when: '탭을 처음 열어 불러오는 동안',
+        keep: '프로필과 카드 자리에 회색 빈 모양이 잠깐 보임',
+        next: '불러오면 바로 실제 프로필과 카드로 바뀌어요',
+        a: function () { return TOP + '<div class="profA"><div class="avatar"></div><div class="meta" style="display:flex;flex-direction:column;gap:6px"><div class="skl" style="width:60%"></div><div class="skl" style="width:85%"></div></div></div>' + tabs(0) + '<div class="feed"><div class="feedin"><div class="col"><div class="sk" style="height:150px"></div><div class="sk" style="height:110px"></div></div><div class="col"><div class="sk" style="height:110px"></div><div class="sk" style="height:150px"></div></div></div></div>' + NAV; },
+        b: function () { return TOP + PROF + tabs(0) + cards(FOUR) + NAV; } }
+    ];
+    function show(i, after) {
+      var e = EX[i];
+      P.innerHTML = after && e.b ? e.b() : e.a();
+      document.getElementById('exWhen').textContent = e.when;
+      document.getElementById('exKeep').textContent = e.keep;
+      document.getElementById('exNext').textContent = e.next;
+      var n = P.querySelector('[data-next]');
+      if (n && e.b) n.addEventListener('click', function () { show(i, true); });
+      document.querySelectorAll('#exTabs button').forEach(function (b) { b.setAttribute('aria-pressed', +b.dataset.ex === i); });
+      var pull = document.getElementById('pullBtn');
+      pull.hidden = !(e.pull && !after);
+    }
+    // ③ 맨 아래에서 한 번 더 내리면 다시 불러오기 (사용자 요청)
+    document.getElementById('pullBtn').addEventListener('click', function () {
+      var e = EX[2];
+      P.innerHTML = e.loading();
+      this.hidden = true;
+      setTimeout(function () { show(2, true); }, 1000);
+    });
+    document.querySelectorAll('#exTabs button').forEach(function (b) { b.addEventListener('click', function () { show(+b.dataset.ex, false); }); });
+    show(0, false);
+    // 새로고침 아이콘 왼쪽/오른쪽 (사용자 요청으로 추가)
+    document.querySelectorAll('#rfPos button').forEach(function (b) {
+      b.addEventListener('click', function () {
+        RF = b.dataset.rf === 'R' ? '<button class="refresh" data-next>새로고침 ↻</button>' : '<button class="refresh" data-next>↻ 새로고침</button>';
+        document.querySelectorAll('#rfPos button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        var cur = document.querySelector('#exTabs button[aria-pressed="true"]');
+        show(cur ? +cur.dataset.ex : 0, false);
+      });
+    });
+  })();
+</script>
+</body>
+</html>

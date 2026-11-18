@@ -132,6 +132,12 @@ def create_app(
     app.include_router(loan_plans_router)
     # ── [/book-search-C] ──
 
+    # ── [loan-assistant-C] ──
+    from app.routers.loans import router as loans_router
+
+    app.include_router(loans_router)
+    # ── [/loan-assistant-C] ──
+
     return app
 
 

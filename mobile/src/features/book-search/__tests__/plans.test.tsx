@@ -48,6 +48,12 @@ jest.mock("../api", () => {
   return { ...actual, listLoanPlans: jest.fn(), saveLoanPlan: jest.fn(), releaseLoanPlan: jest.fn() };
 });
 
+// LOAN-1: 같은 탭 위쪽 "내 대출" 구역은 빈 목록으로 둔다(loan-assistant loans.test.tsx에서 본다)
+jest.mock("../../loan-assistant/api", () => {
+  const actual = jest.requireActual<typeof import("../../loan-assistant/api")>("../../loan-assistant/api");
+  return { ...actual, listLoans: jest.fn(async () => ({ items: [], next_cursor: null, today: "2026-11-17" })), startLoan: jest.fn() };
+});
+
 const locate = jest.mocked(platform.locate);
 const fetchAvailabilityNearby = jest.mocked(lib.fetchAvailabilityNearby);
 const fetchBook = jest.mocked(lib.fetchBook);
