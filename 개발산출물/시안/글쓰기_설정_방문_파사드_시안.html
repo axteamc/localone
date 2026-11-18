@@ -134,12 +134,38 @@
   .c-dock { flex:none; background:var(--panel-lit); border-top:1px solid var(--seam); border-radius:var(--r-block) var(--r-block) 0 0; padding:9px 12px 11px; display:flex; flex-direction:column; gap:5px; }
   .c-dock .gauge { text-align:center; }
 
-  /* 큰 4:3/4:5 빈 액자 프레임 (후보 A·C) */
+  /* 큰 빈 액자 프레임 (후보 A 채택 — 내부 상자 없이 단일 액자 + 클릭 시 첨부 작은 창) */
   .slot-frame {
     border:1.5px dashed var(--seam); background:var(--paper); border-radius:var(--r-card);
     padding:14px 12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px;
     min-height:146px;
   }
+  .slot-frame-btn {
+    width:100%; min-height:164px; border:1.5px dashed var(--seam); background:var(--paper); border-radius:var(--r-card);
+    padding:16px 14px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px;
+    cursor:pointer; font:inherit; color:var(--text); transition:border-color .15s, background .15s;
+  }
+  .slot-frame-btn:hover { border-color:var(--ink-strong); background:var(--panel-lit); }
+  .slot-plus {
+    width:32px; height:32px; border-radius:var(--r-pill); border:1px solid var(--seam); background:var(--panel-lit);
+    display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:400; color:var(--ink-strong);
+    margin-bottom:2px;
+  }
+  /* 첨부파일 스타일 작은 창 (모바일·웹 공용 주변 팝오버) */
+  .attach-pop {
+    position:absolute; left:24px; right:24px; top:112px; z-index:12;
+    background:var(--panel-lit); border:1px solid var(--seam); border-radius:var(--r-info);
+    box-shadow:0 2px 0 var(--relief-mid), 0 12px 26px var(--shadow-cast);
+    overflow:hidden;
+  }
+  .attach-item {
+    width:100%; display:flex; align-items:center; gap:10px; padding:10px 13px;
+    background:none; border:0; border-top:1px solid var(--seam); font:inherit; font-size:12px; font-weight:500;
+    color:var(--text); text-align:left; cursor:pointer;
+  }
+  .attach-item:first-child { border-top:0; }
+  .attach-item:hover { background:var(--panel-frosted); }
+  .attach-item svg { width:16px; height:16px; flex:none; stroke:var(--ink-strong); fill:none; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
   .slot-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; width:100%; }
   .slot-tile {
     background:var(--panel-frosted); border:1px solid var(--seam); border-radius:var(--r-info);
@@ -147,6 +173,15 @@
     text-align:center; white-space:nowrap;
   }
   .slot-tile:hover { background:var(--panel-lit); border-color:var(--ink-strong); }
+
+  /* 북마크 아이콘 버튼 (2 - A+C: 저장 상태면 잉크색 채움) */
+  .bm-btn {
+    width:32px; height:32px; border-radius:var(--r-info); background:none; border:0;
+    display:inline-flex; align-items:center; justify-content:center; cursor:pointer; padding:0;
+  }
+  .bm-btn:hover { background:var(--surface2); }
+  .bm-btn svg { width:18px; height:18px; stroke:var(--ink-strong); fill:none; stroke-width:1.8; stroke-linejoin:round; }
+  .bm-btn.saved svg { fill:var(--ink-strong); }
 
   /* 작은 가로 썸네일 자리 (후보 B) */
   .slot-compact { display:flex; gap:9px; align-items:stretch; }
@@ -372,13 +407,13 @@
 </section>
 
 <!-- ===== ② 정할 것 1: 글쓰기 ===== -->
-<section class="element" id="el-compose-layout">
-  <h2>② 정할 것 1: 글쓰기(<code>/posts/new</code>) 사진 자리와 입력 칸·올리기 배치 <span class="status">결정 전</span></h2>
-  <p class="pick">고르기:
+<section class="element" id="el-compose-layout" data-chosen="A">
+  <h2>② 정할 것 1: 글쓰기(<code>/posts/new</code>) 사진 자리와 입력 칸·올리기 배치 <span class="status">확인</span></h2>
+  <p class="pick">탈락안 다시 보기:
     <select data-for="el-compose-layout">
-      <option value="A">후보 A (추천): 4:3 빈 액자 + 하단 무광 판 올리기 (제안)</option>
-      <option value="B">후보 B: 왼쪽 작은 자리 + 오른쪽 위 올리기 (계약 F14 유지)</option>
-      <option value="C">후보 C: 2단계 분리 — 이미지·글자 → 다음 → 감상·올리기 (제안)</option>
+      <option value="A" selected>후보 A (채택): 단일 빈 액자 + 첨부 작은 창 + 하단 올리기</option>
+      <option value="B">후보 B: 왼쪽 작은 자리 + 오른쪽 위 올리기 (탈락)</option>
+      <option value="C">후보 C: 2단계 분리 — 이미지·글자 → 다음 → 감상·올리기 (탈락)</option>
     </select>
   </p>
   <div class="statebar" id="composeStateBar">
@@ -390,7 +425,7 @@
   <div class="cands">
     <!-- 후보 A -->
     <div class="cand recommended" data-id="A">
-      <h3>후보 A: 큰 빈 액자 프레임 + 레시피 입력 칸 + 하단 주 버튼 <code>올리기</code> <span class="badge">추천</span> <span class="badge-prop">제안(계약 F14)</span></h3>
+      <h3>후보 A: 단일 빈 액자 + 첨부 작은 창 + 하단 주 버튼 <code>올리기</code> <span class="badge">추천</span> <span class="badge-prop">제안(계약 F14)</span></h3>
       <div class="phone" id="phone-compose-A">
         <div class="hd"><span class="rvl"></span><div class="hd-l"><button type="button" class="xbtn" title="닫기">✕</button><span class="en">POST</span></div><span class="rvr"></span></div>
         <div class="scr" data-cview="empty">
@@ -399,22 +434,36 @@
               <div class="gauge">NEW POST · 광주광역시립무등도서관</div>
               <h4 class="t-page">새 게시물</h4>
             </div>
-            <div class="slot-frame">
-              <div class="gauge">01 · IMAGE SLOT</div>
-              <div class="t-sub">올릴 이미지 하나를 고르세요</div>
-              <div class="slot-grid">
-                <button type="button" class="slot-tile" data-cpick="A">사진 찍기</button>
-                <button type="button" class="slot-tile" data-cpick="A">앨범에서 고르기</button>
-                <button type="button" class="slot-tile" data-cpick="A">책 표지</button>
-                <button type="button" class="slot-tile" data-cpick="A">단색 배경</button>
-              </div>
-            </div>
+            <button type="button" class="slot-frame-btn" data-toggle-attach="attach-pop-A">
+              <span class="slot-plus">+</span>
+              <span class="gauge">01 · IMAGE SLOT</span>
+              <span class="t-sub">눌러서 이미지 고르기</span>
+            </button>
             <div class="step-line"><span class="gauge">02 · OVERLAY TEXT</span><span class="gauge">MAX 80</span></div>
             <input class="inp" type="text" placeholder="글자를 넣어 보세요" value="">
             <div class="step-line"><span class="gauge">03 · BODY</span><button type="button" class="btn-link" data-ctoggle="body-A-0">+ 감상 쓰기</button></div>
             <textarea class="inp hide" id="body-A-0" placeholder="감상(선택)"></textarea>
             <div class="step-line"><span class="gauge">04 · BOOK &amp; LIBRARY</span><button type="button" class="btn-sec" style="height:26px;padding:0 10px" data-ctoggle="book-A-0">책 붙이기</button></div>
             <div class="book-row hide" id="book-A-0"><span class="t-name">채식주의자 · 한강</span><button type="button" class="btn-link" data-ctoggle="book-A-0">빼기</button></div>
+          </div>
+          <!-- 첨부파일 스타일 작은 선택 창 (액자 클릭 시 주변에 뜸, 웹=작은 팝오버 모달) -->
+          <div class="attach-pop" id="attach-pop-A">
+            <button type="button" class="attach-item" data-cpick="A">
+              <svg viewBox="0 0 24 24"><path d="M4 7h3l2-2h6l2 2h3a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z"/><circle cx="12" cy="13" r="3.5"/></svg>
+              <span>사진 찍기</span>
+            </button>
+            <button type="button" class="attach-item" data-cpick="A">
+              <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="M21 15l-5-5L5 20"/></svg>
+              <span>앨범에서 고르기</span>
+            </button>
+            <button type="button" class="attach-item" data-cpick="A">
+              <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+              <span>책 표지</span>
+            </button>
+            <button type="button" class="attach-item" data-cpick="A">
+              <svg viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M9 12h6"/></svg>
+              <span>단색 배경</span>
+            </button>
           </div>
         </div>
         <div class="scr hide" data-cview="picked">
@@ -446,13 +495,13 @@
           <button type="button" class="btn-pri full off" data-csub="A">올리기</button>
         </div>
       </div>
-      <p><b>추천 이유:</b> 피드 카드의 주역인 이미지 자리가 처음부터 보이고(<code>P-72</code>), 이중 머리(<code>POST</code> + <code>새 게시물</code>)를 없애며, 화면 아래 48px 무광 판 <code>올리기</code> 하나로 규칙 7을 정확히 지킵니다.</p>
+      <p><b>추천 이유:</b> 선택 전에는 상자 중첩 없이 단일 빈 액자만 두고, 누르면 첨부파일 스타일 작은 메뉴(웹은 주변 작은 모달)가 떠서 고르게 하며(<code>P-72</code>), 하단 48px 무광 판 <code>올리기</code> 하나로 규칙 7을 지킵니다.</p>
       <span class="lbl">누르면 이렇게 이어져요</span>
-      <ul><li>빈 액자의 네 버튼 중 하나 누르기 → 같은 자리가 4:5 미리보기 카드로 바뀌고 아래 <code>올리기</code> 활성화.</li><li><code>+ 감상 쓰기</code>·<code>책 붙이기</code> → 칸이 제자리에서 펼쳐지거나 책 찾기 열림.</li></ul>
+      <ul><li>빈 액자 누르기 → 액자 주변에 작은 첨부 선택 창(<code>사진 찍기</code>·<code>앨범에서 고르기</code>·<code>책 표지</code>·<code>단색 배경</code>)이 뜸. 항목을 고르면 4:5 미리보기 카드로 바뀌고 아래 <code>올리기</code> 활성화.</li><li><code>+ 감상 쓰기</code>·<code>책 붙이기</code> → 칸이 제자리에서 펼쳐지거나 책 찾기 열림.</li></ul>
       <span class="lbl">화면을 열어야만 보이는 것</span>
-      <ul><li>선택 전 빈 액자 높이(4:3 축소), 4개 보조 타일(곡률 9), 입력 칸 <code>paper</code> + 1px 줄눈(곡률 9), 하단 <code>panelLit</code> 받침 판(곡률 3) 위 <code>올리기</code> 1개.</li></ul>
+      <ul><li>선택 전 빈 액자 1개(내부 타일 박스 0개), 클릭 시 뜨는 <code>panelLit</code> 작은 첨부 창(곡률 9 + 1px 줄눈), 입력 칸 <code>paper</code> + 1px 줄눈(곡률 9), 하단 <code>panelLit</code> 받침 판(곡률 3) 위 <code>올리기</code> 1개.</li></ul>
       <span class="lbl">얻는 것 / 포기하는 것</span>
-      <ul><li><b>얻는 것:</b> 선택 전·후 화면 점프가 적고, 글과 그림의 위계가 가장 홈 파사드와 닮음.</li><li><b>포기하는 것:</b> 계약 F14의 "오른쪽 위 올리기"를 아래 주 버튼으로 옮겨야 함(계약 한 줄 개정 필요).</li></ul>
+      <ul><li><b>얻는 것:</b> 화면이 박스 투성이가 되지 않고 사진 액자 하나에 시선이 모임.</li><li><b>포기하는 것:</b> 이미지 고르기가 1탭 늘어나며, 계약 F14의 "오른쪽 위 올리기"를 아래 주 버튼으로 옮김(계약 한 줄 개정).</li></ul>
       <p><b>표준 근거:</b> <code>P-71</code> 한 화면에 칸 모두 두기 · <code>P-72</code> 이미지 위 글자 얹기 · <code>P-73</code> 접힌 선택 칸</p>
     </div>
 
@@ -585,13 +634,13 @@
 </section>
 
 <!-- ===== ③ 정할 것 2: 글 상세 ===== -->
-<section class="element" id="el-detail-info">
-  <h2>③ 정할 것 2: 글 상세(<code>/posts/[postId]</code>) 행동 줄(<code>저장</code>·<code>♡</code>)과 도서 대여 카드 <span class="status">결정 전</span></h2>
-  <p class="pick">고르기:
+<section class="element" id="el-detail-info" data-chosen="A">
+  <h2>③ 정할 것 2: 글 상세(<code>/posts/[postId]</code>) 행동 줄(<code>저장</code>·<code>♡</code>)과 도서 대여 카드 <span class="status">확인</span></h2>
+  <p class="pick">탈락안 다시 보기:
     <select data-for="el-detail-info">
-      <option value="A">후보 A (추천): 알약 없는 ‹ + 무광 판 저장 주 버튼 + 곡률 9 대여 카드</option>
-      <option value="B">후보 B: 상단 가벼운 아이콘 4개 + 도서 카드 주 행동 강조</option>
-      <option value="C">후보 C: 상단 POST 머리 띠 + 아래 panelLit 정보 판 묶음 (제안)</option>
+      <option value="A" selected>후보 A (채택: A + C): 알약 없는 ‹ + 북마크 아이콘 + 본문 위·도서 카드(구매) 아래</option>
+      <option value="B">후보 B: 상단 가벼운 아이콘 4개 + 도서 카드 주 행동 강조 (탈락)</option>
+      <option value="C">후보 C: 상단 POST 머리 띠 + 아래 panelLit 정보 판 묶음 (탈락)</option>
     </select>
   </p>
   <div class="statebar" id="detailStateBar">
@@ -601,9 +650,9 @@
   </div>
 
   <div class="cands">
-    <!-- 후보 A -->
+    <!-- 후보 A (D 결정 반영: A + C 배치) -->
     <div class="cand recommended" data-id="A">
-      <h3>후보 A: 알약 없는 <code>‹</code> + 무광 판 <code>저장</code> + 곡률 9 대여 카드 <span class="badge">추천</span></h3>
+      <h3>후보 A (채택 A + C): 알약 없는 <code>‹</code> + 북마크 아이콘 + 본문 위·도서 카드(<code>구매</code>) 아래 <span class="badge">추천</span></h3>
       <div class="phone" id="phone-detail-A">
         <div class="scr">
           <div class="d-img-wrap">
@@ -617,7 +666,9 @@
                 <button type="button" class="ico-btn" data-toast="링크를 복사했어요">↑</button>
                 <button type="button" class="ico-btn" data-pop="pop-A">⋯</button>
               </div>
-              <button type="button" class="btn-pri sm" data-save="A">저장</button>
+              <button type="button" class="bm-btn" aria-label="저장" data-bm-icon="A" title="저장/저장됨 토글">
+                <svg viewBox="0 0 24 24"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg>
+              </button>
               <div class="pop-menu hide" id="pop-A">
                 <button type="button" class="danger" data-show="dlg-withdraw-A">게시물 내리기</button>
                 <button type="button" data-close="pop-A">닫기</button>
@@ -627,6 +678,7 @@
               <div class="t-name">이웃-6e74</div>
               <div class="gauge">광주광역시립무등도서관 · 2026.11.18</div>
             </div>
+            <div class="t-sub" style="color:var(--text)">도서관 창가 자리에서 단숨에 읽었어요. 조용한 오후와 잘 어울리는 문장들이었습니다.</div>
             <div class="m-card" data-bookbox>
               <div class="loan-head">
                 <div style="min-width:0">
@@ -637,10 +689,9 @@
               </div>
               <div class="loan-foot">
                 <span class="gauge">ONLINE STORE · M2</span>
-                <button type="button" class="btn-sec" style="height:26px;padding:0 10px" data-toast="준비 중이에요">예스24에서 구매 ↗</button>
+                <button type="button" class="btn-sec" style="height:26px;padding:0 12px" data-toast="준비 중이에요">구매 ↗</button>
               </div>
             </div>
-            <div class="t-sub" style="color:var(--text)">도서관 창가 자리에서 단숨에 읽었어요. 조용한 오후와 잘 어울리는 문장들이었습니다.</div>
             <div class="rel-sec">
               <div class="gauge">RELATED · SAME BOOK</div>
               <h4 class="t-sec">같은 책의 다른 글</h4>
@@ -662,13 +713,13 @@
           </div>
         </div>
       </div>
-      <p><b>추천 이유:</b> 노랑 채움(<code>저장</code>·<code>♥</code>)과 흰 원 뒤로가기 알약을 빼고 레시피의 무광 판(<code>저장</code>)과 곡률 9 대여 카드를 그대로 적용해, 책 없는 글에서도 규칙 7(주 버튼 1개)과 계약 H9·H14가 모두 맞습니다.</p>
+      <p><b>추천 이유:</b> 본문을 작성자 바로 아래에 두어 글이 먼저 읽히고(C 배치), 도서 대여 카드(곡률 9 · <code>구매 ↗</code> 압축)가 그 아래로 내려오며, 오른쪽 위는 북마크 아이콘(저장 시 잉크색 채움)으로 노랑 채움을 완전히 제거합니다.</p>
       <span class="lbl">누르면 이렇게 이어져요</span>
-      <ul><li><code>♥ 12</code> → <code>inkStrong</code> 채움 토글(노랑 제거). <code>저장</code> → 평면 보조 <code>✓ 저장됨</code> 토글.</li><li><code>⋯</code> → 무광 <code>panelLit</code> 작은 창(곡률 9) → <code>게시물 내리기</code> 확인창.</li><li><code>예스24에서 구매 ↗</code> → 아래 <code>panelLit</code> 토스트 <code>준비 중이에요</code>.</li></ul>
+      <ul><li><code>♥ 12</code> → <code>inkStrong</code> 채움 토글. 오른쪽 북마크 아이콘 → 저장 시 <code>inkStrong</code> 채움 토글(노랑 제거).</li><li><code>⋯</code> → 무광 <code>panelLit</code> 작은 창(곡률 9) → <code>게시물 내리기</code> 확인창.</li><li><code>구매 ↗</code> → 아래 <code>panelLit</code> 토스트 <code>준비 중이에요</code>.</li></ul>
       <span class="lbl">화면을 열어야만 보이는 것</span>
-      <ul><li>이미지 좌상단 알약 없는 <code>‹</code>, 오른쪽 위 유일한 무광 판 주 버튼 <code>저장</code>, 작성자/도서관 계기판 줄 분리, 대여 카드(곡률 9 + 2px 받침)와 이어 읽기 제목 <code>22/400 inkSoft</code>.</li></ul>
+      <ul><li>이미지 좌상단 알약 없는 <code>‹</code>, 오른쪽 위 북마크 아이콘(미저장 윤곽선 / 저장 <code>inkStrong</code> 채움), 작성자/도서관 계기판 줄 → 본문 → 대여 카드(곡률 9 + 2px 받침, <code>구매 ↗</code>) → 이어 읽기 <code>22/400 inkSoft</code>.</li></ul>
       <span class="lbl">얻는 것 / 포기하는 것</span>
-      <ul><li><b>얻는 것:</b> 계약 H9·H14·기존 테스트 구조를 깨지 않고 레시피와 100% 맞음.</li><li><b>포기하는 것:</b> 이미지 위 왼쪽 상단에 <code>‹</code>가 그대로 얹힘(밝은 사진에선 그림자 필요).</li></ul>
+      <ul><li><b>얻는 것:</b> 본문 읽기가 도서 카드에 끊기지 않고, 상단 바가 <code>♡·↑·⋯·🔖</code> 아이콘 위주로 가벼워짐.</li><li><b>포기하는 것:</b> <code>저장</code> 글자 대신 북마크 그림을 쓰며, 도서 카드가 본문 아래로 내려감(계약 H9·H14 한 줄 개정).</li></ul>
       <p><b>표준 근거:</b> <code>P-41</code> 위 이미지 → 행동 줄 → 본문 · <code>P-13</code> 아이콘 채워짐 · <code>P-40</code> 아래 더 찾아보기</p>
     </div>
 
@@ -939,23 +990,23 @@
       <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
       <tr data-el="el-compose-layout">
         <td>1. 글쓰기 사진 자리·입력 칸·올리기 배치</td>
-        <td>추천: 후보 A (큰 4:3 빈 액자 + 레시피 입력 칸 + 하단 무광 판 <code>올리기</code> 제안)</td>
-        <td>—</td>
-        <td>—</td>
-        <td>—</td>
-        <td><code>POST</code> 머리 띠(<code>✕</code>만, 이중 헤더 제거). 선택 전 <code>paper</code> 점선 액자(곡률 18) + 4개 보조 타일(곡률 9), 입력 칸 <code>paper</code> + 1px <code>seamHairline</code>(곡률 9, 포커스 1.5px <code>inkStrong</code>), 위치 칩 <code>panelLit</code> + <code>inkStrong</code>(노랑 제거), 하단 <code>panelLit</code> 받침 판(곡률 3) 위 무광 판 주 버튼 <code>올리기</code></td>
-        <td><code>/posts/new</code> 열기 → 빈 액자에서 이미지 고르기 → 4:5 미리보기·글자·위치 확인 → <code>+ 감상 쓰기</code>·<code>책 붙이기</code> → <code>올리기</code></td>
-        <td><span class="st">결정 전</span></td>
+        <td>후보 A (단일 빈 액자 + 첨부 작은 창 + 하단 무광 판 <code>올리기</code> 제안)</td>
+        <td>없음(받지 않음)</td>
+        <td>후보 B(작은 자리 + 오른쪽 위 올리기), 후보 C(2단계 분리)</td>
+        <td>D 결정: "1 - A", "큰 빈 액자 프레임에 클릭 시 첨부파일 같은 작은 창이 뜨는 형태로 보여줘. 웹은 모달창이 작게 주변에서 뜨게(A 지금 방식은 박스가 너무 과하게 많은 느낌이야)"</td>
+        <td><code>POST</code> 머리 띠(<code>✕</code>만, 이중 헤더 제거). 선택 전 단일 점선 빈 액자(곡률 18, 내부 상자 없음) → 클릭 시 <code>panelLit</code> + 1px <code>seamHairline</code> + 곡률 9 첨부 작은 창(웹: 주변 작은 모달, 4개 아이콘+이름 줄). 선택 후 4:5 미리보기 + 입력 칸(<code>paper</code> + 1px <code>seamHairline</code>, 곡률 9, 포커스 1.5px <code>inkStrong</code>) + 위치 칩(노랑 제거) + 하단 <code>panelLit</code> 받침 판(곡률 3) 위 무광 판 주 버튼 <code>올리기</code></td>
+        <td><code>/posts/new</code> 열기 → 빈 액자 누르기 → 작은 첨부 창에서 이미지 고르기 → 4:5 미리보기·글자·위치 확인 → <code>+ 감상 쓰기</code>·<code>책 붙이기</code> → <code>올리기</code></td>
+        <td><span class="st">확인</span></td>
       </tr>
       <tr data-el="el-detail-info">
         <td>2. 글 상세 행동 줄(<code>저장</code>·<code>♡</code>)과 도서 대여 카드</td>
-        <td>추천: 후보 A (알약 없는 <code>‹</code> + 무광 판 <code>저장</code> + 곡률 9 대여 카드)</td>
-        <td>—</td>
-        <td>—</td>
-        <td>—</td>
-        <td>바탕 <code>panelFrosted</code>, 이미지 위 알약 없는 <code>‹</code> + 그림자, <code>♡</code> 켬 <code>inkStrong</code>, <code>저장</code> 무광 판 주 버튼(저장됨 평면 <code>✓ 저장됨</code>), 작성자 <code>type.name</code> + 도서관/날짜 <code>type.gauge</code>, 대여 카드 <code>cardSurface(theme, { onPanel: true })</code>(곡률 9 + 2px 받침), 구매 <code>actionColors().secondary</code>, 1280px <code>WebFrame</code> 내 1열 유지</td>
-        <td>피드 카드 누름 → 상세 진입 → <code>♡</code>·<code>저장</code> 토글 / <code>⋯</code> 내리기 / 대여 카드 <code>실시간 확인 ↗</code>·<code>예스24 ↗</code> / 아래 이어 읽기</td>
-        <td><span class="st">결정 전</span></td>
+        <td>후보 A + C (알약 없는 <code>‹</code> + 북마크 아이콘 + 본문 위 · 도서 대여 카드 아래 · <code>구매</code> 압축)</td>
+        <td>없음(받지 않음)</td>
+        <td>후보 A 원안(도서 카드 위·<code>저장</code> 알약), 후보 B(도서 카드 주 버튼), 후보 C 원안(상단 <code>POST</code> 머리 띠 + <code>panelLit</code> 통합 판)</td>
+        <td>D 결정: "2 - A + C", "본문이 위로 가고 도서 대여 카드가 아래로 가는 배치 구조만 차용하고 나머지는 A", "멘트 압축 예스24에서 구매 -> 구매", "저장 버튼 북마크 그림으로 변경 (저장 상태면 잉크색 or 붉은색 으로 채우기)"</td>
+        <td>바탕 <code>panelFrosted</code>, 이미지 위 알약 없는 <code>‹</code> + 그림자, <code>♡</code> 켬 <code>inkStrong</code>, 오른쪽 <code>저장</code>을 북마크 SVG 아이콘(미저장 윤곽선 / 저장 시 <code>inkStrong</code> 채움)으로 교체, 작성자 <code>type.name</code> + 도서관/날짜 <code>type.gauge</code> → <b>본문</b> → <b>도서 대여 카드</b>(<code>cardSurface(theme, { onPanel: true })</code> 곡률 9 + <code>실시간 확인 ↗</code> + <code>구매 ↗</code>) → 이어 읽기 <code>22/400 inkSoft</code>, 1280px <code>WebFrame</code> 내 1열 유지</td>
+        <td>피드 카드 누름 → 상세 진입 → <code>♡</code>·북마크 토글 / <code>⋯</code> 내리기 / 본문 읽기 → 아래 도서 카드 <code>실시간 확인 ↗</code>·<code>구매 ↗</code> / 아래 이어 읽기</td>
+        <td><span class="st">확인</span></td>
       </tr>
       <tr>
         <td>설정(<code>/settings</code>) 전체</td>
@@ -1040,7 +1091,11 @@
     var dId = (dSel && dSel.value) || "A";
     var cPh = document.querySelector('#el-compose-layout .cand[data-id="' + cId + '"] .phone');
     var dPh = document.querySelector('#el-detail-info .cand[data-id="' + dId + '"] .phone');
-    if (cPh) document.getElementById("deskCompose").innerHTML = cPh.innerHTML;
+    if (cPh) {
+      document.getElementById("deskCompose").innerHTML = cPh.innerHTML;
+      var dp = document.querySelector("#deskCompose .attach-pop");
+      if (dp) dp.classList.add("hide");
+    }
     if (dPh) document.getElementById("deskDetail").innerHTML = dPh.innerHTML;
     var sPane = document.querySelector('#defaults [data-defpane="settings-in"]');
     var vPane = document.querySelector('#defaults [data-defpane="visit-feed"]');
@@ -1053,6 +1108,11 @@
     el.querySelectorAll(".cand").forEach(function(c){
       c.classList.toggle("chosen", !!id && c.dataset.id === el.dataset.chosen);
       c.classList.toggle("preview", !!id && c.dataset.id === id && id !== el.dataset.chosen);
+      var old = c.querySelector(".badge.adopted"); if (old) old.remove();
+      if (el.dataset.chosen && c.dataset.id === el.dataset.chosen) {
+        var s = document.createElement("span"); s.className = "badge adopted"; s.textContent = "채택";
+        c.querySelector("h3").appendChild(s);
+      }
     });
   }
 
@@ -1060,8 +1120,8 @@
     mark(el, el.dataset.chosen || "");
     var sel = el.querySelector("select[data-for]");
     if (sel) {
-      sel.insertAdjacentHTML("afterbegin", '<option value="" selected>(전체 비교 · 기본 추천 A)</option>');
-      sel.addEventListener("change", function(){ mark(el, sel.value || ""); syncWide(); });
+      if (!el.dataset.chosen) sel.insertAdjacentHTML("afterbegin", '<option value="" selected>(전체 비교 · 기본 추천 A)</option>');
+      sel.addEventListener("change", function(){ mark(el, sel.value || el.dataset.chosen); syncWide(); });
     }
   });
 
@@ -1124,7 +1184,19 @@
 
   document.addEventListener("click", function(e){
     var t;
-    if ((t = e.target.closest("[data-cpick]"))) { setComposeState(t.dataset.cpick, "picked"); syncWide(); return; }
+    if ((t = e.target.closest("[data-toggle-attach]"))) {
+      var host = t.closest(".scr");
+      var pop = host && host.querySelector("#" + t.dataset.toggleAttach);
+      if (pop) pop.classList.toggle("hide");
+      return;
+    }
+    if ((t = e.target.closest("[data-cpick]"))) {
+      var ap = t.closest(".attach-pop");
+      if (ap) ap.classList.add("hide");
+      setComposeState(t.dataset.cpick, "picked");
+      syncWide();
+      return;
+    }
     if ((t = e.target.closest("[data-creset]"))) { setComposeState(t.dataset.creset, "empty"); syncWide(); return; }
     if ((t = e.target.closest("[data-cstep]"))) {
       var ph = document.getElementById("phone-compose-" + t.dataset.cstep);
@@ -1162,6 +1234,11 @@
       var sp = t.querySelector("span"), n = parseInt(sp.textContent, 10);
       t.firstChild.nodeValue = on ? "♥ " : "♡ ";
       sp.textContent = on ? n + 1 : n - 1;
+      return;
+    }
+    if ((t = e.target.closest("[data-bm-icon]"))) {
+      var saved = t.classList.toggle("saved");
+      showToast(saved ? "저장됨" : "저장 해제");
       return;
     }
     if ((t = e.target.closest("[data-save]"))) {
