@@ -25,7 +25,7 @@ export function CollectionTabs({ active, onSelect }: CollectionTabsProps) {
             onPress={() => onSelect(tab)}
             style={styles.tab}
           >
-            <Text style={[styles.label, on && styles.labelOn]}>{MY_TEXT.tabs[tab]}</Text>
+            <Text style={[styles.label, on && styles.labelOn]} numberOfLines={1}>{MY_TEXT.tabs[tab]}</Text>
             <View style={[styles.underline, on && styles.underlineOn]} />
           </Pressable>
         );
@@ -37,9 +37,9 @@ export function CollectionTabs({ active, onSelect }: CollectionTabsProps) {
 const styles = StyleSheet.create({
   bar: {
     flexDirection: "row",
-    backgroundColor: C.bg,
+    backgroundColor: C.panelFrosted,
     borderBottomWidth: 1,
-    borderBottomColor: C.divider,
+    borderBottomColor: C.seamHairline,
   },
   tab: { flex: 1, alignItems: "center", paddingTop: 10, minHeight: 44 },
   label: { fontSize: 14, color: C.textSub, paddingBottom: 8 },
