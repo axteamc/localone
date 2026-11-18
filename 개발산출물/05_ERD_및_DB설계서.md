@@ -1,20 +1,20 @@
 # 05. ERD 및 DB 설계서
 
-> 상태: **M1 테이블 골격 — 선행 설계 원본(2026-11-13, D 승인 방향 [C-53](스펙_변경_이력.md), 기준선 B0)**. 담당: D.
-> **이 문서가 M1 테이블의 존재·목적·관계·소유자 컬럼·핵심 제약·RLS 방침의 원본이다.** 기능별 계약서(`../team/contracts/<기능>.md` §3.4)는 여기서 정한 골격을 컬럼·타입·기본값·삭제 동작까지 구체화한다. 계약서가 이 문서와 달라져야 하면 **이 문서를 먼저 고치고**([스펙 변경 이력](스펙_변경_이력.md) 한 행) 계약서를 맞춘다. 지금 스키마의 사실은 마이그레이션 파일이다(아직 없음, 첫 마이그레이션은 AUTH-1 파트 1).
-> 입력: [04 도메인 모델](04_도메인_모델_정의서.md), [02 요구사항 §3·§4](02_요구사항_정의서.md), [모호점 해소 기록](모호점_해소_기록.md) "2026-11-13 계약 전 확인 답변", `../team/contracts/auth.md` AUTH-1(초안).
+> 상태: **M1 테이블 골격(기준선 B0~B2) + M2 선행 설계 확장(2026-11-19 D 확정, [C-75](스펙_변경_이력.md))**. 담당: D.
+> **이 문서가 M1·M2 테이블의 존재·목적·관계·소유자 컬럼·핵심 제약·RLS 방침의 원본이다.** 기능별 계약서(`../team/contracts/<기능>.md` §3.4/C5)는 여기서 정한 골격을 컬럼·타입·기본값·삭제 동작까지 구체화한다. 계약서가 이 문서와 달라져야 하면 **이 문서를 먼저 고치고**([스펙 변경 이력](스펙_변경_이력.md) 한 행) 계약서를 맞춘다. 지금 스키마의 사실은 마이그레이션 파일이다(`server/migrations/versions/0001`~`0010`).
+> 입력: [04 도메인 모델](04_도메인_모델_정의서.md), [02 요구사항 §3·§4](02_요구사항_정의서.md), [모호점 해소 기록](모호점_해소_기록.md), `../team/contracts/*.md` M1 발행판 및 M2 D 기준선([M2 선계약 밑그림](결과/M2_선계약_밑그림.md)).
 
 ## 0. 읽는 법
 
 | 상태 | 뜻 | 계약서에서 |
 | --- | --- | --- |
-| `확정` | 사용자·D 결정이나 02·04의 M1 행에 근거가 있다 | 그대로 쓴다 |
+| `확정` | 사용자·D 결정이나 02·04의 M1/M2 행에 근거가 있다 | 그대로 쓴다 |
 | `기본값(Claude)` | 결정이 없어 문서화된 결정·표준에서 추론해 정했다. D가 PR에서 본다 | 그대로 쓰되, 바꾸려면 이 문서를 먼저 고친다 |
 | `미확인(임시)` | 외부 조건이나 미결 질문에 걸려 있다. Q-번호가 붙는다 | 임시 값으로 진행하고 Q가 풀리면 고친다. 확정처럼 쓰지 않는다 |
 
 - **주니어(A·B·C) 영역 테이블은 존재·목적·소유자 컬럼·핵심 제약까지만 적는다.** 컬럼 세부·길이·개수는 세부 명세서가 정하고 계약서가 옮긴다. D 영역 테이블은 컬럼 수준까지 적는다.
-- 공통 규칙(전부 `기본값(Claude)`, 근거: AUTH-1 계약서 §3.4):
-  - 개인 데이터의 소유자 컬럼은 `user_id uuid NOT NULL REFERENCES users(id)`. `ON DELETE`는 `NO ACTION`(AUTH-3 계약서 C5: 탈퇴는 `users` 행을 지우지 않고 `withdrawn`으로 두며, 테이블마다 삭제·상태 전환을 C5 표대로 한다. 새 테이블은 그 표에 행을 더한다).
+- 공통 규칙(전부 `기본값(Claude)` → AUTH-1/AUTH-3/M2 D 기준선에서 `확정`):
+  - 개인 데이터의 소유자 컬럼은 `user_id uuid NOT NULL REFERENCES users(id)`(모임 개설자는 `host_id`, 신고자는 `reporter_id`, 알림 수신자는 `recipient_id`). `ON DELETE`는 기본 `NO ACTION`(AUTH-3 계약서 C5 및 M2-0 Z10: 탈퇴는 `users` 행을 지우지 않고 `withdrawn`으로 두며, 테이블마다 삭제·상태 전환을 순서대로 수행한다). **단, `posts.reading_log_id REFERENCES reading_logs(id)`와 `reading_logs.loan_id REFERENCES loans(id)` 두 외래키는 비공개 독서 기록·개인 대출 삭제 시 공개 게시물·독서 기록을 보존하기 위해 `ON DELETE SET NULL`을 예외로 확정한다(2026-11-19 D 확정, C-75).** 또한 `post_reactions.post_id`·`post_bookmarks.post_id`(`0006`)와 `stamp_bookmarks.stamp_id`(VISIT-4)는 부모 카드 행 삭제 시 함께 정리되도록 `ON DELETE CASCADE`를 쓴다.
   - 개인·공개 행의 기본 키는 `uuid`(`gen_random_uuid()`), 공공 참조 데이터(도서관·도서)는 `bigint GENERATED ALWAYS AS IDENTITY`. 이유: 개인·공개 행의 id는 주소에 드러나므로 순번으로 남의 것을 짐작하지 못하게 한다.
   - 시각은 `timestamptz`, 서울 날짜는 `date`(서버가 KST로 계산해 넣는다, NFR-03). 상태값은 `text` + `CHECK`(영문 소문자).
   - 모든 테이블에 `ENABLE ROW LEVEL SECURITY`, 정책 없음(§4).
@@ -49,7 +49,46 @@ erDiagram
 
 `provider_daily_usage`는 다른 테이블과 관계가 없어 그림에 없다. `library_return_stats`에는 `users`와의 선이 **없다**(user id와 연결하지 않음, 02 §3).
 
-## 2. 테이블 목록 (M1 — 제품 테이블 14개 + Alembic 버전 표)
+### 1.2 ERD (M2 확장)
+
+```mermaid
+erDiagram
+  users ||--o{ reading_logs : "비공개 기록"
+  books ||--o{ reading_logs : "대상"
+  libraries |o--o{ reading_logs : "선택 도서관"
+  loans |o--o{ reading_logs : "선택 대출 연결"
+  reading_logs |o--o| posts : "템플릿 게시"
+  users ||--o{ guestbook_entries : "남긴다"
+  libraries ||--o{ guestbook_entries : "방명록"
+  users ||--o{ visit_stamps : "찍는다"
+  libraries ||--o{ visit_stamps : "스탬프"
+  users ||--o{ stamp_bookmarks : "저장한다"
+  visit_stamps ||--o{ stamp_bookmarks : "북마크된다"
+  users ||--o{ reports : "신고한다"
+  libraries ||--o{ clubs : "모임 도서관"
+  users ||--o{ clubs : "만든다"
+  books |o--o{ clubs : "모임 책"
+  clubs |o--o{ clubs : "다음 회차"
+  clubs ||--o{ club_participations : "참가"
+  users ||--o{ club_participations : "참가한다"
+  clubs ||--o{ club_comments : "댓글"
+  users ||--o{ club_comments : "댓글 쓴다"
+  clubs ||--o{ club_reviews : "후기"
+  users ||--o{ club_reviews : "후기 쓴다"
+  posts |o--o{ club_reviews : "공유 게시물"
+  club_comments ||--o| club_comment_requests : "운영 요청"
+  users ||--o{ participation_restrictions : "제한 대상"
+  users ||--o{ inbox_items : "알림 수신"
+  users ||--o| operators : "운영자"
+  users ||--o{ moderation_actions : "운영 처리"
+  libraries |o--o{ shelf_themes : "서가 테마"
+  shelf_themes ||--o{ shelf_theme_books : "포함 도서"
+  books ||--o{ shelf_theme_books : "테마 도서"
+```
+
+## 2. 테이블 목록 (M1 14개 + M2 확장 16개 = 제품 테이블 30개 + Alembic 버전 표)
+
+### 2.1 M1 테이블 (14개 + `alembic_version`)
 
 | # | 테이블 | 목적 | 담당(Step) | 소유자 컬럼 | 요구사항 | 상태 |
 | --- | --- | --- | --- | --- | --- | --- |
@@ -71,6 +110,27 @@ erDiagram
 
 A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지는 `libraries`와 B의 피드를 읽기만 하고, 도서관 기본값은 기기에 둔다(§6).
 
+### 2.2 M2 확장 테이블 (16개 — 2026-11-19 D 확정, C-75)
+
+| # | 테이블 | 목적 | 담당(Step) | 소유자 컬럼 | 요구사항 | 상태 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 16 | `guestbook_entries` | 도서관별 방명록 짧은 공개 글(피드에 카드로 섞임) | B (VISIT-3) | `user_id`(작성자) | VISIT-03, R10·R11·R12 | `확정` (`local-feed.md` VISIT-3) |
+| 17 | `visit_stamps` | "다녀왔어요" 방문 스탬프(사용자×도서관×서울 날짜, 비공개/공개) | B (VISIT-4) | `user_id` | VISIT-05, R11·R12 | `확정` · 입장 조건·이름 `미확인(임시)` Q-45 |
+| 18 | `stamp_bookmarks` | 공개 방문 스탬프 카드 북마크(내 정보 북마크 탭과 통합) | B (VISIT-4, 조회 합치기는 A MY-3) | `user_id` | C-46 D3~D5, R16 | `확정` (2026-11-19 D, C-75) |
+| 19 | `reading_logs` | 본인만 보는 비공개 독서 기록 | A (READ-1) | `user_id` | READ-01·02, R8·R12 | `확정` (`reading-log.md` READ-1) |
+| 20 | `reports` | 게시물·방명록·모임·모임 댓글에 대한 이용자 신고 | B (LOCAL-4) | `reporter_id` | LOCAL-08, AC-MOD | `확정` (`local-feed.md` LOCAL-4) |
+| 21 | `clubs` | 도서관 기반 회차별 작은 모임 | B (CLUB-1) | `host_id`(만든 사람) | CLUB-01·02, C-46 A | `확정` (`book-club.md` CLUB-1) |
+| 22 | `club_participations` | 모임 참가 신청·취소·제한 제외 상태 | B (CLUB-1·2) | `user_id` | CLUB-01, C-46 A·B2 | `확정` |
+| 23 | `club_comments` | 모임 일정·장소 협의 댓글 | B (CLUB-1) | `user_id` | CLUB-01, C-43 | `확정` |
+| 24 | `club_reviews` | 모임 종료 후 비공개 개인 후기 및 공유 게시물 연결 | B (CLUB-2) | `user_id` | CLUB-02, C-46 C1·C6 | `확정` |
+| 25 | `club_comment_requests` | 모임 만든 사람의 댓글 운영 처리 요청 | B (CLUB-2) / 처리는 D (M2-0-P2) | `requester_id` | C-46 B1·B6 | `확정` |
+| 26 | `participation_restrictions` | 댓글 운영·불참에 따른 기간제 참가·댓글 제한 | B (CLUB-2 조회·재검토) / 생성·해제는 D (M2-0-P2) | `user_id` | C-46 B1~B5, C-47 G2, R17·R18 | 단계 `확정`(G2) · 판정·범위·기간 `미확인(임시)`(C-46 §8-1~3) |
+| 27 | `inbox_items` | 앱 안 알림함 항목(모임 안내·운영 처리 안내) | D (M2-0-P1) | `recipient_id` | C-46 C5, C-47 G1, R19 | `확정` (`core.md` M2-0) |
+| 28 | `operators` | 운영 화면(`/ops`) 권한을 가진 운영자 계정(DB 직접 등록) | D (M2-0-P2) | `user_id`(자기 자신) | LOCAL-08, C-46 B1·B5 | `확정` (2026-11-19 D) |
+| 29 | `moderation_actions` | 운영자의 숨김·복구·기각·제한·해제·룩·테마 처리 기록 | D (M2-0-P2) | `actor_id`(운영자) | LOCAL-08, AC-MOD | `확정` |
+| 30 | `shelf_themes` | 검색 추천·오늘의 서가용 운영자 구성 테마(공통/도서관별) | D (M2-0-P3) | 없음(공공/운영) | LIB-01(C-46 E1), VISIT-04 | 골격 `확정` · 범위·기간 세부 `미확인(임시)` Q-47 |
+| 31 | `shelf_theme_books` | 서가 테마에 속한 도서(테마당 최대 3권) | D (M2-0-P3) | 없음(공공/운영) | VISIT-04 | `확정` |
+
 ## 3. 테이블별 골격
 
 ### 3.1 D 영역 (컬럼 수준)
@@ -87,26 +147,29 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 
 | 컬럼 | 타입 | 제약 | 설명 | 상태 |
 | --- | --- | --- | --- | --- |
-| `user_id` | `uuid` | PK, FK → `users.id` | 소유자 | `기본값(Claude)` |
-| `nickname` | `text` | NOT NULL, 길이 CHECK | 공개 표시 이름. 처음에는 자동으로 만든 이름(예: `이웃-3f2a`) | `미확인(임시)` Q-55: 자동 이름 규칙·중복 허용·바꾸는 화면 |
-| `updated_at` | `timestamptz` | NOT NULL, 기본 `now()` | | `기본값(Claude)` |
+| `user_id` | `uuid` | PK, FK → `users.id` | 소유자 | `확정` (`0003`) |
+| `nickname` | `text` | NOT NULL, 길이 CHECK(1~40자) | 공개 표시 이름. 처음에는 자동으로 만든 이름(예: `이웃-3f2a`) | `확정` (`0003`, MY-2에서 수정 가능) |
+| `bio` | `text` | NULL 허용, CHECK(1~160자) | 한 줄 소개 (`0010_user_profiles_bio_avatar.py`) | `확정` (MY-1 C-46 F1) |
+| `avatar_url` | `text` | NULL 허용, CHECK(`https://%`) | 프로필 사진 주소 (`0010`) | `확정` (MY-1·MY-2) |
+| `updated_at` | `timestamptz` | NOT NULL, 기본 `now()` | | `확정` (`0003`) |
 
-프로필 사진·한 줄 소개·팔로우는 요구사항 ID가 없어(02 §0 "ID 미부여") M1 골격에 넣지 않는다.
+팔로우는 요구사항 ID가 없고 대상·효과가 미결(C-46 §8-5)이므로 M1·M2 기준선에 팔로우 테이블을 넣지 않는다(MY-1 Y5, MY-2 Y2-6).
 
-**`user_settings`** — 행이 없으면 기본값으로 읽는다(행은 처음 바꿀 때 만든다).
+**`user_settings`** — 행이 없으면 기본값으로 읽는다(행은 처음 바꿀 때 만든다, `M2-0-P4`).
 
 | 컬럼 | 타입 | 제약 | 설명 | 상태 |
 | --- | --- | --- | --- | --- |
-| `user_id` | `uuid` | PK, FK → `users.id` | 소유자 | `기본값(Claude)` |
+| `user_id` | `uuid` | PK, FK → `users.id` | 소유자 | `확정` |
 | `nearby_radius_km` | `smallint` | NOT NULL, 기본 `3`, CHECK `IN (3, 5)` | 내 주변 반경 | `확정`(O-39) |
-| `return_stats_consent_at` | `timestamptz` | NULL 허용 | 반납 집계 동의 시각. NULL이면 동의 안 함 | `미확인(임시)` Q-49(동의 방식·철회) |
-| `updated_at` | `timestamptz` | NOT NULL, 기본 `now()` | | `기본값(Claude)` |
+| `return_stats_consent` | `boolean` | NOT NULL, 기본 `false` | 반납 집계 동의 여부 | `확정` (`core.md` M2-0 Z9) · 켜는 시점은 `미확인(임시)` Q-49 |
+| `consented_at` (`return_stats_consent_at`) | `timestamptz` | NULL 허용 | 반납 집계 동의 시각. 동의 안 함이면 NULL | `미확인(임시)` Q-49(동의 방식·철회) |
+| `updated_at` | `timestamptz` | NOT NULL, 기본 `now()` | | `확정` |
 
 **`libraries`** — 정보나루 `libSrch`를 매일 받아 해시가 달라진 곳만 고친다.
 
 | 컬럼 | 타입 | 제약 | 설명 | 상태 |
 | --- | --- | --- | --- | --- |
-| `id` | `bigint` | PK | 내부 id | `기본값(Claude)` |
+| `id` | `bigint` | PK | 내부 id | `확정` |
 | `provider_lib_code` | `text` | NOT NULL, UNIQUE | 정보나루 `libCode` | `확정` |
 | `name` | `text` | NOT NULL | | `확정` |
 | `address`, `tel`, `homepage` | `text` | NULL 허용 | | `확정` |
@@ -114,10 +177,12 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | `closed_text`, `operating_time_text` | `text` | NULL 허용 | 제공자 원문 그대로(자유 문장) | `확정`(Q-22) |
 | `region_code`, `dtl_region_code` | `text` | NULL 허용 | 시·도, 시군구 코드 | `확정`(Q-51 ①) |
 | `isbn_search_url_template` | `text` | NULL 허용 | "실시간 확인" 주소 규칙. 없으면 `homepage`로 | `미확인(임시)` Q-48(대상 도서관·주소 규칙 미정) |
+| `look` | `text` | NULL 허용, CHECK `IN ('modern','warm','toffee','oxford')` | 도서관 룩 프리셋 (M2 `M2-0-P3`, NULL이면 앱은 `'warm'`) | `확정` (VISIT-07, 2026-11-19 D) |
+| `look_assigned_by` | `text` | NULL 허용, CHECK `IN ('auto','operator')` | 자동 배정 vs 운영자 지정/재배정 (M2 `M2-0-P3`) | `확정` (2026-11-19 D) |
 | `content_hash` | `text` | NOT NULL | 갱신 비교용 | `확정` |
 | `synced_at` | `timestamptz` | NOT NULL | 마지막으로 받은 시각 | `확정` |
 
-도서관 룩(VISIT-07)은 M2라 컬럼을 두지 않는다. 휴관일 계산 결과는 저장하지 않고 `closed_text`에서 매번 계산한다(`기본값(Claude)`).
+휴관일 계산 결과는 저장하지 않고 `closed_text`에서 매번 계산한다(`기본값(Claude)`).
 
 **`books`**
 
@@ -130,7 +195,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | `cover_url` | `text` | NULL 허용 | **주소만 저장하고 이미지는 복사하지 않는다.** `http://`는 `https://`로 바꿔 넣는다 | `확정`(2026-11-13) · 이용 조건 `미확인(임시)` Q-41 |
 | `description` | `text` | NULL 허용, 2,000자 이하 CHECK | 책 소개(제공자 원문에서 태그를 없앤 글). 책 상세 맨 아래(LIB-1 결정 2) | `확정`(2026-11-16 D, C-64) · 2,000자 `기본값(Claude)` |
 | `pub_year` | `smallint` | NULL 허용, 1000~2999 CHECK | 출판 연도. 1열 결과 목록 "출판사·연도"(LIB-1 결정 1) | `확정`(2026-11-16 D, C-64) |
-| `source` | `text` | NOT NULL, CHECK `IN ('naver','data4library','manual')` | 서지 출처 | `기본값(Claude)` |
+| `source` | `text` | NOT NULL, CHECK `IN ('naver','data4library','manual','kakao')` | 서지 출처 (`0007_books_source_kakao.py`, C-66) | `확정` |
 | `fetched_at` | `timestamptz` | NOT NULL | | `기본값(Claude)` |
 
 **`availability_observations`** — 같은 (도서관, 책)은 서울 날짜 하루에 한 행이고, 그날 자정(KST)까지 다시 부르지 않는다.
@@ -172,21 +237,66 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 
 상한: 정보나루 일 21,000건(30,000의 70%) `확정`, 네이버 일 25,000건은 제공자 한도이며 앱 상한은 `미확인(임시)` Q-41, 예스24·카카오는 `미확인(임시)` Q-41·Q-12. Redis 대신 DB에 둔다(Q-14).
 
+**`inbox_items`** (M2 `M2-0-P1` — `core.md` C5)
+
+| 컬럼 | 타입 | 제약 | 설명 | 상태 |
+| --- | --- | --- | --- | --- |
+| `id` | `uuid` | PK, 기본 `gen_random_uuid()` | 알림 항목 id | `확정` |
+| `recipient_id` | `uuid` | NOT NULL, FK → `users.id` | 수신자(본인만 조회) | `확정` |
+| `kind` | `text` | NOT NULL, CHECK `IN ('club_confirmed','club_changed','club_canceled','club_ended','club_next','moderation')` | 알림 종류 | `확정`(Z1) |
+| `target` | `jsonb` | NOT NULL | 이동 대상(`club_id`·`post_id`·`guestbook_id`) | `확정` |
+| `dedupe_key` | `text` | NOT NULL, UNIQUE (`recipient_id`, `dedupe_key`) | 같은 안내 중복 생성 방지(종료 안내는 알림함 읽을 때 1회 생성) | `확정`(Z2) |
+| `title` | `text` | NOT NULL | 표시 문구 한 줄 | `확정` |
+| `read_at` | `timestamptz` | NULL 허용 | 읽은 시각(NULL이면 미열람) | `확정` |
+| `created_at` | `timestamptz` | NOT NULL, 기본 `now()` | | `확정` |
+
+**`operators` · `moderation_actions`** (M2 `M2-0-P2` — `core.md` C5)
+
+| 테이블·컬럼 | 타입 | 제약 | 설명 | 상태 |
+| --- | --- | --- | --- | --- |
+| `operators.user_id` | `uuid` | PK, FK → `users.id` | 운영자 계정(DB 직접 INSERT로 등록, 2026-11-19 D 확정) | `확정`(Z4) |
+| `operators.created_at` | `timestamptz` | NOT NULL, 기본 `now()` | | `확정` |
+| `moderation_actions.id` | `uuid` | PK, 기본 `gen_random_uuid()` | 운영 처리 기록 id | `확정` |
+| `moderation_actions.actor_id` | `uuid` | NOT NULL, FK → `users.id` | 처리한 운영자 | `확정` |
+| `moderation_actions.action` | `text` | NOT NULL, CHECK `IN ('hide','restore','dismiss','comment_delete','restrict','lift','look_assign','theme_edit')` | 처리 행위 | `확정`(Z4) |
+| `moderation_actions.target_kind`, `target_id`, `reason` | `text` | NOT NULL | 대상 종류·식별자·필수 사유 | `확정`(LOCAL-08) |
+| `moderation_actions.created_at` | `timestamptz` | NOT NULL, 기본 `now()` | | `확정` |
+
+**`shelf_themes` · `shelf_theme_books`** (M2 `M2-0-P3` — `core.md` C5)
+
+| 테이블·컬럼 | 타입 | 제약 | 설명 | 상태 |
+| --- | --- | --- | --- | --- |
+| `shelf_themes.id` | `uuid` | PK, 기본 `gen_random_uuid()` | 테마 id | `확정` |
+| `shelf_themes.library_id` | `bigint` | NULL 허용, FK → `libraries.id` | NULL이면 전체 공통 테마 | `미확인(임시)` Q-47 |
+| `shelf_themes.title` | `text` | NOT NULL | 테마 제목 | `확정` |
+| `shelf_themes.starts_on`, `ends_on` | `date` | NOT NULL, CHECK `ends_on >= starts_on` | 노출 기간(범위당 동시 활성 1개는 서버 쓰기 검증 `409 THEME_OVERLAP`) | `확정`(C-46 E1) |
+| `shelf_themes.created_at` | `timestamptz` | NOT NULL, 기본 `now()` | | `확정` |
+| `shelf_theme_books.theme_id`, `position` | `uuid`, `smallint` | PK (`theme_id`, `position`), FK → `shelf_themes.id`, CHECK `position BETWEEN 1 AND 3` | 테마 안 순서(최대 3권) | `확정`(VISIT-04) |
+| `shelf_theme_books.book_id` | `bigint` | NOT NULL, FK → `books.id` | 대상 도서 | `확정` |
+
 ### 3.2 주니어 영역 (존재·목적·소유자 컬럼·핵심 제약까지)
 
-컬럼 세부·길이·개수·화면 동작은 세부 명세서가 정하고 계약서 §3.4가 옮긴다. 아래 "핵심 제약"은 계약서가 빼거나 바꾸지 못한다.
+컬럼 세부·길이·개수·화면 동작은 세부 명세서가 정하고 계약서 §3.4/C5가 옮긴다. 아래 "핵심 제약"은 계약서가 빼거나 바꾸지 못한다.
 
 | 테이블 | 담당 | 소유자 컬럼 | 꼭 있어야 하는 것 | 핵심 제약 | 근거 | 상태 |
 | --- | --- | --- | --- | --- | --- | --- |
 | `loan_plans` | C (LIB-3) | `user_id` | 책(`book_id`), 도서관(`library_id`, NOT NULL), 상태(`planned`/`released`/`converted`), 만든 시각 | **부분 UNIQUE** (`user_id`, `book_id`, `library_id`) `WHERE status = 'planned'` — 활성 예정은 하나 | R3, AC-PLAN | `확정` |
 | `loans` | C (LOAN-1·2) | `user_id` | 책(`book_id`), 대출일 `loaned_on date`(서버 KST), 반납 예정일 `due_on date`, 상태(`on_loan`/`returned`), 실제 반납일(NULL 허용), 도서관(NULL 허용), 연결된 예정(NULL 허용) | **CHECK** `due_on >= loaned_on` · **CHECK** `(status = 'returned') = (returned_on IS NOT NULL)` · **UNIQUE** `plan_id`(예정 하나는 대출 하나에만) · 연타 방지 **부분 UNIQUE** (`user_id`, `book_id`) `WHERE status = 'on_loan'` | R4, AC-LOAN, AC-RETURN | `확정` · 마지막 부분 UNIQUE(같은 책을 두 권 동시에 못 빌림)는 `미확인(임시)` Q-21 |
-| `library_return_stats` | C (LOAN-2가 쓴다) | **없음** | 도서관, 책, 반납일(서울 날짜), 건수 | **PK** (`library_id`, `book_id`, `returned_on`) · `user_id`·`loan_id` 컬럼을 **두지 않는다** · 도서관 없는 대출은 쌓지 않는다 · 동의(`user_settings.return_stats_consent_at`)가 있을 때만 +1 | 02 §3·§4-9, R15 | `미확인(임시)` Q-49. **쓰기는 LOAN-2 계약서에서 켠다. 그 전에는 테이블만 있고 아무도 쓰지 않는다** |
-| `posts` | B (LOCAL-1) | `user_id`(작성자) | 도서관(`library_id`, NOT NULL — 광장), 책(`book_id`, NULL 허용), 이미지 종류(`photo`/`cover`/`color`), 이미지 값(사진 경로·표지 주소·색 중 종류에 맞는 하나), 이미지 위 글자(NULL 허용), 본문(NULL 허용 — 이미지만 게시 가능), 상태(`published`/`withdrawn`/`hidden`), 게시 시각 | **CHECK** 상태 세 값 · **CHECK** 이미지 종류와 이미지 값이 맞음 · 초안은 서버에 저장하지 않는다(올리기를 눌러야 행이 생김) · 응답에 작성자의 `user_id` 대신 `user_profiles.nickname`만 | LOCAL-01, R8·R10, AC-PUBLISH | `확정` · 사진 저장소·용량 `미확인(임시)` Q-53 · `hidden`은 M2(LOCAL-4)가 쓰고 M1에는 쓰는 코드 없음 |
+| `library_return_stats` | C (`0009` 표 생성) / D (M2-0-P4에서 `#22` 안 D 블록으로 쓰기) | **없음** | 도서관, 책, 반납일(서울 날짜), 건수 | **PK** (`library_id`, `book_id`, `returned_on`) · `user_id`·`loan_id` 컬럼을 **두지 않는다** · 도서관 없는 대출은 쌓지 않는다 · 동의(`user_settings.return_stats_consent`)가 있고 `RETURN_STATS_WRITE_ENABLED = True`일 때만 +1 | 02 §3·§4-9, R15 | `확정`(D 블록 구조, 2026-11-19 D) · 켜는 시점은 `미확인(임시)` Q-49(기본 `False`) |
+| `posts` | B (LOCAL-1, M2 LOCAL-3 확장) | `user_id`(작성자) | 도서관(`library_id`, NOT NULL), 책(`book_id`, NULL 허용), 이미지 종류(`photo`/`cover`/`color` + M2 `template`), 이미지 값(사진 경로·표지 주소·색·템플릿 키 `minimal`/`ink`), 이미지 위 글자(NULL 허용), 본문(NULL 허용), 독서 기록 연결(`reading_log_id`, M2 LOCAL-3, NULL 허용, `ON DELETE SET NULL`), 상태(`published`/`withdrawn`/`hidden`), 게시 시각 | **CHECK** 상태 세 값 · **CHECK** 이미지 종류와 이미지 값 일치 · **UNIQUE** (`user_id`, `client_request_id`) · **부분 UNIQUE** (`reading_log_id`) `WHERE reading_log_id IS NOT NULL AND status = 'published'`(기록당 공개 글 1개, LOCAL-3) · 응답에 `user_id`·`reading_log_id` 대신 `nickname`·`from_reading_log` 불리언만 | LOCAL-01·07, R8·R10, AC-PUBLISH | `확정` (2026-11-19 D, C-75) |
 | `post_reactions` | B (LOCAL-2) | `user_id` | 게시물(`post_id`), 누른 시각 | **PK** (`post_id`, `user_id`) — 사용자당 하나 | R14, AC-FEED | `확정` |
-| `post_bookmarks` | B (LOCAL-2, 담당 `미확인`) | `user_id` | 게시물(`post_id`), 저장 시각(다시 저장하면 새 시각) | **PK** (`user_id`, `post_id`) · 본인만 조회 | LOCAL-03, R16 | `미확인(임시)` Q-56 |
-
-- `posts`에 좋아요 수 컬럼을 둘지(비정규화)는 LOCAL-2 계약서에서 정한다. 인기순 기준은 `미확인(임시)` Q-31이라 **M1 골격에는 인기순용 컬럼·인덱스를 넣지 않는다**(최신순만 확정).
-- 방명록·모임·방문 기록 카드는 M2라 `post_bookmarks`는 게시물만 가리킨다. M2에서 카드 종류가 늘 때 대상 표현을 다시 정한다.
+| `post_bookmarks` | B (LOCAL-2) / 조회 A (MY-1) | `user_id` | 게시물(`post_id`), 저장 시각(다시 저장하면 새 시각) | **PK** (`user_id`, `post_id`) · 본인만 조회 | LOCAL-03, C-46 D4·D5, R16 | `확정` (`0006`, MY-1) |
+| `guestbook_entries` | B (VISIT-3) | `user_id`(작성자) | 도서관(`library_id`, NOT NULL), 본문(`body`), 상태(`published`/`withdrawn`/`hidden`), `client_request_id`, 게시 시각 | **CHECK** 상태 세 값 · **UNIQUE** (`user_id`, `client_request_id`) · 응답에 `user_id` 없음 | VISIT-03, R10·R11·R12 | `확정` (2026-11-19 D) |
+| `visit_stamps` | B (VISIT-4) | `user_id` | 도서관(`library_id`, NOT NULL), 서울 날짜(`stamped_on date`, 서버 `today_kst()`), 공개 여부(`private`/`public`) | **UNIQUE** (`user_id`, `library_id`, `stamped_on`) — 하루 한 도서관에 1행(연타 시 `visibility`만 갱신) · **CHECK** `visibility IN ('private','public')` · 비공개는 본인 외 노출 금지 | VISIT-05, R11·R12 | `확정` · 입장 조건·표시 이름 `미확인(임시)` Q-45 |
+| `stamp_bookmarks` | B (VISIT-4, 북마크 탭 통합은 A MY-3) | `user_id` | 스탬프(`stamp_id`, `ON DELETE CASCADE`), 저장 시각(`saved_at`, 재저장 시 갱신) | **PK** (`user_id`, `stamp_id`) · 공개(`visibility = 'public'`) 스탬프만 저장 가능 · 비공개 전환 시 행은 유지하되 목록에서 숨기고 재공개 시 복원 | C-46 D3~D5, R16 | `확정` (2026-11-19 D, C-75) |
+| `reading_logs` | A (READ-1) | `user_id` | 책(`book_id`, NOT NULL), 도서관(`library_id`, NULL 허용 — 자동 보정 금지), 대출 연결(`loan_id`, NULL 허용, `ON DELETE SET NULL`), 읽은 날(`read_on date`, 미래 불가), 감상(`note`), 문장(`quote`), `client_request_id` | **UNIQUE** (`user_id`, `client_request_id`) · 본인만 조회·수정·삭제(타인·없는 기록은 같은 `404`) · 남의 대출 연결 거부(`404`) | READ-01·02, R8·R12 | `확정` (2026-11-19 D, C-75) |
+| `reports` | B (LOCAL-4) | `reporter_id` | 대상 종류(`post`/`guestbook`/`club`/`club_comment`), 대상 id(`target_id`), 사유 코드(`reason`), 상세(`text`, NULL 허용), 상태(`open`/`actioned`/`dismissed`) | **UNIQUE** (`reporter_id`, `target_kind`, `target_id`)(중복 신고 멱등) · **CHECK** 대상 종류·상태 · 본인 글 신고 불가(`422`) · 신고자·신고 수 비공개 | LOCAL-08, AC-MOD | `확정` (2026-11-19 D) |
+| `clubs` | B (CLUB-1) | `host_id`(만든 사람) | 도서관(`library_id`), 이름(`name`), 소개(`intro`), 책(`book_id`), 장소(`place`), 시작·종료 시각(`starts_at`·`ends_at`, 미정 NULL 허용), 정원(`capacity`, NULL 허용), 상태(`open`/`closed`/`canceled`/`hidden`), 취소 사유(`cancel_reason`), 이전 회차(`previous_club_id`), `client_request_id` | **CHECK** `ends_at > starts_at` · **CHECK** `status <> 'canceled' OR cancel_reason IS NOT NULL` · **UNIQUE** (`host_id`, `client_request_id`) · 시작 후 `starts_at` 변경 불가(`409 CLUB_STARTED`) | CLUB-01·02, C-46 A1~A6·C2 | `확정` (2026-11-19 D) |
+| `club_participations` | B (CLUB-1·2) | `user_id` | 모임(`club_id`), 상태(`joined`/`left`/`removed`), 참가·갱신 시각 | **PK** (`club_id`, `user_id`) · 참가 시 `clubs` 행 `FOR UPDATE` 잠금으로 정원 경합 차단 · 명단 응답에 `user_id` 없이 닉네임만 | CLUB-01, C-46 A1~A5·B2 | `확정` (2026-11-19 D) |
+| `club_comments` | B (CLUB-1) | `user_id` | 모임(`club_id`), 본문(`body`), 상태(`published`/`deleted`/`hidden`), `client_request_id` | **UNIQUE** (`user_id`, `client_request_id`) · **CHECK** 상태 세 값 | CLUB-01, C-43 | `확정` (2026-11-19 D) |
+| `club_reviews` | B (CLUB-2) | `user_id` | 모임(`club_id`), 후기 본문(`body`), 공유 게시물(`shared_post_id`, NULL 허용, 원본과 별도 수정) | **PK** (`club_id`, `user_id`) · 본인 비공개 기본 | CLUB-02, C-46 C1·C6 | `확정` (2026-11-19 D) |
+| `club_comment_requests` | B (CLUB-2) / D (M2-0-P2) | `requester_id`(만든 사람) | 댓글(`comment_id`), 사유(`reason`), 상태(`pending`/`delete_only`/`delete_and_restrict`/`rejected`), 처리 운영자(`decided_by`) | **UNIQUE** (`comment_id`)(같은 댓글 중복 요청 방지, C-46 B6) · 승인 전 댓글은 그대로 표시 | C-46 B1·B6 | `확정` (2026-11-19 D) |
+| `participation_restrictions` | B (CLUB-2 조회·재검토) / D (M2-0-P2 생성·해제) | `user_id` | 사유 종류(`comment`/`no_show`), 원천 id(`source_id`), 사유 문구(`reason_text`), 시작·만료 시각(`starts_at`, `ends_at` NULL=4회 참가 불가), 재검토 요청 시각, 해제 시각·해제 운영자 | **CHECK** `reason_kind IN ('comment','no_show')` · 운영자만 생성·해제(자동 부과 금지, R17·R18) | C-46 B1~B5, C-47 G2, R17·R18 | 골격·단계 `확정` · 판정·범위·기간 `미확인(임시)`(C-46 §8-1~3) |
 
 ## 4. 소유권·접근 제어
 
@@ -211,9 +321,14 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | R5 연체·D-day | **저장하지 않는다**(§6) | — | `확정` |
 | R10 철회 뒤 차단 | `posts.status` CHECK. 읽기 SQL은 `status = 'published'`만 | 철회 뒤 목록·직접 주소 모두 안 보임 | `확정` |
 | R14 공감 하나 | `post_reactions` PK | 두 번 눌러도 한 행 | `확정` |
-| R15 집계에 user id 없음 | `library_return_stats`에 `user_id` 컬럼 없음 | 컬럼 목록에 `user_id`·`loan_id`가 없음 | `미확인(임시)` Q-49 |
-| R16 모음은 본인만 | `post_bookmarks` 읽기는 `user_id = :current_user`만 | 남의 id로 조회하면 내 것만 나옴 | `미확인(임시)` Q-56 |
-| R12 탈퇴 | `ON DELETE` 동작과 지울 순서 | `NO ACTION` 유지, 순서는 AUTH-3 계약서 C5 표(`users` 상태 → 게시물 철회 → 개인 행 삭제 → 프로필 익명화, `loans`는 `loan_plans`보다 먼저) | 순서·처리 `기본값(Claude)`(AUTH-3) · 보관 기간 `미확인(임시)`(Q-23, 출시 관문) |
+| R15 집계에 user id 없음 | `library_return_stats`에 `user_id` 컬럼 없음 | 컬럼 목록에 `user_id`·`loan_id`가 없음, `RETURN_STATS_WRITE_ENABLED = False`면 집계 무변경 | `확정` (`0009`, `core.md` M2-0 Z9) · 켜는 시점은 `미확인(임시)` Q-49 |
+| R16 모음은 본인만 | `post_bookmarks`·`stamp_bookmarks` 읽기는 `user_id = :current_user`만 | 남의 id로 조회하면 내 것만 나옴, 비공개 스탬프는 숨기고 재공개 시 복원 | `확정` (`0006`, MY-1·MY-3, 2026-11-19 D) |
+| R8 비공개 기록 기본 | `reading_logs`는 `/me/reading-logs*`만 열림, 공개는 `posts.reading_log_id`로 별도 게시물 생성(부분 UNIQUE 1건) | 남의 기록·없는 기록 모두 `404`, 게시물 응답에 `reading_log_id` 노출 0 | `확정` (READ-1, LOCAL-3) |
+| R11 스탬프·방명록 자기 선언 | `visit_stamps`(`UNIQUE (user_id, library_id, stamped_on)`), `guestbook_entries` | 인증·실방문 배지 없음, 비공개 스탬프 타인 노출 0 | `확정` (VISIT-3·4) |
+| R17 일정 변경·취소는 불참 제재 아님 | `clubs.status` CHECK, `participation_restrictions`는 운영 경로만 생성 | 모임 취소·일정 변경·출석 체크만으로 제한 행 자동 생성 0 | `확정` (CLUB-1·2) |
+| R18 기간제 제한 사유 구분 | `participation_restrictions.reason_kind CHECK IN ('comment','no_show')` | 제한 중 참가·댓글 `403 PARTICIPATION_RESTRICTED`, 해제 전 유지 | `확정` (CLUB-2, M2-0-P2) |
+| R19 알림함 수신자 격리·중복 방지 | `inbox_items` `UNIQUE (recipient_id, dedupe_key)` | 본인 알림만 조회, 같은 안내·종료 안내 두 번 읽어도 1행 | `확정` (M2-0-P1, CLUB-2) |
+| R12 탈퇴 | `ON DELETE` 동작과 지울 순서 | 기본 `NO ACTION` 유지(**예외 2건**: `posts.reading_log_id`·`reading_logs.loan_id`만 `ON DELETE SET NULL`, 2026-11-19 D 확정). 순서는 AUTH-3 C5 + M2-0 Z10(`users` 상태 → 게시물·방명록 철회 → `posts.reading_log_id NULL` → 스탬프 북마크·스탬프·독서 기록·후기·알림함·공감·북마크·대출·예정·설정 삭제 → 모임 참가 `left`·댓글 `deleted`·시작 전 만든 모임 `canceled` → 프로필 익명화; 신고·운영 기록·제한은 보존) | 순서·예외 `확정`(AUTH-3, M2-0 Z10, 2026-11-19 D) · 보관 기간 `미확인(임시)`(Q-23, 출시 관문) |
 
 ## 6. 서버에 저장하지 않는 것·파생 값
 
@@ -227,7 +342,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | 도서관 방문 횟수 | **기기**(도서관별 방문 횟수·마지막 방문 날짜·연속 일수·기본값을 물었는지). 방문 멘트 카드(첫 방문·연속 주기·오랜만, C-56)와 "세 번째 방문 때 물어봄"에 쓴다. 횟수는 화면에 보여 주지 않는다. M2 방문 스탬프(§10)와는 별개 값 | [D 결정 1.2-1](명세/VISIT_LOCAL_D결정.md)(2026-11-13 D: "방문 횟수에 대한 값을 저장"), C-55 | 저장한다는 것은 `확정`, 기기에 둔다는 것과 세는 단위(도서관마다 하루 한 번)는 `기본값(Claude)`: 도서관 기본값과 같은 자리이고 로그인 없이도 써야 하므로 |
 | 게시물 초안 | 기기(올리기 전에는 서버에 없음) | LOCAL-01 "올리기를 눌러야 공개" | `기본값(Claude)` |
 | 세션·리프레시 토큰 | Supabase | AUTH-1 A4 | `확정` |
-| 서가 테마 | M1에는 표가 없다. 검색 추천은 "활성 테마 없음 → 인기 도서"로만 동작한다 | LIB-01, Q-47(운영 화면은 M2) | `기본값(Claude)` |
+| 서가 테마 | M1에는 표가 없고 검색 추천이 "활성 테마 없음 → 인기 도서"로 동작한다. M2(`M2-0-P3`)에서 `shelf_themes`·`shelf_theme_books` 표를 만든다 | LIB-01, VISIT-04, Q-47 | M1 `확정` / M2 표 `확정`(2026-11-19 D), 범위·기간 세부 `미확인(임시)` Q-47 |
 
 ## 7. 인덱스 (조회 패턴만 — 값은 계약서에서)
 
@@ -255,9 +370,10 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | `auth.md` AUTH-1(초안) | `users`는 같다. `user_profiles` 행을 `POST /auth/session`이 함께 만든다는 줄이 계약서에 없다(파트 1 금지 결정에 "닉네임 컬럼"이 있음) | D가 정한다: ① AUTH-1에 넣는다 ② LOCAL-1 전의 별도 파트로 둔다(추천 — AUTH-1 초안을 건드리지 않음) |
 | 이후 계약서 전부 | §3.4 표를 쓸 때 이 문서의 해당 행을 먼저 옮기고, 핵심 제약을 빼지 않는다 | `../team/templates/계약.md` 머리 문구(C-53) |
 
-## 10. M1에 없는 것 (이름만)
+## 10. M2 확장 반영 및 아직 넣지 않은 것
 
-독서 기록, 방명록 글, 방문 스탬프, 모임·모임 참가·댓글·후기·참가 제한, 신고·운영 처리 기록, 팔로우, 알림함 항목, 서가 테마, 도서관 룩 — 04에 개념이 있고 M2 이후에 테이블을 정한다. 이 문서에 미리 넣지 않는다.
+- **2026-11-19 M2 선행 설계 반영([C-75](스펙_변경_이력.md))**: 독서 기록(`reading_logs`), 방명록 글(`guestbook_entries`), 방문 스탬프(`visit_stamps`)·스탬프 북마크(`stamp_bookmarks`), 작은 모임(`clubs`·`club_participations`·`club_comments`·`club_reviews`·`club_comment_requests`·`participation_restrictions`), 신고(`reports`)·운영자(`operators`)·운영 처리 기록(`moderation_actions`), 알림함 항목(`inbox_items`), 서가 테마(`shelf_themes`·`shelf_theme_books`), 도서관 룩(`libraries.look`·`look_assigned_by`), 템플릿 게시물(`posts.image_kind='template'`·`reading_log_id`)은 §1.2·§2.2·§3에 반영했다.
+- **팔로우(C-46 F1·§8-5)**: 팔로우 버튼의 대상·효과가 미결이므로 M1·M2 기준선에 팔로우 테이블을 넣지 않는다(MY-1 Y5, MY-2 Y2-6).
 
 ## 11. 미확인 모음 (이 문서에서 임시로 둔 것)
 
