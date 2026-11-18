@@ -93,7 +93,7 @@
 <body>
 <header class="page">
   <h1>동네한권 로고 — 형태 7개</h1>
-  <div class="how"><b>보는 법.</b> 맨 위 띠에서 7개를 실제 크기(48·24)로 한꺼번에 비교하고, 아래 카드에서 하나씩 자세히 보세요. 카드마다 <b>백색 바탕(기본) · 유리판 · 진한 바탕</b> 위 모습, 앱 아이콘 1024(축소 표시)·48·24가 있어요. <b>룩</b>을 바꾸면 모든 로고 색이 그 룩의 `fill1~3`·`inkStrong`으로 바뀌어요. 띠나 카드를 누르면 맨 아래 <b>로그인 상단 배치</b>에 그 로고가 들어가요. 노란 테두리가 추천이에요.</div>
+  <div class="how"><b>결정(2026-11-18).</b> D가 <b>F 글자형 ㄷ + 한 권</b>을 앱 기본 로고로 골랐어요(진한 테두리). 배포용 파일은 <a href="../로고/">개발산출물/로고/</a>. 다른 후보는 바꿀 때를 위해 그대로 둬요.<br><b>보는 법.</b> 맨 위 띠에서 7개를 실제 크기(48·24)로 한꺼번에 비교하고, 아래 카드에서 하나씩 자세히 보세요. 카드마다 <b>백색 바탕(기본) · 유리판 · 진한 바탕</b> 위 모습, 앱 아이콘 1024(축소 표시)·48·24가 있어요. <b>룩</b>을 바꾸면 모든 로고 색이 그 룩의 `fill1~3`·`inkStrong`으로 바뀌어요. 띠나 카드를 누르면 맨 아래 <b>로그인 상단 배치</b>에 그 로고가 들어가요. 노란 테두리가 추천이에요.</div>
   <div class="bar">
     <label>룩 <select id="look"><option value="warm" selected>warm (M1 기본)</option><option value="modern">모던</option><option value="toffee">toffee</option><option value="oxford">Oxford</option></select></label>
     <label>아이콘 바탕 <select id="iconbg"><option value="white" selected>백색</option><option value="glass">유리판</option><option value="dark">진한 바탕</option></select></label>
@@ -102,8 +102,8 @@
 </header>
 <main>
 
-<section class="element" id="el-logo" data-chosen="">
-  <h2>정할 것. 로고 형태 <span class="status">결정 전</span></h2>
+<section class="element" id="el-logo" data-chosen="F">
+  <h2>정할 것. 로고 형태 <span class="status">확인 — F 채택(2026-11-18)</span></h2>
   <div class="flow"><b>정해진 것(C-60).</b> 로그인은 위 소개·로고, 아래 버튼. 로고는 글자보다 <b>주요 컬러</b>로 기억되게. <b>이번에 따른 규칙.</b> 곡률은 블록 3(구조)·책 표지 5·9 계열, 색은 `fill1~3` 세 색 + 진한 부분 하나(규칙 5·7), 48px에서도 형태가 읽힐 것.</div>
   <div class="strip" id="strip"></div>
   <div class="cands" id="cands"></div>
@@ -127,7 +127,7 @@
   <h2>명세</h2>
   <div class="wide"><table>
     <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
-    <tr data-el="el-logo"><td>로고 형태</td><td>— (추천: E 책등 묶음)</td><td>—</td><td>—</td><td>(받기 전)</td><td>격자 64, 블록 곡률 3, 책등 곡률 2·4(표지 5·9 축소), 색 `fill1~3` + 진한 부분 `inkStrong`(진한 바탕 위는 `paper`). 아이콘 1024는 바탕 + 로고 72%, 모서리 22.37%</td><td>로그인 상단 56 · 앱 아이콘 · 웹 탭 아이콘 · 시연 자료 표지</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-logo"><td>로고 형태</td><td>F 글자형 ㄷ + 한 권(앱 기본 로고)</td><td>없음(받지 않음). 다른 후보는 이 시안에 남겨 나중에 바꿀 수 있음</td><td>A·B·C·D·E(추천이었음)·G — 탈락이 아니라 보류에 가까움</td><td>"1 : F -> 앱 기본 로고로 쓰고 배포 시 활용하기 위해 별도 파일도 개발산출물에 남길 것", "로고 시안 마음에 드는게 많아서 일단 F로 두고, 시안 git에 올려두면 나중에 바꿀 수 있게 할 것"</td><td>격자 64, 블록 곡률 3, 책등 곡률 2·4(표지 5·9 축소), 색 `fill1~3` + 진한 부분 `inkStrong`(진한 바탕 위는 `paper`). 아이콘 1024는 바탕 + 로고 72%, 모서리 22.37%</td><td>로그인 상단 56 · 앱 아이콘 · 웹 탭 아이콘 · 시연 자료 표지</td><td><span class="st">확인</span></td></tr>
     <tr><td>아이콘 바탕</td><td>백색</td><td>—</td><td>—</td><td>—</td><td>#FFFFFF(로고 자산 기본). 앱 화면 안에서는 순백을 쓰지 않는다(카드 `paper`)</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>로그인 상단 배치</td><td>로고 56 왼쪽 위 + 브랜드 + 제목</td><td>—</td><td>—</td><td>—</td><td>위 여백 64, 로고↔브랜드 14, 좌우 24</td><td>/login → 아래 Google(주 버튼)</td><td><span class="st">기본값(Claude)</span> — 로그인 시안에서 로고와 버튼 관계를 정함</td></tr>
   </table></div>

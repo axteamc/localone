@@ -83,7 +83,7 @@
   th { background:var(--surface2); font-weight:500; }
   .st { font-size:12px; padding:1px 8px; border-radius:999px; background:var(--surface2); white-space:nowrap; }
 
-  /* 로고 SVG(로고_시안.html 후보 E와 같은 그림) */
+  /* 로고 SVG(로고_시안.html 채택 F와 같은 그림, 개발산출물/로고/) */
   .lg { --lk:var(--ink-strong); --lp:var(--paper); }
   .lg .k { fill:var(--lk); } .lg .p { fill:var(--lp); } .lg .f1 { fill:var(--fill1); } .lg .f2 { fill:var(--fill2); } .lg .f3 { fill:var(--fill3); }
   @media (max-width:600px) { header.page, main { padding:0 12px; } .cands, .cands.four { grid-template-columns:1fr; } }
@@ -92,7 +92,7 @@
 <body>
 <header class="page">
   <h1>로그인 — 홈 파사드에 맞추기</h1>
-  <div class="how"><b>보는 법.</b> 배치(위 소개·로고, 아래 버튼, C-60)는 그대로예요. 정할 것은 두 가지예요: <b>1. 바탕 격자 강도</b>(기준 + 3단계), <b>2. 로고와 버튼의 관계</b>(후보 3개). 1에서 고른 강도는 2의 화면과 맨 아래 넓은 화면에도 그대로 들어가요. 휴대폰 안의 Google 버튼을 누르면 "로그인하는 중" 상태가 보여요. 노란 테두리가 추천이에요. 로고는 <a href="로고_시안.html">로고 시안</a>의 추천안 E(책등 묶음)를 임시로 넣었어요.</div>
+  <div class="how"><b>보는 법.</b> 배치(위 소개·로고, 아래 버튼, C-60)는 그대로예요. 정할 것은 두 가지예요: <b>1. 바탕 격자 강도</b>(기준 + 3단계), <b>2. 로고와 버튼의 관계</b>(후보 3개). 1에서 고른 강도는 2의 화면과 맨 아래 넓은 화면에도 그대로 들어가요. 휴대폰 안의 Google 버튼을 누르면 "로그인하는 중" 상태가 보여요. 노란 테두리가 추천이에요. 로고는 <a href="로고_시안.html">로고 시안</a>에서 고른 F(글자형 ㄷ + 한 권)예요.<br><b>결정(2026-11-18).</b> 격자 1단계, 관계 C(진한 테두리). 위의 선택 상자로 다른 후보를 다시 볼 수 있어요.</div>
   <div class="bar">
     <label>표시 플랫폼 <select id="platform"><option value="web" selected>웹·Android</option><option value="ios">iOS(Apple 버튼)</option></select></label>
     <label>룩 <select id="look"><option value="warm" selected>warm (M1 기본)</option><option value="modern">모던</option><option value="toffee">toffee</option><option value="oxford">Oxford</option></select></label>
@@ -101,8 +101,8 @@
 <main>
 
 <!-- ===== 정할 것 1. 바탕 격자 강도 (연속값) ===== -->
-<section class="element" id="el-grid" data-kind="continuous" data-chosen="">
-  <h2>정할 것 1. 바탕 격자 강도 <span class="status">결정 전</span></h2>
+<section class="element" id="el-grid" data-kind="continuous" data-chosen="s1">
+  <h2>정할 것 1. 바탕 격자 강도 <span class="status">확인 — 1단계</span></h2>
   <div class="flow"><b>무엇이 바뀌나.</b> 로그인 바탕을 홈 판처럼 <b>유리판(`panelFrosted`)</b>으로 바꾸고(기본값), 그 위에 줄눈 격자를 얼마나 보일지예요. 칸은 앱 값 120(시안 휴대폰은 축소라 96). 줄눈 색 `seamHairline`. 넓은 웹의 바깥 벽(`WebFrame`)은 이미 투명도 .55라, 2단계면 노트북에서 벽과 로그인 바탕이 이어져 보여요.</div>
   <div class="pick">후보 다시 보기 <select data-for="el-grid"><option value="">— 전체 —</option><option value="s0">기준</option><option value="s1">1단계</option><option value="s2">2단계 (추천)</option><option value="s3">3단계</option></select></div>
   <div class="cands four">
@@ -127,8 +127,8 @@
 </section>
 
 <!-- ===== 정할 것 2. 로고와 버튼의 관계 ===== -->
-<section class="element" id="el-rel" data-chosen="">
-  <h2>정할 것 2. 로고와 버튼의 관계 <span class="status">결정 전</span></h2>
+<section class="element" id="el-rel" data-chosen="C">
+  <h2>정할 것 2. 로고와 버튼의 관계 <span class="status">확인 — C</span></h2>
   <div class="flow"><b>무엇이 바뀌나.</b> 위(로고·소개)와 아래(버튼) 사이 빈 곳을 어떻게 이을지예요. 셋 다 C-60 배치는 그대로예요. 격자 강도는 위 1에서 고른 값(고르기 전엔 추천 2단계)으로 그렸어요.</div>
   <div class="pick">후보 다시 보기 <select data-for="el-rel"><option value="">— 전체 —</option><option value="A">A 떨어뜨리기</option><option value="B">B 축으로 잇기</option><option value="C">C 아래 창 (추천)</option></select></div>
   <div class="cands">
@@ -169,13 +169,13 @@
   <h2>명세</h2>
   <div class="wide"><table>
     <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
-    <tr data-el="el-grid"><td>1. 바탕 격자 강도</td><td>— (추천: 2단계)</td><td>—</td><td>—</td><td>(받기 전)</td><td>기준 0 · 1단계 .30 · 2단계 .55 · 3단계 .55 + 리벳·축·룰러. 칸 120(앱), `seamHairline`</td><td>—</td><td><span class="st">결정 전</span></td></tr>
-    <tr data-el="el-rel"><td>2. 로고와 버튼의 관계</td><td>— (추천: C 아래 창)</td><td>—</td><td>—</td><td>(받기 전)</td><td>A 여백 · B 축 1px `inkStrong` 55% · C `panelLit` 곡률 3, 위 1px 줄눈 + 0 -4 10 `shadowCast`</td><td>/login → Google → 진행 → 홈</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-grid"><td>1. 바탕 격자 강도</td><td>1단계(투명도 .30)</td><td>없음(받지 않음)</td><td>기준, 2단계(추천이었음), 3단계</td><td>"2 : 1단계"</td><td>기준 0 · 1단계 .30 · 2단계 .55 · 3단계 .55 + 리벳·축·룰러. 칸 120(앱), `seamHairline`</td><td>—</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-rel"><td>2. 로고와 버튼의 관계</td><td>C 아래 창에 버튼 담기</td><td>없음(받지 않음)</td><td>A 떨어뜨리기, B 축으로 잇기</td><td>"3 : C"</td><td>A 여백 · B 축 1px `inkStrong` 55% · C `panelLit` 곡률 3, 위 1px 줄눈 + 0 -4 10 `shadowCast`</td><td>/login → Google → 진행 → 홈</td><td><span class="st">확인</span></td></tr>
     <tr><td>바탕</td><td>유리판 `panelFrosted`</td><td>—</td><td>`cream`(지금)</td><td>—</td><td>DESIGN 페이지 적용 레시피 "바탕"</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>머리 띠</td><td>없음(지금의 빈 띠를 없앰)</td><td>—</td><td>—</td><td>—</td><td>로그인은 첫 화면이라 뒤로가기·표찰 없음</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>글자</td><td>브랜드 13/500, 제목 24/400 `inkSoft` 왼쪽 정렬(B는 가운데)</td><td>—</td><td>제목 24/500(지금)</td><td>—</td><td>`type.pageTitle`</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>Google 버튼</td><td>주 버튼 `fill1` 채움 필, 높이 48</td><td>—</td><td>`paper` + `surface3` 보조 모양(지금)</td><td>—</td><td>`actionColors().primary`, 규칙 7 무거운 표식 하나</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
-    <tr><td>로고</td><td>로고 시안 추천안 E(임시)</td><td>—</td><td>곡률 18 알약 3개(지금)</td><td>—</td><td>52(시안) / 56(앱)</td><td>—</td><td><span class="st">미확인(임시: 추천안)</span></td></tr>
+    <tr><td>로고</td><td>로고 시안 F 글자형 ㄷ + 한 권</td><td>—</td><td>곡률 18 알약 3개(지금)</td><td>로고 시안에서 F 채택</td><td>52(시안) / 56(앱), 파일 `개발산출물/로고/`</td><td>—</td><td><span class="st">확인</span></td></tr>
   </table></div>
   <p>아직 하지 않음: `login.tsx` 코드 적용(고른 뒤 다음 단계), 아이콘 PNG.</p>
 </section>
@@ -200,7 +200,7 @@ function applyLook(name){
     "panel-frosted":mix(c.paper,c.bg,.58),"panel-lit":mix(c.paper,c.cream,.84),seam:mix(c.inkStrong,c.bg,.14),rivet:mix(c.inkStrong,c.surface3,.34),"on-fill1":onFill(c.fill1)};
   for(const k in v) r.setProperty("--"+k,v[k]);
 }
-const LOGO=`<svg class="lg" viewBox="0 0 64 64" role="img" aria-label="로고 자리(임시: 로고 시안 추천안 E 책등 묶음)"><rect class="f2" x="11" y="20" width="12" height="34" rx="2"/><rect class="f3" x="26" y="12" width="12" height="42" rx="2"/><rect class="f1" x="41" y="24" width="12" height="30" rx="2"/><path class="p" d="M29 18a3 3 0 0 1 6 0v7h-6z" opacity=".9"/><rect class="k" x="8" y="54" width="48" height="4" rx="1.5"/></svg>`;
+const LOGO=`<svg class="lg" viewBox="0 0 64 64" role="img" aria-label="동네한권 로고"><path class="k" d="M10 10H54V20H20V44H54V54H10Z"/><rect class="f1" x="30" y="24" width="12" height="20" rx="2"/><rect class="f2" x="44" y="28" width="8" height="16" rx="1.5"/></svg>`;
 const GRID={s0:0,s1:.30,s2:.55,s3:.55};
 const REC={grid:"s2",rel:"C"};
 
