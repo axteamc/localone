@@ -38,7 +38,7 @@
 | 5 | `PATCH /api/v1/me/settings` | 필수 | 위 설정 바꾸기 | LIB-02, LOAN-03 | 같음 |
 | 6 | `DELETE /api/v1/me` | 필수 | 탈퇴: 개인 데이터 처리·게시물 철회 | AUTH-03 | `기본값(Claude)` · 처리 범위·보관은 `미확인(임시)` Q-23(AUTH-3 계약서) |
 
-- **로그아웃(AUTH-02)은 서버 엔드포인트가 없다**(`기본값(Claude)`): 앱이 Supabase `signOut()`을 부르고 화면·캐시·기기 예약 알림을 지운다. 철회된 세션의 쓰기 거부는 서버가 JWT의 `session_id`로 확인하는데, 그 방법은 AUTH-2 계약서에서 정한다(AUTH-1 A4). 엔드포인트가 필요해지면 이 표에 더한다.
+- **로그아웃(AUTH-02)은 서버 엔드포인트가 없다**(`기본값(Claude)`, AUTH-2 G1·G2): 앱이 진행 중 요청을 끊고 상태를 비운 뒤 Supabase `signOut({ scope: "local" })`(이 기기만)을 부르고, 기능이 등록한 정화(`registerSignOutCleanup`: 기기 예약 알림·캐시)를 돌린다. 철회된 세션 거부는 `get_current_user`가 `users` 조회와 같은 트랜잭션에서 Supabase `auth.sessions`에 토큰의 `session_id`·`sub` 행이 있는지 보고, 없으면 `401 AUTH_INVALID`(`확정`, AUTH-2 G3). 설정 `AUTH_SESSION_CHECK`는 production 기본 켜짐·끄면 시작 거부, local·test 기본 꺼짐(로컬 docker DB에는 `auth` 스키마가 없음). 엔드포인트가 필요해지면 이 표에 더한다.
 - 닉네임을 바꾸는 엔드포인트는 두지 않는다(`미확인(임시)` Q-55, 프로필은 요구사항 ID 없음).
 
 ### 2.2 조회 엔진 — 도서·도서관·소장 (D가 만들고 C·A·B가 쓴다)

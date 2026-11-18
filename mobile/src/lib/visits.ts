@@ -119,4 +119,4 @@ export function setLastRegion(code: string): Promise<void> {
     await write(STORAGE_KEYS.lastRegion, { code, setOn: seoulDate(new Date()) });
   });
 }
-// TODO(연결): D(AUTH-2) registerSignOutCleanup. C3 device visits/default are retained.
+// AUTH-2 G8: visits/default/last region are device data (core C3) and stay on sign-out — no registerSignOutCleanup.

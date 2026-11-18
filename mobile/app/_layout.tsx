@@ -9,6 +9,7 @@ export default function RootLayout() {
       <Stack screenOptions={{ title: "동네한권", headerStyle: { backgroundColor: theme.colors.cream } }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ title: "" }} />
+        <Stack.Screen name="settings" options={{ title: "설정" }} />
       </Stack>
     </AuthProvider>
   );
