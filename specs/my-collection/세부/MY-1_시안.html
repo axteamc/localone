@@ -202,9 +202,19 @@
   <!-- ===== 중심 요소 2 ===== -->
   <section class="element" id="el-2" data-chosen="">
     <h2>정할 것 2. "좋아요" 탭에서 좋아요를 취소하면 그 카드를 어떻게 할까<span class="status" data-status>결정 전</span></h2>
-    <p style="margin:0;font-size:14px">카드를 길게 누르면 메뉴가 떠요. "북마크" 탭에서 북마크를 해제할 때도 똑같이 움직여요. 아래 버튼을 순서대로 눌러 보세요.</p>
+    <p style="margin:0;font-size:14px">맨 앞 화면이 말씀하신 합친 안이에요. ③을 누르고 4초 기다리면 안내와 흐린 카드가 함께 사라져요. 카드를 길게 누르면 메뉴가 떠요. "북마크" 탭에서 북마크를 해제할 때도 똑같이 움직여요. 아래 버튼을 순서대로 눌러 보세요.</p>
     <div class="state">순서: <button aria-pressed="true" data-step="0">① 좋아요 탭</button><button aria-pressed="false" data-step="1">② "소년이 온다" 카드 길게 누름</button><button aria-pressed="false" data-step="2">③ "좋아요 취소" 누른 뒤</button><button aria-pressed="false" data-step="3">④ 4초 뒤 / 다른 탭 갔다 돌아옴</button></div>
     <div class="cands">
+      <article class="cand" data-id="D">
+        <h3>흐리게 남고 "되돌리기", 안내가 사라지면 빠짐 <span class="badge" style="background:var(--fill3)">합친 안</span></h3>
+        <div class="phone" data-phone2></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>1번처럼 아래에 "좋아요를 취소했어요 · 되돌리기"가 4초 뜨고, 그동안 카드는 2번처럼 자리에 흐리게 "취소함"으로 남아요. 안내가 사라지면 카드도 빠져요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">카드를 길게 누름 → "좋아요 취소" → 카드가 흐려지고 아래에 "되돌리기"가 뜸 → 4초 안에 "되돌리기"를 누르면 카드가 원래대로 → 안 누르면 4초 뒤 안내와 카드가 함께 사라지고 남은 카드가 자리를 채움.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>③에서 카드 4개(하나 흐림) + 아래 안내. ④(4초 뒤)에서 3개.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>무엇을 취소했는지 눈으로 보면서 되돌릴 수 있음 / 4초 동안 흐린 카드가 섞여 보이고, 여러 개를 빨리 빼면 흐린 카드가 여럿 생김</dd>
+        </dl>
+      </article>
       <article class="cand recommended" data-id="A">
         <h3>바로 빠지고 "되돌리기" <span class="badge">추천</span></h3>
         <div class="phone" data-phone2></div>
@@ -234,16 +244,6 @@
           <dt>누르면 이렇게 이어져요</dt><dd class="flow">카드를 길게 누름 → "좋아요 취소" → 카드가 조용히 빠짐 → 실수였으면 그 게시물을 다시 찾아가 좋아요를 눌러야 함.</dd>
           <dt>화면을 열어야 보이는 것</dt><dd>③에서 카드 3개, 안내 없음. ④에서도 3개.</dd>
           <dt>얻는 것 / 포기하는 것</dt><dd>가장 단순하고 조용함 / 잘못 누르면 바로 되돌릴 방법이 없음</dd>
-        </dl>
-      </article>
-      <article class="cand" data-id="D">
-        <h3>흐리게 남고 "되돌리기", 안내가 사라지면 빠짐 <span class="badge" style="background:var(--fill3)">합친 안</span></h3>
-        <div class="phone" data-phone2></div>
-        <dl class="note">
-          <dt>무엇이 다른가</dt><dd>1번처럼 아래에 "좋아요를 취소했어요 · 되돌리기"가 4초 뜨고, 그동안 카드는 2번처럼 자리에 흐리게 "취소함"으로 남아요. 안내가 사라지면 카드도 빠져요.</dd>
-          <dt>누르면 이렇게 이어져요</dt><dd class="flow">카드를 길게 누름 → "좋아요 취소" → 카드가 흐려지고 아래에 "되돌리기"가 뜸 → 4초 안에 "되돌리기"를 누르면 카드가 원래대로 → 안 누르면 4초 뒤 안내와 카드가 함께 사라지고 남은 카드가 자리를 채움.</dd>
-          <dt>화면을 열어야 보이는 것</dt><dd>③에서 카드 4개(하나 흐림) + 아래 안내. ④(4초 뒤)에서 3개.</dd>
-          <dt>얻는 것 / 포기하는 것</dt><dd>무엇을 취소했는지 눈으로 보면서 되돌릴 수 있음 / 4초 동안 흐린 카드가 섞여 보이고, 여러 개를 빨리 빼면 흐린 카드가 여럿 생김</dd>
         </dl>
       </article>
     </div>
@@ -367,6 +367,8 @@
       if (step === 1) h += '<div class="menu"><div class="pick">좋아요 취소</div><div>게시물 보기</div><div>닫기</div></div>';
       if (step === 2 && (id === 'A' || id === 'D')) h += '<div class="toast">좋아요를 취소했어요<span class="undo">되돌리기</span></div>';
       phone.innerHTML = h;
+      clearTimeout(phone._t);
+      if (step === 2 && (id === 'A' || id === 'D')) phone._t = setTimeout(function () { render(phone, id, 3); }, 4000);
     }
     function show(step) {
       el2.querySelectorAll('.cand').forEach(function (c) { render(c.querySelector('[data-phone2]'), c.dataset.id, step); });
