@@ -426,8 +426,10 @@
     ];
     // 카드 상태: 'n' 보통, 'o' 길게 누름, 'd' 흐림, 'g' 빠짐
     // step 0 처음, 1 길게 누름, 2 첫 취소, 2.5 첫 취소 4초 뒤, 3 4초 안에 둘째 취소, 4 끝(4초 뒤 / 탭 갔다 옴)
-    function cardState(id, step, which) {
+    function cardState(id, step, which, restored) {
       var late = id === 'B' || id === 'D';
+      // [D 보완] 되돌리기를 누른 뒤: 방금 취소한 카드만 원래 자리로 돌아옴(③에서 누르면 모두 원래대로, ④에서 누르면 앞서 빠진 카드는 빠진 채)
+      if (restored) return (step === 3 && which === 1) ? 'g' : 'n';
       if (which === 1) {
         if (step < 1) return 'n';
         if (step === 1) return 'o';
@@ -442,14 +444,14 @@
       }
       return 'n';
     }
-    function render(phone, id, step) {
-      var h = '<div class="sbar">9:41</div><div class="topbar"><span class="ttl">내 정보</span><button class="gear">⚙</button></div><div class="body">'
+    function render(phone, id, step, restored) {
+      var h ='<div class="sbar">9:41</div><div class="topbar"><span class="ttl">내 정보</span><button class="gear">⚙</button></div><div class="body">'
         + '<div class="profA"><div class="avatar">👤</div><div class="meta"><div class="nick">이웃-0000</div><div class="bio">동네 도서관 산책을 좋아해요</div><button class="editbtn">프로필 수정</button></div></div>'
         + '<div class="tabbar"><span>내 게시물</span><span class="on">좋아요</span><span>북마크</span></div><div class="feed"><div class="feedin">';
       LIKED.forEach(function (col) {
         h += '<div class="col">';
         col.forEach(function (k) {
-          var st = cardState(id, step, k.target || 0);
+          var st = cardState(id, step, k.target || 0, restored);
           if (st === 'g') return;
           var dim = st === 'd';
           var cls = 'card ' + k.c + (st === 'o' ? ' target' : '') + (dim ? ' dim' : '');
@@ -460,11 +462,19 @@
       h += '</div></div></div><div class="nav"><span>홈</span><span>대출·반납</span><span class="on">내 정보</span></div>';
       // 카드 메뉴는 방문 페이지 피드와 같은 작은 창(local-feed H10): 위 아이콘 3개 + 책 줄. 켜진 ♥를 누르면 좋아요 취소
       if (step === 1) h += '<div class="menu"><div style="display:flex;justify-content:space-around"><span class="pick">♥ 좋아요 (누르면 취소)</span><span>🔖 북마크</span><span>↗ 공유</span></div><div>📖 소년이 온다 검색</div><div>👤 한강의 다른 책</div></div>';
-      var undo = (step === 2 || step === 3) && (id === 'A' || id === 'D');
-      if (undo) h += '<div class="toast">좋아요를 취소했어요<span class="undo">되돌리기</span></div>';
+      var undo = !restored && (step === 2 || step === 3) && (id === 'A' || id === 'D');
+      if (undo) h += '<div class="toast">좋아요를 취소했어요<span class="undo" role="button" tabindex="0">되돌리기</span></div>';
       phone.innerHTML = h;
       clearTimeout(phone._t);
-      if (undo) phone._t = setTimeout(function () { render(phone, id, step === 2 ? 2.5 : 4); }, 4000);
+      if (undo) {
+        phone._t = setTimeout(function () { render(phone, id, step === 2 ? 2.5 : 4); }, 4000);
+        // [D 보완] 4초 안에 되돌리기 → 빠짐 타이머를 끄고 카드를 원래 자리·보통 모습으로 되돌림(첫 누름만 받음)
+        var u = phone.querySelector('.undo');
+        var done = false;
+        var restore = function () { if (done) return; done = true; clearTimeout(phone._t); render(phone, id, step, true); };
+        u.addEventListener('click', restore);
+        u.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); restore(); } });
+      }
     }
     function show(step) {
       el2.querySelectorAll('.cand').forEach(function (c) { render(c.querySelector('[data-phone2]'), c.dataset.id, step); });
@@ -569,7 +579,8 @@
         pull: true,
         a: function () { return TOP + tabs(0) + cards(FOUR) + '<div class="err inline">더 불러오지 못했어요 ' + RF + '</div>' + NAV; },
         loading: function () { return TOP + tabs(0) + cards(FOUR) + '<div class="err inline" style="color:var(--text-sub)">다시 불러오는 중…</div>' + NAV; },
-        b: function () { return TOP + tabs(0) + cards([[['f3', 150, '두 번째 읽는 중'], ['f2', 110, '반납 전 한 장']], [['f1', 110, '동네 서가 산책'], ['f3', 150, '밑줄 그은 곳']]]) + '<div class="err inline" style="color:var(--text-sub)">모두 봤어요</div>' + NAV; } },
+        // [D 보완] 다시 불러오기 성공: 이미 보이던 4개(FOUR)는 그대로 두고 새 4개를 아래에 이어 붙임(명세 정상 흐름 6·계약 Y-O5)
+        b: function () { return TOP + tabs(0) + cards([FOUR[0].concat([['f3', 150, '두 번째 읽는 중'], ['f2', 110, '반납 전 한 장']]), FOUR[1].concat([['f1', 110, '동네 서가 산책'], ['f3', 150, '밑줄 그은 곳']])]) + '<div class="err inline" style="color:var(--text-sub)">모두 봤어요</div>' + NAV; } },
       { when: '처음 가입해서 탭에 게시물이 하나도 없을 때',
         keep: '프로필과 탭은 그대로. 카드 자리에 정할 것 3에서 고른 안내',
         next: '"가까운 도서관 둘러보기"를 누르면 홈 탭으로 가요',
