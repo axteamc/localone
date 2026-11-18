@@ -92,6 +92,13 @@
   .card .tag { position: absolute; top: 8px; left: 8px; background: var(--paper); border-radius: var(--r-pill); padding: 1px 8px; font-size: 11px; font-weight: 400; }
   .card.target { outline: 3px solid var(--ink-strong); outline-offset: -3px; }
   .toast .undo { text-decoration: underline; margin-left: 8px; font-weight: 700; }
+  .empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 0 24px 40px; gap: 10px; }
+  .empty .ico { width: 56px; height: 56px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 24px; }
+  .empty .msg { font-size: 15px; font-weight: 700; color: var(--text); }
+  .empty .sub { font-size: 13px; color: var(--text-sub); }
+  .empty .go { font: inherit; font-size: 14px; border: 0; border-radius: var(--r-control); padding: 9px 16px; background: var(--ink-strong); color: var(--paper); cursor: pointer; }
+  .steps3 { display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--text-sub); }
+  .steps3 span { background: var(--paper); border-radius: 12px; padding: 6px 6px; }
   .toast { position: absolute; left: 16px; right: 16px; bottom: 64px; background: var(--ink-strong); color: var(--paper); border-radius: var(--r-pill); padding: 8px 12px; font-size: 13px; text-align: center; }
 
   #spec, #except, #fullflow { background: var(--paper); border-radius: var(--r-card); padding: 14px 16px; margin-top: 28px; }
@@ -250,7 +257,46 @@
     <p>다시 비교하기: <select id="pick2"><option value="">채택안 보기</option><option value="A">바로 빠지고 "되돌리기"</option><option value="B">흐리게 남았다가 다음에 빠짐</option><option value="C">바로 빠짐, 안내 없음</option><option value="D">흐리게 남고 "되돌리기"(합친 안)</option></select></p>
   </section>
 
-  <!-- 중심 요소 3 은 2가 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
+  <!-- ===== 중심 요소 3 ===== -->
+  <section class="element" id="el-3" data-chosen="">
+    <h2>정할 것 3. 탭에 아무것도 없을 때 무엇을 보여 주고 어디로 이어질까<span class="status" data-status>결정 전</span></h2>
+    <p style="margin:0;font-size:14px">처음 가입한 사람은 세 탭이 모두 비어 있어요. 아래 버튼으로 탭을 바꿔 보고, 화면 안의 버튼도 눌러 보세요.</p>
+    <div class="state">탭: <button aria-pressed="true" data-etab="0">내 게시물</button><button aria-pressed="false" data-etab="1">좋아요</button><button aria-pressed="false" data-etab="2">북마크</button></div>
+    <div class="cands">
+      <article class="cand recommended" data-id="A">
+        <h3>안내 + 홈으로 가는 버튼 <span class="badge">추천</span></h3>
+        <div class="phone" data-phone3></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>탭마다 무엇을 하면 여기가 채워지는지 한 줄 안내가 있고, 그 아래 "가까운 도서관 둘러보기 →" 버튼이 있어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">빈 탭을 봄 → "가까운 도서관 둘러보기 →"를 누름 → 홈 탭으로 바뀜 → 도서관 블록을 눌러 방문 페이지로 → 거기서 글을 올리거나 좋아요·북마크를 누르면 이 탭에 모여요.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>탭마다 안내 문구가 다름. 버튼은 세 탭 모두 같은 곳(홈)으로 감.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>처음 온 사람이 다음에 뭘 할지 바로 앎 / 버튼 하나가 늘어 화면이 조금 붐빔</dd>
+          <dt>추천 이유</dt><dd>글쓰기·좋아요·북마크는 모두 도서관 방문 페이지에서 하니까, 빈 탭에서 그쪽으로 한 번에 보내는 게 가장 짧은 길이에요.</dd>
+        </dl>
+      </article>
+      <article class="cand" data-id="B">
+        <h3>안내 한 줄만</h3>
+        <div class="phone" data-phone3></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>탭마다 짧은 안내 한 줄만 있고 버튼은 없어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">빈 탭을 봄 → 안내를 읽음 → 아래 "홈" 탭을 직접 눌러 도서관으로 감.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>탭마다 안내 문구가 다름. 누를 곳 없음.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>가장 조용하고 깔끔함 / 처음 온 사람은 어디로 가야 할지 스스로 찾아야 함</dd>
+        </dl>
+      </article>
+      <article class="cand" data-id="C">
+        <h3>그림으로 순서 안내 + 버튼</h3>
+        <div class="phone" data-phone3></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>"도서관 들어가기 → ♡ 누르기 → 여기 모임"처럼 세 칸 그림으로 순서를 보여 주고, 아래에 같은 버튼이 있어요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">빈 탭을 봄 → 세 칸 그림으로 하는 법을 봄 → "가까운 도서관 둘러보기 →"를 누름 → 홈 탭으로 바뀜.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>탭마다 가운데 그림이 다름(✎ 글쓰기 / ♡ 좋아요 / 🔖 북마크).</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>처음 쓰는 사람이 방법까지 알 수 있음 / 빈 화면이 가장 꽉 차고 길어짐</dd>
+        </dl>
+      </article>
+    </div>
+    <p>다시 비교하기: <select id="pick3"><option value="">채택안 보기</option><option value="A">안내 + 홈으로 가는 버튼</option><option value="B">안내 한 줄만</option><option value="C">그림으로 순서 안내 + 버튼</option></select></p>
+  </section>
 
   <!-- ===== 처음부터 끝까지 (세부 명세서 2. 유저 플로우와 같게) ===== -->
   <section id="fullflow">
@@ -278,7 +324,7 @@
       <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값</th></tr>
       <tr><td>1. 위쪽 내 프로필 배치 (Y-O1)</td><td>확인</td><td>채택: 왼쪽 사진 + 옆에 이름 / 차선 없음 / 탈락: 가운데 큰 사진, 한 줄로 작게</td><td>"공백은 적고 있을 건 다 잘 보이고 깔끔해 보여"</td><td>A 사진 64 / B 88 / C 36, 원형</td></tr>
       <tr><td>2. 좋아요·북마크 해제 뒤 목록 (Y-O4)</td><td>확인</td><td>채택: 합친 안(흐리게 남고 "되돌리기", 4초 뒤 함께 빠짐) / 차선 없음 / 탈락: 바로 빠지고 "되돌리기", 흐리게 남았다가 다음에 빠짐, 바로 빠짐·안내 없음</td><td>"사라지기 전에 게시글 보고 고민돼서 되돌릴 수도 있고, 되돌리기만 남겨 두기는 좀 그렇긴 해" / "다른 거는 너무 딱딱하거나 설명이 모자란데 지금 고른 안은 그런 단점이 없거나 적어" / 연달아 취소: "전에 취소 누른 거 바로 없어지는 식으로"</td><td>안내 4초, 흐린 카드 투명도 45% + "취소함" 표시, 흐린 카드는 한 번에 하나(다음 취소 시 앞 카드 바로 빠짐), 카드 길게 누르면 메뉴. 북마크 해제도 같음("북마크를 해제했어요")</td></tr>
-      <tr><td>3. 탭이 비었을 때 (Y-O3)</td><td>결정 전</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>3. 탭이 비었을 때 (Y-O3)</td><td>결정 전</td><td>— (추천: 안내 + 홈으로 가는 버튼)</td><td>—</td><td>버튼은 세 탭 모두 홈 탭으로</td></tr>
       <tr><td>탭 바 모양 (Y-O2)</td><td>기본값(Claude)</td><td>글자 + 고른 탭 밑줄(<code>ink-strong</code> 2), 내리면 맨 위에 붙음</td><td>묻지 않음</td><td>글자 14</td></tr>
       <tr><td>탭 오갈 때 (Y-O2)</td><td>기본값(Claude)</td><td>불러온 탭은 기억, 아래로 당기면 새로</td><td>묻지 않음</td><td>—</td></tr>
       <tr><td>다음 묶음 (Y-O5)</td><td>기본값(Claude)</td><td>끝까지 내리면 자동으로 이어 불러옴</td><td>묻지 않음</td><td>한 번에 20개</td></tr>
@@ -409,6 +455,51 @@
     }
     mark2(el2.dataset.chosen);
     document.getElementById('pick2').addEventListener('change', function (e) { mark2(e.target.value || el2.dataset.chosen); });
+  })();
+  // ===== 정할 것 3: 탭이 비었을 때 =====
+  (function () {
+    var el3 = document.getElementById('el-3');
+    var TABS = ['내 게시물', '좋아요', '북마크'];
+    var MSG = [
+      { ico: '✎', msg: '아직 올린 게시물이 없어요', sub: '도서관 방문 페이지에서 첫 글을 올려 보세요', step: '글 올리기' },
+      { ico: '♡', msg: '아직 좋아요한 게시물이 없어요', sub: '마음에 드는 게시물에 ♡를 누르면 여기 모여요', step: '♡ 누르기' },
+      { ico: '🔖', msg: '아직 북마크한 게시물이 없어요', sub: '다시 보고 싶은 게시물을 북마크하면 여기 모여요', step: '북마크 누르기' }
+    ];
+    function render(phone, id, t, moved) {
+      var h = '<div class="sbar">9:41</div><div class="topbar"><span class="ttl">' + (moved ? '홈' : '내 정보') + '</span>' + (moved ? '' : '<button class="gear">⚙</button>') + '</div><div class="body">';
+      if (moved) {
+        h += '<div class="empty"><div class="sub">홈 화면(도서관 블록)으로 바뀌었어요</div><div class="sub">도서관 블록을 누르면 방문 페이지로 가요</div></div>';
+      } else {
+        h += '<div class="profA"><div class="avatar">👤</div><div class="meta"><div class="nick">이웃-0000</div><button class="editbtn">프로필 수정</button></div></div><div class="tabbar">';
+        TABS.forEach(function (n, i) { h += '<span' + (i === t ? ' class="on"' : '') + '>' + n + '</span>'; });
+        var m = MSG[t];
+        h += '</div><div class="empty"><div class="ico">' + m.ico + '</div><div class="msg">' + m.msg + '</div>';
+        if (id !== 'C') h += '<div class="sub">' + m.sub + '</div>';
+        if (id === 'C') h += '<div class="steps3"><span>도서관 들어가기</span>→<span>' + m.step + '</span>→<span>여기 모임</span></div>';
+        if (id !== 'B') h += '<button class="go" data-go>가까운 도서관 둘러보기 →</button>';
+        h += '</div>';
+      }
+      h += '</div><div class="nav"><span' + (moved ? ' class="on"' : '') + '>홈</span><span>대출·반납</span><span' + (moved ? '' : ' class="on"') + '>내 정보</span></div>';
+      phone.innerHTML = h;
+      var go = phone.querySelector('[data-go]');
+      if (go) go.addEventListener('click', function () { render(phone, id, t, true); });
+    }
+    function show(t) {
+      el3.querySelectorAll('.cand').forEach(function (c) { render(c.querySelector('[data-phone3]'), c.dataset.id, t, false); });
+      el3.querySelectorAll('[data-etab]').forEach(function (b) { b.setAttribute('aria-pressed', +b.dataset.etab === t); });
+    }
+    el3.querySelectorAll('[data-etab]').forEach(function (b) { b.addEventListener('click', function () { show(+b.dataset.etab); }); });
+    show(0);
+    function mark3(id) {
+      el3.querySelectorAll('.cand').forEach(function (c) {
+        c.classList.toggle('chosen', c.dataset.id === id);
+        var old = c.querySelector('.badge.chosen'); if (old) old.remove();
+        if (c.dataset.id === id) { var s = document.createElement('span'); s.className = 'badge chosen'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+      });
+      el3.querySelector('[data-status]').textContent = id ? '확인' : '결정 전';
+    }
+    mark3(el3.dataset.chosen);
+    document.getElementById('pick3').addEventListener('change', function (e) { mark3(e.target.value || el3.dataset.chosen); });
   })();
 </script>
 </body>
