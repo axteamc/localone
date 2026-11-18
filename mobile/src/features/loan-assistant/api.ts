@@ -1,4 +1,4 @@
-// 내 대출 서버 호출(loan-assistant.md LOAN-1 C2·C3). 오류는 core `ApiCallError` 모양 그대로 던진다.
+// 내 대출 서버 호출(loan-assistant.md LOAN-1 C2·C3, LOAN-2 C2). 오류는 core `ApiCallError` 모양 그대로 던진다.
 // 대출일·D-day는 서버가 정한다(M2·M4). 앱은 받은 값을 그대로 보여 준다.
 import { apiFetch } from "../../auth/apiFetch";
 import { ApiCallError } from "../../lib/publicApi";
@@ -70,4 +70,18 @@ export function startLoan(input: { isbn13: string; libraryId?: number; planId?: 
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
+}
+
+/** #21 `PATCH /api/v1/me/loans/{loan_id}` — 대출일 이상만(LOAN-2 E1). 고치면 `due_on_assumed: false` */
+export function changeDueDate(loanId: string, dueOn: string): Promise<Loan> {
+  return send<Loan>(`me/loans/${encodeURIComponent(loanId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ due_on: dueOn }),
+  });
+}
+
+/** #22 `POST /api/v1/me/loans/{loan_id}/return` — 두 번째도 200, 반납일은 서버 날짜(LOAN-2 E3) */
+export function returnLoan(loanId: string): Promise<Loan> {
+  return send<Loan>(`me/loans/${encodeURIComponent(loanId)}/return`, { method: "POST" });
 }

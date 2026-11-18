@@ -1,0 +1,267 @@
+// LOAN-2-P2 기한 수정·반납 (loan-assistant.md LOAN-2 P5)
+import { beforeEach, describe, expect, jest, test } from "@jest/globals";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
+import React from "react";
+import * as api from "../api";
+import type { Loan, LoanPage } from "../api";
+import { DUE_FAILED, SHEET_TITLE, addDays, parseYmd } from "../DueDateSheet";
+import {
+  CHANGED,
+  LOANS_EMPTY,
+  LoansSection,
+  RETURNED_EMPTY,
+  RETURNED_NOTE,
+  RETURN_FAILED,
+  RETURN_TITLE,
+} from "../LoansSection";
+
+// @types/node 없이 쓰는 최소 타입(소스 검사용, search.test.tsx와 같은 방식)
+declare const __dirname: string;
+const fs = require("fs") as {
+  readdirSync(p: string): string[];
+  readFileSync(p: string, enc: "utf8"): string;
+};
+const path = require("path") as { join(...parts: string[]): string };
+
+jest.mock("@react-native-async-storage/async-storage", () =>
+  require("@react-native-async-storage/async-storage/jest/async-storage-mock")
+);
+
+jest.mock("expo-router", () => {
+  const ReactLib = require("react");
+  return {
+    useRouter: () => ({ push: jest.fn(), replace: jest.fn(), back: jest.fn() }),
+    useLocalSearchParams: () => ({}),
+    useFocusEffect: (cb: () => void) => ReactLib.useEffect(cb, [cb]),
+    Stack: { Screen: () => null },
+  };
+});
+
+jest.mock("../api", () => {
+  const actual = jest.requireActual<typeof import("../api")>("../api");
+  return { ...actual, listLoans: jest.fn(), startLoan: jest.fn(), changeDueDate: jest.fn(), returnLoan: jest.fn() };
+});
+
+const listLoans = jest.mocked(api.listLoans);
+const changeDueDate = jest.mocked(api.changeDueDate);
+const returnLoan = jest.mocked(api.returnLoan);
+
+function loan(id: string, extra: Partial<Loan> = {}): Loan {
+  return {
+    id,
+    book: { isbn13: "9788936434120", title: `책 ${id}`, author: "한강", cover_url: null },
+    library: { id: 101, name: "정독도서관" },
+    plan_id: null,
+    loaned_on: "2026-11-10",
+    due_on: "2026-11-24",
+    due_on_assumed: true,
+    status: "on_loan",
+    returned_on: null,
+    d_day: 8,
+    is_overdue: false,
+    ...extra,
+  };
+}
+
+const page = (items: Loan[], next_cursor: string | null = null): LoanPage => ({ items, next_cursor, today: "2026-11-16" });
+const err = (status: number, code: string) => new api.ApiCallError(status, code, "x", "");
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  let reject!: (e: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+async function openSheet(id: string) {
+  await fireEvent.press(within(screen.getByTestId(`loan-${id}`)).getByText("기한 수정"));
+  expect(screen.getByText(SHEET_TITLE)).toBeTruthy();
+}
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  for (const m of [listLoans, changeDueDate, returnLoan]) m.mockReset();
+});
+
+describe("LOAN-2-P2", () => {
+  test("due date sheet blocks dates before loaned_on and updates card on save", async () => {
+    listLoans.mockResolvedValue(page([loan("a")]));
+    await render(<LoansSection />);
+    await screen.findByTestId("loan-a");
+    await openSheet("a");
+    expect(screen.getByText("대출일 2026-11-10부터 고를 수 있어요.")).toBeTruthy();
+    expect(screen.getByTestId("due-input").props.value).toBe("2026-11-24");
+
+    // 대출일 이전·달력 밖·형식 틀림: 보내지 않고 시트 안 문구
+    for (const bad of ["2026-11-09", "2026-02-30", "2026-11-31", "2026/11/28"]) {
+      await fireEvent.changeText(screen.getByTestId("due-input"), bad);
+      await fireEvent.press(screen.getByTestId("due-save"));
+      expect(screen.getByText("대출일(2026-11-10) 이후 날짜를 골라 주세요.")).toBeTruthy();
+    }
+    expect(changeDueDate).not.toHaveBeenCalled();
+
+    // 빠른 조정: 지금 고른 날 기준, 대출일 이전으로 가는 "하루 전"은 막힘
+    await fireEvent.changeText(screen.getByTestId("due-input"), "2026-11-10");
+    expect(screen.getByTestId("due-chip--1").props.accessibilityState).toEqual({ disabled: true });
+    await fireEvent.press(screen.getByText("하루 전"));
+    expect(screen.getByTestId("due-input").props.value).toBe("2026-11-10"); // 눌러도 그대로
+    await fireEvent.press(screen.getByText("+14일"));
+    expect(screen.getByTestId("due-input").props.value).toBe("2026-11-24");
+    await fireEvent.press(screen.getByText("하루 뒤"));
+    expect(screen.getByTestId("due-input").props.value).toBe("2026-11-25");
+
+    // 저장: 연타해도 한 번, 성공하면 시트 닫고 (추정) 사라짐
+    await fireEvent.changeText(screen.getByTestId("due-input"), "2026-11-28");
+    const d = deferred<Loan>();
+    changeDueDate.mockReturnValue(d.promise);
+    await fireEvent.press(screen.getByTestId("due-save"));
+    await fireEvent.press(screen.getByTestId("due-save"));
+    expect(screen.getByText("저장 중…")).toBeTruthy();
+    expect(changeDueDate).toHaveBeenCalledTimes(1);
+    expect(changeDueDate).toHaveBeenCalledWith("a", "2026-11-28");
+    await act(async () => d.resolve(loan("a", { due_on: "2026-11-28", due_on_assumed: false, d_day: 12 })));
+    await waitFor(() => expect(screen.queryByText(SHEET_TITLE)).toBeNull());
+    const card = screen.getByTestId("loan-a");
+    expect(within(card).getByText("대출 2026-11-10 · 예정 2026-11-28")).toBeTruthy();
+    expect(within(card).getByText("D-12")).toBeTruthy();
+    expect(JSON.stringify(screen.toJSON())).not.toContain("(추정)");
+
+    // 422가 오면 같은 문구, 시트 유지
+    await openSheet("a");
+    changeDueDate.mockRejectedValueOnce(err(422, "VALIDATION_ERROR"));
+    await fireEvent.press(screen.getByTestId("due-save"));
+    expect(await screen.findByText("대출일(2026-11-10) 이후 날짜를 골라 주세요.")).toBeTruthy();
+    expect(screen.getByText(SHEET_TITLE)).toBeTruthy();
+
+    // 날짜 도우미
+    expect(parseYmd("2028-02-29")).toBe("2028-02-29");
+    expect(parseYmd("2026-02-29")).toBeNull();
+    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
+    expect(addDays("2026-03-01", -1)).toBe("2026-02-28");
+  });
+
+  test("due date sheet handles 409 conflict by closing and refreshing list", async () => {
+    listLoans.mockResolvedValue(page([loan("a")]));
+    await render(<LoansSection />);
+    await screen.findByTestId("loan-a");
+
+    // 503: 시트 유지 + 문구, 다시 누를 수 있음
+    await openSheet("a");
+    changeDueDate.mockRejectedValueOnce(err(503, "DB_UNAVAILABLE"));
+    await fireEvent.press(screen.getByTestId("due-save"));
+    expect(await screen.findByText(DUE_FAILED)).toBeTruthy();
+    expect(screen.getByText(SHEET_TITLE)).toBeTruthy();
+    expect(listLoans).toHaveBeenCalledTimes(1);
+
+    // 409: 시트 닫고 안내 + 목록 다시 읽기
+    changeDueDate.mockRejectedValueOnce(err(409, "CONFLICT"));
+    listLoans.mockResolvedValue(page([]));
+    await fireEvent.press(screen.getByTestId("due-save"));
+    await waitFor(() => expect(screen.queryByText(SHEET_TITLE)).toBeNull());
+    expect(changeDueDate).toHaveBeenCalledTimes(2);
+    await waitFor(() => expect(listLoans).toHaveBeenCalledTimes(2));
+    expect(await screen.findByText(LOANS_EMPTY)).toBeTruthy();
+    expect(screen.getByText(CHANGED)).toBeTruthy();
+  });
+
+  test("return button asks confirmation and moves loan to returned tab", async () => {
+    listLoans.mockResolvedValue(page([loan("a"), loan("b", { d_day: 3 })]));
+    await render(<LoansSection />);
+    await screen.findByTestId("loan-a");
+
+    // 취소: 보내지 않는다
+    await fireEvent.press(within(screen.getByTestId("loan-a")).getByText("반납했어요"));
+    expect(screen.getByText(RETURN_TITLE)).toBeTruthy();
+    expect(screen.getByText("책 a을 지난 대출로 옮길게요.")).toBeTruthy();
+    await fireEvent.press(screen.getByText("취소"));
+    expect(screen.queryByText(RETURN_TITLE)).toBeNull();
+    expect(returnLoan).not.toHaveBeenCalled();
+
+    // 실패(503): 창 유지 + 문구
+    await fireEvent.press(within(screen.getByTestId("loan-a")).getByText("반납했어요"));
+    returnLoan.mockRejectedValueOnce(err(503, "DB_UNAVAILABLE"));
+    await fireEvent.press(screen.getByTestId("return-confirm-ok"));
+    expect(await screen.findByText(RETURN_FAILED)).toBeTruthy();
+    expect(screen.getByText(RETURN_TITLE)).toBeTruthy();
+
+    // 확인: 연타해도 한 번, 빌린 책에서 빠지고 안내
+    const d = deferred<Loan>();
+    returnLoan.mockReturnValue(d.promise);
+    await fireEvent.press(screen.getByTestId("return-confirm-ok"));
+    await fireEvent.press(screen.getByTestId("return-confirm-ok"));
+    expect(screen.getByText("처리 중…")).toBeTruthy();
+    expect(returnLoan).toHaveBeenCalledTimes(2); // 503 한 번 + 이번 한 번
+    await act(async () => d.resolve(loan("a", { status: "returned", returned_on: "2026-11-16", d_day: 0 })));
+    await waitFor(() => expect(screen.queryByText(RETURN_TITLE)).toBeNull());
+    expect(screen.queryByTestId("loan-a")).toBeNull();
+    expect(screen.getByTestId("loan-b")).toBeTruthy();
+    expect(screen.getByText(RETURNED_NOTE)).toBeTruthy();
+
+    // 404: 창 닫고 안내 + 다시 읽기
+    returnLoan.mockReset();
+    returnLoan.mockRejectedValueOnce(err(404, "NOT_FOUND"));
+    listLoans.mockResolvedValue(page([]));
+    await fireEvent.press(within(screen.getByTestId("loan-b")).getByText("반납했어요"));
+    await fireEvent.press(screen.getByTestId("return-confirm-ok"));
+    await waitFor(() => expect(screen.queryByText(RETURN_TITLE)).toBeNull());
+    expect(await screen.findByText(CHANGED)).toBeTruthy();
+    expect(listLoans).toHaveBeenCalledTimes(2);
+  });
+
+  test("loans section switches between on_loan and returned tabs with race guard", async () => {
+    listLoans.mockResolvedValueOnce(page([loan("a")]));
+    await render(<LoansSection />);
+    await screen.findByTestId("loan-a");
+    expect(listLoans.mock.calls[0]?.[0]).toBe("on_loan");
+
+    // 지난 대출 0건
+    listLoans.mockResolvedValueOnce(page([]));
+    await fireEvent.press(screen.getByTestId("loans-tab-returned"));
+    expect(await screen.findByText(RETURNED_EMPTY)).toBeTruthy();
+    expect(listLoans.mock.calls[1]?.[0]).toBe("returned");
+    expect(screen.queryByTestId("loan-a")).toBeNull();
+
+    // 빠른 왕복: 빌린 책(늦음) → 지난 대출(1건) 순서로 눌렀는데 빌린 책 응답이 나중에 와도 덮지 않는다
+    const slowOnLoan = deferred<LoanPage>();
+    listLoans.mockReturnValueOnce(slowOnLoan.promise);
+    listLoans.mockResolvedValueOnce(page([loan("r", { status: "returned", returned_on: "2026-11-15", d_day: 0 })]));
+    await fireEvent.press(screen.getByTestId("loans-tab-on_loan"));
+    await fireEvent.press(screen.getByTestId("loans-tab-returned"));
+    const done = await screen.findByTestId("returned-r");
+    await act(async () => slowOnLoan.resolve(page([loan("stale")])));
+    expect(screen.queryByTestId("loan-stale")).toBeNull();
+    expect(screen.getByTestId("returned-r")).toBe(done); // 늦은 응답 뒤에도 같은 화면 그대로
+    expect(screen.queryByText("내 대출을 불러오지 못했어요.")).toBeNull();
+    expect(within(done).getByText("반납 완료")).toBeTruthy();
+    expect(within(done).getByText("대출 2026-11-10 · 반납 2026-11-15")).toBeTruthy();
+    // 지난 대출 카드에는 D-day·기한 수정·반납했어요가 없다
+    expect(within(done).queryByText("기한 수정")).toBeNull();
+    expect(within(done).queryByText("반납했어요")).toBeNull();
+    expect(within(done).queryByText(/D-|연체|오늘 반납/)).toBeNull();
+    expect(listLoans.mock.calls.map((call) => call[0])).toEqual(["on_loan", "returned", "on_loan", "returned"]);
+  });
+
+  test("no hard-coded colors or native date picker in loan-assistant", () => {
+    const dir = path.join(__dirname, "..");
+    const sources = fs.readdirSync(dir).filter((f) => /\.(ts|tsx)$/.test(f));
+    expect(sources).toEqual(expect.arrayContaining(["DueDateSheet.tsx", "LoansSection.tsx", "api.ts"]));
+    const offenders: string[] = [];
+    for (const f of sources) {
+      const src = fs.readFileSync(path.join(dir, f), "utf8");
+      if (/#[0-9A-Fa-f]{3,8}\b/.test(src)) offenders.push(`${f}: #hex`);
+      if (/rgba?\(/.test(src)) offenders.push(`${f}: rgb(`);
+      if (/Radius:\s*\d/.test(src)) offenders.push(`${f}: *Radius 숫자`);
+      if (/from\s+["'](@react-native-community\/datetimepicker|react-native-date-picker|react-native-calendars|date-fns|dayjs|moment|luxon)/.test(src)) {
+        offenders.push(`${f}: 날짜 라이브러리`);
+      }
+    }
+    expect(offenders).toEqual([]);
+    const pkg = JSON.parse(fs.readFileSync(path.join(dir, "..", "..", "..", "package.json"), "utf8")) as {
+      dependencies: Record<string, string>;
+    };
+    expect(Object.keys(pkg.dependencies).filter((d) => /date|calendar|moment|luxon/i.test(d))).toEqual([]);
+  });
+});
