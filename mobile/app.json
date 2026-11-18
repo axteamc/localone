@@ -4,6 +4,7 @@
     "slug": "localone",
     "version": "0.0.1",
     "scheme": "localone",
+    "icon": "./assets/icon.png",
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "plugins": [
@@ -30,7 +31,8 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "single"
+      "output": "single",
+      "favicon": "./assets/favicon.png"
     }
   }
 }

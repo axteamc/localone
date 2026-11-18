@@ -18,7 +18,7 @@ export default function RootLayout() {
       <WebFrame>
         <Stack screenOptions={{ title: "동네한권", ...headerOptions("LOCALONE") }}>
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="login" options={{ title: "", ...headerOptions("") }} />
+          <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="settings" options={{ title: "설정", ...headerOptions("SETTINGS") }} />
           <Stack.Screen name="search" options={headerOptions("SEARCH")} />
           <Stack.Screen name="books/[isbn13]" options={headerOptions("BOOK")} />
