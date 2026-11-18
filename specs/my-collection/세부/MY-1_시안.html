@@ -83,6 +83,15 @@
   .nav { height: 52px; flex: none; display: flex; border-top: 1px solid var(--line); background: var(--paper); font-size: 11px; }
   .nav span { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--text-sub); }
   .nav span.on { color: var(--text); font-weight: 700; }
+  .menu { position: absolute; left: 0; right: 0; bottom: 52px; background: var(--paper); border-radius: var(--r-card) var(--r-card) 0 0; padding: 10px 14px 14px; box-shadow: 0 -2px 10px var(--line); }
+  .menu div { padding: 9px 4px; font-size: 14px; border-bottom: 1px solid var(--surface2); }
+  .menu div:last-child { border-bottom: 0; color: var(--text-sub); }
+  .menu .pick { font-weight: 700; }
+  .card { position: relative; }
+  .card.dim { opacity: .45; }
+  .card .tag { position: absolute; top: 8px; left: 8px; background: var(--paper); border-radius: var(--r-pill); padding: 1px 8px; font-size: 11px; font-weight: 400; }
+  .card.target { outline: 3px solid var(--ink-strong); outline-offset: -3px; }
+  .toast .undo { text-decoration: underline; margin-left: 8px; font-weight: 700; }
   .toast { position: absolute; left: 16px; right: 16px; bottom: 64px; background: var(--ink-strong); color: var(--paper); border-radius: var(--r-pill); padding: 8px 12px; font-size: 13px; text-align: center; }
 
   #spec, #except, #fullflow { background: var(--paper); border-radius: var(--r-card); padding: 14px 16px; margin-top: 28px; }
@@ -92,7 +101,7 @@
 </head>
 <body>
 <header class="page">
-  <h1>내 정보 모음 · MY-1 시안 — 위쪽 내 프로필 배치</h1>
+  <h1>내 정보 모음 · MY-1 시안</h1>
   <p class="how">화면 3개를 비교해 보세요. 화면마다 아래에 <b>누르면 어떻게 이어지는지</b>를 적어 뒀어요. 화면 위 버튼으로 <b>소개가 없을 때</b>, <b>아래로 내렸을 때</b> 모습을 바꿔 볼 수 있고, 화면 안의 <b>프로필 수정</b>·<b>탭</b>도 눌러 볼 수 있어요. <b>추천</b> 표시가 있는 화면이 Claude의 추천이에요. 고르는 건 직접 해 주세요.</p>
 </header>
 
@@ -190,7 +199,48 @@
     </div>
   </section>
 
-  <!-- 중심 요소 2, 3 은 1이 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
+  <!-- ===== 중심 요소 2 ===== -->
+  <section class="element" id="el-2" data-chosen="">
+    <h2>정할 것 2. "좋아요" 탭에서 좋아요를 취소하면 그 카드를 어떻게 할까<span class="status" data-status>결정 전</span></h2>
+    <p style="margin:0;font-size:14px">카드를 길게 누르면 메뉴가 떠요. "북마크" 탭에서 북마크를 해제할 때도 똑같이 움직여요. 아래 버튼을 순서대로 눌러 보세요.</p>
+    <div class="state">순서: <button aria-pressed="true" data-step="0">① 좋아요 탭</button><button aria-pressed="false" data-step="1">② "소년이 온다" 카드 길게 누름</button><button aria-pressed="false" data-step="2">③ "좋아요 취소" 누른 뒤</button><button aria-pressed="false" data-step="3">④ 다른 탭 갔다 돌아옴</button></div>
+    <div class="cands">
+      <article class="cand recommended" data-id="A">
+        <h3>바로 빠지고 "되돌리기" <span class="badge">추천</span></h3>
+        <div class="phone" data-phone2></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>취소하자마자 카드가 목록에서 빠지고, 아래에 "좋아요를 취소했어요 · 되돌리기"가 4초 떠요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">카드를 길게 누름 → 메뉴에서 "좋아요 취소" → 카드가 바로 빠지고 남은 카드가 자리를 채움 → 실수였으면 "되돌리기"를 눌러 원래 자리로. 사용자는 정리하듯 여러 개를 연달아 뺄 수 있어요.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>③에서 카드 3개만 남고 아래 안내가 뜸. ④에서도 3개.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>목록이 늘 "지금 좋아요한 것"만 / 잘못 누르면 4초 안에 되돌려야 함</dd>
+          <dt>추천 이유</dt><dd>이 탭은 내가 모은 것을 다시 보는 곳이라, 취소한 카드가 남아 있으면 정리하던 사람이 헷갈려요. 실수는 "되돌리기"로 막을 수 있어요.</dd>
+        </dl>
+      </article>
+      <article class="cand" data-id="B">
+        <h3>흐리게 남았다가 다음에 빠짐</h3>
+        <div class="phone" data-phone2></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>취소해도 카드가 그 자리에 흐리게 남고 "취소함" 표시가 붙어요. 다른 탭에 갔다 오거나 화면을 당기면 그때 빠져요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">카드를 길게 누름 → "좋아요 취소" → 카드가 흐려짐(자리 그대로) → 다시 길게 눌러 "좋아요"를 누르면 원래대로 → 탭을 바꿨다 오면 흐린 카드가 사라짐.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>③에서 카드 4개 그대로(하나 흐림). ④에서 3개.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>자리가 안 바뀌어 실수해도 찾기 쉬움 / 잠깐 동안 취소한 카드가 섞여 보임</dd>
+        </dl>
+      </article>
+      <article class="cand" data-id="C">
+        <h3>바로 빠짐, 안내 없음</h3>
+        <div class="phone" data-phone2></div>
+        <dl class="note">
+          <dt>무엇이 다른가</dt><dd>취소하자마자 카드가 빠지고 아무 안내도 뜨지 않아요.</dd>
+          <dt>누르면 이렇게 이어져요</dt><dd class="flow">카드를 길게 누름 → "좋아요 취소" → 카드가 조용히 빠짐 → 실수였으면 그 게시물을 다시 찾아가 좋아요를 눌러야 함.</dd>
+          <dt>화면을 열어야 보이는 것</dt><dd>③에서 카드 3개, 안내 없음. ④에서도 3개.</dd>
+          <dt>얻는 것 / 포기하는 것</dt><dd>가장 단순하고 조용함 / 잘못 누르면 바로 되돌릴 방법이 없음</dd>
+        </dl>
+      </article>
+    </div>
+    <p>다시 비교하기: <select id="pick2"><option value="">채택안 보기</option><option value="A">바로 빠지고 "되돌리기"</option><option value="B">흐리게 남았다가 다음에 빠짐</option><option value="C">바로 빠짐, 안내 없음</option></select></p>
+  </section>
+
+  <!-- 중심 요소 3 은 2가 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
 
   <!-- ===== 처음부터 끝까지 (세부 명세서 2. 유저 플로우와 같게) ===== -->
   <section id="fullflow">
@@ -212,7 +262,7 @@
     <table>
       <tr><th>요소</th><th>상태</th><th>채택 / 차선 / 탈락</th><th>이유 (사용자 말)</th><th>값</th></tr>
       <tr><td>1. 위쪽 내 프로필 배치 (Y-O1)</td><td>확인</td><td>채택: 왼쪽 사진 + 옆에 이름 / 차선 없음 / 탈락: 가운데 큰 사진, 한 줄로 작게</td><td>"공백은 적고 있을 건 다 잘 보이고 깔끔해 보여"</td><td>A 사진 64 / B 88 / C 36, 원형</td></tr>
-      <tr><td>2. 좋아요·북마크 해제 뒤 목록 (Y-O4)</td><td>결정 전</td><td>—</td><td>—</td><td>—</td></tr>
+      <tr><td>2. 좋아요·북마크 해제 뒤 목록 (Y-O4)</td><td>결정 전</td><td>— (추천: 바로 빠지고 "되돌리기")</td><td>—</td><td>안내 4초, 카드 길게 누르면 메뉴</td></tr>
       <tr><td>3. 탭이 비었을 때 (Y-O3)</td><td>결정 전</td><td>—</td><td>—</td><td>—</td></tr>
       <tr><td>탭 바 모양 (Y-O2)</td><td>기본값(Claude)</td><td>글자 + 고른 탭 밑줄(<code>ink-strong</code> 2), 내리면 맨 위에 붙음</td><td>묻지 않음</td><td>글자 14</td></tr>
       <tr><td>탭 오갈 때 (Y-O2)</td><td>기본값(Claude)</td><td>불러온 탭은 기억, 아래로 당기면 새로</td><td>묻지 않음</td><td>—</td></tr>
@@ -280,6 +330,50 @@
   }
   mark(el.dataset.chosen);
   document.getElementById('pick').addEventListener('change', function (e) { mark(e.target.value || el.dataset.chosen); });
+  // ===== 정할 것 2: 좋아요 탭에서 좋아요 취소 =====
+  (function () {
+    var el2 = document.getElementById('el-2');
+    var LIKED = [
+      [{ c: 'f2', h: 150, t: '마음에 남은 문장' }, { c: 'f2', h: 150, t: '소년이 온다', target: 1 }],
+      [{ c: 'f3', h: 110, t: '이번 주 다 읽음' }, { c: 'f1', h: 110, t: '정독도서관 창가' }]
+    ];
+    function render(phone, id, step) {
+      var h = '<div class="sbar">9:41</div><div class="topbar"><span class="ttl">내 정보</span><button class="gear">⚙</button></div><div class="body">'
+        + '<div class="profA"><div class="avatar">👤</div><div class="meta"><div class="nick">이웃-0000</div><div class="bio">동네 도서관 산책을 좋아해요</div><button class="editbtn">프로필 수정</button></div></div>'
+        + '<div class="tabbar"><span>내 게시물</span><span class="on">좋아요</span><span>북마크</span></div><div class="feed"><div class="feedin">';
+      LIKED.forEach(function (col) {
+        h += '<div class="col">';
+        col.forEach(function (k) {
+          var gone = k.target && ((step >= 2 && id !== 'B') || (step >= 3 && id === 'B'));
+          if (gone) return;
+          var dim = k.target && step === 2 && id === 'B';
+          var cls = 'card ' + k.c + (k.target && step === 1 ? ' target' : '') + (dim ? ' dim' : '');
+          h += '<div class="' + cls + '" style="height:' + k.h + 'px">' + (dim ? '<span class="tag">취소함</span>' : '') + k.t + '</div>';
+        });
+        h += '</div>';
+      });
+      h += '</div></div></div><div class="nav"><span>홈</span><span>대출·반납</span><span class="on">내 정보</span></div>';
+      if (step === 1) h += '<div class="menu"><div class="pick">좋아요 취소</div><div>게시물 보기</div><div>닫기</div></div>';
+      if (step === 2 && id === 'A') h += '<div class="toast">좋아요를 취소했어요<span class="undo">되돌리기</span></div>';
+      phone.innerHTML = h;
+    }
+    function show(step) {
+      el2.querySelectorAll('.cand').forEach(function (c) { render(c.querySelector('[data-phone2]'), c.dataset.id, step); });
+      el2.querySelectorAll('[data-step]').forEach(function (b) { b.setAttribute('aria-pressed', +b.dataset.step === step); });
+    }
+    el2.querySelectorAll('[data-step]').forEach(function (b) { b.addEventListener('click', function () { show(+b.dataset.step); }); });
+    show(0);
+    function mark2(id) {
+      el2.querySelectorAll('.cand').forEach(function (c) {
+        c.classList.toggle('chosen', c.dataset.id === id);
+        var old = c.querySelector('.badge.chosen'); if (old) old.remove();
+        if (c.dataset.id === id) { var s = document.createElement('span'); s.className = 'badge chosen'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+      });
+      el2.querySelector('[data-status]').textContent = id ? '확인' : '결정 전';
+    }
+    mark2(el2.dataset.chosen);
+    document.getElementById('pick2').addEventListener('change', function (e) { mark2(e.target.value || el2.dataset.chosen); });
+  })();
 </script>
 </body>
 </html>
