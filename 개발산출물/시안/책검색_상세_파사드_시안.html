@@ -160,7 +160,7 @@
   .res-list-B .r-cov { width:44px; height:62px; }
   .res-list-B .r-main { flex:1; min-width:0; }
 
-  /* 1열 목록 보기 — 후보 C: 큰 표지(52×72) + 아래 점선 계기판 띠 + 오른쪽 계기판 연도 */
+  /* 1열 목록 보기 — 후보 C: 큰 표지(52×72) + 아래 계기판 띠(점선 없음) + 오른쪽 계기판 연도 */
   .res-list-C { padding:0 12px 16px; }
   .res-list-C .r-item {
     display:flex; align-items:stretch; gap:11px; padding:10px 0;
@@ -170,7 +170,7 @@
   .res-list-C .r-main { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:space-between; }
   .res-list-C .r-strip {
     display:flex; justify-content:space-between; align-items:center;
-    padding-top:4px; margin-top:4px; border-top:1px dashed var(--seam);
+    padding-top:4px; margin-top:4px;
   }
   .res-list-C .r-right { flex:none; text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:2px; }
 
@@ -292,7 +292,7 @@
 <section class="element" id="el-search-results" data-chosen="C">
   <h2>정할 것 1. 책 검색 결과(표지 2열 ↔ 목록 1열)의 줄 모양과 계기판 배치 <span class="status">확인 — C + 오른쪽 계기판 연도</span></h2>
   <div class="flow">
-    <b>정해진 것.</b> 검색창(곡률 9 <code>paper</code> + 1px 줄눈)과 오른쪽 무광 판 <code>검색</code> 버튼은 레시피 그대로예요. 결과가 나오면 기본 2열 표지 보기와 <code>☰ 목록으로</code> 1열 보기를 오가는 동작(계약 B11)은 그대로 유지해요. <b>채택(D 결정): 후보 C(큰 표지 52×72 + 아래 점선 계기판 메타 띠)에 후보 A의 오른쪽 계기판 연도·ISBN 정렬을 결합.</b> 아래 선택 상자로 다른 후보도 다시 볼 수 있어요.
+    <b>정해진 것.</b> 검색창(곡률 9 <code>paper</code> + 1px 줄눈)과 오른쪽 무광 판 <code>검색</code> 버튼은 레시피 그대로예요. 결과가 나오면 기본 2열 표지 보기와 <code>☰ 목록으로</code> 1열 보기를 오가는 동작(계약 B11)은 그대로 유지해요. <b>채택(D 결정): 후보 C(큰 표지 52×72 + 아래 계기판 메타 띠, 점선 없음)에 후보 A의 오른쪽 계기판 연도·ISBN 정렬을 결합.</b> 아래 선택 상자로 다른 후보도 다시 볼 수 있어요.
   </div>
   <div class="state-bar" id="resViewBar">
     <span>결과 보기 상태:</span>
@@ -523,18 +523,18 @@
           </div>
         </div>
       </div>
-      <p>표지 크기를 52×72(앱 52×74)로 넉넉히 두면서, 오른쪽 위에는 후보 A의 계기판 연도·ISBN 정렬을 넣고 오른쪽 아래에는 점선 줄눈과 출판사·계기판 띠를 함께 둔 조합이에요(D 결정).</p>
+      <p>표지 크기를 52×72(앱 52×74)로 넉넉히 두면서, 오른쪽 위에는 후보 A의 계기판 연도·ISBN 정렬을 넣고 오른쪽 아래에는 점선 없이 여백으로만 나눈 출판사·계기판 띠를 함께 둔 조합이에요(D 결정).</p>
       <span class="lbl">누르면 이렇게 이어져요</span>
       <p>행이나 오른쪽 <code>→</code>를 누르면 책 상세로 이동해요.</p>
       <span class="lbl">화면을 열어야 보이는 것</span>
       <ul>
-        <li>1열 목록: 표지 52×72(앱 52×74), 오른쪽 위 제목·저자 + 오른쪽 끝 계기판 연도·ISBN, 오른쪽 아래 점선 구분선과 출판사·계기판 라벨</li>
+        <li>1열 목록: 표지 52×72(앱 52×74), 오른쪽 위 제목·저자 + 오른쪽 끝 계기판 연도·ISBN, 오른쪽 아래(점선 없음) 출판사·계기판 라벨</li>
         <li>2열 표지: 표지 아래 제목 + 저자(왼쪽) · 계기판 연도(오른쪽)</li>
       </ul>
       <span class="lbl">얻는 것 / 포기하는 것</span>
-      <p>표지가 큼직해 책을 알아보기 쉽고 오른쪽 계기판 연도와 하단 메타 띠로 도서 색인 카드 같은 밀도가 생겨요. / 행 높이가 후보 A보다 조금 더 높아요.</p>
+      <p>표지가 큼직해 책을 알아보기 쉽고, 점선 없이 여백만으로 오른쪽 계기판 연도와 하단 메타 띠가 정돈돼요. / 행 높이가 후보 A보다 조금 더 높아요.</p>
       <span class="lbl">표준 근거</span>
-      <p>표준 근거: 새 패턴 — 도서관 색인 라벨처럼 큰 표지 옆에 오른쪽 계기판 연도와 아래 점선 계기판 줄을 함께 두는 배치</p>
+      <p>표준 근거: 새 패턴 — 도서관 색인 라벨처럼 큰 표지 옆에 오른쪽 계기판 연도와 아래 계기판 줄을 여백으로 함께 두는 배치</p>
     </article>
   </div>
 </section>
@@ -956,11 +956,11 @@
       <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
       <tr data-el="el-search-results">
         <td>1. 책 검색 결과(목록·표지) 줄 모양</td>
-        <td>후보 C + A의 오른쪽 계기판 연도 (큰 표지 52×72 + 오른쪽 계기판 연도·ISBN + 아래 점선 계기판 메타 띠)</td>
+        <td>후보 C + A의 오른쪽 계기판 연도 (큰 표지 52×72 + 오른쪽 계기판 연도·ISBN + 아래 계기판 메타 띠, 점선 없음)</td>
         <td>없음(받지 않음)</td>
         <td>후보 A(레시피 줄눈 행만, Claude 추천이었음), 후보 B(무광 정보 카드 행)</td>
-        <td>D 결정: "1 - C + (A의 오른쪽 계기판 연도)"</td>
-        <td>1열: 유리판 위 평면 행 + 1px <code>seamHairline</code>, 표지 52×74, 오른쪽 위 제목(14/500)·저자 + 오른쪽 끝 연도·ISBN(<code>type.gauge</code>), 오른쪽 아래 점선 구분선 + 출판사·<code>PUB 연도 · →</code> 계기판 띠 · 2열: 표지 3:4 + 제목(14/500) + 저자(왼쪽)·연도(오른쪽 <code>type.gauge</code>)</td>
+        <td>D 결정: "1 - C + (A의 오른쪽 계기판 연도)", "1에서 점선만 제거"</td>
+        <td>1열: 유리판 위 평면 행 + 1px <code>seamHairline</code>, 표지 52×74, 오른쪽 위 제목(14/500)·저자 + 오른쪽 끝 연도·ISBN(<code>type.gauge</code>), 오른쪽 아래(점선 없음) 출판사·<code>PUB 연도 · →</code> 계기판 띠 · 2열: 표지 3:4 + 제목(14/500) + 저자(왼쪽)·연도(오른쪽 <code>type.gauge</code>)</td>
         <td>검색 → 2열 표지 ↔ <code>☰ 목록으로</code> 1열 전환(재호출 없음) → 누르면 책 상세</td>
         <td><span class="st">확인</span></td>
       </tr>
