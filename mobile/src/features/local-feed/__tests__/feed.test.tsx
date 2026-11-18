@@ -187,12 +187,12 @@ describe("LibraryFeed in VisitScreen", () => {
     expect(menu.getByLabelText(MENU_TEXT.bookmark)).toBeTruthy();
     expect(menu.getByLabelText(MENU_TEXT.share)).toBeTruthy();
     expect(menu.getByText("📖 소년이 온다 검색")).toBeTruthy();
-    expect(menu.getByText("👤 한강의 다른 책")).toBeTruthy();
+    expect(menu.getByText("한강의 다른 책")).toBeTruthy();
     expect(menu.queryByText(MENU_TEXT.bookless)).toBeNull();
     await fireEvent.press(menu.getByText("📖 소년이 온다 검색"));
     expect(mockPush).toHaveBeenLastCalledWith({ pathname: "/search", params: { q: "소년이 온다" } });
     expect(screen.queryByTestId("post-menu")).toBeNull();
-    await fireEvent.press(within(await openMenu("p1")).getByText("👤 한강의 다른 책"));
+    await fireEvent.press(within(await openMenu("p1")).getByText("한강의 다른 책"));
     expect(mockPush).toHaveBeenLastCalledWith({ pathname: "/search", params: { q: "한강" } });
   });
 

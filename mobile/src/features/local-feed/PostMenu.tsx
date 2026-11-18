@@ -24,7 +24,7 @@ export const MENU_TEXT = {
 } as const;
 
 export const searchTitleLabel = (title: string) => `📖 ${title} 검색`;
-export const searchAuthorLabel = (author: string) => `👤 ${author}의 다른 책`;
+export const searchAuthorLabel = (author: string) => `${author}의 다른 책`;
 
 /** 공감·북마크 실패 안내 한 줄(H-#4·H-#7 서버 문구 우선) */
 export function toggleFailText(e: unknown): string {

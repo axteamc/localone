@@ -4,6 +4,7 @@
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
 import { openExternalUrl } from "../../lib/platform";
@@ -92,6 +93,7 @@ export type PostDetailProps = {
 
 export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { status } = useAuth();
   const signedIn = status === "signedIn";
   const authLoading = status === "loading"; // 복원 중에는 로그인 안내를 띄우지 않는다(①-5)
@@ -177,7 +179,12 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
   if (state.kind !== "ok") {
     return (
       <View style={[styles.screen, styles.center]} onLayout={onScreenLayout}>
-        <Pressable accessibilityRole="button" accessibilityLabel="돌아가기" onPress={goBack} style={styles.backFloating}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="돌아가기"
+          onPress={goBack}
+          style={[styles.backFloating, { top: 12 + insets.top }]}
+        >
           <Text style={styles.backText}>‹</Text>
         </Pressable>
         {state.kind === "loading" ? (
@@ -365,7 +372,7 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
 
   return (
     <View style={styles.screen} onLayout={onScreenLayout}>
-      <ScrollView contentContainerStyle={styles.content} testID="detail-scroll">
+      <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top }]} testID="detail-scroll">
         {wide ? (
           <View style={styles.wideRow}>
             {image}

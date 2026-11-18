@@ -3,6 +3,7 @@
 import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { NEARBY_DEFAULT_RADIUS_KM } from "../../lib/policy";
 import { locate } from "../../lib/platform";
 import { ApiCallError, fetchLibrariesNearby, fetchLibrary } from "../../lib/publicApi";
@@ -23,6 +24,7 @@ export const releasedText = (name: string) => `${name} 바로 열기를 풀었�
 
 export function DefaultLibraryGate(): React.JSX.Element | null {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
@@ -101,7 +103,12 @@ export function DefaultLibraryGate(): React.JSX.Element | null {
 
   if (!notice) return null;
   return (
-    <View style={styles.notice} pointerEvents="none" accessibilityLiveRegion="polite" testID="gate-notice">
+    <View
+      style={[styles.notice, { top: Math.max(12, insets.top + 8) }]}
+      pointerEvents="none"
+      accessibilityLiveRegion="polite"
+      testID="gate-notice"
+    >
       <Text style={styles.noticeText}>{notice}</Text>
     </View>
   );
