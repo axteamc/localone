@@ -59,6 +59,23 @@ const SLOT_STYLE: Record<FacadeSlot, ViewStyle> = {
   MAIN: { left: 28, right: 34, top: "8%" },
 };
 
+/** 넓은 화면(태블릿·가로 휴대폰)에서 블록이 늘어나지 않게 폭 상한, 가운데 축 양옆에 붙인다(2026-11-18 D) */
+export const BLOCK_W_MAX = 300;
+const AXIS_GAP_W = 7; // 서쪽 블록 오른쪽 끝 ~ 축(휴대폰에서 지금 자리와 같다)
+const AXIS_GAP_E = 2; // 축 ~ 동쪽 블록 왼쪽 끝
+
+/** 판 폭에 따른 블록 가로 자리. 휴대폰(폭 44% ≤ 300)에서는 지금 퍼센트 자리와 거의 같다 */
+export function horizontalPlace(slot: FacadeSlot, boardWidth: number): { left: number; width: number } {
+  const mid = boardWidth / 2;
+  if (slot === "MAIN") {
+    const width = Math.min(boardWidth - 62, BLOCK_W_MAX + 60);
+    return { left: Math.round(mid - width / 2 - 3), width };
+  }
+  const width = Math.min(Math.round(boardWidth * 0.44), BLOCK_W_MAX);
+  const west = slot === "NW" || slot === "SW" || slot === "W";
+  return { left: Math.round(west ? mid - AXIS_GAP_W - width : mid + AXIS_GAP_E), width };
+}
+
 const BLOCK_H = 104;
 /** 작은 화면에서 줄일 수 있는 블록 높이 하한(코드·이름·거리 줄이 남는 높이) */
 const BLOCK_H_MIN = 64;
@@ -173,19 +190,22 @@ type BlockProps = {
   selected: boolean;
   /** 네 칸 배치에서 판 높이를 잰 뒤의 세로 자리·높이 */
   place?: { top: number; height: number };
+  /** 판 폭을 잰 뒤의 가로 자리 */
+  hplace?: { left: number; width: number };
   onOpen(lib: LibrarySummary): void;
   onCycle(slot: FacadeSlot, count: number): void;
 };
 
-function ReliefLibraryBlock({ group, index, tone, selected, place, onOpen, onCycle }: BlockProps) {
+function ReliefLibraryBlock({ group, index, tone, selected, place, hplace, onOpen, onCycle }: BlockProps) {
   const item: FacadeItem = group.items[index % group.items.length] as FacadeItem;
   const count = group.items.length;
   const closed = item.lib.today.is_closed === true;
   const h = place?.height ?? BLOCK_H;
   const sub = h >= BLOCK_H_FULL_TEXT ? item.lib.area_label ?? item.lib.address ?? "" : "";
   const placed: ViewStyle | null = place ? { top: place.top, bottom: undefined, height: h } : null;
+  const across: ViewStyle | null = hplace ? { left: hplace.left, right: undefined, width: hplace.width } : null;
   return (
-    <View style={[styles.blockWrap, SLOT_STYLE[group.slot], placed]} testID={`facade-block-${group.slot}`}>
+    <View style={[styles.blockWrap, SLOT_STYLE[group.slot], placed, across]} testID={`facade-block-${group.slot}`}>
       {count > 1 ? <View style={[styles.slab, { height: h }]} /> : null}
       <View style={[styles.layer, { left: 3, top: 4, height: h, backgroundColor: C.surface3 }]} />
       <View style={[styles.layer, { left: 6, top: 8, height: h, backgroundColor: C.reliefSideDark }]} />
@@ -240,7 +260,11 @@ export function FacadeHome(props: FacadeHomeProps) {
   const tones = useMemo(() => assignSpineTones(layout), [layout]);
   const [indices, setIndices] = useState<Partial<Record<FacadeSlot, number>>>({});
   const [boardH, setBoardH] = useState(0);
-  const onLayout = (e: LayoutChangeEvent) => setBoardH(e.nativeEvent.layout.height);
+  const [boardW, setBoardW] = useState(0);
+  const onLayout = (e: LayoutChangeEvent) => {
+    setBoardH(e.nativeEvent.layout.height);
+    setBoardW(e.nativeEvent.layout.width);
+  };
   const quad = layout.kind === "quad" && boardH > 0 ? quadLayout(boardH) : null;
   const upper = (slot: FacadeSlot) => (boardH > 0 && !quad ? upperLayout(boardH, slot) : null);
   const originY = quad?.originY ?? (boardH > 0 ? Math.round(boardH * ORIGIN_RATIO) : undefined);
@@ -274,6 +298,7 @@ export function FacadeHome(props: FacadeHomeProps) {
             tone={tones.get(shown.lib.id) ?? "fill1"}
             selected={selectedId === shown.lib.id}
             place={placeOf(g.slot)}
+            hplace={boardW > 0 ? horizontalPlace(g.slot, boardW) : undefined}
             onOpen={onLibraryPress}
             onCycle={cycle}
           />

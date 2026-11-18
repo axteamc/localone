@@ -1,5 +1,6 @@
 // 넓은 웹 화면(2026-11-18 D 결정 "넓은 화면 처리" A): 앱 전체를 폭 480 칼럼으로 가운데에 세우고,
-// 바깥은 바탕(`bg`) 위에 줄눈 격자(칸 120, 리벳 없음)가 옅게 이어지는 벽. 휴대폰·좁은 창에서는 아무것도 하지 않는다.
+// 바깥은 바탕(`bg`) 위에 줄눈 격자(칸 120, 리벳 없음)가 옅게 이어지는 벽.
+// 마우스로 쓰는 넓은 화면(노트북·데스크톱)에서만 켠다. 손가락으로 쓰는 웹(태블릿, 가로로 돌린 휴대폰)과 앱은 화면을 꽉 채운다(2026-11-18 D).
 // 웹 글꼴: Noto Sans KR 400·500을 웹에서만 불러온다(Android·iOS는 기기 한글 글꼴이 같은 굵기를 가진다).
 import React, { useEffect, type ReactNode } from "react";
 import { Platform, StyleSheet, View, useWindowDimensions } from "react-native";
@@ -42,10 +43,16 @@ function Wall({ width, height }: { width: number; height: number }) {
   );
 }
 
+/** 웹에서 마우스처럼 정밀한 포인터로 쓰는 화면인가(태블릿·휴대폰 브라우저는 아니다) */
+export function isDesktopPointer(): boolean {
+  if (Platform.OS !== "web" || typeof window === "undefined" || typeof window.matchMedia !== "function") return false;
+  return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+}
+
 export function WebFrame({ children }: { children: ReactNode }) {
   useWebFont();
   const { width, height } = useWindowDimensions();
-  if (Platform.OS !== "web" || width <= APP_MAX_WIDTH) return <>{children}</>;
+  if (Platform.OS !== "web" || width <= APP_MAX_WIDTH || !isDesktopPointer()) return <>{children}</>;
   return (
     <View style={styles.outer}>
       <Wall width={width} height={height} />
