@@ -94,8 +94,9 @@
   th { background:var(--surface2); font-weight:500; }
   .st { font-size:12px; padding:1px 8px; border-radius:999px; background:var(--surface2); white-space:nowrap; }
 
-  /* 로고 SVG(로고_시안.html 채택 F와 같은 그림, 개발산출물/로고/) */
+  /* 로고 SVG(로고_시안.html 정할 것 2 추천 G3, 결정 전 임시) */
   .lg { --lk:var(--ink-strong); --lp:var(--paper); }
+  .lg .s { stroke:var(--seam); fill:none; } .lg .sh { fill:var(--relief-dark); }
   .lg .k { fill:var(--lk); } .lg .p { fill:var(--lp); } .lg .f1 { fill:var(--fill1); } .lg .f2 { fill:var(--fill2); } .lg .f3 { fill:var(--fill3); }
   @media (max-width:600px) { header.page, main { padding:0 12px; } .cands, .cands.four { grid-template-columns:1fr; } }
 </style>
@@ -103,7 +104,7 @@
 <body>
 <header class="page">
   <h1>로그인 — 홈 파사드에 맞추기</h1>
-  <div class="how"><b>보는 법.</b> 배치(위 소개·로고, 아래 버튼, C-60)는 그대로예요. 정할 것은 두 가지예요: <b>1. 바탕 격자 강도</b>(기준 + 3단계), <b>2. 로고와 버튼의 관계</b>(후보 3개). 1에서 고른 강도는 2의 화면과 맨 아래 넓은 화면에도 그대로 들어가요. 휴대폰 안의 Google 버튼을 누르면 "로그인하는 중" 상태가 보여요. 노란 테두리가 추천이에요. 로고는 <a href="로고_시안.html">로고 시안</a>에서 고른 F(글자형 ㄷ + 한 권)예요.<br><b>결정(2026-11-18).</b> 격자 1단계, 관계 C(진한 테두리). 위의 선택 상자로 다른 후보를 다시 볼 수 있어요.</div>
+  <div class="how"><b>보는 법.</b> 배치(위 소개·로고, 아래 버튼, C-60)는 그대로예요. 정할 것은 두 가지예요: <b>1. 바탕 격자 강도</b>(기준 + 3단계), <b>2. 로고와 버튼의 관계</b>(후보 3개). 1에서 고른 강도는 2의 화면과 맨 아래 넓은 화면에도 그대로 들어가요. 휴대폰 안의 Google 버튼을 누르면 "로그인하는 중" 상태가 보여요. 노란 테두리가 추천이에요. 로고는 G 슬라이딩 도어로 바꿨고, 다듬은 안이 정해질 때까지 <a href="로고_시안.html">로고 시안</a> 정할 것 2의 추천 G3를 임시로 넣었어요.<br><b>결정(2026-11-18).</b> 격자 1단계, 관계 C, 주 버튼 B 무광 판(진한 테두리). 위의 선택 상자로 다른 후보를 다시 볼 수 있어요.</div>
   <div class="bar">
     <label>표시 플랫폼 <select id="platform"><option value="web" selected>웹·Android</option><option value="ios">iOS(Apple 버튼)</option></select></label>
     <label>룩 <select id="look"><option value="warm" selected>warm (M1 기본)</option><option value="modern">모던</option><option value="toffee">toffee</option><option value="oxford">Oxford</option></select></label>
@@ -163,8 +164,8 @@
 </section>
 
 <!-- ===== 정할 것 3. 주 버튼 색 ===== -->
-<section class="element" id="el-btn" data-chosen="">
-  <h2>정할 것 3. 주 버튼 색 (앱 전체) <span class="status">결정 전</span></h2>
+<section class="element" id="el-btn" data-chosen="matte">
+  <h2>정할 것 3. 주 버튼 색 (앱 전체) <span class="status">확인 — B 무광 판</span></h2>
   <div class="flow"><b>무엇이 바뀌나.</b> 지금 주 버튼은 노랑(`fill1`, 2026-11-18 S4 결정 B)이에요. "너무 별로고 지금 디자인과 안 어울린다"는 D 말에 따라 바꿀 색을 골라요. 고른 색은 로그인뿐 아니라 <b>모든 화면의 주 버튼</b>(`actionColors().primary`)에 들어가요. S4에서 이미 탈락한 남색 채움(`inkStrong`)·돌출 블록·중성 명도는 다시 넣지 않았어요. 로고 색은 아래 4에서 고른 조합(고르기 전엔 추천 ① 세이지·피치)으로 그렸어요.<br><b>새 기준(2026-11-18 D).</b> "그믐(독서 커뮤니티)이 검정 배경에 노랑 달이라 겹친다 — 검정 + 노랑은 되도록 자제, 버튼도 마찬가지." 그래서 노랑 버튼 후보와 진한 ㄷ + 노랑 책 조합은 뺐어요.</div>
   <div class="pick">후보 다시 보기 <select data-for="el-btn"><option value="">— 전체 —</option><option value="y">비교: 지금(노랑)</option><option value="sage">A 세이지 (추천)</option><option value="matte">B 무광 판</option><option value="peach">C 피치</option></select></div>
   <div class="cands four">
@@ -192,7 +193,8 @@
 
 <!-- ===== 정할 것 4. 로고 색 조합 ===== -->
 <section class="element" id="el-lc" data-chosen="">
-  <h2>정할 것 4. 로고 색 (ㄷ과 책 두 권) <span class="status">결정 전</span></h2>
+  <h2>정할 것 4. 로고 색 (ㄷ과 책 두 권) <span class="status">대체됨 — 로고를 G 슬라이딩 도어로 바꿈</span></h2>
+  <div class="flow"><b>대체됨(2026-11-18 D).</b> F를 내려놓고 G 슬라이딩 도어(노랑·피치·세이지, 진한색 없음)로 바꿨어요. 다듬은 안은 <a href="로고_시안.html">로고 시안</a> "정할 것 2"에서 골라요. 아래 F 색 비교는 기록으로만 남겨요.</div>
   <div class="flow"><b>무엇이 바뀌나.</b> 로고 F 모양은 그대로 두고 색만 바꿔요. <b>새 기준(2026-11-18 D).</b> "그믐(독서 커뮤니티)이 검정 배경에 노랑 달이라 겹친다 — 검정 + 노랑은 되도록 자제, 버튼도 마찬가지." 그래서 노랑 버튼 후보와 진한 ㄷ + 노랑 책 조합은 뺐어요. 원래 F(진한 ㄷ + 노랑·피치)는 진한 ㄷ 안에 노랑이 들어 있어 이 기준에 걸려요. 색 값은 로고 시안과 똑같아요(노랑 <span data-val="fill1"></span>, 피치 <span data-val="fill2"></span>). 앞 화면에서 "다 노랑"으로 보였던 건 로고가 52로 작아 피치 책 폭이 6px밖에 안 됐기 때문이에요. 그래서 로고를 64로 키웠어요(기본값). 버튼은 위 3에서 고른 색(고르기 전엔 추천 A 세이지)으로 그렸어요. 아래 후보 다시 보기에서 고르면 위 3의 화면도 같이 바뀌어요.</div>
   <div class="pick">후보 다시 보기 <select data-for="el-lc"><option value="">— 전체 —</option><option value="sp">① 세이지·피치 (추천)</option><option value="gy">② 세이지 ㄷ + 노랑·피치</option><option value="ps">③ 피치·세이지</option></select></div>
   <div class="cands">
@@ -229,13 +231,13 @@
     <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
     <tr data-el="el-grid"><td>1. 바탕 격자 강도</td><td>1단계(투명도 .30)</td><td>없음(받지 않음)</td><td>기준, 2단계(추천이었음), 3단계</td><td>"2 : 1단계"</td><td>기준 0 · 1단계 .30 · 2단계 .55 · 3단계 .55 + 리벳·축·룰러. 칸 120(앱), `seamHairline`</td><td>—</td><td><span class="st">확인</span></td></tr>
     <tr data-el="el-rel"><td>2. 로고와 버튼의 관계</td><td>C 아래 창에 버튼 담기</td><td>없음(받지 않음)</td><td>A 떨어뜨리기, B 축으로 잇기</td><td>"3 : C"</td><td>A 여백 · B 축 1px `inkStrong` 55% · C `panelLit` 곡률 3, 위 1px 줄눈 + 0 -4 10 `shadowCast`</td><td>/login → Google → 진행 → 홈</td><td><span class="st">확인</span></td></tr>
-    <tr data-el="el-btn"><td>3. 주 버튼 색(앱 전체)</td><td>— (추천: A 세이지 `fill3`)</td><td>—</td><td>지금 노랑 `fill1`(D: "너무 별로고 현재 디자인과 안어울려서 바꿔야 해", "검정 + 노랑은 되도록 사용 자제하고 버튼도 마찬가지")</td><td>(받기 전)</td><td>A `fill3` + 1px 줄눈 · B `panelLit` + 줄눈 + 아래 2px `reliefBottomMid` · C `fill2` + 1px 줄눈</td><td>모든 화면 주 버튼(`actionColors().primary`)</td><td><span class="st">결정 전</span></td></tr>
-    <tr data-el="el-lc"><td>4. 로고 색</td><td>— (추천: ① 진한 ㄷ · 세이지 · 피치)</td><td>—</td><td>—</td><td>(받기 전) D: "원래 로고시안의 노랑 피치가 좋았던거야", "구글과 충돌할 거 같으면 세이지그린 피치도 써보자", "검정 + 노랑은 되도록 사용 자제"</td><td>① ㄷ inkStrong · fill3 · fill2 · ② ㄷ fill3 · fill1 · fill2 · ③ ㄷ inkStrong · fill2 · fill3. 로그인 로고 64</td><td>—</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-btn"><td>3. 주 버튼 색(앱 전체)</td><td>B 무광 판: `panelLit` + 1px 줄눈 + 아래 2px `reliefBottomMid`, 글자 `inkStrong`. 다른 버튼도 흰색·회색 밸런스로</td><td>없음(받지 않음)</td><td>지금 노랑 `fill1`(D: "너무 별로고 현재 디자인과 안어울려서 바꿔야 해", "검정 + 노랑은 되도록 사용 자제하고 버튼도 마찬가지")</td><td>"버튼은 무광 핀이 가장 좋아 보이고 흰색과 회색의 밸런스로 다른 버튼들도 조형하면 될 거 같아". 탈락: A 세이지(Claude 추천이었음), C 피치</td><td>A `fill3` + 1px 줄눈 · B `panelLit` + 줄눈 + 아래 2px `reliefBottomMid` · C `fill2` + 1px 줄눈</td><td>모든 화면 주 버튼(`actionColors().primary`)</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-lc"><td>4. 로고 색</td><td>대체됨(로고를 G로 바꿈)</td><td>—</td><td>—</td><td>(받기 전) D: "원래 로고시안의 노랑 피치가 좋았던거야", "구글과 충돌할 거 같으면 세이지그린 피치도 써보자", "검정 + 노랑은 되도록 사용 자제"</td><td>① ㄷ inkStrong · fill3 · fill2 · ② ㄷ fill3 · fill1 · fill2 · ③ ㄷ inkStrong · fill2 · fill3. 로그인 로고 64</td><td>—</td><td><span class="st">대체됨</span></td></tr>
     <tr><td>바탕</td><td>유리판 `panelFrosted`</td><td>—</td><td>`cream`(지금)</td><td>—</td><td>DESIGN 페이지 적용 레시피 "바탕"</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>머리 띠</td><td>없음(지금의 빈 띠를 없앰)</td><td>—</td><td>—</td><td>—</td><td>로그인은 첫 화면이라 뒤로가기·표찰 없음</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>글자</td><td>브랜드 13/500, 제목 24/400 `inkSoft` 왼쪽 정렬(B는 가운데)</td><td>—</td><td>제목 24/500(지금)</td><td>—</td><td>`type.pageTitle`</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>Google 버튼</td><td>주 버튼(색은 정할 것 3), 높이 48</td><td>—</td><td>`paper` + `surface3` 보조 모양(지금)</td><td>—</td><td>`actionColors().primary`, 규칙 7 무거운 표식 하나</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
-    <tr><td>로고</td><td>로고 시안 F 글자형 ㄷ + 한 권</td><td>—</td><td>곡률 18 알약 3개(지금)</td><td>로고 시안에서 F 채택</td><td>64(시안·앱, 52에서는 작은 책이 안 보여 키움), 파일 `개발산출물/로고/`</td><td>—</td><td><span class="st">확인</span></td></tr>
+    <tr><td>로고</td><td>G 슬라이딩 도어(다듬기 결정 전, 임시 G3)</td><td>—</td><td>곡률 18 알약 3개(지금), F(내려놓음)</td><td>로고 시안 정할 것 1·2</td><td>64(시안·앱), 파일 `개발산출물/로고/`(다듬기 결정 뒤 교체)</td><td>—</td><td><span class="st">미확인(임시: 추천안)</span></td></tr>
   </table></div>
   <p>아직 하지 않음: `login.tsx` 코드 적용(고른 뒤 다음 단계), 아이콘 PNG.</p>
 </section>
@@ -257,13 +259,13 @@ const onFill=f=>contrast(f,"#FFFFFF")>=contrast(f,"#1D1D1F")?"#FFFFFF":"#1D1D1F"
 function applyLook(name){
   const c=LOOKS[name], r=document.documentElement.style;
   const v={bg:c.bg,surface2:c.surface2,surface3:c.surface3,fill1:c.fill1,fill2:c.fill2,fill3:c.fill3,cream:c.cream,paper:c.paper,"ink-strong":c.inkStrong,
-    "panel-frosted":mix(c.paper,c.bg,.58),"relief-mid":mix(c.inkStrong,c.surface2,.15),"on-fill3":onFill(c.fill3),"on-fill2":onFill(c.fill2),"panel-lit":mix(c.paper,c.cream,.84),seam:mix(c.inkStrong,c.bg,.14),rivet:mix(c.inkStrong,c.surface3,.34),"on-fill1":onFill(c.fill1)};
+    "panel-frosted":mix(c.paper,c.bg,.58),"relief-mid":mix(c.inkStrong,c.surface2,.15),"relief-dark":mix(c.inkStrong,c.surface3,.26),"on-fill3":onFill(c.fill3),"on-fill2":onFill(c.fill2),"panel-lit":mix(c.paper,c.cream,.84),seam:mix(c.inkStrong,c.bg,.14),rivet:mix(c.inkStrong,c.surface3,.34),"on-fill1":onFill(c.fill1)};
   for(const k in v) r.setProperty("--"+k,v[k]);
   document.querySelectorAll("[data-val]").forEach(e=>e.textContent=v[e.dataset.val]);
 }
-const LOGO=`<svg class="lg" viewBox="0 0 64 64" role="img" aria-label="동네한권 로고"><path class="k" d="M10 10H54V20H20V44H54V54H10Z"/><rect class="f1" x="30" y="24" width="12" height="20" rx="2"/><rect class="f2" x="44" y="28" width="8" height="16" rx="1.5"/></svg>`;
+const LOGO=`<svg class="lg" viewBox="0 0 64 64" role="img" aria-label="로고 자리(임시: 로고 시안 정할 것 2 추천 G3)"><path class="s" d="M6.5 9V53.5H57.5V9" stroke-width="1.4"/><rect class="f1" x="10" y="19" width="14" height="32" rx="1.5"/><rect class="f2" x="25.5" y="13" width="13" height="38" rx="1.5"/><rect class="f3" x="40" y="22" width="14" height="29" rx="1.5"/><rect class="p" x="12" y="23" width="10" height="1.2" opacity=".85"/><rect class="p" x="12" y="26" width="10" height="1.2" opacity=".85"/><rect class="p" x="27.5" y="17" width="9" height="1.2" opacity=".85"/><rect class="p" x="27.5" y="20" width="9" height="1.2" opacity=".85"/><rect class="p" x="42" y="26" width="10" height="1.2" opacity=".85"/><rect class="p" x="42" y="29" width="10" height="1.2" opacity=".85"/><rect class="sh" x="6" y="51" width="52" height="3" rx="1"/><path class="p" d="M17 31q1.8 4 0 8q-1.8 -4 0 -8z M32 28q1.8 4 0 8q-1.8 -4 0 -8z M47 33q1.8 4 0 8q-1.8 -4 0 -8z"/></svg>`;
 const GRID={s0:0,s1:.30,s2:.55,s3:.55};
-const REC={grid:"s2",rel:"C",btn:"sage",lc:"sp"};
+const REC={grid:"s2",rel:"C",btn:"sage",lc:"none"};
 
 function screen(grid, rel){
   return `<div class="wall s${grid.slice(1)}" style="--go:${GRID[grid]}"><div class="grid"></div><div class="rv"></div><div class="axis"></div><div class="ruler"></div></div>

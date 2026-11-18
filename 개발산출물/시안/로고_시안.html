@@ -70,7 +70,7 @@
   .phone .meta { margin-top:8px; }
   .phone .btns { margin-top:auto; display:flex; flex-direction:column; gap:12px; }
   .phone .btn { height:48px; border-radius:999px; display:flex; align-items:center; justify-content:center; font-size:15px; font-weight:500; }
-  .phone .primary { background:var(--fill1); color:var(--on-fill1); border:1px solid var(--seam); }
+  .phone .primary { background:var(--panel-lit); color:var(--ink-strong); border:1px solid var(--seam); box-shadow:0 2px 0 var(--relief-mid); }
   .phone .apple { background:#000; color:#fff; }
   .note { font-size:13px; max-width:420px; }
 
@@ -87,13 +87,17 @@
   .lg .k { fill:var(--lk); } .lg .p { fill:var(--lp); } .lg .s { stroke:var(--ls); fill:none; }
   .lg .f1 { fill:var(--fill1); } .lg .f2 { fill:var(--fill2); } .lg .f3 { fill:var(--fill3); }
   .lg .pl { fill:var(--lp); stroke:var(--ls); }
+  .lg { --lsh:var(--relief-dark); } .g-dark .lg, .on-dark .lg { --lsh:var(--relief-mid); }
+  .lg .sh { fill:var(--lsh); } .lg .pn { fill:var(--panel-lit); stroke:var(--ls); } .lg .p2 { fill:var(--ls); }
+  .nohd .lg .hd { display:none; } .hdpair:not(.off) .lg .hd { display:inline; } .hdpair.off .lg .hd { display:none; }
+  .hdpair .ground { aspect-ratio:1; }
   @media (max-width:600px) { header.page, main { padding:0 12px; } .phone { width:100%; max-width:300px; } }
 </style>
 </head>
 <body>
 <header class="page">
   <h1>동네한권 로고 — 형태 7개</h1>
-  <div class="how"><b>결정(2026-11-18).</b> D가 <b>F 글자형 ㄷ + 한 권</b>을 앱 기본 로고로 골랐어요(진한 테두리). 배포용 파일은 <a href="../로고/">개발산출물/로고/</a>. 다른 후보는 바꿀 때를 위해 그대로 둬요.<br><b>보는 법.</b> 맨 위 띠에서 7개를 실제 크기(48·24)로 한꺼번에 비교하고, 아래 카드에서 하나씩 자세히 보세요. 카드마다 <b>백색 바탕(기본) · 유리판 · 진한 바탕</b> 위 모습, 앱 아이콘 1024(축소 표시)·48·24가 있어요. <b>룩</b>을 바꾸면 모든 로고 색이 그 룩의 `fill1~3`·`inkStrong`으로 바뀌어요. 띠나 카드를 누르면 맨 아래 <b>로그인 상단 배치</b>에 그 로고가 들어가요. 노란 테두리가 추천이에요.</div>
+  <div class="how"><b>결정(2026-11-18).</b> 처음엔 <b>F 글자형 ㄷ + 한 권</b>을 골랐다가, "검정 + 노랑 자제"(그믐과 겹침)로 노랑을 빼 보니 노랑이 있어야 밸런스가 좋아서 <b>G 슬라이딩 도어</b>로 바꿨어요(진한 테두리). 바로 아래 <b>정할 것 2</b>에서 G를 다듬은 6가지를 골라요. 다른 후보는 바꿀 때를 위해 그대로 둬요. 배포용 파일은 <a href="../로고/">개발산출물/로고/</a>(다듬은 안이 정해지면 바꿔요).<br><b>보는 법.</b> 맨 위 띠에서 7개를 실제 크기(48·24)로 한꺼번에 비교하고, 아래 카드에서 하나씩 자세히 보세요. 카드마다 <b>백색 바탕(기본) · 유리판 · 진한 바탕</b> 위 모습, 앱 아이콘 1024(축소 표시)·48·24가 있어요. <b>룩</b>을 바꾸면 모든 로고 색이 그 룩의 `fill1~3`·`inkStrong`으로 바뀌어요. 띠나 카드를 누르면 맨 아래 <b>로그인 상단 배치</b>에 그 로고가 들어가요. 노란 테두리가 추천이에요.</div>
   <div class="bar">
     <label>룩 <select id="look"><option value="warm" selected>warm (M1 기본)</option><option value="modern">모던</option><option value="toffee">toffee</option><option value="oxford">Oxford</option></select></label>
     <label>아이콘 바탕 <select id="iconbg"><option value="white" selected>백색</option><option value="glass">유리판</option><option value="dark">진한 바탕</option></select></label>
@@ -101,9 +105,17 @@
   </div>
 </header>
 <main>
+<section class="element" id="el-door" data-chosen="">
+  <h2>정할 것 2. 슬라이딩 도어(G) 다듬기 <span class="status">결정 전</span></h2>
+  <div class="flow"><b>정해진 것(2026-11-18 D).</b> F는 내려놓고 G 슬라이딩 도어로 가요. 노랑이 있어야 밸런스가 좋아서 노랑·피치·세이지 세 색을 그대로 써요. <b>다리는 기본으로 없앴어요.</b> 진한색(`inkStrong`)은 쓰지 않아 검정 + 노랑이 생기지 않아요. 선반·받침은 회색(`reliefSideDark`). 손잡이는 위 "손잡이" 선택 상자로 켜고 끌 수 있고, 카드마다 있음/없음 두 가지를 나란히 보여 줘요. 4·5는 "책장"처럼 보이게 다듬은 안, 6은 방문 페이지(SNS) 아래 책장 디자인(책 + 선반 + 노랑·크림·세이지 도어 장)을 참조한 안이에요.</div>
+  <div class="bar"><label>손잡이 <select id="handles"><option value="on" selected>있음</option><option value="off">없음</option></select></label>
+    <label>후보 다시 보기 <select data-for="el-door"></select></label></div>
+  <div class="strip" id="strip2"></div>
+  <div class="cands" id="cands2"></div>
+</section>
 
-<section class="element" id="el-logo" data-chosen="F">
-  <h2>정할 것. 로고 형태 <span class="status">확인 — F 채택(2026-11-18)</span></h2>
+<section class="element" id="el-logo" data-chosen="G">
+  <h2>정할 것 1. 로고 형태 <span class="status">확인 — G 슬라이딩 도어(2026-11-18, F에서 바꿈)</span></h2>
   <div class="flow"><b>정해진 것(C-60).</b> 로그인은 위 소개·로고, 아래 버튼. 로고는 글자보다 <b>주요 컬러</b>로 기억되게. <b>이번에 따른 규칙.</b> 곡률은 블록 3(구조)·책 표지 5·9 계열, 색은 `fill1~3` 세 색 + 진한 부분 하나(규칙 5·7), 48px에서도 형태가 읽힐 것.</div>
   <div class="strip" id="strip"></div>
   <div class="cands" id="cands"></div>
@@ -111,7 +123,7 @@
 
 <section id="login">
   <h2>로그인 상단 배치 미리보기 <span class="status">기본값(Claude)</span></h2>
-  <div class="flow">C-60 배치 그대로: 로고 56 · "동네한권" 13/500 · 제목 24/400 `inkSoft` 왼쪽 정렬, 아래 주 버튼(`fill1`). 바탕은 유리판 + 옅은 격자(로그인 시안에서 강도를 정해요). Apple 버튼은 iOS만, 애플 규정의 검정 버튼이라 "무거운 표식 하나"의 예외예요.</div>
+  <div class="flow">C-60 배치 그대로: 로고 64 · "동네한권" 13/500 · 제목 24/400 `inkSoft` 왼쪽 정렬, 아래 주 버튼(무광 판, 2026-11-18 D 결정). 바탕은 유리판 + 옅은 격자(로그인 시안에서 강도를 정해요). Apple 버튼은 iOS만, 애플 규정의 검정 버튼이라 "무거운 표식 하나"의 예외예요.</div>
   <div class="phones">
     <div class="phone" id="loginPhone"><div class="wall"></div><div class="in">
       <div class="logo" id="loginLogo"></div>
@@ -127,7 +139,8 @@
   <h2>명세</h2>
   <div class="wide"><table>
     <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
-    <tr data-el="el-logo"><td>로고 형태</td><td>F 글자형 ㄷ + 한 권(앱 기본 로고)</td><td>없음(받지 않음). 다른 후보는 이 시안에 남겨 나중에 바꿀 수 있음</td><td>A·B·C·D·E(추천이었음)·G — 탈락이 아니라 보류에 가까움</td><td>"1 : F -> 앱 기본 로고로 쓰고 배포 시 활용하기 위해 별도 파일도 개발산출물에 남길 것", "로고 시안 마음에 드는게 많아서 일단 F로 두고, 시안 git에 올려두면 나중에 바꿀 수 있게 할 것"</td><td>격자 64, 블록 곡률 3, 책등 곡률 2·4(표지 5·9 축소), 색 `fill1~3` + 진한 부분 `inkStrong`(진한 바탕 위는 `paper`). 아이콘 1024는 바탕 + 로고 72%, 모서리 22.37%</td><td>로그인 상단 56 · 앱 아이콘 · 웹 탭 아이콘 · 시연 자료 표지</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-logo"><td>로고 형태</td><td>G 슬라이딩 도어(앱 기본 로고, 다듬기는 정할 것 2)</td><td>없음(받지 않음). 다른 후보는 이 시안에 남겨 나중에 바꿀 수 있음</td><td>F(처음 채택했다가 내려놓음: "F 결정을 포기하고 슬라이딩 도어 시안과 합쳐서, 슬라이딩 도어에서 다리는 기본으로 제거하고 손잡이 있는 버전 없는 버전도 양쪽 준비해주고, 어떻게 조형해서 좀 더 "책장"스러운 느낌 나게 만들기도 시도", "노랑을 뺀 상태로 보니 노랑을 써야 밸런스가 좋은 거 같기도 해"), A·B·C·D·E(추천이었음)</td><td>처음 F: "1 : F -> 앱 기본 로고로 쓰고 배포 시 활용하기 위해 별도 파일도 개발산출물에 남길 것", "로고 시안 마음에 드는게 많아서 일단 F로 두고, 시안 git에 올려두면 나중에 바꿀 수 있게 할 것"</td><td>격자 64, 블록 곡률 3, 책등 곡률 2·4(표지 5·9 축소), 색 `fill1~3` + 진한 부분 `inkStrong`(진한 바탕 위는 `paper`). 아이콘 1024는 바탕 + 로고 72%, 모서리 22.37%</td><td>로그인 상단 56 · 앱 아이콘 · 웹 탭 아이콘 · 시연 자료 표지</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-door"><td>2. 슬라이딩 도어 다듬기</td><td>— (추천: G3 높이가 다른 책등 도어)</td><td>—</td><td>—</td><td>(받기 전)</td><td>다리 없음, 진한색 없음(선반·받침 `reliefSideDark`), 손잡이 있음/없음 두 벌, 색 `fill1·fill2·fill3`. G6은 방문 페이지 책장(책 + 선반 + 노랑·크림·세이지 장) 참조</td><td>로그인 상단 64 · 앱 아이콘 · 웹 탭 아이콘</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>아이콘 바탕</td><td>백색</td><td>—</td><td>—</td><td>—</td><td>#FFFFFF(로고 자산 기본). 앱 화면 안에서는 순백을 쓰지 않는다(카드 `paper`)</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>로그인 상단 배치</td><td>로고 56 왼쪽 위 + 브랜드 + 제목</td><td>—</td><td>—</td><td>—</td><td>위 여백 64, 로고↔브랜드 14, 좌우 24</td><td>/login → 아래 Google(주 버튼)</td><td><span class="st">기본값(Claude)</span> — 로그인 시안에서 로고와 버튼 관계를 정함</td></tr>
   </table></div>
@@ -261,6 +274,108 @@ document.querySelector('[data-for="el-logo"]').addEventListener("change",e=>{
   if(e.target.value){ choose(e.target.value); document.querySelector(`#cands .cand[data-id="${e.target.value}"]`).scrollIntoView({behavior:"smooth",block:"center"}); }
 });
 document.addEventListener("click",e=>{ const t=e.target.closest("#strip > div, #cands .cand"); if(t) choose(t.dataset.id); });
+
+/* ---- 정할 것 2: 슬라이딩 도어 다듬기 (다리 없음, 진한색 없음) ---- */
+const LV=(x,y,h)=>`M${x} ${y}q1.8 ${h/2} 0 ${h}q-1.8 -${h/2} 0 -${h}z`;      /* 세로 렌즈 손잡이 */
+const LH=(cx,cy)=>`<ellipse class="p hd" cx="${cx}" cy="${cy}" rx="3.2" ry="1.2"/>`; /* 가로 렌즈 손잡이(책장 장) */
+const BANDS=(x,y,w)=>`<rect class="p bd" x="${x+2}" y="${y+4}" width="${w-4}" height="1.2" opacity=".85"/><rect class="p bd" x="${x+2}" y="${y+7}" width="${w-4}" height="1.2" opacity=".85"/>`;
+const DOORS=[
+  {id:"G1", name:"도어 세 짝 + 틀", svg:`
+    <rect class="pl" x="6.5" y="14.5" width="51" height="35" rx="3"/>
+    <rect class="f1" x="9" y="17" width="15" height="30" rx="1.5"/>
+    <rect class="f2" x="24.5" y="17" width="15" height="30" rx="1.5"/>
+    <rect class="f3" x="40" y="17" width="15" height="30" rx="1.5"/>
+    <path class="p hd" d="${LV(16.5,27,10)} ${LV(32,27,10)} ${LV(47.5,27,10)}"/>`,
+   desc:"원래 G에서 다리만 뺐어요. 틀(유리판 + 줄눈) 안에 노랑·피치·세이지 도어 세 짝.",
+   see:"48에서 세 색 가로 띠. 틀이 얇아 흰 바탕에선 테두리로만 보여요.",
+   gain:"원래 G 그대로라 익숙해요. / 아직 '가구'에 가깝고 책장 느낌은 약해요."},
+  {id:"G2", name:"틀 없이 도어만", svg:`
+    <rect class="f1" x="7" y="13" width="16" height="36" rx="2"/>
+    <rect class="f2" x="24" y="13" width="16" height="36" rx="2"/>
+    <rect class="f3" x="41" y="13" width="16" height="36" rx="2"/>
+    <rect class="sh" x="6" y="51" width="52" height="2.5" rx="1"/>
+    <path class="p hd" d="${LV(15,26,10)} ${LV(32,26,10)} ${LV(49,26,10)}"/>`,
+   desc:"틀을 빼고 세 짝만 세운 뒤 아래 회색 받침 한 줄.",
+   see:"가장 단순해서 24에서도 세 색이 또렷해요.",
+   gain:"작은 크기에 가장 강해요. / 색 막대 셋이라 '책장'인지는 받침으로만 알아요."},
+  {id:"G3", name:"높이가 다른 책등 도어", svg:`
+    <path class="s" d="M6.5 9V53.5H57.5V9" stroke-width="1.4"/>
+    <rect class="f1" x="10" y="19" width="14" height="32" rx="1.5"/>
+    <rect class="f2" x="25.5" y="13" width="13" height="38" rx="1.5"/>
+    <rect class="f3" x="40" y="22" width="14" height="29" rx="1.5"/>
+    ${BANDS(10,19,14)}${BANDS(25.5,13,13)}${BANDS(40,22,14)}
+    <rect class="sh" x="6" y="51" width="52" height="3" rx="1"/>
+    <path class="p hd" d="${LV(17,31,8)} ${LV(32,28,8)} ${LV(47,33,8)}"/>`,
+   desc:"도어 높이를 책처럼 들쭉날쭉하게, 위쪽에 책등 띠 두 줄, 위가 열린 틀과 회색 선반. 도어이면서 책등으로 읽혀요.",
+   see:"48에서 '틀 안에 꽂힌 세 권'. 손잡이를 끄면 완전히 책, 켜면 사이드보드 도어.",
+   gain:"슬라이딩 도어의 색 블록과 책장이 한 그림에 들어가요. / G1보다 선이 조금 많아요.",
+   rec:"D가 말한 두 가지(노랑을 살린 세 색 밸런스 + '책장스러운 느낌')를 모두 지키면서, 세 색 면이 커서 48·24 아이콘에서도 그대로 남아요. 손잡이 켜고 끄기로 '도어'와 '책' 사이를 고를 수 있어요."},
+  {id:"G4", name:"두 단 책장", svg:`
+    <rect class="pl" x="6.5" y="6.5" width="51" height="51" rx="3"/>
+    <rect class="sh" x="7" y="31" width="50" height="2" rx=".5"/>
+    <rect class="f1" x="11" y="12" width="7" height="19" rx="1"/>
+    <rect class="f2" x="19.5" y="15" width="6" height="16" rx="1"/>
+    <rect class="f3" x="27" y="10" width="7" height="21" rx="1"/>
+    <rect class="pn" x="10.5" y="36.5" width="21" height="17" rx="1.5"/>
+    <rect class="pn" x="32.5" y="36.5" width="21" height="17" rx="1.5"/>
+    <path class="p2 hd" d="${LV(27,41,8)} ${LV(37,41,8)}"/>`,
+   desc:"위 칸에 세 색 책, 아래 칸은 흰·회색 무광 도어 두 짝. 위는 서가, 아래는 사이드보드.",
+   see:"48에서 위 칸 책이 작아져 색이 점처럼 보여요. 오른쪽 위 빈 칸이 숨 쉴 자리.",
+   gain:"'책장'이 가장 분명하고, 아래 흰·회색이 이번 무광 버튼과 같은 재질이에요. / 색 면이 작아 24에서는 약해요."},
+  {id:"G5", name:"한 짝 열린 도어", svg:`
+    <rect class="pl" x="6.5" y="14.5" width="51" height="35" rx="3"/>
+    <rect class="f1" x="9" y="17" width="15" height="30" rx="1.5"/>
+    <rect class="f3" x="40" y="17" width="15" height="30" rx="1.5"/>
+    <rect class="f2" x="26" y="22" width="4" height="25" rx=".8"/><rect class="f1" x="30.5" y="19" width="3.5" height="28" rx=".8"/><rect class="f3" x="34.5" y="24" width="4" height="23" rx=".8"/>
+    <path class="p hd" d="${LV(16.5,27,10)} ${LV(47.5,27,10)}"/>`,
+   desc:"가운데 도어를 옆으로 밀어 열면 안에 책 세 권이 보여요. 슬라이딩 도어의 '미는' 동작을 그대로 그림으로.",
+   see:"48에서 가운데 줄무늬(책)가 보여요. 24에서는 가운데가 조금 복잡해요.",
+   gain:"'열면 책이 있다'는 이야기가 있어 기억에 남아요. / 가운데가 잘게 쪼개져 작은 크기에 약해요."},
+  {id:"G6", name:"SNS 책장 참조", svg:`
+    <rect class="pl" x="12.5" y="8.5" width="12" height="29" rx="1.5"/><rect class="sh" x="12.5" y="9" width="1.6" height="28" opacity=".5"/>
+    <rect class="pl" x="26.5" y="6.5" width="12" height="31" rx="1.5"/><rect class="sh" x="26.5" y="7" width="1.6" height="30" opacity=".5"/>
+    <rect class="pl" x="40.5" y="10.5" width="12" height="27" rx="1.5"/><rect class="sh" x="40.5" y="11" width="1.6" height="26" opacity=".5"/>
+    <rect class="sh" x="8" y="38" width="48" height="2.5" rx=".8"/>
+    <rect class="f1" x="8" y="43" width="15" height="14" rx="1.5"/>
+    <rect class="f2" x="24.5" y="43" width="15" height="14" rx="1.5"/>
+    <rect class="f3" x="41" y="43" width="15" height="14" rx="1.5"/>
+    ${LH(18,50)}${LH(34.5,50)}${LH(51,50)}`,
+   desc:"방문 페이지(SNS) 아래 책장 그대로: 흰·회색 책 세 권이 선반 위에 서 있고, 아래 낮은 장에 노랑·피치·세이지 도어와 가로 렌즈 손잡이. 원래 책장의 진한 선반은 회색으로 바꿨어요(검정 + 노랑 자제).",
+   see:"48에서 위는 흰 책, 아래는 세 색 띠. 앱 안 책장과 같은 그림이라 방문 페이지에서 다시 만나요.",
+   gain:"앱 안의 책장과 로고가 같은 말을 해요. / 색이 아래 띠에만 있어 아이콘에서 색이 작아요."}
+];
+const REC2="G3";
+function svg2(f){ return `<svg class="lg" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="로고 후보 ${f.id} ${f.name}">${f.svg}</svg>`; }
+function render2(){
+  const strip=document.getElementById("strip2"), cands=document.getElementById("cands2"), pick=document.querySelector('[data-for="el-door"]');
+  strip.innerHTML=DOORS.map(f=>`<div data-id2="${f.id}"><div class="row"><div style="width:48px;height:48px">${svg2(f)}</div><div style="width:24px;height:24px">${svg2(f)}</div></div><span class="gauge">${f.id} · ${f.name}${f.id===REC2?" · 추천":""}</span></div>`).join("");
+  cands.innerHTML=DOORS.map(f=>`<article class="cand${f.id===REC2?" recommended":""}" data-id="${f.id}">
+    <h3>${f.id} — ${f.name}${f.id===REC2?' <span class="badge">추천</span>':""}</h3>
+    <div class="grounds"><div class="ground g-white">${svg2(f)}<span>white</span></div><div class="ground g-glass">${svg2(f)}<span>glass</span></div><div class="ground g-dark">${svg2(f)}<span>dark</span></div></div>
+    <div class="sizes"><figure><div class="icon i180">${svg2(f)}</div><figcaption>1024 (축소)</figcaption></figure><figure><div class="icon i48">${svg2(f)}</div><figcaption>48</figcaption></figure><figure><div class="icon i24">${svg2(f)}</div><figcaption>24</figcaption></figure>
+      <figure class="hdpair"><div class="ground g-white" style="width:84px">${svg2(f)}</div><figcaption>손잡이 있음</figcaption></figure><figure class="hdpair off"><div class="ground g-white" style="width:84px">${svg2(f)}</div><figcaption>손잡이 없음</figcaption></figure></div>
+    <p>${f.desc}</p>
+    <span class="lbl">누르면 이렇게 이어져요</span><p>앱 아이콘 → 로그인 화면 위쪽 같은 로고 64 → Google로 계속하기(무광 판 버튼) → 홈(파사드).</p>
+    <span class="lbl">화면을 열어야 보이는 것</span><p>${f.see}</p>
+    <span class="lbl">얻는 것 / 포기하는 것</span><p>${f.gain}</p>
+    ${f.rec?`<p><b>추천 이유:</b> ${f.rec}</p>`:""}
+  </article>`).join("");
+  pick.innerHTML='<option value="">— 전체 —</option>'+DOORS.map(f=>`<option value="${f.id}">${f.id} · ${f.name}${f.id===REC2?" (추천)":""}</option>`).join("");
+}
+function choose2(id){
+  const f=DOORS.find(x=>x.id===id)||DOORS.find(x=>x.id===REC2);
+  document.getElementById("loginLogo").innerHTML=svg2(f);
+  document.getElementById("loginNote").innerHTML=`지금 들어간 로고: <b>${f.id} · ${f.name}</b>${f.id===REC2?" (추천, 기본)":""}. 위 띠나 카드를 눌러 바꿔 보세요. 버튼은 D가 고른 무광 판이에요.`;
+  document.querySelectorAll("#strip2 > div").forEach(d=>d.classList.toggle("sel",d.dataset.id2===f.id));
+}
+render2();
+(function(){ const el=document.getElementById("el-door"), id=el.dataset.chosen; document.querySelectorAll("#cands2 .cand").forEach(c=>{ if(id && c.dataset.id===id){ c.classList.add("chosen"); c.querySelector("h3").insertAdjacentHTML("beforeend",' <span class="badge adopted">채택</span>'); } }); choose2(id||REC2); })();
+document.getElementById("handles").addEventListener("change",e=>document.body.classList.toggle("nohd",e.target.value==="off"));
+document.querySelector('[data-for="el-door"]').addEventListener("change",e=>{
+  document.querySelectorAll("#cands2 .cand").forEach(c=>c.classList.toggle("preview",c.dataset.id===e.target.value));
+  if(e.target.value){ choose2(e.target.value); document.querySelector(`#cands2 .cand[data-id="${e.target.value}"]`).scrollIntoView({behavior:"smooth",block:"center"}); }
+});
+document.addEventListener("click",e=>{ const t=e.target.closest("#strip2 > div, #cands2 .cand"); if(t) choose2(t.dataset.id2||t.dataset.id); });
 </script>
 </body>
 </html>
