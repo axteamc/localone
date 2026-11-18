@@ -132,10 +132,11 @@ describe("상세 구조와 대여/구매 (H9·H14)", () => {
     expect(bar.getByText("2")).toBeTruthy();
     expect(bar.getByLabelText("공유")).toBeTruthy();
     expect(bar.getByLabelText("더 보기")).toBeTruthy();
-    expect(bar.getByText(SAVE_TEXT.save)).toBeTruthy();
-    expect(await screen.findByText("정독도서관 · 어제 기준 대출 가능")).toBeTruthy();
-    expect(fetchAvailabilityAt).toHaveBeenCalledWith("9788936434120", 101, expect.anything());
+    expect(bar.getByLabelText(SAVE_TEXT.save)).toBeTruthy();
     const box = within(screen.getByTestId("loan-box"));
+    expect(await box.findByText("정독도서관")).toBeTruthy();
+    expect(box.getByText("어제 기준 대출 가능")).toBeTruthy();
+    expect(fetchAvailabilityAt).toHaveBeenCalledWith("9788936434120", 101, expect.anything());
     const buttons = box.getAllByRole("button").map((b) => b.props.testID);
     expect(buttons).toEqual(["loan-button", "buy-button"]); // 대여(1순위)가 구매(2순위)보다 위
     expect(box.getByText(DETAIL_TEXT.buy)).toBeTruthy();
@@ -159,7 +160,7 @@ describe("상세 구조와 대여/구매 (H9·H14)", () => {
 
   test("loan button without live check goes to book detail", async () => {
     await enter();
-    await screen.findByText("정독도서관 · 어제 기준 대출 가능");
+    await within(screen.getByTestId("loan-box")).findByText("어제 기준 대출 가능");
     await fireEvent.press(screen.getByTestId("loan-button"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/books/[isbn13]", params: { isbn13: "9788936434120" } });
   });
@@ -167,7 +168,9 @@ describe("상세 구조와 대여/구매 (H9·H14)", () => {
   test("availability failure shows unknown and keeps the rest", async () => {
     fetchAvailabilityAt.mockRejectedValueOnce(new publicApi.ApiCallError(0, "NETWORK", "x", ""));
     await enter();
-    expect(await screen.findByText("정독도서관 · 알 수 없음")).toBeTruthy();
+    const box = within(screen.getByTestId("loan-box"));
+    expect(await box.findByText("정독도서관")).toBeTruthy();
+    expect(box.getByText("알 수 없음")).toBeTruthy();
     expect(screen.getByText("마지막 장이 오래 남아요.")).toBeTruthy();
     expect(screen.getByTestId("reaction-button")).toBeTruthy();
   });
@@ -254,11 +257,11 @@ describe("공감·저장 (H5·H6·H-#5·H-#6)", () => {
     const bar = within(screen.getByTestId("detail-action-bar"));
     expect(bar.getByText("♥")).toBeTruthy();
     expect(bar.getByText("3")).toBeTruthy();
-    expect(bar.getByText(SAVE_TEXT.saved)).toBeTruthy();
+    expect(bar.getByLabelText(SAVE_TEXT.saved)).toBeTruthy();
     // 다시 누르면 확인 창 없이 바로 해제
     await fireEvent.press(screen.getByTestId("save-button"));
     expect(setBookmark).toHaveBeenLastCalledWith("p1", false);
-    expect(await bar.findByText(SAVE_TEXT.save)).toBeTruthy();
+    expect(await bar.findByLabelText(SAVE_TEXT.save)).toBeTruthy();
     await fireEvent.press(screen.getByTestId("reaction-button"));
     expect(setReaction).toHaveBeenLastCalledWith("p1", false);
     expect(await bar.findByText("2")).toBeTruthy();
@@ -276,7 +279,7 @@ describe("공감·저장 (H5·H6·H-#5·H-#6)", () => {
     await fireEvent.press(screen.getByTestId("reaction-button"));
     await within(screen.getByTestId("detail-action-bar")).findByText("3");
     await fireEvent.press(screen.getByTestId("save-button"));
-    await within(screen.getByTestId("detail-action-bar")).findByText(SAVE_TEXT.saved);
+    await within(screen.getByTestId("detail-action-bar")).findByLabelText(SAVE_TEXT.saved);
     await fireEvent.press(screen.getByTestId("reaction-button"));
     expect(await screen.findByText(MENU_TEXT.failed)).toBeTruthy();
     off();
@@ -373,7 +376,18 @@ describe("이어지는 글 (H7·H15)", () => {
     await fireEvent.press(within(same).getByTestId("post-card-s1"));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/posts/[postId]", params: { postId: "s1", libraryId: "101" } });
     expect(StyleSheet.flatten(screen.getByTestId("detail-scroll").parent?.props.style).backgroundColor)
-      .toBe(theme.colors.cream);
+      .toBe(theme.colors.panelFrosted);
+  });
+
+  test("layout width uses container onLayout so 480px WebFrame stays single-column (H14)", async () => {
+    await enter();
+    const root = screen.getByTestId("detail-scroll").parent!;
+    // 480 칼럼(데스크톱 WebFrame)에서는 1열 유지: wideRow(flexDirection: "row")가 생기지 않음
+    await fireEvent(root, "layout", { nativeEvent: { layout: { width: 480, height: 800 } } });
+    expect(StyleSheet.flatten(screen.getByTestId("detail-image").parent?.props.style)?.flexDirection).not.toBe("row");
+    // 768 이상 컨테이너에서는 2열(wideRow)
+    await fireEvent(root, "layout", { nativeEvent: { layout: { width: 820, height: 800 } } });
+    expect(StyleSheet.flatten(screen.getByTestId("detail-image").parent?.props.style)?.flexDirection).toBe("row");
   });
 
   test("same book section hidden when zero results", async () => {

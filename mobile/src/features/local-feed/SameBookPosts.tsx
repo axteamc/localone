@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { createLatestRunner } from "../../lib/latest";
-import { theme } from "../../theme";
+import { theme, type as T } from "../../theme";
 import { fetchBookPosts, fetchLibraryPosts, type FeedPost } from "./api";
 import { MasonryGrid } from "./LibraryFeed";
 
@@ -42,7 +42,10 @@ export function SameBookPosts({ postId, isbn13, onOpen }: Props & { isbn13: stri
   if (items.length === 0) return null; // 책이 없거나 0개면 묶음 전체 숨김(H15)
   return (
     <View style={styles.section} testID="same-book-posts">
-      <Text style={styles.title}>{RELATED_TEXT.sameBook}</Text>
+      <View style={styles.head}>
+        <Text style={T.gauge}>RELATED · SAME BOOK</Text>
+        <Text style={styles.title}>{RELATED_TEXT.sameBook}</Text>
+      </View>
       <MasonryGrid items={items} onPress={onOpen} />
     </View>
   );
@@ -55,13 +58,24 @@ export function LibraryOtherPosts({ postId, libraryId, onOpen }: Props & { libra
   if (items.length === 0) return null;
   return (
     <View style={styles.section} testID="library-other-posts">
-      <Text style={styles.title}>{RELATED_TEXT.library}</Text>
+      <View style={styles.head}>
+        <Text style={T.gauge}>RELATED · LIBRARY</Text>
+        <Text style={styles.title}>{RELATED_TEXT.library}</Text>
+      </View>
       <MasonryGrid items={items} onPress={onOpen} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  section: { gap: 12, paddingHorizontal: 12, paddingTop: 20 },
-  title: { fontSize: 18, fontWeight: "500", color: C.text },
+  section: {
+    gap: 12,
+    paddingHorizontal: 12,
+    paddingTop: 16,
+    marginTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: C.seamHairline,
+  },
+  head: { gap: 2 },
+  title: { ...T.title },
 });

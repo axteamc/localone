@@ -1,7 +1,7 @@
 // 게시물 상세 경로 `/posts/[postId]?libraryId=` (core K15, local-feed LOCAL-2 H14)
 import { Stack, useLocalSearchParams } from "expo-router";
 import { PostDetail } from "../../src/features/local-feed/PostDetail";
-import { theme } from "../../src/theme";
+import { panel } from "../../src/theme";
 
 function firstString(raw: string | string[] | undefined): string {
   return typeof raw === "string" ? raw : Array.isArray(raw) && typeof raw[0] === "string" ? raw[0] : "";
@@ -19,7 +19,7 @@ export default function PostDetailScreen() {
   return (
     <>
       <Stack.Screen
-        options={{ headerShown: false, gestureEnabled: true, contentStyle: { backgroundColor: theme.colors.cream } }}
+        options={{ headerShown: false, gestureEnabled: true, contentStyle: { backgroundColor: panel.backgroundColor } }}
       />
       <PostDetail key={postId} postId={postId} visitLibraryId={parseVisitLibraryId(params.libraryId)} />
     </>

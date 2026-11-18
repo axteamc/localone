@@ -3,12 +3,12 @@
 // 넓은 화면(>= 768): 왼쪽 큰 이미지 + 오른쪽 정보 2단, 그 아래 이어지는 글.
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from "react-native";
+import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
 import { openExternalUrl } from "../../lib/platform";
 import { fetchAvailabilityAt, type AvailabilityItem } from "../../lib/publicApi";
-import { onFill, theme } from "../../theme";
+import { actionColors, cardSurface, panel, theme, type as T } from "../../theme";
 import { ApiCallError, emitPostReaction, emitPostWithdrawn, fetchPost, type Post } from "./api";
 import { PostImage, PostMoreMenu } from "./ComposeScreen";
 import { LoginPrompt, MENU_TEXT } from "./PostMenu";
@@ -30,7 +30,7 @@ export const DETAIL_TEXT = {
   retry: "새로고침",
   liveCheck: "실시간 확인 ↗",
   bookDetail: "책 정보 보기",
-  buy: "예스24에서 구매 ↗",
+  buy: "구매 ↗",
   preparing: MENU_TEXT.preparing,
   checking: "확인 중…",
   unknown: "알 수 없음",
@@ -60,20 +60,28 @@ export function basisLabel(dataDate: string | null, now = new Date()): string | 
   return m ? `${Number(m[1])}월 ${Number(m[2])}일 기준` : null;
 }
 
+function loanParts(
+  libraryName: string | null,
+  item: AvailabilityItem | null | "failed",
+  now = new Date()
+): { library: string | null; status: string; dot: string } {
+  if (item === null) return { library: libraryName, status: DETAIL_TEXT.checking, dot: C.loanUnknown };
+  if (item === "failed") return { library: libraryName, status: DETAIL_TEXT.unknown, dot: C.loanUnknown };
+  const name = item.library.name || libraryName;
+  if (item.holding === "no") return { library: name, status: DETAIL_TEXT.notHeld, dot: C.loanOut };
+  const basis = basisLabel(item.data_date, now);
+  if (item.loanable === "yes" && basis) return { library: name, status: `${basis} 대출 가능`, dot: C.loanAvailable };
+  if (item.loanable === "no" && basis) return { library: name, status: `${basis} · 대출 중`, dot: C.loanOut };
+  return { library: name, status: DETAIL_TEXT.unknown, dot: C.loanUnknown };
+}
+
 /**
  * 대여 버튼 상태 줄(H9). 실패·모름은 "알 수 없음"(H-#9, 대출 불가로 단정 금지).
  * libraryName은 조회하는 도서관 이름이다. 모르면(방문 도서관이 게시물 도서관과 다름) null — 이름 없이 상태만 쓴다(사후 검토 ①-3).
  */
 export function loanLine(libraryName: string | null, item: AvailabilityItem | null | "failed", now = new Date()): string {
-  const withName = (name: string | null, text: string) => (name ? `${name} · ${text}` : text);
-  if (item === null) return withName(libraryName, DETAIL_TEXT.checking);
-  if (item === "failed") return withName(libraryName, DETAIL_TEXT.unknown);
-  const name = item.library.name || libraryName;
-  if (item.holding === "no") return withName(name, DETAIL_TEXT.notHeld);
-  const basis = basisLabel(item.data_date, now);
-  if (item.loanable === "yes" && basis) return withName(name, `${basis} 대출 가능`);
-  if (item.loanable === "no" && basis) return withName(name, `${basis} · 대출 중`);
-  return withName(name, DETAIL_TEXT.unknown);
+  const parts = loanParts(libraryName, item, now);
+  return parts.library ? `${parts.library} · ${parts.status}` : parts.status;
 }
 
 export type PostDetailProps = {
@@ -87,8 +95,12 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
   const { status } = useAuth();
   const signedIn = status === "signedIn";
   const authLoading = status === "loading"; // 복원 중에는 로그인 안내를 띄우지 않는다(①-5)
-  const { width } = useWindowDimensions();
-  const wide = width >= WIDE_AT;
+  const [layoutWidth, setLayoutWidth] = useState<number | null>(null);
+  const wide = layoutWidth !== null && layoutWidth >= WIDE_AT;
+  const onScreenLayout = useCallback((e: LayoutChangeEvent) => {
+    const w = e.nativeEvent.layout.width;
+    setLayoutWidth((cur) => (cur === w ? cur : w));
+  }, []);
   const [state, setState] = useState<State>({ kind: "loading" });
   const [loan, setLoan] = useState<AvailabilityItem | null | "failed">(null);
   const [login, setLogin] = useState(false);
@@ -164,7 +176,7 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
 
   if (state.kind !== "ok") {
     return (
-      <View style={[styles.screen, styles.center]}>
+      <View style={[styles.screen, styles.center]} onLayout={onScreenLayout}>
         <Pressable accessibilityRole="button" accessibilityLabel="돌아가기" onPress={goBack} style={styles.backFloating}>
           <Text style={styles.backText}>‹</Text>
         </Pressable>
@@ -173,22 +185,34 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
         ) : state.kind === "unavailable" ? (
           <>
             <Text style={styles.message}>{DETAIL_TEXT.unavailable}</Text>
-            <Pressable accessibilityRole="button" onPress={goBack} style={styles.textButton}>
-              <Text style={styles.link}>{DETAIL_TEXT.toFeed}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={goBack}
+              style={({ pressed }) => [styles.stateButton, pressed && ACT.secondaryPressed]}
+            >
+              <Text style={styles.stateButtonText}>{DETAIL_TEXT.toFeed}</Text>
             </Pressable>
           </>
         ) : state.kind === "notFound" ? (
           <>
             <Text style={styles.message}>{DETAIL_TEXT.notFound}</Text>
-            <Pressable accessibilityRole="button" onPress={() => router.replace("/")} style={styles.textButton}>
-              <Text style={styles.link}>{DETAIL_TEXT.home}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.replace("/")}
+              style={({ pressed }) => [styles.stateButton, pressed && ACT.secondaryPressed]}
+            >
+              <Text style={styles.stateButtonText}>{DETAIL_TEXT.home}</Text>
             </Pressable>
           </>
         ) : (
           <>
             <Text style={styles.message}>{DETAIL_TEXT.failed}</Text>
-            <Pressable accessibilityRole="button" onPress={() => void load()} style={styles.textButton}>
-              <Text style={styles.link}>{DETAIL_TEXT.retry}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void load()}
+              style={({ pressed }) => [styles.stateButton, pressed && ACT.secondaryPressed]}
+            >
+              <Text style={styles.stateButtonText}>{DETAIL_TEXT.retry}</Text>
             </Pressable>
           </>
         )}
@@ -199,6 +223,10 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
   const post = state.post;
   const update = (patch: Partial<Post>) =>
     setState((s) => (s.kind === "ok" && s.post.id === post.id ? { kind: "ok", post: { ...s.post, ...patch } } : s));
+  const loanInfo = loanParts(
+    visitLibraryId === null || visitLibraryId === post.library.id ? post.library.name : null,
+    loan
+  );
 
   const image = (
     <View style={wide ? styles.imageWide : styles.imageNarrow} testID="detail-image">
@@ -285,7 +313,12 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
         />
       </View>
 
-      <Text style={styles.byline}>{`${post.author.nickname} · ${post.library.name}`}</Text>
+      <View style={styles.bylineGroup}>
+        <Text style={styles.byline}>{`${post.author.nickname} · ${post.library.name}`}</Text>
+        <Text style={T.gauge}>{post.published_at.slice(0, 10).replace(/-/g, ".")}</Text>
+      </View>
+
+      {post.body ? <Text style={styles.body}>{post.body}</Text> : null}
 
       {post.book ? (
         <View style={styles.loanBox} testID="loan-box">
@@ -297,34 +330,41 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
               if (live) void openExternalUrl(live.url);
               else router.push({ pathname: "/books/[isbn13]", params: { isbn13: post.book!.isbn13 } });
             }}
-            style={styles.loanButton}
+            style={styles.loanHead}
           >
-            <Text style={styles.loanTitle} numberOfLines={2}>
-              {post.book.author ? `${post.book.title} · ${post.book.author}` : post.book.title}
-            </Text>
-            <Text style={styles.loanStatus}>{loanLine(visitLibraryId === null || visitLibraryId === post.library.id ? post.library.name : null, loan)}</Text>
+            <View style={styles.loanHeadMain}>
+              <Text style={styles.loanTitle} numberOfLines={2}>
+                {post.book.author ? `${post.book.title} · ${post.book.author}` : post.book.title}
+              </Text>
+              <View style={styles.loanStatusRow}>
+                <View style={[styles.loanDot, { backgroundColor: loanInfo.dot }]} />
+                {loanInfo.library ? <Text style={styles.loanLibName}>{loanInfo.library}</Text> : null}
+                <Text style={T.gauge}>{loanInfo.status}</Text>
+              </View>
+            </View>
             <Text style={styles.loanCta}>
               {loan !== null && loan !== "failed" && loan.live_check ? DETAIL_TEXT.liveCheck : DETAIL_TEXT.bookDetail}
             </Text>
           </Pressable>
           {/* TODO(연결): M2 예스24 구매 연결 — M1은 버튼만, 누르면 안내(#15 호출·외부 이동 없음) */}
-          <Pressable
-            accessibilityRole="button"
-            testID="buy-button"
-            onPress={() => showNotice(DETAIL_TEXT.preparing)}
-            style={styles.buyButton}
-          >
-            <Text style={styles.buyText}>{DETAIL_TEXT.buy}</Text>
-          </Pressable>
+          <View style={styles.loanFoot}>
+            <Text style={T.gauge}>ONLINE STORE · M2</Text>
+            <Pressable
+              accessibilityRole="button"
+              testID="buy-button"
+              onPress={() => showNotice(DETAIL_TEXT.preparing)}
+              style={({ pressed }) => [styles.buyButton, pressed && ACT.secondaryPressed]}
+            >
+              <Text style={styles.buyText}>{DETAIL_TEXT.buy}</Text>
+            </Pressable>
+          </View>
         </View>
       ) : null}
-
-      {post.body ? <Text style={styles.body}>{post.body}</Text> : null}
     </View>
   );
 
   return (
-    <View style={styles.screen}>
+    <View style={styles.screen} onLayout={onScreenLayout}>
       <ScrollView contentContainerStyle={styles.content} testID="detail-scroll">
         {wide ? (
           <View style={styles.wideRow}>
@@ -350,10 +390,11 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
   );
 }
 
+const ACT = actionColors(C);
 const styles = StyleSheet.create({
   // 다른 도서관 글이어도 방문 중 테마(M1 warm 하나)를 그대로 쓴다(H14)
-  screen: { flex: 1, backgroundColor: C.cream },
-  center: { alignItems: "center", justifyContent: "center", padding: 24, gap: 8 },
+  screen: { flex: 1, backgroundColor: panel.backgroundColor },
+  center: { alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
   content: { paddingBottom: 48 },
   wideRow: { flexDirection: "row", gap: 24, padding: 24, alignItems: "flex-start" },
   imageNarrow: { paddingHorizontal: 12, paddingTop: 12 },
@@ -361,73 +402,87 @@ const styles = StyleSheet.create({
   info: { flex: 1, paddingHorizontal: 16, paddingTop: 12, gap: 12 },
   backOnImage: {
     position: "absolute",
-    top: 20,
-    left: 20,
+    top: 16,
+    left: 16,
     width: 44,
     height: 44,
-    borderRadius: theme.radii.control,
-    backgroundColor: C.paper,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: C.shadowSoft,
-    shadowOpacity: 1,
-    shadowRadius: 6,
-    elevation: 3,
   },
   backFloating: { position: "absolute", top: 16, left: 16, width: 44, height: 44, justifyContent: "center", alignItems: "center" },
-  backText: { fontSize: 28, fontWeight: "500", color: C.text, lineHeight: 32 },
+  backText: {
+    fontSize: 30,
+    fontWeight: "500",
+    color: C.inkStrong,
+    lineHeight: 32,
+    textShadowColor: C.seamHighlight,
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
   actionBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 2 },
   actionLeft: { flexDirection: "row", alignItems: "center", gap: 4 },
   iconAction: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
   iconText: { fontSize: 22, fontWeight: "500", color: C.text },
   smallMenu: {
+    ...cardSurface(theme, { onPanel: true }),
     position: "absolute",
     top: 44,
     left: 0,
-    backgroundColor: C.paper,
-    borderRadius: theme.radii.inner,
     paddingVertical: 4,
     minWidth: 120,
-    shadowColor: C.shadowFloat,
-    shadowOpacity: 1,
-    shadowRadius: 8,
-    elevation: 6,
   },
   smallMenuItem: { minHeight: 44, justifyContent: "center", paddingHorizontal: 14 },
-  smallMenuText: { fontSize: 15, color: C.text, fontWeight: "500" },
-  byline: { fontSize: 15, color: C.textSub, fontWeight: "500" },
-  loanBox: { gap: 8 },
-  loanButton: { backgroundColor: C.paper, borderRadius: theme.radii.card, padding: 16, gap: 4 },
-  loanTitle: { fontSize: 16, fontWeight: "500", color: C.text },
-  loanStatus: { fontSize: 15, color: C.text },
-  loanCta: { fontSize: 14, fontWeight: "500", color: C.inkStrong, marginTop: 4 },
+  smallMenuText: { fontSize: 14, color: C.text, fontWeight: "500" },
+  bylineGroup: { gap: 2 },
+  byline: { ...T.name, color: C.text },
+  body: { fontSize: 14, lineHeight: 22, color: C.text },
+  loanBox: {
+    ...cardSurface(theme, { onPanel: true }),
+    padding: 14,
+  },
+  loanHead: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
+  loanHeadMain: { flex: 1, minWidth: 0, gap: 4 },
+  loanTitle: { ...T.name },
+  loanStatusRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 },
+  loanDot: { width: 6, height: 6, borderRadius: 3 },
+  loanLibName: { fontSize: 12, fontWeight: "500", color: C.text },
+  loanCta: { fontSize: 13, fontWeight: "500", color: C.inkStrong },
+  loanFoot: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: C.seamHairline,
+  },
   buyButton: {
-    alignSelf: "flex-start",
+    ...ACT.secondary,
     borderRadius: theme.radii.control,
-    borderWidth: 1,
-    borderColor: C.divider,
     paddingHorizontal: 14,
+    minHeight: 36,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  buyText: { ...ACT.secondaryText, fontSize: 13, fontWeight: "500" },
+  message: { ...T.title, textAlign: "center" },
+  sub: { fontSize: 14, color: C.inkMuted },
+  stateButton: {
+    ...ACT.secondary,
+    borderRadius: theme.radii.control,
     minHeight: 40,
     justifyContent: "center",
+    paddingHorizontal: 16,
   },
-  buyText: { fontSize: 14, color: C.textSub, fontWeight: "500" },
-  body: { fontSize: 16, lineHeight: 24, color: C.text },
-  message: { fontSize: 17, fontWeight: "500", color: C.text, textAlign: "center" },
-  sub: { fontSize: 15, color: C.textSub },
-  textButton: { minHeight: 44, justifyContent: "center", paddingHorizontal: 8 },
-  link: { fontSize: 15, fontWeight: "500", color: C.text },
+  stateButtonText: { ...ACT.secondaryText, fontSize: 14, fontWeight: "500" },
   toast: {
+    ...cardSurface(theme, { onPanel: true }),
     position: "absolute",
     bottom: 32,
     alignSelf: "center",
-    backgroundColor: C.paper,
-    borderRadius: theme.radii.card,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    shadowColor: C.shadowFloat,
-    shadowOpacity: 1,
-    shadowRadius: 10,
-    elevation: 4,
   },
-  toastText: { fontSize: 15, fontWeight: "500", color: onFill(C.paper) },
+  toastText: { fontSize: 14, fontWeight: "500", color: C.inkStrong },
 });
