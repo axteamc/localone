@@ -47,7 +47,7 @@
   .wall .ruler::before { content:""; position:absolute; left:0; right:0; top:0; height:8px; background:repeating-linear-gradient(90deg, var(--ink-muted) 0 1px, transparent 1px 7px); opacity:.5; }
   .s3 .axis, .s3 .rv, .s3 .ruler { display:block; }
   .in { position:absolute; inset:0; padding:56px 22px 28px; display:flex; flex-direction:column; }
-  .logo { width:52px; height:52px; flex:none; }
+  .logo { width:64px; height:64px; flex:none; }
   .brand { font-size:13px; font-weight:500; margin-top:12px; }
   .title { font-size:23px; font-weight:400; color:var(--ink-soft); letter-spacing:-.02em; line-height:1.35; }
   .btns { margin-top:auto; display:flex; flex-direction:column; gap:10px; position:relative; }
@@ -69,6 +69,17 @@
   .rel-C .btns { margin:auto -22px 0; padding:18px 22px 26px; background:var(--panel-lit); border:1px solid var(--seam); border-bottom:0; border-radius:var(--r-block) var(--r-block) 0 0; box-shadow:0 -1px 0 var(--seam-hi), 0 -4px 10px var(--shadow-cast); }
   .rel-C .btns .gauge { margin-bottom:2px; }
   .gauge { font-size:9.5px; font-weight:500; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-muted); }
+
+  /* 로고 색 조합(정할 것 4) */
+  .lc-sp .lg .f1 { fill:var(--fill3); } .lc-sp .lg .f2 { fill:var(--fill2); }
+  .lc-gy .lg .k { fill:var(--fill3); } .lc-gy .lg .f1 { fill:var(--fill1); } .lc-gy .lg .f2 { fill:var(--fill2); }
+  .lc-ps .lg .f1 { fill:var(--fill2); } .lc-ps .lg .f2 { fill:var(--fill3); }
+  /* 주 버튼 색(정할 것 3) */
+  .bt-y .primary { background:var(--fill1); color:var(--on-fill1); border:1px solid var(--seam); box-shadow:none; }
+  .bt-sage .primary { background:var(--fill3); color:var(--on-fill3); border:1px solid var(--seam); box-shadow:none; }
+  .bt-matte .primary { background:var(--panel-lit); color:var(--ink-strong); border:1px solid var(--seam); box-shadow:0 2px 0 var(--relief-mid); }
+  .bt-peach .primary { background:var(--fill2); color:var(--on-fill2); border:1px solid var(--seam); box-shadow:none; }
+  .swatch { display:inline-block; width:12px; height:12px; border-radius:2px; vertical-align:-1px; border:1px solid var(--seam); margin-right:3px; }
 
   /* 넓은 화면 */
   .desk { position:relative; height:440px; border:1px solid var(--seam); border-radius:var(--r-info); overflow:hidden; background:var(--bg); margin-top:12px; }
@@ -151,6 +162,53 @@
   </div>
 </section>
 
+<!-- ===== 정할 것 3. 주 버튼 색 ===== -->
+<section class="element" id="el-btn" data-chosen="">
+  <h2>정할 것 3. 주 버튼 색 (앱 전체) <span class="status">결정 전</span></h2>
+  <div class="flow"><b>무엇이 바뀌나.</b> 지금 주 버튼은 노랑(`fill1`, 2026-11-18 S4 결정 B)이에요. "너무 별로고 지금 디자인과 안 어울린다"는 D 말에 따라 바꿀 색을 골라요. 고른 색은 로그인뿐 아니라 <b>모든 화면의 주 버튼</b>(`actionColors().primary`)에 들어가요. S4에서 이미 탈락한 남색 채움(`inkStrong`)·돌출 블록·중성 명도는 다시 넣지 않았어요. 로고 색은 아래 4에서 고른 조합(고르기 전엔 추천 ① 세이지·피치)으로 그렸어요.<br><b>새 기준(2026-11-18 D).</b> "그믐(독서 커뮤니티)이 검정 배경에 노랑 달이라 겹친다 — 검정 + 노랑은 되도록 자제, 버튼도 마찬가지." 그래서 노랑 버튼 후보와 진한 ㄷ + 노랑 책 조합은 뺐어요.</div>
+  <div class="pick">후보 다시 보기 <select data-for="el-btn"><option value="">— 전체 —</option><option value="y">비교: 지금(노랑)</option><option value="sage">A 세이지 (추천)</option><option value="matte">B 무광 판</option><option value="peach">C 피치</option></select></div>
+  <div class="cands four">
+    <article class="cand" data-id="y"><h3>비교: 지금 — 노랑 채움 (빼기로 함)</h3><div class="phone" data-btn="y"></div>
+      <p>`fill1` 채움 필. 비교용으로만 남겨 둬요. D: "너무 별로고 현재 디자인과 안어울려서 바꿔야 해", "검정 + 노랑은 되도록 사용 자제하고 버튼도 마찬가지".</p>
+      <span class="lbl">값</span><p><span class="swatch" style="background:var(--fill1)"></span><span data-val="fill1"></span></p></article>
+    <article class="cand recommended" data-id="sage"><h3>후보 A — 세이지 채움 <span class="badge">추천</span></h3><div class="phone" data-btn="sage"></div>
+      <p>`fill3`(warm 세이지)으로 채운 필 + 1px 줄눈. 회색 유리판 위에서 튀지 않으면서 '누르는 곳'은 알려 줘요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>모든 화면의 주 버튼 하나가 이 색이에요(책 상세 "빌렸어요", 글쓰기 "올리기" 등). 보조 버튼은 그대로(`cream` + 테두리).</p>
+      <span class="lbl">화면을 열어야 보이는 것</span><p>값 <span class="swatch" style="background:var(--fill3)"></span><span data-val="fill3"></span>, 글자 <span data-val="on-fill3"></span>(자동 대비). 룩마다 그 룩의 `fill3`.</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>노랑 없이 차분하고, 회색 판과 잘 섞여요. / 로그인 화면에서는 로고의 세이지 책(추천 ①)과 같은 색이 위아래로 한 번씩 나와요.</p>
+      <p><b>추천 이유:</b> S4에서 D가 고른 "주 버튼은 색으로 채운다"는 그대로 두고 색만 바꿔요. 노랑을 빼면 남는 두 색(세이지·피치) 중 세이지가 회색 유리판과 가장 잘 어울리고 글자 대비도 충분해요.</p></article>
+    <article class="cand" data-id="matte"><h3>후보 B — 무광 판 버튼</h3><div class="phone" data-btn="matte"></div>
+      <p>색 없이 한 단 밝은 판(`panelLit`) + 1px 줄눈 + 아래 2px 받침(정보 카드와 같은 재질), 글자 `inkStrong`.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>A와 같아요. 누르면 받침이 사라지며 1px 내려앉아요.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span><p>값 <span class="swatch" style="background:var(--panel-lit)"></span><span data-val="panel-lit"></span>, 받침 <span data-val="relief-mid"></span>.</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>"색은 창 안에만"(규칙 5)을 가장 엄격하게 지키고 로고가 화면의 유일한 색이 돼요. / 주 버튼이 보조 버튼과 비슷해져 찾기 어려워요.</p></article>
+    <article class="cand" data-id="peach"><h3>후보 C — 피치 채움</h3><div class="phone" data-btn="peach"></div>
+      <p>`fill2`(warm 피치)로 채운 필 + 1px 줄눈. 세 후보 중 가장 따뜻해요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>A와 같아요.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span><p>값 <span class="swatch" style="background:var(--fill2)"></span><span data-val="fill2"></span>, 글자 <span data-val="on-fill2"></span>(자동 대비). 룩마다 그 룩의 `fill2`(toffee는 캐러멜, 모던은 거의 흰색이라 모던에서는 버튼이 약해요).</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>따뜻한 느낌이 남아요. / 노랑과 가까운 난색이라 멀리서는 노랑 계열로 보일 수 있고, 모던 룩에서 약해요.</p></article>
+  </div>
+</section>
+
+<!-- ===== 정할 것 4. 로고 색 조합 ===== -->
+<section class="element" id="el-lc" data-chosen="">
+  <h2>정할 것 4. 로고 색 (ㄷ과 책 두 권) <span class="status">결정 전</span></h2>
+  <div class="flow"><b>무엇이 바뀌나.</b> 로고 F 모양은 그대로 두고 색만 바꿔요. <b>새 기준(2026-11-18 D).</b> "그믐(독서 커뮤니티)이 검정 배경에 노랑 달이라 겹친다 — 검정 + 노랑은 되도록 자제, 버튼도 마찬가지." 그래서 노랑 버튼 후보와 진한 ㄷ + 노랑 책 조합은 뺐어요. 원래 F(진한 ㄷ + 노랑·피치)는 진한 ㄷ 안에 노랑이 들어 있어 이 기준에 걸려요. 색 값은 로고 시안과 똑같아요(노랑 <span data-val="fill1"></span>, 피치 <span data-val="fill2"></span>). 앞 화면에서 "다 노랑"으로 보였던 건 로고가 52로 작아 피치 책 폭이 6px밖에 안 됐기 때문이에요. 그래서 로고를 64로 키웠어요(기본값). 버튼은 위 3에서 고른 색(고르기 전엔 추천 A 세이지)으로 그렸어요. 아래 후보 다시 보기에서 고르면 위 3의 화면도 같이 바뀌어요.</div>
+  <div class="pick">후보 다시 보기 <select data-for="el-lc"><option value="">— 전체 —</option><option value="sp">① 세이지·피치 (추천)</option><option value="gy">② 세이지 ㄷ + 노랑·피치</option><option value="ps">③ 피치·세이지</option></select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="sp"><h3>① 진한 ㄷ · 큰 책 세이지 · 작은 책 피치 <span class="badge">추천</span></h3><div class="phone" data-lc="sp"></div>
+      <p>D가 말한 "세이지그린·피치"예요. ㄷ은 진한색 그대로, 큰 책 `fill3`, 작은 책 `fill2`.</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>노랑이 없어 그믐과 안 겹치고, 세이지·피치는 명도가 달라 64에서도 두 권이 갈려요. / 세이지 버튼(3의 A)을 고르면 로그인에서 세이지가 위아래로 한 번씩 나와요.</p>
+      <p><b>추천 이유:</b> D가 직접 말한 조합이고, 검정 + 노랑을 피하면서 로고 형태(F)를 그대로 지켜요.</p></article>
+    <article class="cand" data-id="gy"><h3>② 세이지 ㄷ · 큰 책 노랑 · 작은 책 피치</h3><div class="phone" data-lc="gy"></div>
+      <p>D가 좋았다고 한 노랑·피치 책은 그대로 두고 ㄷ을 진한색 대신 세이지로. 검정이 빠져요.</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>노랑·피치를 지키면서 검정 + 노랑이 아니게 돼요. / ㄷ이 연해져 흰 바탕에서 형태가 약해지고, 노랑이 남아 있어 "자제"보다는 "피함"이 덜해요.</p></article>
+    <article class="cand" data-id="ps"><h3>③ 진한 ㄷ · 큰 책 피치 · 작은 책 세이지</h3><div class="phone" data-lc="ps"></div>
+      <p>①의 두 책 색을 바꿨어요. 큰 책이 피치라 더 따뜻해요.</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>세이지 버튼과 겹치는 면적이 작아요. / 진한 ㄷ 안의 피치는 멀리서 노랑 계열로 보일 수 있어요.</p></article>
+  </div>
+</section>
+
 <!-- ===== 넓은 화면 ===== -->
 <section id="wide">
   <h2>넓은 웹(노트북 시연)에서 <span class="status">기본값(Claude)</span></h2>
@@ -171,11 +229,13 @@
     <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
     <tr data-el="el-grid"><td>1. 바탕 격자 강도</td><td>1단계(투명도 .30)</td><td>없음(받지 않음)</td><td>기준, 2단계(추천이었음), 3단계</td><td>"2 : 1단계"</td><td>기준 0 · 1단계 .30 · 2단계 .55 · 3단계 .55 + 리벳·축·룰러. 칸 120(앱), `seamHairline`</td><td>—</td><td><span class="st">확인</span></td></tr>
     <tr data-el="el-rel"><td>2. 로고와 버튼의 관계</td><td>C 아래 창에 버튼 담기</td><td>없음(받지 않음)</td><td>A 떨어뜨리기, B 축으로 잇기</td><td>"3 : C"</td><td>A 여백 · B 축 1px `inkStrong` 55% · C `panelLit` 곡률 3, 위 1px 줄눈 + 0 -4 10 `shadowCast`</td><td>/login → Google → 진행 → 홈</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-btn"><td>3. 주 버튼 색(앱 전체)</td><td>— (추천: A 세이지 `fill3`)</td><td>—</td><td>지금 노랑 `fill1`(D: "너무 별로고 현재 디자인과 안어울려서 바꿔야 해", "검정 + 노랑은 되도록 사용 자제하고 버튼도 마찬가지")</td><td>(받기 전)</td><td>A `fill3` + 1px 줄눈 · B `panelLit` + 줄눈 + 아래 2px `reliefBottomMid` · C `fill2` + 1px 줄눈</td><td>모든 화면 주 버튼(`actionColors().primary`)</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-lc"><td>4. 로고 색</td><td>— (추천: ① 진한 ㄷ · 세이지 · 피치)</td><td>—</td><td>—</td><td>(받기 전) D: "원래 로고시안의 노랑 피치가 좋았던거야", "구글과 충돌할 거 같으면 세이지그린 피치도 써보자", "검정 + 노랑은 되도록 사용 자제"</td><td>① ㄷ inkStrong · fill3 · fill2 · ② ㄷ fill3 · fill1 · fill2 · ③ ㄷ inkStrong · fill2 · fill3. 로그인 로고 64</td><td>—</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>바탕</td><td>유리판 `panelFrosted`</td><td>—</td><td>`cream`(지금)</td><td>—</td><td>DESIGN 페이지 적용 레시피 "바탕"</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>머리 띠</td><td>없음(지금의 빈 띠를 없앰)</td><td>—</td><td>—</td><td>—</td><td>로그인은 첫 화면이라 뒤로가기·표찰 없음</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>글자</td><td>브랜드 13/500, 제목 24/400 `inkSoft` 왼쪽 정렬(B는 가운데)</td><td>—</td><td>제목 24/500(지금)</td><td>—</td><td>`type.pageTitle`</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
-    <tr><td>Google 버튼</td><td>주 버튼 `fill1` 채움 필, 높이 48</td><td>—</td><td>`paper` + `surface3` 보조 모양(지금)</td><td>—</td><td>`actionColors().primary`, 규칙 7 무거운 표식 하나</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
-    <tr><td>로고</td><td>로고 시안 F 글자형 ㄷ + 한 권</td><td>—</td><td>곡률 18 알약 3개(지금)</td><td>로고 시안에서 F 채택</td><td>52(시안) / 56(앱), 파일 `개발산출물/로고/`</td><td>—</td><td><span class="st">확인</span></td></tr>
+    <tr><td>Google 버튼</td><td>주 버튼(색은 정할 것 3), 높이 48</td><td>—</td><td>`paper` + `surface3` 보조 모양(지금)</td><td>—</td><td>`actionColors().primary`, 규칙 7 무거운 표식 하나</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>로고</td><td>로고 시안 F 글자형 ㄷ + 한 권</td><td>—</td><td>곡률 18 알약 3개(지금)</td><td>로고 시안에서 F 채택</td><td>64(시안·앱, 52에서는 작은 책이 안 보여 키움), 파일 `개발산출물/로고/`</td><td>—</td><td><span class="st">확인</span></td></tr>
   </table></div>
   <p>아직 하지 않음: `login.tsx` 코드 적용(고른 뒤 다음 단계), 아이콘 PNG.</p>
 </section>
@@ -197,12 +257,13 @@ const onFill=f=>contrast(f,"#FFFFFF")>=contrast(f,"#1D1D1F")?"#FFFFFF":"#1D1D1F"
 function applyLook(name){
   const c=LOOKS[name], r=document.documentElement.style;
   const v={bg:c.bg,surface2:c.surface2,surface3:c.surface3,fill1:c.fill1,fill2:c.fill2,fill3:c.fill3,cream:c.cream,paper:c.paper,"ink-strong":c.inkStrong,
-    "panel-frosted":mix(c.paper,c.bg,.58),"panel-lit":mix(c.paper,c.cream,.84),seam:mix(c.inkStrong,c.bg,.14),rivet:mix(c.inkStrong,c.surface3,.34),"on-fill1":onFill(c.fill1)};
+    "panel-frosted":mix(c.paper,c.bg,.58),"relief-mid":mix(c.inkStrong,c.surface2,.15),"on-fill3":onFill(c.fill3),"on-fill2":onFill(c.fill2),"panel-lit":mix(c.paper,c.cream,.84),seam:mix(c.inkStrong,c.bg,.14),rivet:mix(c.inkStrong,c.surface3,.34),"on-fill1":onFill(c.fill1)};
   for(const k in v) r.setProperty("--"+k,v[k]);
+  document.querySelectorAll("[data-val]").forEach(e=>e.textContent=v[e.dataset.val]);
 }
 const LOGO=`<svg class="lg" viewBox="0 0 64 64" role="img" aria-label="동네한권 로고"><path class="k" d="M10 10H54V20H20V44H54V54H10Z"/><rect class="f1" x="30" y="24" width="12" height="20" rx="2"/><rect class="f2" x="44" y="28" width="8" height="16" rx="1.5"/></svg>`;
 const GRID={s0:0,s1:.30,s2:.55,s3:.55};
-const REC={grid:"s2",rel:"C"};
+const REC={grid:"s2",rel:"C",btn:"sage",lc:"sp"};
 
 function screen(grid, rel){
   return `<div class="wall s${grid.slice(1)}" style="--go:${GRID[grid]}"><div class="grid"></div><div class="rv"></div><div class="axis"></div><div class="ruler"></div></div>
@@ -213,11 +274,15 @@ function screen(grid, rel){
 function chosen(id){ return document.getElementById(id).dataset.chosen; }
 function currentGrid(){ return chosen("el-grid") || document.querySelector('[data-for="el-grid"]').value || REC.grid; }
 function currentRel(){ return chosen("el-rel") || document.querySelector('[data-for="el-rel"]').value || REC.rel; }
+function currentBtn(){ return chosen("el-btn") || document.querySelector('[data-for="el-btn"]').value || REC.btn; }
+function currentLogo(){ return chosen("el-lc") || document.querySelector('[data-for="el-lc"]').value || REC.lc; }
 function draw(){
+  document.querySelectorAll("[data-btn],[data-lc]").forEach(p=>{ p.className="phone rel-"+currentRel(); p.innerHTML=screen(currentGrid(), currentRel()); });
   document.querySelectorAll("[data-grid]").forEach(p=>{ p.className="phone rel-"+currentRel(); p.innerHTML=screen(p.dataset.grid, currentRel()); });
   document.querySelectorAll("[data-rel]").forEach(p=>{ p.className="phone rel-"+p.dataset.rel; p.innerHTML=screen(currentGrid(), p.dataset.rel); });
   document.getElementById("deskPhone").className="phone-inner rel-"+currentRel();
   document.getElementById("deskPhone").innerHTML=screen(currentGrid(), currentRel());
+  document.querySelectorAll(".phone, .phone-inner").forEach(p=>{ p.classList.add("bt-"+(p.dataset.btn||currentBtn()), "lc-"+(p.dataset.lc||currentLogo())); });
   document.querySelectorAll(".phone, .phone-inner").forEach(p=>p.classList.toggle("ios-off", document.getElementById("platform").value!=="ios"));
 }
 function markChosen(){
