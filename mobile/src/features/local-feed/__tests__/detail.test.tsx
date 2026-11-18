@@ -8,6 +8,7 @@ import * as platform from "../../../lib/platform";
 import * as publicApi from "../../../lib/publicApi";
 import type { AvailabilityItem, AvailabilityResponse } from "../../../lib/publicApi";
 import { theme } from "../../../theme";
+import { ON_FILL_LIGHT } from "../../../theme/tokens";
 import * as api from "../api";
 import type { FeedPost, Post } from "../api";
 import { basisLabel, DETAIL_TEXT, loanLine, PostDetail } from "../PostDetail";
@@ -405,5 +406,22 @@ describe("이어지는 글 (H7·H15)", () => {
     await screen.findByTestId("library-other-posts");
     expect(fetchBookPosts).not.toHaveBeenCalled();
     expect(screen.queryByText(RELATED_TEXT.sameBook)).toBeNull();
+  });
+
+  test("back button uses light ink on dark color or photo/cover and dark ink on light color", async () => {
+    await enter(post({ image_kind: "color", image_color: "inkStrong", image_url: null }));
+    const darkBtn = screen.getByRole("button", { name: "돌아가기" });
+    const darkGlyph = within(darkBtn).getByText("‹");
+    expect(StyleSheet.flatten(darkGlyph.props.style)?.color).toBe(ON_FILL_LIGHT);
+
+    await enter(post({ image_kind: "color", image_color: "fill1", image_url: null }));
+    const lightBtn = screen.getByRole("button", { name: "돌아가기" });
+    const lightGlyph = within(lightBtn).getByText("‹");
+    expect(StyleSheet.flatten(lightGlyph.props.style)?.color).toBe(theme.colors.inkStrong);
+
+    await enter(post({ image_kind: "photo", image_color: null, image_url: "https://example.com/a.jpg" }));
+    const photoBtn = screen.getByRole("button", { name: "돌아가기" });
+    const photoGlyph = within(photoBtn).getByText("‹");
+    expect(StyleSheet.flatten(photoGlyph.props.style)?.color).toBe(ON_FILL_LIGHT);
   });
 });
