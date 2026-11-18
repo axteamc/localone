@@ -232,7 +232,7 @@
 
 | 열린 칸 (A 보완): `MY-1-P2` 완료 시 추가 확인할 명세서 결정·예외 ID (A 채움) | |
 | :--- | :--- |
-| `MY-1-P2` 명세서 결정·예외 ID | `specs/my-collection/세부/MY-1.md` 결정 1(Y-O1)·결정 2(Y-O4)·결정 3(Y-O3), 예외 #1~#6(Y-O5·C6 열린 행), 기본값(Claude) Y-O2 탭 바·캐시·당겨서 새로고침·상세 복귀 재조회. 추가 P5 `MY-1-P2` 열린 테스트 8행 |
+| `MY-1-P2` 명세서 결정·예외 ID | `specs/my-collection/세부/MY-1.md` 결정 1(Y-O1)·결정 2(Y-O4)·결정 3(Y-O3), 예외 #1~#6(Y-O5·C6 열린 행), 기본값(Claude) Y-O2 탭 바·캐시·당겨서 새로고침·상세 복귀 재조회(P5 `revisiting loaded tab...`·`pull to refresh...`·`returning from post detail...`). 추가 P5 `MY-1-P2` 열린 테스트 11행 |
 
 ##### 파트 머리말 — MY-1-P1 / MY-1-P2 (Step 하나 = 브랜치 `feat/my-collection-MY-1` 하나 = PR 하나)
 
@@ -353,3 +353,6 @@ async function selectTab(tab: CollectionTab) {
 | `MY-1-P2` | `bookmark tab unbookmark follows same dim and undo flow` | `북마크` 탭, #30 `DELETE`/`PUT` | `🔖` 해제 → `"되돌리기"` | `"북마크를 해제했어요"`, `DELETE`·`PUT` 각 1회, 카드 복원 | 북마크 탭 분기 누락 (결정 2) |
 | `MY-1-P2` | `double press on same card sends one request and failed delete keeps card` | #29 `DELETE` deferred 후 reject | 같은 카드 `♡` 2번 → reject | `DELETE` 1회, 카드 흐려지지 않음, `"좋아요를 취소하지 못했어요. 다시 해 주세요"` | 진행 중 가드 누락·실패 시 카드 사라짐 (예외 #3·#5) |
 | `MY-1-P2` | `next page failure keeps cards and retries same cursor` | 1쪽 `next_cursor: "c1"`, 2쪽 첫 호출 503 후 200 | 끝까지 스크롤 → 실패 → `"↻ 새로고침"` / 한 번 더 끝 도달 | 1쪽 카드 유지, `"더 불러오지 못했어요"`, 재시도 `cursor === "c1"`, 성공 후 이어 붙임·중복 0, 끝이면 `"모두 봤어요"` | 실패 시 목록 비움·커서 전진·중복 요청 (예외 #1) |
+| `MY-1-P2` | `revisiting loaded tab reuses cached items and cursor without refetch` | `signedIn` A, `내 게시물` 1쪽(`next_cursor: "p1"`)·`좋아요` 1쪽(`next_cursor: "r1"`) 각각 한 번 불러옴 | `내 게시물` → `좋아요` → `내 게시물` → `좋아요` 다시 누름 → `좋아요` 끝까지 스크롤 | 다시 누를 때 `fetchMyPosts`·`fetchMyReactions` 추가 호출 0(각 첫 1회만), 카드 목록·순서 그대로, 스켈레톤 0; 끝 도달 시 다음 요청 `cursor === "r1"` | 탭 전환마다 무조건 재조회(깜빡임)·커서 초기화로 1쪽 중복 (Y-O2 캐시, 명세 0절 기본값) |
+| `MY-1-P2` | `pull to refresh refetches active tab first page and profile only` | `내 게시물`·`좋아요`·`북마크` 모두 불러옴, 활성 `좋아요`는 2쪽까지 이어 붙임 | 피드를 아래로 당김(`onRefresh`) → 응답 resolve | `fetchMyProfile` 1회 + `fetchMyReactions` `cursor === null` 1회, `fetchMyPosts`·`fetchMyBookmarks` 0회; 응답 뒤 `좋아요` 목록을 1쪽 응답으로 교체(2쪽 카드 잔존 0)·`next_cursor` 갱신, 새로고침 표시 꺼짐 | 다른 탭까지 재조회·기존 커서로 이어 붙여 중복·프로필 미갱신·새로고침 표시 안 꺼짐 (Y-O2 당겨서 새로고침, 명세 0절 기본값) |
+| `MY-1-P2` | `returning from post detail silently refetches active tab keeping cards until response` | `좋아요` 탭 카드 2개 표시, `내 게시물`도 불러옴, 복귀 시 `fetchMyReactions` deferred | 카드 눌러 상세 이동 → 화면 다시 보임(focus) → deferred resolve(카드 1개) | resolve 전: 기존 카드 2개 그대로, 스켈레톤·빈 안내 0, `fetchMyReactions` `cursor === null` 1회, `fetchMyPosts`·`fetchMyProfile` 0회; resolve 뒤 카드 1개로 교체. 첫 진입 focus에서는 최초 조회 외 추가 호출 0 | 복귀 재조회 누락(상세에서 바꾼 상태 미반영)·응답 전 카드 비움·다른 탭/프로필 재조회·첫 진입 중복 요청 (Y-O2 상세 복귀, 명세 검토 메모 `[Claude가 정함]`) |
