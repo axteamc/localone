@@ -75,7 +75,8 @@
   .tabbar { display: flex; border-bottom: 1px solid var(--line); background: var(--bg); flex: none; }
   .tabbar span { flex: 1; text-align: center; padding: 8px 0; font-size: 14px; color: var(--text-sub); cursor: pointer; }
   .tabbar span.on { color: var(--text); font-weight: 700; box-shadow: inset 0 -2px 0 var(--ink-strong); }
-  .feed { flex: 1; overflow: hidden; padding: 12px 12px 0; display: grid; grid-template-columns: 1fr 1fr; column-gap: 12px; align-content: start; }
+  .feed { flex: 1; overflow: hidden; padding: 12px 12px 0; }
+  .feedin { display: grid; grid-template-columns: 1fr 1fr; column-gap: 12px; align-content: start; }
   .col { display: flex; flex-direction: column; gap: 12px; }
   .card { border-radius: var(--r-card); padding: 10px; display: flex; align-items: flex-end; font-size: 12px; font-weight: 700; color: var(--text); }
   .card.f1 { background: var(--fill1); } .card.f2 { background: var(--fill2); } .card.f3 { background: var(--fill3); }
@@ -225,17 +226,20 @@
 </main>
 
 <script>
-  // 세 후보 모두 같은 게시물 4개
+  // 세 후보 모두 같은 게시물 8개 (내렸을 때도 아래가 비지 않게)
   var CARDS = [
-    [{ c: 'f2', h: 150, t: '마음에 남은 문장' }, { c: 'f1', h: 110, t: '정독도서관 창가' }],
-    [{ c: 'f3', h: 110, t: '이번 주 다 읽음' }, { c: 'f2', h: 150, t: '소년이 온다' }]
+    [{ c: 'f2', h: 150, t: '마음에 남은 문장' }, { c: 'f1', h: 110, t: '정독도서관 창가' }, { c: 'f3', h: 150, t: '두 번째 읽는 중' }, { c: 'f2', h: 110, t: '반납 전 한 장' }],
+    [{ c: 'f3', h: 110, t: '이번 주 다 읽음' }, { c: 'f2', h: 150, t: '소년이 온다' }, { c: 'f1', h: 110, t: '동네 서가 산책' }, { c: 'f3', h: 150, t: '밑줄 그은 곳' }]
   ];
+  // 카드 묶음(.feedin)을 창(.feed) 안에서 위로 밀어 "내린 모습"을 만든다 — 창 밖으로 넘친 부분은 탭 아래에서 잘린다
   document.querySelectorAll('[data-feed]').forEach(function (f) {
+    var inner = document.createElement('div'); inner.className = 'feedin';
     CARDS.forEach(function (col) {
       var d = document.createElement('div'); d.className = 'col';
       col.forEach(function (k) { var c = document.createElement('div'); c.className = 'card ' + k.c; c.style.height = k.h + 'px'; c.textContent = k.t; d.appendChild(c); });
-      f.appendChild(d);
+      inner.appendChild(d);
     });
+    f.appendChild(inner);
   });
 
   var el = document.getElementById('el-1');
@@ -250,7 +254,7 @@
       press('[data-scroll]', b);
       var down = b.dataset.scroll === '1';
       el.querySelectorAll('[data-prof]').forEach(function (p) { if (!p.hasAttribute('data-keep')) p.hidden = down; });
-      el.querySelectorAll('[data-feed]').forEach(function (f) { f.style.marginTop = down ? '-60px' : '0'; });
+      el.querySelectorAll('.feedin').forEach(function (f) { f.style.transform = down ? 'translateY(-130px)' : 'none'; });
     });
   });
   // 탭 누르기
