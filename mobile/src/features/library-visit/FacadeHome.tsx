@@ -32,6 +32,8 @@ import {
   type SpineTone,
 } from "./direction";
 import { formatDistance } from "./format";
+import { HERO_MENU_TEXT } from "./heroText";
+import { cubeNames } from "./shortName";
 import { snapOffsets } from "./useHomeSheet";
 
 const { colors: C, radii: R } = theme;
@@ -68,10 +70,7 @@ export type FacadeHomeProps = {
 };
 
 const TEXT = {
-  menuTitle: "홈을 열면 처음 크게 보일 도서관",
-  nearest: "가장 가까운 곳",
-  recent: "최근 방문한 곳",
-  basic: "기본",
+  ...HERO_MENU_TEXT,
   ring: "주변 도서관 전체 보기",
   back: "원래 도서관 크게 보기",
 };
@@ -95,8 +94,8 @@ function hoursOf(lib: LibrarySummary): string {
 const TOP_LINE = 92;
 const TOP_LS = 1;
 /**
- * 윗면 이름 글자 크기·줄 수(큐브 기본 좌표). 이름 줄이는 규칙은 디자인 뒤라(D 결정) 그 전까지는
- * 7자 이상이면 두 줄로 나누고, 한 줄이 윗면 안에 들어오게 글자를 줄인다 — 기본값(Claude, 임시)
+ * 윗면 이름 글자 크기·줄 수(큐브 기본 좌표). name은 줄인 이름(shortName.ts cubeNames, L6 D 결정 "핵심 이름만").
+ * 줄인 뒤에도 7자 이상이면 두 줄로 나누고, 한 줄이 윗면 안에 들어오게 글자를 줄인다 — 기본값(Claude)
  */
 export function topFont(name: string, role: CubeRole, scale: number): { fontSize: number; lines: 1 | 2; width: number } {
   const len = Math.max(1, [...name].length);
@@ -111,6 +110,8 @@ type Anim = { cx: Animated.Value; cy: Animated.Value; scale: Animated.Value };
 
 type CubeProps = {
   item: FacadeItem;
+  /** 윗면에 보일 줄인 이름 */
+  title: string;
   tone: SpineTone;
   place: CubePlace;
   anim: Anim;
@@ -119,12 +120,12 @@ type CubeProps = {
 };
 
 /** C2 등각 큐브: 윗면 = 색 + 이름, 왼쪽 면 = 상태·거리·주소, 오른쪽 면 = 오늘·방위 */
-function IsoCube({ item, tone, place, anim, onPress, onLongPress }: CubeProps) {
+function IsoCube({ item, title, tone, place, anim, onPress, onLongPress }: CubeProps) {
   const { lib } = item;
   const fill = toneColor(tone);
   const hero = place.role === "hero";
   const label = hero ? `${lib.name} ${formatDistance(item.distanceM)}` : `${lib.name} 크게 보기`;
-  const fs = topFont(lib.name, place.role, place.scale);
+  const fs = topFont(title, place.role, place.scale);
   const quiet = hero ? null : styles.quiet;
   return (
     <Animated.View
@@ -183,7 +184,7 @@ function IsoCube({ item, tone, place, anim, onPress, onLongPress }: CubeProps) {
             numberOfLines={fs.lines}
             style={[styles.topText, { fontSize: fs.fontSize, lineHeight: fs.fontSize * 1.2, width: fs.width, color: mix(fill, C.inkStrong, 0.4) }]}
           >
-            {lib.name}
+            {title}
           </Text>
         </View>
       </Pressable>
@@ -244,6 +245,7 @@ export function FacadeHome(props: FacadeHomeProps) {
   const has = (id: number | null) => id != null && items.some((it) => it.lib.id === id);
   const heroId = has(chosen) ? chosen : has(selectedId) ? selectedId : initialHeroId(items, heroRule, recentId);
   const shown = useMemo(() => shownItems(items, heroId), [items, heroId]);
+  const titles = useMemo(() => cubeNames(shown.map((it) => it.lib)), [shown]);
   const scene: FacadeScene = useMemo(
     () => (heroId == null ? { origin: { x: W / 2, y: H / 2 }, cubes: [] } : ring ? ringScene(shown, W, H) : heroScene(shown, heroId, W, H)),
     [shown, heroId, ring, W, H]
@@ -333,6 +335,7 @@ export function FacadeHome(props: FacadeHomeProps) {
             <IsoCube
               key={c.id}
               item={it}
+              title={titles.get(c.id) ?? it.lib.name}
               tone={tones.get(c.id) ?? "fill1"}
               place={c}
               anim={anims.get(c.id) as Anim}

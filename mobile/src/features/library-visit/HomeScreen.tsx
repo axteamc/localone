@@ -55,15 +55,6 @@ export function HomeScreen() {
       alive.current = false;
     };
   }, []);
-  // 저장값은 처음 한 번 읽는다. 그 전에 사용자가 고르면 늦게 온 이전 저장값은 버린다(화면·저장 모두 새 설정)
-  const ruleTouched = useRef(false);
-  useEffect(() => {
-    void getHeroRule()
-      .catch((): HeroRule => "nearest")
-      .then((rule) => {
-        if (alive.current && !ruleTouched.current) setRule(rule);
-      });
-  }, []);
 
   // 최근 방문: 홈은 방문 페이지(루트 Stack)로 가도 unmount되지 않으므로 홈에 돌아올 때(focus)와 "최근 방문한 곳"을
   // 고를 때 다시 읽는다. 순번으로 늦은 응답은 버린다.
@@ -85,7 +76,36 @@ export function HomeScreen() {
         setRecent((r) => ({ latest: id, shown: apply || !r.read ? id : r.shown, read: true }));
       });
   }, []);
-  useFocusEffect(useCallback(() => readRecent(false), [readRecent]));
+  // 저장값은 처음과 홈에 돌아올 때(방문 페이지 ⋯ 메뉴에서 바꿨을 수 있다, L6) 읽는다. 읽는 중에 사용자가 고르면
+  // 늦게 온 이전 저장값은 버리고(순번), 홈에서 고른 값의 저장이 끝난 뒤에 읽는다(되돌림 방지)
+  const ruleNow = useRef<HeroRule>("nearest");
+  ruleNow.current = heroRule;
+  const ruleSeq = useRef(0);
+  const ruleSaving = useRef<Promise<void>>(Promise.resolve());
+  const ruleRead = useRef(false);
+  const readRule = useCallback(() => {
+    const mine = ++ruleSeq.current;
+    void ruleSaving.current
+      .then(() => getHeroRule())
+      .catch((): HeroRule => "nearest")
+      .then((rule) => {
+        if (!alive.current || mine !== ruleSeq.current) return;
+        const first = !ruleRead.current; // 처음 읽을 때는 최근 방문도 처음 읽는 중이라 다시 읽지 않는다
+        ruleRead.current = true;
+        if (rule === ruleNow.current) return;
+        setRule(rule);
+        if (rule === "recent" && !first) {
+          setRecent((r) => ({ ...r, shown: r.latest }));
+          readRecent(true);
+        }
+      });
+  }, [readRecent]);
+  useFocusEffect(
+    useCallback(() => {
+      readRecent(false);
+      readRule();
+    }, [readRecent, readRule])
+  );
   const [seenView, setSeenView] = useState({ libraries: home.libraries, viewSeq: home.viewSeq, center: home.center });
   if (seenView.libraries !== home.libraries || seenView.viewSeq !== home.viewSeq || seenView.center !== home.center) {
     // 렌더 중 상태 맞추기(React "이전 값 저장" 방식): FacadeHome이 같은 렌더에서 목록 변경과 새 최근 방문을 함께 받는다
@@ -95,9 +115,9 @@ export function HomeScreen() {
 
   const changeHeroRule = useCallback(
     (rule: HeroRule) => {
-      ruleTouched.current = true;
+      ruleSeq.current++; // 읽는 중인 이전 저장값은 버린다
       setRule(rule);
-      void setHeroRule(rule);
+      ruleSaving.current = setHeroRule(rule).catch(() => undefined);
       if (rule === "recent") {
         // 홈 복귀 때 읽은 값으로 바로 보여 주고, 기록이 그 뒤 바뀌었을 수 있으니 한 번 더 읽어 맞춘다
         setRecent((r) => ({ ...r, shown: r.latest }));
