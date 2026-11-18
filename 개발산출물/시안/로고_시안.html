@@ -95,6 +95,7 @@
   .lg.iso .ie { stroke:var(--seam); stroke-width:.12; stroke-linejoin:round; }
   .noedge .lg.iso .ie { stroke:none; }
   .lg.iso .ln { stroke:var(--seam); stroke-width:.1; }
+  .lg.iso .ln-thin { stroke:var(--seam); stroke-width:.055; opacity:.65; }
   .lg .it1 { fill:var(--fill1); } .lg .it2 { fill:var(--fill2); } .lg .it3 { fill:var(--fill3); }
   .lg .it1d { fill:color-mix(in srgb, var(--fill1) 84%, #6B6B66); } .lg .it2d { fill:color-mix(in srgb, var(--fill2) 84%, #6B6B66); } .lg .it3d { fill:color-mix(in srgb, var(--fill3) 84%, #6B6B66); }
   .lg .il { fill:var(--paper); } .lg .ir { fill:color-mix(in srgb, var(--paper) 78%, var(--surface3)); } .lg .ip { fill:var(--paper); } .lg .ib { fill:var(--paper); opacity:.85; }
@@ -461,7 +462,37 @@ const ISOS=[
      return s; },
    desc:"앞에서 고른 G 슬라이딩 도어를 상자로 세웠어요. 왼쪽 앞면이 노랑·피치·세이지 도어 세 짝, 윗면과 오른쪽은 흰색.",
    see:"48에서 세 색 띠가 비스듬히. 사진과 반대로 옆면에 색.",
-   gain:"G에서 이어지는 안이에요. / 사진의 '윗면만 색'과는 반대예요."}
+   gain:"G에서 이어지는 안이에요. / 사진의 '윗면만 색'과는 반대예요."},
+  {id:"I7", name:"펼쳐진 책 지붕 큐브", draw:()=>{
+     const L=[PJ(0,10,0),PJ(10,10,0),PJ(10,10,8.8),PJ(5,10,7),PJ(0,10,8.8)];
+     const R=[PJ(10,0,0),PJ(10,10,0),PJ(10,10,8.8),PJ(10,0,8.8)];
+     const T1=[PJ(0,0,8.8),PJ(5,0,7),PJ(5,10,7),PJ(0,10,8.8)];
+     const T2=[PJ(5,0,7),PJ(10,0,8.8),PJ(10,10,8.8),PJ(5,10,7)];
+     return poly(L,"ie il")+poly(R,"ie ir")+poly(T1,"ie it1")+poly(T2,"ie it1d")+seg(PJ(5,0,7),PJ(5,10,7),"ln"); },
+   desc:"파사드 큐브의 컬러 윗면 가운데를 V자로 살짝 접어 내렸어요. 입체로 보면 도서관 지붕, 위에서 보면 펼쳐진 책 한 권.",
+   see:"48과 24 모두에서 V자로 접힌 노란 윗면과 흰 큐브 실루엣이 그대로 남아요.",
+   gain:"선을 추가하지 않고 면의 꺾임만으로 '책+도서관'을 가장 미니멀하게 표현해요. / 한 색 포인트 위주예요."},
+  {id:"I8", name:"한 권이 꽂힌 큐브", draw:()=>
+     box(0,0,0,10,9.5,9,{top:"il",left:"il",right:"ir"})+
+     box(5.4,7.2,0,2.4,4.2,9.8,{top:"it1",left:"it1",right:"it1d"}),
+   desc:"흰 큐브(도서관 공간) 앞쪽으로 책 한 권 분량의 블록만 살짝 돌출되고, 그 한 권에만 노랑(`fill1`)을 얹었어요. 이름 '동네한권'의 은유.",
+   see:"48에서 흰 덩어리 위로 튀어나온 노란 책 한 권이 또렷해요. 24에서도 노란 세로 포인트가 읽혀요.",
+   gain:"브랜드명 '동네한권'과 홈 파사드 큐브가 하나의 이야기로 연결돼요. / 24에서는 돌출 틈이 작아 보여요."},
+  {id:"I9", name:"책 페이지 + 책갈피 큐브", draw:()=>{ const b=[0,0,0,10,10,8.6], r=onR(...b);
+     let s=box(...b,{top:"it1",left:"il",right:"ip"});
+     for(const v of [.14,.26,.38,.50,.62,.74,.86]) s+=seg(r(.04,v),r(.96,v),"ln-thin");
+     s+=poly([r(.42,.86),r(.62,.86),r(.62,.32),r(.52,.43),r(.42,.32)],"ie it2");
+     return s; },
+   desc:"홈 파사드 큐브(C2) 형태 그대로에, 오른쪽 면에 7줄의 미세한 페이지 결을 긋고 위쪽 표지 틈에서 내려오는 미니멀 제비꼬리(V-cut) 책갈피(`fill2`)를 넣었어요.",
+   see:"48에서 노란 표지 + 미세한 책장 결 + V-cut 책갈피가 또렷이 읽혀요. 24에서는 노란 윗면 큐브에 피치 포인트.",
+   gain:"'두꺼운 양장본 책'과 '파사드 큐브'가 가장 직관적으로 겹쳐 보여요. / 미세한 줄은 24px에선 면 질감으로만 남아요."},
+  {id:"I10", name:"세 권의 큐브 서가", draw:()=>
+     box(0,0,0,3.6,9.5,11.5,{top:"it3",left:"it3d",right:"ir"})+
+     box(3.6,.7,0,3.6,9.5,9.4,{top:"it2",left:"it2d",right:"ir"})+
+     box(7.2,.2,0,3.6,9.5,10.5,{top:"it1",left:"it1d",right:"ir"}),
+   desc:"높이와 깊이가 조금씩 다른 세 권의 책등 큐브를 바짝 붙여 세웠어요. 윗면만 세이지·피치·노랑, 옆면은 흰·회색 종이.",
+   see:"48에서 세 색 윗면이 계단처럼 읽히고, 24에서도 세 색 균형이 유지돼요.",
+   gain:"노랑·피치·세이지 세 색 밸런스를 모두 챙기면서 '서가/책'과 '동네 건물'을 동시에 연상시켜요. / 단일 큐브보단 쪼개져 있어요."}
 ];
 const REC3="I2";
 ISOS.forEach(f=>f.svg=isoSvg(f.id,f.name,f.draw));
