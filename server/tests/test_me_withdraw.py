@@ -205,3 +205,79 @@ def test_withdraw_deletes_own_reactions_and_bookmarks(client, auth, db_engine, p
         assert scalar(db_engine, f"SELECT count(*) FROM {table} WHERE user_id = :u", u=A) == 0
         assert scalar(db_engine, f"SELECT count(*) FROM {table} WHERE user_id = :u AND post_id = :p",
                       u=B, p=mine) == 1  # W7
+
+
+# ── LIB-3 (C) 테이블: Owner D+C ──
+
+AUTH3_ISBN = "9790000003001"
+
+
+@pytest.fixture
+def book(db_engine: Engine, public_reference_data):  # noqa: F811
+    def clean():
+        with db_engine.begin() as conn:
+            conn.execute(text("DELETE FROM books WHERE isbn13 = :i"), {"i": AUTH3_ISBN})
+
+    clean()
+    with db_engine.begin() as conn:
+        bid = conn.execute(text(
+            "INSERT INTO books (isbn13, title, source) VALUES (:i, '탈퇴 시험 책', 'manual') RETURNING id"),
+            {"i": AUTH3_ISBN}).scalar_one()
+    yield bid
+    with db_engine.begin() as conn:
+        conn.execute(text("DELETE FROM loan_plans WHERE book_id = :b"), {"b": bid})
+    clean()
+
+
+def _plan(conn, user: UUID, book_id: int, library_id: int = 101) -> None:
+    conn.execute(text("INSERT INTO loan_plans (user_id, book_id, library_id) VALUES (:u, :b, :l)"),
+                 {"u": user, "b": book_id, "l": library_id})
+
+
+def _plans(engine: Engine, user: UUID) -> int:
+    return scalar(engine, "SELECT count(*) FROM loan_plans WHERE user_id = :u", u=user)
+
+
+def test_withdraw_deletes_own_loan_plans(client, auth, db_engine, book):
+    with db_engine.begin() as conn:
+        _plan(conn, A, book)
+        _plan(conn, B, book)
+    assert client.delete("/api/v1/me", headers=auth["A"]).status_code == 200
+    assert _plans(db_engine, A) == 0
+    assert _plans(db_engine, B) == 1
+
+
+def test_write_committed_before_withdraw_is_cleaned(auth, db_engine, book):
+    """쓰기가 lock_active_user(FOR SHARE)를 잡은 채 열려 있으면 탈퇴 ⓪이 기다리고,
+    쓰기가 커밋된 뒤 같은 탈퇴 트랜잭션이 그 행까지 지운다(상태 변경이 맨 앞·한 트랜잭션)."""
+    pids: Queue = Queue()
+
+    def withdrawer():
+        with db_engine.connect() as conn:
+            pids.put(conn.execute(text("SELECT pg_backend_pid()")).scalar_one())
+            conn.rollback()
+            with conn.begin():
+                return withdraw_user_account(conn, A)
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        with db_engine.connect() as writer:
+            tx = writer.begin()
+            lock_active_user(writer, A)
+            _plan(writer, A, book)
+            future = pool.submit(withdrawer)
+            try:
+                pid = pids.get(timeout=5)
+                deadline = monotonic() + 5
+                blocked = False
+                with db_engine.connect() as observer:
+                    while monotonic() < deadline and not future.done():
+                        blocked = observer.execute(
+                            text("SELECT cardinality(pg_blocking_pids(:pid)) > 0"), {"pid": pid}
+                        ).scalar_one()
+                        if blocked:
+                            break
+                assert blocked, "탈퇴가 진행 중인 쓰기를 기다리지 않았다"
+            finally:
+                tx.commit()
+            assert future.result(timeout=5)["status"] == "withdrawn"
+    assert _plans(db_engine, A) == 0

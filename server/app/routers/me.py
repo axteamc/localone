@@ -40,6 +40,11 @@ def _delete_own_reactions_and_bookmarks(conn: Connection, user_id: UUID, now: da
     conn.execute(text("DELETE FROM post_bookmarks WHERE user_id = :uid"), {"uid": user_id})
 
 
+def _delete_own_loan_plans(conn: Connection, user_id: UUID, now: datetime) -> None:
+    # LOAN-1 loans가 머지되면 이 단계 앞에 loans 삭제를 더한다(plan_id FK, C5 마지막 행)
+    conn.execute(text("DELETE FROM loan_plans WHERE user_id = :uid"), {"uid": user_id})
+
+
 def _anonymize_profile(conn: Connection, user_id: UUID, now: datetime) -> None:
     conn.execute(
         text("UPDATE user_profiles SET nickname = :nickname, updated_at = :now WHERE user_id = :uid"),
@@ -51,6 +56,7 @@ def _anonymize_profile(conn: Connection, user_id: UUID, now: datetime) -> None:
 WITHDRAWAL_STEPS: list[WithdrawalStep] = [
     _withdraw_published_posts,  # LOCAL-1 (B)
     _delete_own_reactions_and_bookmarks,  # LOCAL-2 (B)
+    _delete_own_loan_plans,  # LIB-3 (C)
     _anonymize_profile,
 ]
 
