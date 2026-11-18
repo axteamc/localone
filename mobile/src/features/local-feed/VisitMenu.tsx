@@ -4,7 +4,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { openExternalUrl } from "../../lib/platform";
 import type { LibraryDetail } from "../../lib/publicApi";
 import { getDefaultLibrary, setDefaultLibrary } from "../../lib/visits";
-import { theme } from "../../theme";
+import { cardSurface, theme } from "../../theme";
 
 const C = theme.colors;
 
@@ -69,7 +69,7 @@ export function VisitMenu({
       </Pressable>
       <Modal transparent visible={open} animationType="fade" onRequestClose={() => setOpen(false)}>
         <Pressable accessibilityLabel="메뉴 닫기" style={styles.scrim} onPress={() => setOpen(false)}>
-          <View style={styles.menu}>
+          <View style={styles.menu} testID="visit-menu-card">
             <Pressable
               accessibilityRole="button"
               disabled={isDefault === null}
@@ -92,18 +92,13 @@ export function VisitMenu({
 
 const styles = StyleSheet.create({
   more: { minWidth: 44, minHeight: 36, alignItems: "center", justifyContent: "center" },
-  moreText: { fontSize: 24, color: C.text },
+  moreText: { fontSize: 24, color: C.inkStrong },
   scrim: { flex: 1, backgroundColor: C.shadowSoft, alignItems: "flex-end", paddingTop: 110, paddingRight: 12 },
   menu: {
+    ...cardSurface(theme, { onPanel: true }),
     minWidth: 220,
-    backgroundColor: C.paper,
-    borderRadius: theme.radii.inner,
     paddingVertical: 4,
-    shadowColor: C.shadowFloat,
-    shadowOpacity: 1,
-    shadowRadius: 10,
-    elevation: 6,
   },
-  item: { paddingHorizontal: 16, paddingVertical: 14 },
-  itemText: { fontSize: 16, color: C.text },
+  item: { minHeight: 44, justifyContent: "center", paddingHorizontal: 16, paddingVertical: 12 },
+  itemText: { fontSize: 14, fontWeight: "500", color: C.text },
 });

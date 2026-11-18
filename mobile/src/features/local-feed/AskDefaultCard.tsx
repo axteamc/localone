@@ -2,7 +2,7 @@
 import React, { useRef } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { markDefaultAsked, setDefaultLibrary } from "../../lib/visits";
-import { onFill, theme, actionColors } from "../../theme";
+import { actionColors, cardSurface, theme, type as T } from "../../theme";
 
 const C = theme.colors;
 
@@ -38,10 +38,18 @@ export function AskDefaultCard({
       <Text style={styles.title}>{ASK_TEXT.title}</Text>
       <Text style={styles.body}>{ASK_TEXT.body(name)}</Text>
       <View style={styles.row}>
-        <Pressable accessibilityRole="button" onPress={() => void answer(false)} style={styles.no}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void answer(false)}
+          style={({ pressed }) => [styles.no, pressed && ACT.secondaryPressed]}
+        >
           <Text style={styles.noText}>{ASK_TEXT.no}</Text>
         </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => void answer(true)} style={styles.yes}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => void answer(true)}
+          style={({ pressed }) => [styles.yes, pressed && ACT.primaryPressed]}
+        >
           <Text style={styles.yesText}>{ASK_TEXT.yes}</Text>
         </Pressable>
       </View>
@@ -52,24 +60,35 @@ export function AskDefaultCard({
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   card: {
+    ...cardSurface(theme, { onPanel: true }),
     position: "absolute",
     left: 16,
     right: 16,
     bottom: 112,
-    backgroundColor: C.paper,
-    borderRadius: theme.radii.card,
     padding: 16,
     gap: 6,
-    shadowColor: C.shadowFloat,
-    shadowOpacity: 1,
-    shadowRadius: 10,
-    elevation: 6,
   },
-  title: { fontSize: 16, fontWeight: "500", color: C.text },
-  body: { fontSize: 15, color: C.text },
+  title: { ...T.title },
+  body: { fontSize: 14, lineHeight: 20, color: C.textSub },
   row: { flexDirection: "row", justifyContent: "flex-end", gap: 8, marginTop: 6 },
-  no: { paddingHorizontal: 14, paddingVertical: 10 },
-  noText: { color: C.textSub, fontWeight: "500" },
-  yes: { ...ACT.primary, borderRadius: theme.radii.control, paddingHorizontal: 16, paddingVertical: 10 },
-  yesText: { ...ACT.primaryText, fontWeight: "500" },
+  no: {
+    ...ACT.secondary,
+    borderRadius: theme.radii.control,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    minHeight: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  noText: { ...ACT.secondaryText, fontSize: 14, fontWeight: "500" },
+  yes: {
+    ...ACT.primary,
+    borderRadius: theme.radii.control,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    minHeight: 40,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  yesText: { ...ACT.primaryText, fontSize: 14, fontWeight: "500" },
 });

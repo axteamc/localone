@@ -2,7 +2,7 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { Today } from "../../lib/publicApi";
-import { theme } from "../../theme";
+import { panel, theme, type as T } from "../../theme";
 
 const C = theme.colors;
 export const HEADER_TWO_LINES = 115; // 앱 값(시안 86 ÷ 0.75)
@@ -89,15 +89,15 @@ const styles = StyleSheet.create({
   two: { minHeight: HEADER_TWO_LINES, paddingHorizontal: 16, paddingTop: 4, justifyContent: "flex-end" },
   back: { alignSelf: "flex-start", minWidth: 44, minHeight: 36, justifyContent: "center" },
   backText: {
-    color: C.text,
+    color: C.inkStrong,
     fontWeight: "500",
     textShadowColor: C.shadowSoft,
     textShadowRadius: 4,
     textShadowOffset: { width: 0, height: 1 },
   },
-  name: { fontSize: 24, fontWeight: "500", color: C.text },
+  name: { ...T.pageTitle },
   infoRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 36 },
-  info: { flex: 1, fontSize: 16, color: C.textSub },
+  info: { flex: 1, ...T.gauge },
   closed: { fontWeight: "500", color: C.text },
   moreSpace: { minWidth: 44, minHeight: 36 },
   one: {
@@ -110,13 +110,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 4,
     paddingHorizontal: 12,
-    backgroundColor: C.cream,
-    shadowColor: C.shadowSoft,
-    shadowOpacity: 1,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 3,
+    backgroundColor: panel.backgroundColor,
+    borderBottomWidth: 1,
+    borderBottomColor: panel.borderColor,
     zIndex: 5,
   },
-  nameSmall: { flex: 1, fontSize: 20, fontWeight: "500", color: C.text },
+  nameSmall: { flex: 1, ...T.name },
 });
