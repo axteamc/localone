@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     # 게시물 사진 저장소(local-feed LOCAL-1 F4). 키가 없으면 기기 메모리 저장소를 쓴다(시험·로컬)
     supabase_service_role_key: str = ""
     post_image_bucket: str = "post-images"
+    # AUTH-2 G3: 토큰의 session_id가 Supabase auth.sessions에 살아 있는지 본다(로그아웃한 세션 거부).
+    # 시험 DB(postgres:17)에는 auth 스키마가 없어 local·test 기본값은 꺼 둔다.
+    # 값을 주지 않으면 production은 켜고, production에서 명시적으로 끄면 시작하지 않는다.
+    auth_session_check: bool | None = None  # 아래 검사에서 True/False로 정해진다
 
     @model_validator(mode="after")
     def _check_database_url(self) -> "Settings":
@@ -45,6 +49,10 @@ class Settings(BaseSettings):
             raise ValueError("production에서는 SUPABASE_URL이 필요해요")
         if self.app_env == "production" and not self.supabase_service_role_key:
             raise ValueError("production에서는 SUPABASE_SERVICE_ROLE_KEY가 필요해요")
+        if self.auth_session_check is None:
+            self.auth_session_check = self.app_env == "production"
+        if self.app_env == "production" and not self.auth_session_check:
+            raise ValueError("production에서는 AUTH_SESSION_CHECK=true가 필요해요")
         return self
 
 
