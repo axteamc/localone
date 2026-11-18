@@ -1,0 +1,1206 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="명세" content="../병렬작업_페이지디자인/진행_L3c_글쓰기_설정_방문_시안.md">
+<title>글쓰기·글 상세·설정·방문 페이지 — 홈 파사드 기준 시안 (L3c)</title>
+<!--
+  병렬 작업 L3c (2026-11-18, D):
+  - 글쓰기(app/posts/new.tsx, features/local-feed/ComposeScreen.tsx)
+  - 글 상세(app/posts/[postId].tsx, PostDetail.tsx · ReactionButton.tsx · PostMenu.tsx · SameBookPosts.tsx)
+  - 설정(app/settings.tsx)
+  - 방문 페이지(app/libraries/[libraryId].tsx, VisitScreen.tsx · VisitHeader.tsx · VisitMenu.tsx · AskDefaultCard.tsx · PostCard.tsx)
+  홈 파사드 기준(DESIGN.md "원칙 (확정)" 글자와 공간 규칙 7개 · "페이지 적용 레시피" · 주 버튼 무광 판 · 곡률 위계 3/9/18/필)에 맞춘 시안.
+  방문 페이지 도서관 룩(M2, 방문_페이지_시안.html)은 건드리지 않고 M1 warm 레시피 기준만 맞춘다.
+  외부 이미지·글꼴 연결 없음. 색·곡률은 :root 토큰만 쓴다.
+-->
+<style>
+  :root {
+    --white:#FFFFFF; --text:#1D1D1F; --ink-muted:#6B6B66; --ink-soft:#4D4D4B;
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+    --cream:#EFEFE7; --paper:#EFF1F1; --ink-strong:#2E333F;
+    --panel-frosted:#E9EAE9; --panel-lit:#EFF1EF; --seam:#C8C9C8; --rivet:#8E8D8D;
+    --relief-mid:#B8B7B3; --relief-dark:#999896; --divider:#C4C4C1;
+    --loan-avail:#5B8A5B; --loan-out:#B27A3D; --loan-unk:#9A9A98;
+    --on-fill1:#1D1D1F; --on-fill2:#1D1D1F; --on-fill3:#1D1D1F; --on-ink:#FFFFFF;
+    --shadow-cast:rgba(28,30,36,.20); --shadow-soft:rgba(0,0,0,.15); --seam-hi:rgba(255,255,255,.68);
+    --scrim:rgba(28,30,36,.32);
+    --r-block:3px; --r-info:9px; --r-card:18px; --r-pill:9999px; --r-cover:5px 9px 9px 5px;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:"Noto Sans KR","Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif; line-height:1.5; }
+  header.page, main { max-width:1320px; margin:0 auto; padding:0 16px 48px; }
+  header.page { padding-top:22px; padding-bottom:0; }
+  h1 { font-size:22px; font-weight:400; margin:0 0 4px; color:var(--ink-soft); letter-spacing:-.02em; }
+  h2 { font-size:18px; font-weight:500; margin:0 0 4px; }
+  h3 { font-size:15px; font-weight:500; margin:0 0 8px; }
+  .how, .flow { background:var(--panel-lit); border:1px solid var(--seam); border-radius:var(--r-info); padding:12px 16px; margin:10px 0 0; font-size:13.5px; }
+  .bar { display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin-top:12px; font-size:13.5px; }
+  select { font:inherit; padding:4px 9px; border-radius:8px; border:1px solid var(--surface3); background:var(--paper); color:var(--text); }
+  section.element, #audit, #defaults, #wide, #spec { margin-top:38px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:var(--r-pill); background:var(--surface2); margin-left:6px; font-weight:400; }
+  .pick { margin:8px 0 0; font-size:13.5px; }
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-info); padding:14px; border:3px solid transparent; display:flex; flex-direction:column; }
+  .cand.recommended { border-color:var(--fill1); }
+  .cand.chosen { border-color:var(--ink-strong); }
+  .cand.preview { outline:2px dashed var(--ink-strong); outline-offset:3px; }
+  .badge { display:inline-block; font-size:11.5px; font-weight:500; padding:1px 9px; border-radius:var(--r-pill); background:var(--fill1); color:var(--on-fill1); margin-left:6px; }
+  .badge.adopted { background:var(--ink-strong); color:var(--white); }
+  .badge-prop { display:inline-block; font-size:11px; font-weight:500; padding:1px 7px; border-radius:var(--r-pill); background:var(--surface2); color:var(--ink-soft); margin-left:4px; }
+  .cand p, .cand li { font-size:13px; margin:4px 0; color:var(--text); }
+  .cand ul { padding-left:18px; margin:4px 0; }
+  .lbl { font-weight:500; font-size:12px; color:var(--ink-muted); margin-top:10px; display:block; }
+  code { font-size:12px; background:var(--surface2); padding:0 4px; border-radius:3px; }
+
+  /* ---------- 휴대폰 공통 틀 (390×844 축소 296×616) ---------- */
+  .phone { width:296px; height:616px; margin:0 auto 10px; border-radius:28px; border:6px solid var(--ink-strong); position:relative; overflow:hidden; background:var(--panel-frosted); display:flex; flex-direction:column; font-size:11.5px; }
+  .hd { flex:none; height:38px; background:var(--panel-frosted); border-bottom:1px solid var(--seam); display:flex; align-items:center; justify-content:space-between; padding:0 14px; gap:8px; position:relative; z-index:3; }
+  .hd::after { content:""; position:absolute; left:10px; right:10px; bottom:-1px; height:1px; background:var(--seam-hi); pointer-events:none; }
+  .hd-l { display:flex; align-items:center; gap:7px; min-width:0; }
+  .hd .back { font-size:20px; font-weight:500; color:var(--ink-strong); line-height:1; text-shadow:0 1px 2px var(--shadow-soft); cursor:pointer; background:none; border:0; padding:0 3px 0 0; }
+  .hd .xbtn { font-size:15px; font-weight:400; color:var(--ink-strong); line-height:1; cursor:pointer; background:none; border:0; padding:0 3px 0 0; }
+  .hd .en { font-size:9.5px; font-weight:500; letter-spacing:.32em; color:var(--ink-muted); text-transform:uppercase; white-space:nowrap; }
+  .hd .rvl, .hd .rvr { position:absolute; top:50%; width:3.5px; height:3.5px; margin-top:-1.75px; border-radius:2px; background:var(--rivet); }
+  .hd .rvl { left:5px; } .hd .rvr { right:5px; }
+
+  .scr { flex:1; overflow-y:auto; overflow-x:hidden; position:relative; background:var(--panel-frosted); display:flex; flex-direction:column; scrollbar-width:none; }
+  .scr::-webkit-scrollbar { width:0; height:0; display:none; }
+  .hide { display:none !important; }
+
+  /* 계기판 목소리 (type.gauge) & 위계 (type.pageTitle / type.title / type.name) */
+  .gauge { font-size:8.5px; font-weight:500; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-muted); line-height:1.3; white-space:nowrap; }
+  .t-page { font-size:19px; font-weight:400; letter-spacing:-.02em; color:var(--ink-soft); line-height:1.25; margin:0; }
+  .t-sec { font-size:17px; font-weight:400; letter-spacing:-.02em; color:var(--ink-soft); line-height:1.25; margin:0; }
+  .t-name { font-size:12.5px; font-weight:500; color:var(--text); line-height:1.35; }
+  .t-sub { font-size:11px; font-weight:400; color:var(--ink-muted); line-height:1.4; }
+
+  /* 무광 판 버튼 (L1 actionColors 기준) */
+  .btn-pri {
+    background:var(--panel-lit); color:var(--ink-strong);
+    border:1px solid var(--seam); border-radius:var(--r-pill);
+    box-shadow:0 2px 0 var(--relief-mid);
+    font:inherit; font-size:12px; font-weight:500; white-space:nowrap; flex:none;
+    height:36px; padding:0 15px; display:inline-flex; align-items:center; justify-content:center;
+    cursor:pointer; transition:transform .08s, box-shadow .08s;
+  }
+  .btn-pri:active { transform:translateY(1px); box-shadow:none; }
+  .btn-pri.sm { height:28px; padding:0 11px; font-size:11px; }
+  .btn-pri.full { width:100%; height:38px; }
+  .btn-pri.off { opacity:.4; box-shadow:none; cursor:default; }
+  .btn-sec {
+    background:var(--panel-frosted); color:var(--text);
+    border:1px solid var(--seam); border-radius:var(--r-pill);
+    font:inherit; font-size:11px; font-weight:500; white-space:nowrap; flex:none;
+    height:30px; padding:0 12px; display:inline-flex; align-items:center; justify-content:center;
+    cursor:pointer;
+  }
+  .btn-sec.full { width:100%; height:36px; }
+  .btn-link {
+    background:none; border:0; padding:2px 0; font:inherit; font-size:11px; font-weight:500;
+    color:var(--ink-strong); cursor:pointer; white-space:nowrap; flex:none;
+  }
+
+  /* 무광 정보·목록 카드 & 입력 칸 */
+  .m-card {
+    background:var(--panel-lit); border:1px solid var(--seam);
+    border-radius:var(--r-info); box-shadow:0 2px 0 var(--relief-mid);
+    padding:10px 11px;
+  }
+  .inp {
+    width:100%; background:var(--paper); border:1px solid var(--seam);
+    border-radius:var(--r-info); padding:8px 10px; font:inherit; font-size:11.5px; color:var(--text);
+    outline:none;
+  }
+  .inp:focus, .inp.focus { border-color:var(--ink-strong); border-width:1.5px; padding:7.5px 9.5px; }
+  textarea.inp { min-height:66px; resize:none; line-height:1.45; }
+
+  /* 상태 막대 (시안용 일괄 전환) */
+  .statebar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:10px; }
+  .statebar button {
+    font:inherit; font-size:12px; padding:5px 12px; border-radius:var(--r-pill);
+    border:1px solid var(--seam); background:var(--panel-frosted); color:var(--text); cursor:pointer;
+  }
+  .statebar button[aria-pressed="true"] {
+    background:var(--panel-lit); color:var(--ink-strong); border-color:var(--ink-strong); font-weight:500;
+    box-shadow:0 2px 0 var(--relief-mid);
+  }
+
+  /* ---------- 글쓰기 (Compose) 전용 ---------- */
+  .c-pad { padding:11px 12px 18px; display:flex; flex-direction:column; gap:10px; }
+  .c-head { display:flex; flex-direction:column; gap:2px; }
+  .c-dock { flex:none; background:var(--panel-lit); border-top:1px solid var(--seam); border-radius:var(--r-block) var(--r-block) 0 0; padding:9px 12px 11px; display:flex; flex-direction:column; gap:5px; }
+  .c-dock .gauge { text-align:center; }
+
+  /* 큰 4:3/4:5 빈 액자 프레임 (후보 A·C) */
+  .slot-frame {
+    border:1.5px dashed var(--seam); background:var(--paper); border-radius:var(--r-card);
+    padding:14px 12px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:9px;
+    min-height:146px;
+  }
+  .slot-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; width:100%; }
+  .slot-tile {
+    background:var(--panel-frosted); border:1px solid var(--seam); border-radius:var(--r-info);
+    padding:9px 6px; font:inherit; font-size:11px; font-weight:500; color:var(--text); cursor:pointer;
+    text-align:center; white-space:nowrap;
+  }
+  .slot-tile:hover { background:var(--panel-lit); border-color:var(--ink-strong); }
+
+  /* 작은 가로 썸네일 자리 (후보 B) */
+  .slot-compact { display:flex; gap:9px; align-items:stretch; }
+  .thumb-empty {
+    width:82px; height:102px; flex:none; border:1.5px dashed var(--seam); background:var(--paper);
+    border-radius:var(--r-card); display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:6px; text-align:center; gap:3px;
+  }
+  .thumb-grid { flex:1; display:grid; grid-template-columns:1fr 1fr; gap:5px; }
+
+  /* 선택 후 미리보기 카드 (곡률 18 — 게시물 카드 정체성) */
+  .pv-card {
+    width:100%; aspect-ratio:4/5; border-radius:var(--r-card); overflow:hidden; position:relative;
+    border:1px solid var(--seam); display:flex; align-items:center; justify-content:center; padding:14px;
+    background:var(--fill2); color:var(--text);
+  }
+  .pv-card.compact { aspect-ratio:auto; width:82px; height:102px; flex:none; padding:6px; }
+  .pv-card.sm-sum { aspect-ratio:auto; width:46px; height:58px; border-radius:var(--r-info); padding:4px; flex:none; }
+  .pv-card.c-fill1 { background:var(--fill1); color:var(--on-fill1); }
+  .pv-card.c-fill2 { background:var(--fill2); color:var(--on-fill2); }
+  .pv-card.c-fill3 { background:var(--fill3); color:var(--on-fill3); }
+  .pv-card.c-ink { background:var(--ink-strong); color:var(--on-ink); }
+  .pv-card.c-photo { background:var(--surface3); color:var(--white); }
+  .pv-card .pv-txt { font-size:14.5px; font-weight:500; text-align:center; line-height:1.35; word-break:keep-all; }
+  .pv-card.compact .pv-txt { font-size:9px; }
+  .pv-card.sm-sum .pv-txt { font-size:7px; }
+  .pv-meta { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:6px; }
+  .swatches { display:flex; gap:6px; align-items:center; margin-top:6px; }
+  .swatch { width:24px; height:24px; border-radius:var(--r-pill); border:1px solid var(--seam); cursor:pointer; padding:0; }
+  .swatch.on { border:2.5px solid var(--ink-strong); }
+  .swatch.s1 { background:var(--fill1); }
+  .swatch.s2 { background:var(--fill2); }
+  .swatch.s3 { background:var(--fill3); }
+  .swatch.s4 { background:var(--cream); }
+  .swatch.s5 { background:var(--paper); }
+  .swatch.s6 { background:var(--ink-strong); }
+
+  /* 세그먼트 칩 (위/가운데/아래 — 노랑 제거, 무광 판 선택) */
+  .seg-row { display:flex; gap:5px; margin-top:4px; }
+  .seg-chip {
+    background:var(--panel-frosted); border:1px solid var(--seam); border-radius:var(--r-pill);
+    padding:4px 10px; font:inherit; font-size:10.5px; font-weight:500; color:var(--ink-muted); cursor:pointer;
+  }
+  .seg-chip.on {
+    background:var(--panel-lit); border-color:var(--ink-strong); color:var(--ink-strong);
+    box-shadow:0 1px 0 var(--relief-mid);
+  }
+  .step-line { display:flex; align-items:baseline; justify-content:space-between; gap:6px; border-top:1px solid var(--seam); padding-top:8px; }
+  .step-line:first-child { border-top:0; padding-top:0; }
+  .book-row { display:flex; align-items:center; justify-content:space-between; gap:8px; background:var(--panel-lit); border:1px solid var(--seam); border-radius:var(--r-info); padding:7px 9px; }
+
+  /* ---------- 글 상세 (PostDetail) 전용 ---------- */
+  .d-img-wrap { padding:8px 10px 0; position:relative; }
+  .d-img {
+    width:100%; aspect-ratio:4/5; max-height:270px; border-radius:var(--r-card); overflow:hidden;
+    border:1px solid var(--seam); background:var(--fill2); display:flex; align-items:center; justify-content:center;
+    padding:16px; position:relative;
+  }
+  .d-img.photo { background:var(--surface3); color:var(--white); }
+  .d-img .pv-txt { font-size:15px; font-weight:500; text-align:center; }
+  /* 알약 없는 굵은 ‹ (DESIGN.md 형태 확정) */
+  .back-bare {
+    position:absolute; top:14px; left:18px; background:none; border:0; padding:4px 8px;
+    font-size:24px; font-weight:500; line-height:1; color:var(--ink-strong);
+    text-shadow:0 1px 3px var(--seam-hi); cursor:pointer;
+  }
+  .d-body { padding:10px 12px 24px; display:flex; flex-direction:column; gap:10px; }
+  .act-bar { display:flex; align-items:center; justify-content:space-between; gap:6px; position:relative; }
+  .act-left { display:flex; align-items:center; gap:4px; }
+  .ico-btn {
+    background:none; border:0; height:32px; padding:0 7px; font:inherit; font-size:13.5px; font-weight:500;
+    color:var(--text); display:inline-flex; align-items:center; gap:4px; cursor:pointer; border-radius:var(--r-info);
+  }
+  .ico-btn:hover { background:var(--surface2); }
+  .ico-btn.on { color:var(--ink-strong); }
+  .pop-menu {
+    position:absolute; top:34px; left:64px; background:var(--panel-lit); border:1px solid var(--seam);
+    border-radius:var(--r-info); box-shadow:0 2px 0 var(--relief-mid); padding:4px 0; min-width:132px; z-index:10;
+  }
+  .pop-menu.right { left:auto; right:0; }
+  .pop-menu button { display:block; width:100%; text-align:left; background:none; border:0; padding:8px 11px; font:inherit; font-size:11px; font-weight:500; color:var(--text); cursor:pointer; }
+  .pop-menu button.danger { color:var(--loan-out); }
+  .loan-head { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; }
+  .loan-foot { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:7px; padding-top:6px; border-top:1px solid var(--seam); }
+  .dot-avail { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--loan-avail); margin-right:4px; vertical-align:1px; }
+  .rel-sec { display:flex; flex-direction:column; gap:7px; padding-top:8px; border-top:1px solid var(--seam); }
+  .m2-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .m2-card {
+    border-radius:var(--r-card); border:1px solid var(--seam); padding:10px 8px;
+    display:flex; align-items:center; justify-content:center; text-align:center;
+    font-size:11px; font-weight:500; min-height:92px;
+  }
+  .m2-card.tall { min-height:112px; }
+  .m2-card.c1 { background:var(--fill1); color:var(--on-fill1); }
+  .m2-card.c2 { background:var(--fill2); color:var(--on-fill2); }
+  .m2-card.c3 { background:var(--fill3); color:var(--on-fill3); }
+  .m2-card.ink { background:var(--ink-strong); color:var(--on-ink); }
+
+  /* ---------- 설정 / 방문 페이지 / 모달 공용 ---------- */
+  .empty-center { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:24px 18px; gap:8px; }
+  .v-head { padding:10px 12px 6px; display:flex; flex-direction:column; gap:3px; border-bottom:1px solid var(--seam); }
+  .v-info-row { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .fab-matte {
+    position:absolute; right:12px; bottom:14px; width:46px; height:46px; border-radius:var(--r-pill);
+    background:var(--panel-lit); color:var(--ink-strong); border:1px solid var(--seam);
+    box-shadow:0 2px 0 var(--relief-mid); font-size:22px; font-weight:400; line-height:1;
+    display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:4;
+  }
+  .fab-matte:active { transform:translateY(1px); box-shadow:none; }
+  .ment-pill {
+    position:absolute; left:14px; right:14px; bottom:70px; background:var(--panel-lit); border:1px solid var(--seam);
+    border-radius:var(--r-info); box-shadow:0 2px 0 var(--relief-mid); padding:8px 11px;
+    font-size:11px; font-weight:500; color:var(--text); text-align:center; z-index:5;
+  }
+  .toast-bar {
+    position:absolute; left:50%; bottom:16px; transform:translateX(-50%);
+    background:var(--panel-lit); color:var(--ink-strong); border:1px solid var(--seam);
+    border-radius:var(--r-info); box-shadow:0 2px 0 var(--relief-mid);
+    padding:6px 12px; font-size:11px; font-weight:500; white-space:nowrap; z-index:20;
+  }
+  .modal-scrim {
+    position:absolute; inset:0; background:var(--scrim); display:flex; align-items:center; justify-content:center; padding:18px; z-index:15;
+  }
+  .modal-scrim.bottom { align-items:flex-end; padding:0; }
+  .modal-card {
+    width:100%; background:var(--panel-lit); border:1px solid var(--seam);
+    border-radius:var(--r-info); box-shadow:0 2px 0 var(--relief-mid); padding:13px; display:flex; flex-direction:column; gap:8px;
+  }
+  .modal-sheet {
+    width:100%; background:var(--panel-lit); border-top:1px solid var(--seam);
+    border-radius:var(--r-info) var(--r-info) 0 0; padding:14px 14px 18px; display:flex; flex-direction:column; gap:9px;
+  }
+  .pm-icons { display:flex; justify-content:space-around; padding:4px 0 6px; border-bottom:1px solid var(--seam); }
+  .pm-ico { background:none; border:0; display:flex; flex-direction:column; align-items:center; gap:2px; font:inherit; color:var(--text); cursor:pointer; }
+  .pm-ico b { font-size:16px; font-weight:500; color:var(--ink-muted); }
+  .pm-ico.on b { color:var(--ink-strong); }
+  .pm-ico span { font-size:10px; color:var(--ink-muted); }
+
+  /* ---------- 넓은 웹 1280 미리보기 (WebFrame 480 칼럼) ---------- */
+  .desk {
+    position:relative; margin-top:12px; background:var(--bg); border:1px solid var(--seam);
+    border-radius:var(--r-info); padding:22px 16px; overflow-x:auto;
+    display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:18px; justify-items:center;
+  }
+  .wallgrid {
+    position:absolute; inset:0; pointer-events:none; opacity:.55;
+    background-image:linear-gradient(to right, var(--seam) 1px, transparent 1px), linear-gradient(to bottom, var(--seam) 1px, transparent 1px);
+    background-size:90px 90px;
+  }
+  .col-wrap { position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:6px; width:100%; max-width:300px; }
+  .col {
+    width:100%; height:520px; background:var(--panel-frosted); border:1px solid var(--seam);
+    box-shadow:0 10px 28px var(--shadow-cast); display:flex; flex-direction:column; overflow:hidden; position:relative;
+  }
+
+  /* ---------- 감사·명세 표 ---------- */
+  .wide { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; background:var(--paper); border-radius:var(--r-info); overflow:hidden; font-size:12.5px; margin-top:10px; }
+  th, td { border-bottom:1px solid var(--seam); padding:8px 10px; text-align:left; vertical-align:top; }
+  th { background:var(--panel-lit); font-weight:500; white-space:nowrap; }
+  td .st { display:inline-block; padding:1px 8px; border-radius:var(--r-pill); background:var(--surface2); font-size:11.5px; white-space:nowrap; }
+</style>
+</head>
+<body>
+
+<header class="page">
+  <h1>글쓰기 · 글 상세 · 설정 · 방문 페이지 — 홈 파사드 기준 시안 (L3c)</h1>
+  <div class="how">
+    <b>이 페이지에서 볼 것:</b> 네 화면을 홈 파사드 기준(글자와 공간 규칙 7개 · 페이지 적용 레시피 · 주 버튼 무광 판 · 곡률 위계 <code>3 / 9 / 18 / 필</code>)에 맞추는 시안이에요.
+    설정(<code>/settings</code>)과 방문 페이지(<code>/libraries/[libraryId]</code>)는 레시피만 맞추고(도서관 룩 M2는 기존 <a href="방문_페이지_시안.html">방문_페이지_시안.html</a> 그대로 유지),
+    <b>글쓰기(<code>/posts/new</code>)</b>와 <b>글 상세(<code>/posts/[postId]</code>)</b>의 중심 요소만 후보 3개씩 고릅니다.
+  </div>
+  <div class="bar">
+    <label>룩 확인:
+      <select id="look">
+        <option value="warm" selected>warm (M1 기본)</option>
+        <option value="toffee">toffee</option>
+        <option value="oxford">oxford</option>
+        <option value="modern">modern (직각 6px)</option>
+      </select>
+    </label>
+    <span>단위 참고: 휴대폰 틀은 390×844의 약 0.76배(296×616)입니다.</span>
+  </div>
+</header>
+
+<main>
+
+<!-- ===== ① 감사 요약 ===== -->
+<section id="audit">
+  <h2>① 현재 화면(웹 390·1280) 감사 요약 <span class="status">확인</span></h2>
+  <div class="flow">
+    웹 390×844 · 1280×800 스크린샷과 코드 전수 대조 결과입니다. <code>700</code>·<code>600</code> 굵기는 네 화면 모두 <b>0건</b>이고, 노랑(<code>fill1</code>) 직접 채움은 <b>4파일</b>에 남아 있습니다.
+  </div>
+  <div class="wide">
+    <table>
+      <tr><th>화면 (파일)</th><th>700·600</th><th>노랑(<code>fill1</code>) 직접 사용처</th><th>레시피 표·1280px 대비 주요 차이</th></tr>
+      <tr>
+        <td><b>글쓰기</b><br><code>posts/new.tsx</code><br><code>ComposeScreen.tsx</code></td>
+        <td>0건</td>
+        <td><code>ComposeScreen.tsx:807</code><br>(위치 칩 <code>pillOn</code>)</td>
+        <td>• 바탕이 <code>C.bg</code>(유리판 아님) · <code>_layout.tsx</code>의 <code>POST</code> 머리 띠 아래 자체 헤더(<code>✕ 새 게시물 올리기</code>)가 겹쳐 이중 머리.<br>• 선택 타일(<code>radii.card</code> 18)·입력 칸(<code>radii.inner</code> 12, 테두리·포커스 선 없음)·오류 배너/메뉴(12)·확인창/시트(18)가 곡률 위계 어긋남.<br>• 4:5 미리보기를 고르면 입력 칸이 아래로 크게 밀림.</td>
+      </tr>
+      <tr>
+        <td><b>글 상세</b><br><code>posts/[postId].tsx</code><br><code>PostDetail.tsx</code><br><code>ReactionButton.tsx</code><br><code>PostMenu.tsx</code><br><code>SameBookPosts.tsx</code></td>
+        <td>0건</td>
+        <td><code>ReactionButton.tsx:108</code>(♥ 켬)<br><code>ReactionButton.tsx:114,119</code>(<code>저장</code>)<br><code>PostMenu.tsx:218</code>(아이콘 켬)</td>
+        <td>• 바탕이 <code>C.cream</code>. 이미지 위 뒤로가기가 알약 원(<code>backOnImage</code> 44×44 흰 원 + 그림자)임.<br>• <code>저장</code> 버튼이 노랑 채움 → 저장 시 진한 <code>inkStrong</code> 채움.<br>• <b>1280px 결함:</b> <code>WebFrame</code> 480 칼럼 안에서 <code>useWindowDimensions().width &gt;= 768</code>이 참이 되어 2단 배치가 좁게 찌그러짐.<br>• 대여 카드 <code>radii.card</code>(18) · 구매 버튼 <code>divider</code> 테두리 · 이어 읽기 제목 <code>18/500</code>.</td>
+      </tr>
+      <tr>
+        <td><b>설정</b><br><code>app/settings.tsx</code></td>
+        <td>0건</td>
+        <td>0건</td>
+        <td>• 바탕이 <code>theme.colors.bg</code>. 화면 제목(<code>24/400 inkSoft</code>)·계기판 표찰 없음.<br>• <b>형태 버그:</b> 탈퇴 확인 상자(<code>styles.confirm:166</code>)가 <code>radii.control</code>(9999)이라 둥근 타원으로 부풀어 있음.<br>• 탈퇴 확인을 열면 <code>로그아웃</code>과 <code>탈퇴하기</code> 주 버튼이 2개 동시에 뜸(규칙 7 위반).</td>
+      </tr>
+      <tr>
+        <td><b>방문 페이지</b><br><code>libraries/[libraryId].tsx</code><br><code>VisitScreen.tsx</code><br><code>VisitHeader.tsx</code><br><code>VisitMenu.tsx</code><br><code>AskDefaultCard.tsx</code></td>
+        <td>0건</td>
+        <td><code>VisitScreen.tsx:473,482</code><br>(오른쪽 아래 <code>+</code> FAB)</td>
+        <td>• 바탕이 <code>C.cream</code>(M1 <code>panelFrosted</code>, M2 도서관 룩 슬롯은 유지).<br>• <code>VisitHeader</code> 이름이 <code>24/500</code>(규칙 1: 400 <code>inkSoft</code>), 거리·운영시간이 한 줄 일반 글자(<code>type.gauge</code> 미적용). 접힌 머리 <code>C.cream</code> + 그림자.<br>• 빈 피드 <code>18/500</code> · 멘트 카드/시트/메뉴/묻기 카드가 <code>radii.card</code>(18)·<code>radii.inner</code>(12) + 그림자.</td>
+      </tr>
+    </table>
+  </div>
+</section>
+
+<!-- ===== ② 정할 것 1: 글쓰기 ===== -->
+<section class="element" id="el-compose-layout">
+  <h2>② 정할 것 1: 글쓰기(<code>/posts/new</code>) 사진 자리와 입력 칸·올리기 배치 <span class="status">결정 전</span></h2>
+  <p class="pick">고르기:
+    <select data-for="el-compose-layout">
+      <option value="A">후보 A (추천): 4:3 빈 액자 + 하단 무광 판 올리기 (제안)</option>
+      <option value="B">후보 B: 왼쪽 작은 자리 + 오른쪽 위 올리기 (계약 F14 유지)</option>
+      <option value="C">후보 C: 2단계 분리 — 이미지·글자 → 다음 → 감상·올리기 (제안)</option>
+    </select>
+  </p>
+  <div class="statebar" id="composeStateBar">
+    <span>상태 일괄 보기:</span>
+    <button type="button" data-cstate="empty" aria-pressed="true">선택 전 (초기)</button>
+    <button type="button" data-cstate="picked" aria-pressed="false">이미지 선택 후 (글자·감상·책)</button>
+  </div>
+
+  <div class="cands">
+    <!-- 후보 A -->
+    <div class="cand recommended" data-id="A">
+      <h3>후보 A: 큰 빈 액자 프레임 + 레시피 입력 칸 + 하단 주 버튼 <code>올리기</code> <span class="badge">추천</span> <span class="badge-prop">제안(계약 F14)</span></h3>
+      <div class="phone" id="phone-compose-A">
+        <div class="hd"><span class="rvl"></span><div class="hd-l"><button type="button" class="xbtn" title="닫기">✕</button><span class="en">POST</span></div><span class="rvr"></span></div>
+        <div class="scr" data-cview="empty">
+          <div class="c-pad">
+            <div class="c-head">
+              <div class="gauge">NEW POST · 광주광역시립무등도서관</div>
+              <h4 class="t-page">새 게시물</h4>
+            </div>
+            <div class="slot-frame">
+              <div class="gauge">01 · IMAGE SLOT</div>
+              <div class="t-sub">올릴 이미지 하나를 고르세요</div>
+              <div class="slot-grid">
+                <button type="button" class="slot-tile" data-cpick="A">사진 찍기</button>
+                <button type="button" class="slot-tile" data-cpick="A">앨범에서 고르기</button>
+                <button type="button" class="slot-tile" data-cpick="A">책 표지</button>
+                <button type="button" class="slot-tile" data-cpick="A">단색 배경</button>
+              </div>
+            </div>
+            <div class="step-line"><span class="gauge">02 · OVERLAY TEXT</span><span class="gauge">MAX 80</span></div>
+            <input class="inp" type="text" placeholder="글자를 넣어 보세요" value="">
+            <div class="step-line"><span class="gauge">03 · BODY</span><button type="button" class="btn-link" data-ctoggle="body-A-0">+ 감상 쓰기</button></div>
+            <textarea class="inp hide" id="body-A-0" placeholder="감상(선택)"></textarea>
+            <div class="step-line"><span class="gauge">04 · BOOK &amp; LIBRARY</span><button type="button" class="btn-sec" style="height:26px;padding:0 10px" data-ctoggle="book-A-0">책 붙이기</button></div>
+            <div class="book-row hide" id="book-A-0"><span class="t-name">채식주의자 · 한강</span><button type="button" class="btn-link" data-ctoggle="book-A-0">빼기</button></div>
+          </div>
+        </div>
+        <div class="scr hide" data-cview="picked">
+          <div class="c-pad">
+            <div class="pv-card c-fill2" id="pv-A"><div class="pv-txt">오래 남는 문장 하나</div></div>
+            <div class="pv-meta">
+              <div class="swatches" data-target="pv-A">
+                <button type="button" class="swatch s1" data-cls="c-fill1"></button>
+                <button type="button" class="swatch s2 on" data-cls="c-fill2"></button>
+                <button type="button" class="swatch s3" data-cls="c-fill3"></button>
+                <button type="button" class="swatch s6" data-cls="c-ink"></button>
+              </div>
+              <button type="button" class="btn-link" data-creset="A">이미지 바꾸기</button>
+            </div>
+            <div class="step-line"><span class="gauge">02 · OVERLAY TEXT</span><span class="gauge">POSITION</span></div>
+            <input class="inp focus" type="text" value="오래 남는 문장 하나">
+            <div class="seg-row">
+              <button type="button" class="seg-chip" data-seg>위</button>
+              <button type="button" class="seg-chip on" data-seg>가운데</button>
+              <button type="button" class="seg-chip" data-seg>아래</button>
+            </div>
+            <div class="step-line"><span class="gauge">03 · BODY</span><button type="button" class="btn-link" data-ctoggle="body-A-1">+ 감상 쓰기</button></div>
+            <textarea class="inp hide" id="body-A-1" placeholder="감상(선택)"></textarea>
+            <div class="step-line"><span class="gauge">04 · BOOK · 무등도서관</span><span class="t-name">채식주의자</span></div>
+          </div>
+        </div>
+        <div class="c-dock">
+          <div class="gauge" data-chint="A">이미지를 하나 골라야 올릴 수 있어요</div>
+          <button type="button" class="btn-pri full off" data-csub="A">올리기</button>
+        </div>
+      </div>
+      <p><b>추천 이유:</b> 피드 카드의 주역인 이미지 자리가 처음부터 보이고(<code>P-72</code>), 이중 머리(<code>POST</code> + <code>새 게시물</code>)를 없애며, 화면 아래 48px 무광 판 <code>올리기</code> 하나로 규칙 7을 정확히 지킵니다.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <ul><li>빈 액자의 네 버튼 중 하나 누르기 → 같은 자리가 4:5 미리보기 카드로 바뀌고 아래 <code>올리기</code> 활성화.</li><li><code>+ 감상 쓰기</code>·<code>책 붙이기</code> → 칸이 제자리에서 펼쳐지거나 책 찾기 열림.</li></ul>
+      <span class="lbl">화면을 열어야만 보이는 것</span>
+      <ul><li>선택 전 빈 액자 높이(4:3 축소), 4개 보조 타일(곡률 9), 입력 칸 <code>paper</code> + 1px 줄눈(곡률 9), 하단 <code>panelLit</code> 받침 판(곡률 3) 위 <code>올리기</code> 1개.</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <ul><li><b>얻는 것:</b> 선택 전·후 화면 점프가 적고, 글과 그림의 위계가 가장 홈 파사드와 닮음.</li><li><b>포기하는 것:</b> 계약 F14의 "오른쪽 위 올리기"를 아래 주 버튼으로 옮겨야 함(계약 한 줄 개정 필요).</li></ul>
+      <p><b>표준 근거:</b> <code>P-71</code> 한 화면에 칸 모두 두기 · <code>P-72</code> 이미지 위 글자 얹기 · <code>P-73</code> 접힌 선택 칸</p>
+    </div>
+
+    <!-- 후보 B -->
+    <div class="cand" data-id="B">
+      <h3>후보 B: 왼쪽 작은 자리 + 한눈에 보는 입력 칸 + 오른쪽 위 <code>올리기</code></h3>
+      <div class="phone" id="phone-compose-B">
+        <div class="hd">
+          <span class="rvl"></span>
+          <div class="hd-l"><button type="button" class="xbtn">✕</button><span class="en">POST</span></div>
+          <button type="button" class="btn-pri sm off" data-csub="B">올리기</button>
+          <span class="rvr"></span>
+        </div>
+        <div class="scr" data-cview="empty">
+          <div class="c-pad">
+            <div class="c-head">
+              <div class="gauge">NEW POST · 광주광역시립무등도서관</div>
+              <h4 class="t-page">새 게시물</h4>
+            </div>
+            <div class="slot-compact">
+              <div class="thumb-empty">
+                <div class="gauge">01</div>
+                <div class="t-sub" style="font-size:9.5px">사진 자리</div>
+              </div>
+              <div class="thumb-grid">
+                <button type="button" class="slot-tile" data-cpick="B">사진 찍기</button>
+                <button type="button" class="slot-tile" data-cpick="B">앨범 고르기</button>
+                <button type="button" class="slot-tile" data-cpick="B">책 표지</button>
+                <button type="button" class="slot-tile" data-cpick="B">단색 배경</button>
+              </div>
+            </div>
+            <div class="step-line"><span class="gauge">02 · OVERLAY TEXT</span><span class="gauge" data-chint="B">이미지 필요</span></div>
+            <input class="inp" type="text" placeholder="글자를 넣어 보세요">
+            <div class="step-line"><span class="gauge">03 · BODY</span><button type="button" class="btn-link" data-ctoggle="body-B-0">+ 감상 쓰기</button></div>
+            <textarea class="inp hide" id="body-B-0" placeholder="감상(선택)"></textarea>
+            <div class="step-line"><span class="gauge">04 · BOOK · 무등도서관</span><button type="button" class="btn-sec" style="height:26px;padding:0 10px" data-ctoggle="book-B-0">책 붙이기</button></div>
+            <div class="book-row hide" id="book-B-0"><span class="t-name">채식주의자 · 한강</span><button type="button" class="btn-link" data-ctoggle="book-B-0">빼기</button></div>
+          </div>
+        </div>
+        <div class="scr hide" data-cview="picked">
+          <div class="c-pad">
+            <div class="slot-compact">
+              <div class="pv-card compact c-fill2" id="pv-B"><div class="pv-txt">오래 남는 문장 하나</div></div>
+              <div style="flex:1;display:flex;flex-direction:column;justify-content:space-between;gap:5px">
+                <div class="swatches" style="margin:0" data-target="pv-B">
+                  <button type="button" class="swatch s1" data-cls="c-fill1"></button>
+                  <button type="button" class="swatch s2 on" data-cls="c-fill2"></button>
+                  <button type="button" class="swatch s3" data-cls="c-fill3"></button>
+                  <button type="button" class="swatch s6" data-cls="c-ink"></button>
+                </div>
+                <div class="seg-row" style="margin:0">
+                  <button type="button" class="seg-chip" data-seg>위</button>
+                  <button type="button" class="seg-chip on" data-seg>가운데</button>
+                  <button type="button" class="seg-chip" data-seg>아래</button>
+                </div>
+                <button type="button" class="btn-link" style="align-self:flex-start" data-creset="B">이미지 바꾸기</button>
+              </div>
+            </div>
+            <div class="step-line"><span class="gauge">02 · OVERLAY TEXT</span></div>
+            <input class="inp focus" type="text" value="오래 남는 문장 하나">
+            <div class="step-line"><span class="gauge">03 · BODY</span><button type="button" class="btn-link" data-ctoggle="body-B-1">+ 감상 쓰기</button></div>
+            <textarea class="inp hide" id="body-B-1" placeholder="감상(선택)"></textarea>
+            <div class="step-line"><span class="gauge">04 · BOOK · 무등도서관</span><span class="t-name">채식주의자</span></div>
+          </div>
+        </div>
+      </div>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <ul><li>오른쪽 4개 타일 누르기 → 왼쪽 작은 액자가 미리보기로 바뀌고 머리 띠 오른쪽 <code>올리기</code> 활성화.</li></ul>
+      <span class="lbl">화면을 열어야만 보이는 것</span>
+      <ul><li>390 화면에서도 이미지·글자·감상·책 4단계가 스크롤 없이 한 번에 다 보임.</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <ul><li><b>얻는 것:</b> 계약 F14("오른쪽 위 올리기")와 스크롤 없는 1화면 구성을 그대로 유지.</li><li><b>포기하는 것:</b> 미리보기가 82×102px로 작아 이미지 위 글자 위치(위·가운데·아래)를 가늠하기 어려움.</li></ul>
+      <p><b>표준 근거:</b> <code>P-71</code> 한 화면에 칸 모두 두기 · <code>P-73</code> 접힌 선택 칸</p>
+    </div>
+
+    <!-- 후보 C -->
+    <div class="cand" data-id="C">
+      <h3>후보 C: 2단계 분리 (1. 사진·글자 → 2. 감상·책·올리기) <span class="badge-prop">제안(계약 F14)</span></h3>
+      <div class="phone" id="phone-compose-C">
+        <div class="hd"><span class="rvl"></span><div class="hd-l"><button type="button" class="xbtn">✕</button><span class="en">POST · STEP 1/2</span></div><span class="rvr"></span></div>
+        <div class="scr" data-cview="empty">
+          <div class="c-pad">
+            <div class="c-head">
+              <div class="gauge">STEP 01 · IMAGE &amp; CAPTION</div>
+              <h4 class="t-page">이미지와 글자</h4>
+            </div>
+            <div class="slot-frame" style="min-height:178px">
+              <div class="gauge">4:5 CARD PREVIEW</div>
+              <div class="slot-grid">
+                <button type="button" class="slot-tile" data-cpick="C">사진 찍기</button>
+                <button type="button" class="slot-tile" data-cpick="C">앨범에서 고르기</button>
+                <button type="button" class="slot-tile" data-cpick="C">책 표지</button>
+                <button type="button" class="slot-tile" data-cpick="C">단색 배경</button>
+              </div>
+            </div>
+            <input class="inp" type="text" placeholder="이미지 위 글자(선택)">
+          </div>
+        </div>
+        <div class="scr hide" data-cview="picked">
+          <div class="c-pad">
+            <div style="display:flex;align-items:center;gap:9px;padding:7px 9px;background:var(--panel-lit);border:1px solid var(--seam);border-radius:var(--r-info)">
+              <div class="pv-card sm-sum c-fill2"><div class="pv-txt">오래 남는 문장</div></div>
+              <div style="min-width:0;flex:1">
+                <div class="gauge">STEP 02 · DETAILS</div>
+                <div class="t-name">오래 남는 문장 하나</div>
+              </div>
+              <button type="button" class="btn-link" data-creset="C">← 수정</button>
+            </div>
+            <div class="step-line"><span class="gauge">03 · BODY</span><span class="gauge">OPTIONAL</span></div>
+            <textarea class="inp focus" placeholder="감상(선택, 최대 2,000자)"></textarea>
+            <div class="step-line"><span class="gauge">04 · LIBRARY</span></div>
+            <div class="t-sub">광주광역시립무등도서관 피드에 올라가요</div>
+            <div class="step-line"><span class="gauge">BOOK</span><button type="button" class="btn-sec" style="height:26px;padding:0 10px" data-ctoggle="book-C-1">책 붙이기</button></div>
+            <div class="book-row hide" id="book-C-1"><span class="t-name">채식주의자 · 한강</span><button type="button" class="btn-link" data-ctoggle="book-C-1">빼기</button></div>
+          </div>
+        </div>
+        <div class="c-dock">
+          <button type="button" class="btn-pri full" data-cstep="C">다음 →</button>
+        </div>
+      </div>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <ul><li>1단계에서 이미지·글자 고르고 <code>다음 →</code> 누르기 → 2단계에서 작은 요약 카드와 감상·책 붙이기·<code>올리기</code>.</li></ul>
+      <span class="lbl">화면을 열어야만 보이는 것</span>
+      <ul><li>머리 띠 표찰이 <code>POST · STEP 1/2</code>로 바뀜. 한 화면당 정보 밀도가 가장 낮음.</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <ul><li><b>얻는 것:</b> 4:5 사진 꾸미기와 감상 작성이 각각 넓고 여유로움.</li><li><b>포기하는 것:</b> 한 화면에서 바로 올릴 수 없고 1번 더 눌러야 함(계약 F14 4단계 순서 재구성 필요).</li></ul>
+      <p><b>표준 근거:</b> <code>P-70</code> 단계별 화면(사진 → 글 → 올리기) · <code>P-72</code> 이미지 위 글자 얹기</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ③ 정할 것 2: 글 상세 ===== -->
+<section class="element" id="el-detail-info">
+  <h2>③ 정할 것 2: 글 상세(<code>/posts/[postId]</code>) 행동 줄(<code>저장</code>·<code>♡</code>)과 도서 대여 카드 <span class="status">결정 전</span></h2>
+  <p class="pick">고르기:
+    <select data-for="el-detail-info">
+      <option value="A">후보 A (추천): 알약 없는 ‹ + 무광 판 저장 주 버튼 + 곡률 9 대여 카드</option>
+      <option value="B">후보 B: 상단 가벼운 아이콘 4개 + 도서 카드 주 행동 강조</option>
+      <option value="C">후보 C: 상단 POST 머리 띠 + 아래 panelLit 정보 판 묶음 (제안)</option>
+    </select>
+  </p>
+  <div class="statebar" id="detailStateBar">
+    <span>상태 일괄 보기:</span>
+    <button type="button" data-dstate="book" aria-pressed="true">책 연결 게시물</button>
+    <button type="button" data-dstate="nobook" aria-pressed="false">책 없는 게시물</button>
+  </div>
+
+  <div class="cands">
+    <!-- 후보 A -->
+    <div class="cand recommended" data-id="A">
+      <h3>후보 A: 알약 없는 <code>‹</code> + 무광 판 <code>저장</code> + 곡률 9 대여 카드 <span class="badge">추천</span></h3>
+      <div class="phone" id="phone-detail-A">
+        <div class="scr">
+          <div class="d-img-wrap">
+            <div class="d-img"><div class="pv-txt">오래 남는 문장 하나</div></div>
+            <button type="button" class="back-bare" title="돌아가기">‹</button>
+          </div>
+          <div class="d-body">
+            <div class="act-bar">
+              <div class="act-left">
+                <button type="button" class="ico-btn on" data-like="A">♥ <span>12</span></button>
+                <button type="button" class="ico-btn" data-toast="링크를 복사했어요">↑</button>
+                <button type="button" class="ico-btn" data-pop="pop-A">⋯</button>
+              </div>
+              <button type="button" class="btn-pri sm" data-save="A">저장</button>
+              <div class="pop-menu hide" id="pop-A">
+                <button type="button" class="danger" data-show="dlg-withdraw-A">게시물 내리기</button>
+                <button type="button" data-close="pop-A">닫기</button>
+              </div>
+            </div>
+            <div>
+              <div class="t-name">이웃-6e74</div>
+              <div class="gauge">광주광역시립무등도서관 · 2026.11.18</div>
+            </div>
+            <div class="m-card" data-bookbox>
+              <div class="loan-head">
+                <div style="min-width:0">
+                  <div class="t-name">채식주의자 · 한강</div>
+                  <div class="gauge" style="margin-top:3px"><span class="dot-avail"></span>대출 가능 · 어제 기준</div>
+                </div>
+                <button type="button" class="btn-link" data-toast="외부 도서관 실시간 확인">실시간 확인 ↗</button>
+              </div>
+              <div class="loan-foot">
+                <span class="gauge">ONLINE STORE · M2</span>
+                <button type="button" class="btn-sec" style="height:26px;padding:0 10px" data-toast="준비 중이에요">예스24에서 구매 ↗</button>
+              </div>
+            </div>
+            <div class="t-sub" style="color:var(--text)">도서관 창가 자리에서 단숨에 읽었어요. 조용한 오후와 잘 어울리는 문장들이었습니다.</div>
+            <div class="rel-sec">
+              <div class="gauge">RELATED · SAME BOOK</div>
+              <h4 class="t-sec">같은 책의 다른 글</h4>
+              <div class="m2-grid">
+                <div class="m2-card c3">밑줄 그은 문장</div>
+                <div class="m2-card tall ink">오후 세 시의 서가</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-scrim hide" id="dlg-withdraw-A">
+          <div class="modal-card">
+            <div class="t-name">이 게시물을 내릴까요?</div>
+            <div class="t-sub">내리면 피드와 링크에서 바로 사라져요.</div>
+            <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:4px">
+              <button type="button" class="btn-sec" data-close="dlg-withdraw-A">취소</button>
+              <button type="button" class="btn-pri sm" data-close="dlg-withdraw-A" data-toast="내렸어요">내리기</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p><b>추천 이유:</b> 노랑 채움(<code>저장</code>·<code>♥</code>)과 흰 원 뒤로가기 알약을 빼고 레시피의 무광 판(<code>저장</code>)과 곡률 9 대여 카드를 그대로 적용해, 책 없는 글에서도 규칙 7(주 버튼 1개)과 계약 H9·H14가 모두 맞습니다.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <ul><li><code>♥ 12</code> → <code>inkStrong</code> 채움 토글(노랑 제거). <code>저장</code> → 평면 보조 <code>✓ 저장됨</code> 토글.</li><li><code>⋯</code> → 무광 <code>panelLit</code> 작은 창(곡률 9) → <code>게시물 내리기</code> 확인창.</li><li><code>예스24에서 구매 ↗</code> → 아래 <code>panelLit</code> 토스트 <code>준비 중이에요</code>.</li></ul>
+      <span class="lbl">화면을 열어야만 보이는 것</span>
+      <ul><li>이미지 좌상단 알약 없는 <code>‹</code>, 오른쪽 위 유일한 무광 판 주 버튼 <code>저장</code>, 작성자/도서관 계기판 줄 분리, 대여 카드(곡률 9 + 2px 받침)와 이어 읽기 제목 <code>22/400 inkSoft</code>.</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <ul><li><b>얻는 것:</b> 계약 H9·H14·기존 테스트 구조를 깨지 않고 레시피와 100% 맞음.</li><li><b>포기하는 것:</b> 이미지 위 왼쪽 상단에 <code>‹</code>가 그대로 얹힘(밝은 사진에선 그림자 필요).</li></ul>
+      <p><b>표준 근거:</b> <code>P-41</code> 위 이미지 → 행동 줄 → 본문 · <code>P-13</code> 아이콘 채워짐 · <code>P-40</code> 아래 더 찾아보기</p>
+    </div>
+
+    <!-- 후보 B -->
+    <div class="cand" data-id="B">
+      <h3>후보 B: 상단 가벼운 아이콘 4개 + 도서 카드를 주 행동으로 강조</h3>
+      <div class="phone" id="phone-detail-B">
+        <div class="scr">
+          <div class="d-img-wrap">
+            <div class="d-img"><div class="pv-txt">오래 남는 문장 하나</div></div>
+            <button type="button" class="back-bare" title="돌아가기">‹</button>
+          </div>
+          <div class="d-body">
+            <div class="act-bar">
+              <div class="act-left">
+                <button type="button" class="ico-btn on" data-like="B">♥ <span>12</span></button>
+                <button type="button" class="ico-btn" data-bm="B">🔖 <span>저장</span></button>
+                <button type="button" class="ico-btn" data-toast="링크를 복사했어요">↑</button>
+                <button type="button" class="ico-btn" data-pop="pop-B">⋯</button>
+              </div>
+              <span class="gauge">2026.11.18</span>
+              <div class="pop-menu hide" id="pop-B">
+                <button type="button" class="danger" data-toast="확인창 열림">게시물 내리기</button>
+                <button type="button" class="btn-link" data-close="pop-B">닫기</button>
+              </div>
+            </div>
+            <div class="t-name">이웃-6e74 · <span class="gauge">광주광역시립무등도서관</span></div>
+            <div class="m-card" data-bookbox>
+              <div class="t-name">채식주의자 · 한강</div>
+              <div class="gauge" style="margin:3px 0 8px"><span class="dot-avail"></span>광주광역시립무등도서관 · 대출 가능 · 어제 기준</div>
+              <div style="display:flex;gap:6px">
+                <button type="button" class="btn-pri sm" style="flex:1" data-toast="외부 도서관 실시간 확인">실시간 확인 ↗</button>
+                <button type="button" class="btn-sec" style="height:28px" data-toast="준비 중이에요">예스24 ↗</button>
+              </div>
+            </div>
+            <div class="t-sub" style="color:var(--text)">도서관 창가 자리에서 단숨에 읽었어요. 조용한 오후와 잘 어울리는 문장들이었습니다.</div>
+            <div class="rel-sec">
+              <div class="gauge">RELATED · SAME BOOK</div>
+              <h4 class="t-sec">같은 책의 다른 글</h4>
+              <div class="m2-grid">
+                <div class="m2-card c3">밑줄 그은 문장</div>
+                <div class="m2-card tall ink">오후 세 시의 서가</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <ul><li><code>🔖 저장</code>을 아이콘으로 토글하고, 책이 있으면 도서 카드 안 <code>실시간 확인 ↗</code>을 무광 판 주 버튼으로 누름.</li></ul>
+      <span class="lbl">화면을 열어야만 보이는 것</span>
+      <ul><li>상단 바 오른쪽 큰 <code>저장</code> 알약이 사라지고 날짜 계기판이 들어감. 책 카드 하단에 2버튼이 나란히 놓임.</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <ul><li><b>얻는 것:</b> 독서 서비스답게 도서 대출 확인이 가장 무거운 표식으로 도드라짐.</li><li><b>포기하는 것:</b> 책 없는 게시물에선 주 버튼이 없어지고, 계약 H14의 "오른쪽 끝 별도 알약 버튼 저장"과 달라짐.</li></ul>
+      <p><b>표준 근거:</b> <code>P-41</code> 위 이미지 → 행동 줄 → 본문 · <code>P-42</code> 핵심 정보 + 주 버튼</p>
+    </div>
+
+    <!-- 후보 C -->
+    <div class="cand" data-id="C">
+      <h3>후보 C: 상단 <code>POST</code> 유리판 머리 띠 + 아래 <code>panelLit</code> 정보 판 <span class="badge-prop">제안(계약 H14)</span></h3>
+      <div class="phone" id="phone-detail-C">
+        <div class="hd">
+          <span class="rvl"></span>
+          <div class="hd-l"><button type="button" class="back">‹</button><span class="en">POST</span></div>
+          <button type="button" class="btn-sec" style="height:26px;padding:0 10px" data-save="C">저장</button>
+          <span class="rvr"></span>
+        </div>
+        <div class="scr">
+          <div class="d-img-wrap">
+            <div class="d-img"><div class="pv-txt">오래 남는 문장 하나</div></div>
+          </div>
+          <div class="d-body">
+            <div class="m-card" style="display:flex;flex-direction:column;gap:8px">
+              <div class="act-bar">
+                <div class="act-left">
+                  <button type="button" class="ico-btn on" data-like="C">♥ <span>12</span></button>
+                  <button type="button" class="ico-btn" data-toast="링크를 복사했어요">↑</button>
+                  <button type="button" class="ico-btn" data-pop="pop-C">⋯</button>
+                </div>
+                <span class="gauge">이웃-6e74 · 2026.11.18</span>
+                <div class="pop-menu right hide" id="pop-C">
+                  <button type="button" class="danger" data-toast="확인창 열림">게시물 내리기</button>
+                </div>
+              </div>
+              <div class="t-sub" style="color:var(--text)">도서관 창가 자리에서 단숨에 읽었어요. 조용한 오후와 잘 어울리는 문장들이었습니다.</div>
+              <div class="loan-foot" data-bookbox>
+                <div style="min-width:0">
+                  <div class="t-name">채식주의자 · 한강</div>
+                  <div class="gauge"><span class="dot-avail"></span>대출 가능 · 어제 기준</div>
+                </div>
+                <button type="button" class="btn-pri sm" data-toast="외부 도서관 실시간 확인">실시간 ↗</button>
+              </div>
+              <div style="display:flex;justify-content:flex-end" data-bookbox>
+                <button type="button" class="btn-link" data-toast="준비 중이에요">예스24에서 구매 ↗</button>
+              </div>
+            </div>
+            <div class="rel-sec">
+              <div class="gauge">RELATED · SAME BOOK</div>
+              <h4 class="t-sec">같은 책의 다른 글</h4>
+              <div class="m2-grid">
+                <div class="m2-card c3">밑줄 그은 문장</div>
+                <div class="m2-card tall ink">오후 세 시의 서가</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <ul><li>머리 띠 <code>‹</code>로 돌아가고 오른쪽 <code>저장</code>으로 저장. 아래 한 덩어리 <code>panelLit</code> 정보 판 안에서 본문·대여·구매 확인.</li></ul>
+      <span class="lbl">화면을 열어야만 보이는 것</span>
+      <ul><li>이미지 위 겹침 버튼이 0개이고 <code>POST</code> 유리판 머리 띠가 다른 상세 화면(<code>BOOK</code>)과 통일됨.</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <ul><li><b>얻는 것:</b> 이미지가 깨끗하고 <code>BOOK</code>·<code>SEARCH</code> 머리 띠와 문법이 완전히 같음.</li><li><b>포기하는 것:</b> 머리 띠 높이만큼 이미지가 아래로 내려가고, 계약 H14의 상단 액션 바 <code>저장</code> 자리와 달라짐.</li></ul>
+      <p><b>표준 근거:</b> <code>P-02</code> 밀려 들어오는 화면 + 왼쪽 위 뒤로 · <code>P-40</code> 전체 화면 상세 + 아래 더 찾아보기</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ④ 기본값(Claude) 레시피 적용 화면 ===== -->
+<section id="defaults">
+  <h2>④ 기본값(Claude): 설정 · 방문 페이지 · 공용 창 레시피 적용 <span class="status">기본값(Claude)</span></h2>
+  <div class="flow">
+    선택이 따로 필요 없는 부분은 레시피대로 맞췄습니다. 방문 페이지(<code>/libraries/[libraryId]</code>)의 <b>도서관 룩(M2)은 기존 시안 그대로 두고 바꾸지 않습니다.</b> 아래 버튼으로 각 화면과 상태를 눌러 보세요.
+  </div>
+  <div class="statebar" id="defTabs">
+    <button type="button" data-def="settings-in" aria-pressed="true">설정: 로그인됨·탈퇴확인</button>
+    <button type="button" data-def="settings-out" aria-pressed="false">설정: 비로그인</button>
+    <button type="button" data-def="visit-feed" aria-pressed="false">방문: 피드·무광 + FAB</button>
+    <button type="button" data-def="visit-empty" aria-pressed="false">방문: 빈 피드·접힌 머리</button>
+    <button type="button" data-def="post-menu" aria-pressed="false">공용: 카드 메뉴 · 책 찾기</button>
+  </div>
+
+  <div style="display:flex;justify-content:center;margin-top:16px">
+    <div class="phone">
+      <div class="hd" id="defHeader">
+        <span class="rvl"></span>
+        <div class="hd-l"><button type="button" class="back" id="defBack">‹</button><span class="en" id="defHeaderLabel">SETTINGS</span></div>
+        <span class="rvr"></span>
+      </div>
+
+      <!-- 1) 설정 로그인됨 + 탈퇴 확인(9999 타원 버그 수정) -->
+      <div class="scr" data-defpane="settings-in">
+        <div class="c-pad" style="gap:12px">
+          <div class="c-head">
+            <div class="gauge">ACCOUNT · SESSION</div>
+            <h4 class="t-page">설정</h4>
+          </div>
+          <button type="button" class="btn-pri full" id="btnSignOut" data-toast="로그아웃 → 홈으로">로그아웃</button>
+          <button type="button" class="btn-sec full" id="btnShowWithdraw">회원 탈퇴</button>
+          <div class="m-card hide" id="withdrawBox" style="display:flex;flex-direction:column;gap:8px">
+            <div class="gauge">CONFIRM WITHDRAWAL · 곡률 9</div>
+            <h4 class="t-sec">정말 탈퇴할까요?</h4>
+            <div class="t-sub">빌릴 예정, 좋아요, 북마크가 지워지고 내가 올린 글은 더 이상 보이지 않아요. 같은 계정으로 다시 가입할 수 없고 되돌릴 수 없어요.</div>
+            <button type="button" class="btn-pri full" data-toast="탈퇴 처리 → 홈">탈퇴하기</button>
+            <button type="button" class="btn-sec full" id="btnCancelWithdraw">취소</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2) 설정 비로그인 -->
+      <div class="scr hide" data-defpane="settings-out">
+        <div class="empty-center">
+          <div class="gauge">SIGN IN REQUIRED</div>
+          <h4 class="t-sec">로그인하면 설정을 볼 수 있어요</h4>
+          <button type="button" class="btn-pri" style="margin-top:6px" data-toast="/login 이동">로그인</button>
+        </div>
+      </div>
+
+      <!-- 3) 방문 페이지 (피드 + 무광 판 + FAB + 멘트) -->
+      <div class="scr hide" data-defpane="visit-feed">
+        <div class="v-head">
+          <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px">
+            <h4 class="t-page">광주광역시립무등도서관</h4>
+            <button type="button" class="btn-link" data-show="visitMenuModal">⋯</button>
+          </div>
+          <div class="v-info-row">
+            <span class="gauge">320M · 09:00–21:00</span>
+            <span class="gauge">M2 도서관 룩 유지</span>
+          </div>
+        </div>
+        <div class="c-pad" style="padding-bottom:76px">
+          <div class="m2-grid">
+            <div class="m2-card tall c2">창가에서 읽은 오후</div>
+            <div class="m2-card c3">오래 남는 문장</div>
+            <div class="m2-card c1">오늘 빌린 책</div>
+            <div class="m2-card tall ink">test</div>
+          </div>
+        </div>
+        <div class="ment-pill">처음으로 광주광역시립무등도서관에 방문했어요!</div>
+        <button type="button" class="fab-matte" title="글쓰기" data-toast="/posts/new 이동">+</button>
+        <div class="modal-scrim hide" id="visitMenuModal">
+          <div class="modal-card">
+            <div class="gauge">LIBRARY MENU</div>
+            <button type="button" class="btn-sec full" data-close="visitMenuModal" data-toast="앱을 켜면 여기부터 열어요">앱을 켜면 여기부터 열기</button>
+            <button type="button" class="btn-sec full" data-close="visitMenuModal" data-toast="도서관 홈페이지 열기">도서관 홈페이지</button>
+            <button type="button" class="btn-link" data-close="visitMenuModal">닫기</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 4) 방문 페이지 (접힌 머리 + 빈 피드) -->
+      <div class="scr hide" data-defpane="visit-empty">
+        <div style="background:var(--panel-frosted);border-bottom:1px solid var(--seam);padding:7px 12px;display:flex;align-items:center;justify-content:space-between">
+          <span class="t-sec" style="font-size:15px">광주광역시립무등도서관</span>
+          <span class="gauge">접힌 머리 · ⋯</span>
+        </div>
+        <div class="empty-center">
+          <div class="gauge">EMPTY FEED</div>
+          <h4 class="t-sec">아직 게시물이 없어요</h4>
+          <div class="t-sub">이 도서관의 첫 글을 올려 보세요</div>
+          <button type="button" class="btn-sec" style="margin-top:6px" data-toast="/posts/new 이동">첫 글 올리기 →</button>
+        </div>
+        <button type="button" class="fab-matte" title="글쓰기" data-toast="/posts/new 이동">+</button>
+      </div>
+
+      <!-- 5) 공용: 카드 길게 누르기 메뉴 (노랑 제거) + 책 찾기 -->
+      <div class="scr hide" data-defpane="post-menu">
+        <div class="c-pad" style="gap:12px">
+          <div class="gauge">CARD MENU (POSTMENU) · 노랑 아이콘 제거</div>
+          <div class="m-card" style="padding:8px 10px">
+            <div class="pm-icons">
+              <button type="button" class="pm-ico on" data-pm><b>♥</b><span>좋아요됨</span></button>
+              <button type="button" class="pm-ico on" data-pm><b>🔖</b><span>저장됨</span></button>
+              <button type="button" class="pm-ico"><b>↗</b><span>공유</span></button>
+            </div>
+            <button type="button" class="btn-link" style="display:block;width:100%;text-align:left;padding:7px 4px;border-bottom:1px solid var(--seam)">📖 채식주의자 검색</button>
+            <button type="button" class="btn-link" style="display:block;width:100%;text-align:left;padding:7px 4px">👤 한강의 다른 책</button>
+          </div>
+          <div class="gauge">BOOK FINDER (COMPOSE) · 레시피 입력 칸</div>
+          <div style="display:flex;gap:6px">
+            <input class="inp focus" type="text" value="채식주의자">
+            <button type="button" class="btn-sec" style="height:34px">찾기</button>
+          </div>
+          <div style="border-top:1px solid var(--seam);padding-top:7px">
+            <div class="t-name">채식주의자</div>
+            <div class="gauge">한강 · 창비 · 2007</div>
+          </div>
+          <div style="border-top:1px solid var(--seam);padding-top:7px">
+            <div class="t-name">소년이 온다</div>
+            <div class="gauge">한강 · 창비 · 2014</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ===== ⑤ 넓은 웹 1280 (WebFrame 480 칼럼) ===== -->
+<section id="wide">
+  <h2>⑤ 넓은 웹(1280, <code>WebFrame</code> 480 칼럼) 미리보기 <span class="status">기본값(Claude)</span></h2>
+  <div class="flow">
+    데스크톱 웹은 480 칼럼 안에 열립니다. 현재 코드의 <code>PostDetail.tsx</code>는 <code>useWindowDimensions().width &gt;= 768</code>로 1280을 재서 480 칼럼 안을 억지로 2열로 쪼개고 있어, <b>컨테이너 폭(480 이하) 기준 1열</b>로 바로잡은 모습입니다.
+  </div>
+  <div class="desk">
+    <div class="wallgrid"></div>
+    <div class="col-wrap"><span class="gauge">COMPOSE · 480PX COLUMN</span><div class="col" id="deskCompose"></div></div>
+    <div class="col-wrap"><span class="gauge">POST DETAIL · 1열 유지 수정</span><div class="col" id="deskDetail"></div></div>
+    <div class="col-wrap"><span class="gauge">SETTINGS · 480PX COLUMN</span><div class="col" id="deskSettings"></div></div>
+    <div class="col-wrap"><span class="gauge">VISIT · 480PX COLUMN</span><div class="col" id="deskVisit"></div></div>
+  </div>
+</section>
+
+<!-- ===== ⑥ 명세 패널 ===== -->
+<section id="spec">
+  <h2>명세 패널</h2>
+  <div class="wide">
+    <table>
+      <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
+      <tr data-el="el-compose-layout">
+        <td>1. 글쓰기 사진 자리·입력 칸·올리기 배치</td>
+        <td>추천: 후보 A (큰 4:3 빈 액자 + 레시피 입력 칸 + 하단 무광 판 <code>올리기</code> 제안)</td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+        <td><code>POST</code> 머리 띠(<code>✕</code>만, 이중 헤더 제거). 선택 전 <code>paper</code> 점선 액자(곡률 18) + 4개 보조 타일(곡률 9), 입력 칸 <code>paper</code> + 1px <code>seamHairline</code>(곡률 9, 포커스 1.5px <code>inkStrong</code>), 위치 칩 <code>panelLit</code> + <code>inkStrong</code>(노랑 제거), 하단 <code>panelLit</code> 받침 판(곡률 3) 위 무광 판 주 버튼 <code>올리기</code></td>
+        <td><code>/posts/new</code> 열기 → 빈 액자에서 이미지 고르기 → 4:5 미리보기·글자·위치 확인 → <code>+ 감상 쓰기</code>·<code>책 붙이기</code> → <code>올리기</code></td>
+        <td><span class="st">결정 전</span></td>
+      </tr>
+      <tr data-el="el-detail-info">
+        <td>2. 글 상세 행동 줄(<code>저장</code>·<code>♡</code>)과 도서 대여 카드</td>
+        <td>추천: 후보 A (알약 없는 <code>‹</code> + 무광 판 <code>저장</code> + 곡률 9 대여 카드)</td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+        <td>바탕 <code>panelFrosted</code>, 이미지 위 알약 없는 <code>‹</code> + 그림자, <code>♡</code> 켬 <code>inkStrong</code>, <code>저장</code> 무광 판 주 버튼(저장됨 평면 <code>✓ 저장됨</code>), 작성자 <code>type.name</code> + 도서관/날짜 <code>type.gauge</code>, 대여 카드 <code>cardSurface(theme, { onPanel: true })</code>(곡률 9 + 2px 받침), 구매 <code>actionColors().secondary</code>, 1280px <code>WebFrame</code> 내 1열 유지</td>
+        <td>피드 카드 누름 → 상세 진입 → <code>♡</code>·<code>저장</code> 토글 / <code>⋯</code> 내리기 / 대여 카드 <code>실시간 확인 ↗</code>·<code>예스24 ↗</code> / 아래 이어 읽기</td>
+        <td><span class="st">결정 전</span></td>
+      </tr>
+      <tr>
+        <td>설정(<code>/settings</code>) 전체</td>
+        <td>레시피 기본값 적용(바탕 <code>panelFrosted</code>, <code>24/400 inkSoft</code> 제목, 탈퇴 확인 <code>cardSurface</code> 곡률 9, 규칙 7 주 버튼 1개)</td>
+        <td>—</td>
+        <td><code>bg</code> 바탕, <code>radii.control</code>(9999) 타원 확인 창, 주 버튼 2개 동시 노출</td>
+        <td>묻지 않음(레시피 확정)</td>
+        <td>확인 창 열리면 <code>로그아웃</code>을 보조 버튼(<code>secondary</code>)으로 내려 <code>탈퇴하기</code> 1개만 주 버튼 유지</td>
+        <td><code>/me</code> ⚙ → <code>/settings</code> → 로그아웃 또는 회원 탈퇴 확인</td>
+        <td><span class="st">기본값(Claude)</span></td>
+      </tr>
+      <tr>
+        <td>방문 페이지(<code>/libraries/[libraryId]</code>) 전체</td>
+        <td>레시피 기본값 적용(바탕 <code>panelFrosted</code>, <code>24/400 inkSoft</code> 이름, <code>type.gauge</code> 거리·시간, 무광 판 원형 <code>+</code> FAB, 곡률 9 멘트·묻기·메뉴)</td>
+        <td>—</td>
+        <td><code>cream</code> 바탕, <code>24/500</code> 이름, 노랑 <code>fill1</code> FAB, <code>radii.card</code>(18) 멘트/시트</td>
+        <td>묻지 않음(레시피 확정 · M2 도서관 룩 유지)</td>
+        <td><code>+</code> FAB: <code>panelLit</code> + 1px <code>seamHairline</code> + 2px <code>reliefBottomMid</code>(46~64 원형 필). 피드 카드(<code>PostCard</code>)만 곡률 18 유지</td>
+        <td>홈 큐브 → 방문 페이지 진입 → 멘트·피드·접힌 머리·<code>+</code> 글쓰기</td>
+        <td><span class="st">기본값(Claude)</span></td>
+      </tr>
+      <tr>
+        <td>공용 <code>PostMenu</code> · <code>BookFinder</code> · 비로그인 시트</td>
+        <td><code>panelLit</code> + 1px <code>seamHairline</code> + 2px <code>reliefBottomMid</code>(곡률 9), 켜진 아이콘 <code>inkStrong</code>(노랑 제거)</td>
+        <td>—</td>
+        <td><code>paper</code> + <code>radii.card</code>(18)/<code>inner</code>(12), 노랑 <code>fill1</code> 아이콘</td>
+        <td>묻지 않음(레시피·규칙 5 확정)</td>
+        <td><code>cardSurface(theme, { onPanel: true })</code></td>
+        <td>—</td>
+        <td><span class="st">기본값(Claude)</span></td>
+      </tr>
+    </table>
+  </div>
+</section>
+
+</main>
+
+<div class="toast-bar hide" id="globalToast"></div>
+
+<script>
+  var LOOKS = {
+    modern:{bg:"#CDCDCB",surface2:"#BDBDBA",surface3:"#A8A8A5",fill1:"#FB5102",fill2:"#F2F2EF",fill3:"#9AA0B4",cream:"#E9E9E6",paper:"#E6E6E4",inkStrong:"#1C1E2A",rInfo:"6px",rCard:"6px"},
+    warm:{bg:"#E1E1DE",surface2:"#D0CEC8",surface3:"#BFBCB5",fill1:"#E9C970",fill2:"#EDC9A9",fill3:"#B3BFB5",cream:"#EFEFE7",paper:"#EFF1F1",inkStrong:"#2E333F",rInfo:"9px",rCard:"18px"},
+    toffee:{bg:"#E4E2DB",surface2:"#D5CFC4",surface3:"#C2BBAD",fill1:"#6E5140",fill2:"#C88A56",fill3:"#7E8C7D",cream:"#EEEFED",paper:"#EEEFED",inkStrong:"#332A27",rInfo:"9px",rCard:"18px"},
+    oxford:{bg:"#CDCDCB",surface2:"#BDBDBA",surface3:"#A8A8A5",fill1:"#35557F",fill2:"#D2B48C",fill3:"#7A93AC",cream:"#E9E9E6",paper:"#E6E6E4",inkStrong:"#002147",rInfo:"9px",rCard:"18px"}
+  };
+  function hex(h){ return [1,3,5].map(function(i){ return parseInt(h.slice(i,i+2),16); }); }
+  function toHex(a){ return "#" + a.map(function(c){ return Math.max(0,Math.min(255,Math.round(c))).toString(16).padStart(2,"0"); }).join("").toUpperCase(); }
+  function mix(a,b,w){ var A=hex(a), B=hex(b); return toHex(A.map(function(c,i){ return c*w + B[i]*(1-w); })); }
+  function lum(h){ return hex(h).map(function(v){ var s=v/255; return s<=0.03928?s/12.92:Math.pow((s+0.055)/1.055,2.4); }); }
+  function onFill(bg){
+    var L=lum(bg), l=0.2126*L[0]+0.7152*L[1]+0.0722*L[2];
+    return (1.05/(l+0.05)) >= ((l+0.05)/0.068) ? "#FFFFFF" : "#1D1D1F";
+  }
+  function applyLook(name){
+    var c = LOOKS[name], r = document.documentElement.style;
+    var v = {
+      bg:c.bg, surface2:c.surface2, surface3:c.surface3, fill1:c.fill1, fill2:c.fill2, fill3:c.fill3,
+      cream:c.cream, paper:c.paper, "ink-strong":c.inkStrong,
+      "panel-frosted":mix(c.paper,c.bg,.58), "panel-lit":mix(c.paper,c.cream,.84),
+      seam:mix(c.inkStrong,c.bg,.14), rivet:mix(c.inkStrong,c.surface3,.34),
+      "relief-mid":mix(c.inkStrong,c.surface2,.15), "relief-dark":mix(c.inkStrong,c.surface3,.26),
+      "on-fill1":onFill(c.fill1), "on-fill2":onFill(c.fill2), "on-fill3":onFill(c.fill3), "on-ink":onFill(c.inkStrong),
+      "r-info":c.rInfo, "r-card":c.rCard
+    };
+    for (var k in v) r.setProperty("--" + k, v[k]);
+  }
+
+  var toastTimer = null;
+  function showToast(msg){
+    var t = document.getElementById("globalToast");
+    t.textContent = msg;
+    t.classList.remove("hide");
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ t.classList.add("hide"); }, 1800);
+  }
+
+  function syncWide(){
+    var cSel = document.querySelector('select[data-for="el-compose-layout"]');
+    var dSel = document.querySelector('select[data-for="el-detail-info"]');
+    var cId = (cSel && cSel.value) || "A";
+    var dId = (dSel && dSel.value) || "A";
+    var cPh = document.querySelector('#el-compose-layout .cand[data-id="' + cId + '"] .phone');
+    var dPh = document.querySelector('#el-detail-info .cand[data-id="' + dId + '"] .phone');
+    if (cPh) document.getElementById("deskCompose").innerHTML = cPh.innerHTML;
+    if (dPh) document.getElementById("deskDetail").innerHTML = dPh.innerHTML;
+    var sPane = document.querySelector('#defaults [data-defpane="settings-in"]');
+    var vPane = document.querySelector('#defaults [data-defpane="visit-feed"]');
+    var hd = '<div class="hd"><span class="rvl"></span><div class="hd-l"><button type="button" class="back">‹</button><span class="en">';
+    if (sPane) document.getElementById("deskSettings").innerHTML = hd + 'SETTINGS</span></div><span class="rvr"></span></div><div class="scr">' + sPane.innerHTML + '</div>';
+    if (vPane) document.getElementById("deskVisit").innerHTML = hd + 'LIBRARY</span></div><span class="rvr"></span></div><div class="scr" style="position:relative">' + vPane.innerHTML + '</div>';
+  }
+
+  function mark(el, id){
+    el.querySelectorAll(".cand").forEach(function(c){
+      c.classList.toggle("chosen", !!id && c.dataset.id === el.dataset.chosen);
+      c.classList.toggle("preview", !!id && c.dataset.id === id && id !== el.dataset.chosen);
+    });
+  }
+
+  document.querySelectorAll("section.element").forEach(function(el){
+    mark(el, el.dataset.chosen || "");
+    var sel = el.querySelector("select[data-for]");
+    if (sel) {
+      sel.insertAdjacentHTML("afterbegin", '<option value="" selected>(전체 비교 · 기본 추천 A)</option>');
+      sel.addEventListener("change", function(){ mark(el, sel.value || ""); syncWide(); });
+    }
+  });
+
+  document.getElementById("look").addEventListener("change", function(e){ applyLook(e.target.value); });
+
+  function setComposeState(which, mode){
+    var ph = document.getElementById("phone-compose-" + which);
+    if (!ph) return;
+    ph.querySelectorAll("[data-cview]").forEach(function(s){ s.classList.toggle("hide", s.dataset.cview !== mode); });
+    var sub = ph.querySelector('[data-csub="' + which + '"]');
+    if (sub) sub.classList.toggle("off", mode !== "picked");
+    var hint = ph.querySelector('[data-chint="' + which + '"]');
+    if (hint) hint.textContent = mode === "picked" ? (which === "A" ? "READY TO PUBLISH" : "올릴 수 있어요") : (which === "A" ? "이미지를 하나 골라야 올릴 수 있어요" : "이미지 필요");
+    var stepBtn = ph.querySelector('[data-cstep="' + which + '"]');
+    if (stepBtn) stepBtn.textContent = mode === "picked" ? "올리기" : "다음 →";
+    if (which === "C") ph.querySelector(".hd .en").textContent = mode === "picked" ? "POST · STEP 2/2" : "POST · STEP 1/2";
+  }
+
+  document.querySelectorAll("#composeStateBar button").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var mode = btn.dataset.cstate;
+      document.querySelectorAll("#composeStateBar button").forEach(function(b){ b.setAttribute("aria-pressed", b === btn); });
+      ["A","B","C"].forEach(function(w){ setComposeState(w, mode); });
+      syncWide();
+    });
+  });
+
+  document.querySelectorAll("#detailStateBar button").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var mode = btn.dataset.dstate;
+      document.querySelectorAll("#detailStateBar button").forEach(function(b){ b.setAttribute("aria-pressed", b === btn); });
+      document.querySelectorAll("#el-detail-info [data-bookbox], #el-detail-info .rel-sec").forEach(function(box){
+        box.classList.toggle("hide", mode === "nobook");
+      });
+      syncWide();
+    });
+  });
+
+  document.querySelectorAll("#defTabs button").forEach(function(btn){
+    btn.addEventListener("click", function(){
+      var target = btn.dataset.def;
+      document.querySelectorAll("#defTabs button").forEach(function(b){ b.setAttribute("aria-pressed", b === btn); });
+      document.querySelectorAll("[data-defpane]").forEach(function(p){ p.classList.toggle("hide", p.dataset.defpane !== target); });
+      var lbl = target.indexOf("settings") === 0 ? "SETTINGS" : target.indexOf("visit") === 0 ? "LIBRARY" : "POST · MENU";
+      document.getElementById("defHeaderLabel").textContent = lbl;
+      document.getElementById("defBack").classList.toggle("hide", target === "post-menu");
+    });
+  });
+
+  document.getElementById("btnShowWithdraw").addEventListener("click", function(){
+    document.getElementById("withdrawBox").classList.remove("hide");
+    document.getElementById("btnSignOut").className = "btn-sec full";
+    document.getElementById("btnShowWithdraw").classList.add("hide");
+  });
+  document.getElementById("btnCancelWithdraw").addEventListener("click", function(){
+    document.getElementById("withdrawBox").classList.add("hide");
+    document.getElementById("btnSignOut").className = "btn-pri full";
+    document.getElementById("btnShowWithdraw").classList.remove("hide");
+  });
+
+  document.addEventListener("click", function(e){
+    var t;
+    if ((t = e.target.closest("[data-cpick]"))) { setComposeState(t.dataset.cpick, "picked"); syncWide(); return; }
+    if ((t = e.target.closest("[data-creset]"))) { setComposeState(t.dataset.creset, "empty"); syncWide(); return; }
+    if ((t = e.target.closest("[data-cstep]"))) {
+      var ph = document.getElementById("phone-compose-" + t.dataset.cstep);
+      var isPicked = !ph.querySelector('[data-cview="picked"]').classList.contains("hide");
+      if (!isPicked) { setComposeState(t.dataset.cstep, "picked"); syncWide(); }
+      else showToast("올렸어요");
+      return;
+    }
+    if ((t = e.target.closest("[data-csub]"))) {
+      if (!t.classList.contains("off")) showToast("올렸어요");
+      return;
+    }
+    if ((t = e.target.closest("[data-ctoggle]"))) {
+      var el = document.getElementById(t.dataset.ctoggle);
+      if (el) el.classList.toggle("hide");
+      return;
+    }
+    if ((t = e.target.closest(".swatch"))) {
+      var box = t.closest(".swatches"), pv = box && document.getElementById(box.dataset.target);
+      box.querySelectorAll(".swatch").forEach(function(s){ s.classList.remove("on"); });
+      t.classList.add("on");
+      if (pv) {
+        var keep = pv.classList.contains("compact") ? " compact" : "";
+        pv.className = "pv-card" + keep + " " + t.dataset.cls;
+      }
+      return;
+    }
+    if ((t = e.target.closest("[data-seg]"))) {
+      t.parentElement.querySelectorAll("[data-seg]").forEach(function(s){ s.classList.remove("on"); });
+      t.classList.add("on");
+      return;
+    }
+    if ((t = e.target.closest("[data-like]"))) {
+      var on = t.classList.toggle("on");
+      var sp = t.querySelector("span"), n = parseInt(sp.textContent, 10);
+      t.firstChild.nodeValue = on ? "♥ " : "♡ ";
+      sp.textContent = on ? n + 1 : n - 1;
+      return;
+    }
+    if ((t = e.target.closest("[data-save]"))) {
+      var saved = t.classList.toggle("saved");
+      t.classList.toggle("btn-pri", !saved);
+      t.classList.toggle("btn-sec", saved);
+      t.textContent = saved ? "✓ 저장됨" : "저장";
+      return;
+    }
+    if ((t = e.target.closest("[data-bm]"))) {
+      var bm = t.classList.toggle("on");
+      t.querySelector("span").textContent = bm ? "저장됨" : "저장";
+      return;
+    }
+    if ((t = e.target.closest("[data-pm]"))) {
+      t.classList.toggle("on");
+      return;
+    }
+    if ((t = e.target.closest("[data-pop]"))) {
+      var p = document.getElementById(t.dataset.pop);
+      if (p) p.classList.toggle("hide");
+      return;
+    }
+    if ((t = e.target.closest("[data-show]"))) {
+      var s = document.getElementById(t.dataset.show);
+      if (s) s.classList.remove("hide");
+      return;
+    }
+    if ((t = e.target.closest("[data-close]"))) {
+      var cl = document.getElementById(t.dataset.close);
+      if (cl) cl.classList.add("hide");
+    }
+    if ((t = e.target.closest("[data-toast]"))) {
+      showToast(t.dataset.toast);
+    }
+  });
+
+  applyLook("warm");
+  syncWide();
+</script>
+</body>
+</html>
