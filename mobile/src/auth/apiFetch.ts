@@ -69,6 +69,27 @@ export function abortInFlightRequests(): void {
   for (const controller of Array.from(inFlight)) controller.abort();
 }
 
+// AUTH-3 W2: 어느 요청이든 403 ACCOUNT_WITHDRAWN이면 알린다(다른 기기에서 탈퇴 → 이 기기 로그아웃).
+const withdrawnListeners = new Set<() => void>();
+
+export function onAccountWithdrawn(listener: () => void): () => void {
+  withdrawnListeners.add(listener);
+  return () => {
+    withdrawnListeners.delete(listener);
+  };
+}
+
+async function notifyIfWithdrawn(response: Response): Promise<void> {
+  if (response.status !== 403 || (await readErrorCode(response)) !== "ACCOUNT_WITHDRAWN") return;
+  for (const listener of Array.from(withdrawnListeners)) {
+    try {
+      listener();
+    } catch (error) {
+      console.warn("[onAccountWithdrawn]", error);
+    }
+  }
+}
+
 function signedOutAbortError(): Error {
   const error = new Error("로그아웃해서 요청을 멈췄어요.");
   error.name = "AbortError";
@@ -150,6 +171,7 @@ export async function apiFetch(
     const response = await send(url, init, controller.signal);
     // 응답이 먼저 도착했어도 그사이 로그아웃했으면 이전 사용자의 응답을 넘기지 않는다
     throwIfAborted(controller.signal);
+    await notifyIfWithdrawn(response);
     return response;
   } finally {
     inFlight.delete(controller);

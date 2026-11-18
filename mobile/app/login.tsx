@@ -8,7 +8,7 @@ import {
   Text,
   View,
 } from "react-native";
-import { useAuth } from "../src/auth/AuthProvider";
+import { useAuth, useSignInError } from "../src/auth/AuthProvider";
 import { theme } from "../src/theme";
 import { isAppleSignInAvailable, SignInResult } from "../src/auth/platform";
 
@@ -44,9 +44,12 @@ function messageForFailure(result: Extract<SignInResult, { ok: false }>): string
 export default function LoginScreen(): React.JSX.Element {
   const router = useRouter();
   const { status, signInWithGoogle, signInWithApple } = useAuth();
+  const { error: signInError, clearError: clearSignInError } =
+    useSignInError?.() ?? { error: null, clearError: () => {} };
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [busy, setBusy] = useState(false);
   const [errorCopy, setErrorCopy] = useState("");
+  const displayedError = errorCopy || signInError || "";
   const busyRef = useRef(false);
   const navigatedRef = useRef(false);
 
@@ -85,6 +88,7 @@ export default function LoginScreen(): React.JSX.Element {
       busyRef.current = true;
       setBusy(true);
       setErrorCopy("");
+      clearSignInError();
 
       try {
         const result =
@@ -101,7 +105,7 @@ export default function LoginScreen(): React.JSX.Element {
         setBusy(false);
       }
     },
-    [goHome, signInWithApple, signInWithGoogle]
+    [clearSignInError, goHome, signInWithApple, signInWithGoogle]
   );
 
   return (
@@ -158,9 +162,9 @@ export default function LoginScreen(): React.JSX.Element {
           </View>
         )}
 
-        {errorCopy ? (
+        {displayedError ? (
           <Text accessibilityLiveRegion="polite" style={styles.errorCopy}>
-            {errorCopy}
+            {displayedError}
           </Text>
         ) : null}
       </View>

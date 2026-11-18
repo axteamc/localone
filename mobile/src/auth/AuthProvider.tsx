@@ -7,7 +7,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { abortInFlightRequests, rawRegisterSession } from "./apiFetch";
+import { abortInFlightRequests, apiFetch, onAccountWithdrawn, rawRegisterSession } from "./apiFetch";
 import {
   SignInResult,
   startAppleSignIn,
@@ -28,12 +28,22 @@ export interface AuthContextValue {
 /** AUTH-2 G9: useAuth() 모양은 그대로 두고, 로그아웃·탈퇴는 별도 컨텍스트로 낸다. */
 export interface AccountActionsValue {
   signOut: () => Promise<void>;
+  /** AUTH-3: DELETE /api/v1/me → 성공(또는 이미 탈퇴)이면 이 기기 로그아웃 */
+  withdrawAccount: () => Promise<WithdrawResult>;
 }
+
+export type WithdrawResult = { ok: true } | { ok: false; errorMessage: string };
 
 export type SignOutCleanup = () => void | Promise<void>;
 
+export interface SignInErrorContextValue {
+  error: string | null;
+  clearError: () => void;
+}
+
 const AuthContext = createContext<AuthContextValue | null>(null);
 const AccountActionsContext = createContext<AccountActionsValue | null>(null);
+const SignInErrorContext = createContext<SignInErrorContextValue | null>(null);
 
 // AUTH-2 G5: 기기 예약 알림 취소·화면 밖 캐시 비우기. 모듈 단위라 화면이 언마운트될 때 해제한다.
 const signOutCleanups = new Set<SignOutCleanup>();
@@ -52,6 +62,16 @@ async function runSignOutCleanups(): Promise<void> {
   for (const result of results) {
     // C6 #16: 하나가 실패해도 나머지는 돌고, 실패는 숨기지 않고 남긴다
     if (result.status === "rejected") console.warn("[signOut cleanup]", result.reason);
+  }
+}
+
+async function parseErrorCode(res: Response): Promise<string | undefined> {
+  try {
+    const body: unknown = await res.clone().json();
+    const error = (body as { error?: { code?: unknown } } | null)?.error;
+    return typeof error?.code === "string" ? error.code : undefined;
+  } catch {
+    return undefined; // 본문이 JSON이 아니면 코드 없음으로 본다
   }
 }
 
@@ -81,6 +101,8 @@ export function AuthProvider({
 }): React.JSX.Element {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [userId, setUserId] = useState<string | null>(null);
+  const [signInError, setSignInError] = useState<string | null>(null);
+  const clearSignInError = useCallback(() => setSignInError(null), []);
   const mountedRef = useRef(true);
   const generationRef = useRef(0);
   const statusRef = useRef<AuthStatus>("loading");
@@ -121,15 +143,32 @@ export function AuthProvider({
               ? body.user_id
               : null;
           if (resolvedId) {
+            setSignInError(null);
             setUserId(resolvedId);
             setStatus("signedIn");
             return { ok: true };
           }
         }
+        const errorCode = await parseErrorCode(res);
         const errorMessage = await parseErrorMessage(res);
-        if (mountedRef.current && generationRef.current === gen) {
-          setUserId(null);
-          setStatus("signedOut");
+        if (!mountedRef.current || generationRef.current !== gen) {
+          return { ok: false, reason: "cancelled" };
+        }
+        setUserId(null);
+        setStatus("signedOut");
+        if (errorCode === "ACCOUNT_WITHDRAWN") {
+          const withdrawnMessage = errorMessage ?? "탈퇴한 계정이에요.";
+          setSignInError(withdrawnMessage);
+          try {
+            await supabase.auth.signOut({ scope: "local" });
+          } catch (error) {
+            console.warn("[signOut withdrawn]", error);
+          }
+          return {
+            ok: false,
+            reason: "failed",
+            errorMessage: withdrawnMessage,
+          };
         }
         return {
           ok: false,
@@ -302,13 +341,58 @@ export function AuthProvider({
     [status, userId, signInWithGoogle, signInWithApple]
   );
 
-  const actions = useMemo<AccountActionsValue>(() => ({ signOut }), [signOut]);
+  // AUTH-3 W2: 다른 기기에서 탈퇴한 계정의 응답(403 ACCOUNT_WITHDRAWN)이 오면 이 기기도 로그아웃
+  useEffect(() => onAccountWithdrawn(() => void signOut()), [signOut]);
+
+  const withdrawRef = useRef<Promise<WithdrawResult> | null>(null);
+
+  // AUTH-3 계약 P4 골격
+  const withdrawAccount = useCallback((): Promise<WithdrawResult> => {
+    if (withdrawRef.current) return withdrawRef.current; // #22 연타 1회
+    const run = (async (): Promise<WithdrawResult> => {
+      try {
+        const res = await apiFetch("/api/v1/me", { method: "DELETE" });
+        if (res.ok || (res.status === 403 && (await parseErrorCode(res)) === "ACCOUNT_WITHDRAWN")) {
+          await signOut(); // W5
+          return { ok: true };
+        }
+        return {
+          ok: false,
+          errorMessage: (await parseErrorMessage(res)) ?? "탈퇴하지 못했어요. 다시 시도해 주세요.",
+        };
+      } catch {
+        return { ok: false, errorMessage: "서버에 연결하지 못했어요." };
+      }
+    })().finally(() => {
+      withdrawRef.current = null;
+    });
+    withdrawRef.current = run;
+    return run;
+  }, [signOut]);
+
+  const actions = useMemo<AccountActionsValue>(
+    () => ({ signOut, withdrawAccount }),
+    [signOut, withdrawAccount]
+  );
+
+  const signInErrorValue = useMemo<SignInErrorContextValue>(
+    () => ({ error: signInError, clearError: clearSignInError }),
+    [signInError, clearSignInError]
+  );
 
   return (
     <AuthContext.Provider value={value}>
-      <AccountActionsContext.Provider value={actions}>{children}</AccountActionsContext.Provider>
+      <AccountActionsContext.Provider value={actions}>
+        <SignInErrorContext.Provider value={signInErrorValue}>{children}</SignInErrorContext.Provider>
+      </AccountActionsContext.Provider>
     </AuthContext.Provider>
   );
+}
+
+const NOOP_SIGN_IN_ERROR: SignInErrorContextValue = { error: null, clearError: () => {} };
+
+export function useSignInError(): SignInErrorContextValue {
+  return useContext(SignInErrorContext) ?? NOOP_SIGN_IN_ERROR;
 }
 
 export function useAccountActions(): AccountActionsValue {

@@ -55,6 +55,9 @@ def create_app(
         return error_response(exc.status_code, exc.code, exc.message, exc.detail)
 
     app.include_router(auth_router)
+    from app.routers.me import router as me_router  # AUTH-3 탈퇴
+
+    app.include_router(me_router)
     # ── [/auth-D] ──
 
     if settings.app_env in CORS_ENVS:

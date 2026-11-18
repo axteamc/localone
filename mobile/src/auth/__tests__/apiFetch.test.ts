@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { abortInFlightRequests, apiFetch } from "../apiFetch";
+import { abortInFlightRequests, apiFetch, onAccountWithdrawn } from "../apiFetch";
 import { supabase } from "../supabase";
 
 jest.mock("../supabase", () => ({
@@ -284,5 +284,50 @@ describe("apiFetch abort on sign-out (AUTH-2-P2)", () => {
       name: "AbortError",
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe("apiFetch account withdrawn signal (AUTH-3-P2)", () => {
+  const fetchMock =
+    jest.fn<(input: RequestInfo | URL, init?: RequestInit) => Promise<Response>>();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    globalThis.fetch = fetchMock as unknown as typeof globalThis.fetch;
+    mockedGetSession.mockResolvedValue({
+      data: { session: { access_token: "token-initial" } as never },
+      error: null,
+    });
+  });
+
+  test("apiFetch_account_withdrawn_signs_out", async () => {
+    const listener = jest.fn<() => void>();
+    const off = onAccountWithdrawn(listener);
+    try {
+      fetchMock.mockResolvedValueOnce(
+        makeJsonResponse(403, { error: { code: "ACCOUNT_WITHDRAWN", message: "탈퇴한 계정이에요.", detail: "" } })
+      );
+      const res = await apiFetch("/api/v1/me/loan-plans");
+      expect(res.status).toBe(403);
+      expect(await res.json()).toMatchObject({ error: { code: "ACCOUNT_WITHDRAWN" } }); // 본문은 그대로
+      expect(listener).toHaveBeenCalledTimes(1);
+
+      // 다른 403·성공은 알리지 않는다
+      fetchMock.mockResolvedValueOnce(
+        makeJsonResponse(403, { error: { code: "FORBIDDEN", message: "x", detail: "" } })
+      );
+      fetchMock.mockResolvedValueOnce(makeJsonResponse(200, { ok: true }));
+      await apiFetch("/api/v1/a");
+      await apiFetch("/api/v1/b");
+      expect(listener).toHaveBeenCalledTimes(1);
+    } finally {
+      off();
+    }
+    // 해제 뒤에는 불리지 않는다
+    fetchMock.mockResolvedValueOnce(
+      makeJsonResponse(403, { error: { code: "ACCOUNT_WITHDRAWN", message: "x", detail: "" } })
+    );
+    await apiFetch("/api/v1/c");
+    expect(listener).toHaveBeenCalledTimes(1);
   });
 });
