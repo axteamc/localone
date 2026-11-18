@@ -166,6 +166,19 @@ export async function getFrequentLibraries(limit = 3): Promise<VisitRecord[]> {
   return FAKE_VISITS.slice(0, Math.max(0, limit));
 }
 
+// ── 홈 큐브 처음 주인공 설정 (heroPref, VISIT-1 V3 2026-11-18) ───────────
+let fakeHeroRule: "nearest" | "recent" = "nearest";
+export async function getHeroRule(): Promise<"nearest" | "recent"> {
+  return fakeHeroRule;
+}
+export async function setHeroRule(rule: "nearest" | "recent"): Promise<void> {
+  fakeHeroRule = rule;
+}
+/** 가짜 방문 기록에서 마지막으로 간 곳(101 정독, 11-15) */
+export async function getRecentVisitedLibraryId(): Promise<number | null> {
+  return 101;
+}
+
 // ── 가짜 #9 응답 (core LIB-0 C7, VISIT-1b C7) ──────────────────────────
 export type Book = {
   isbn13: string;

@@ -18,3 +18,4 @@ export {
 } from "../../lib/publicApi";
 export { searchRegions, type Region } from "../../lib/regions";
 export { getDefaultLibrary, getFrequentLibraries, getLastRegion, setLastRegion, type VisitRecord } from "../../lib/visits";
+export { getHeroRule, getRecentVisitedLibraryId, setHeroRule } from "./heroPref";

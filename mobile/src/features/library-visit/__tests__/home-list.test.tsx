@@ -16,6 +16,7 @@ const path = require("path") as { resolve(...p: string[]): string; join(...p: st
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn() }),
+  useFocusEffect: (cb: () => void) => (require("react") as typeof import("react")).useEffect(cb, [cb]),
 }));
 
 jest.mock("../../../auth/AuthProvider", () => ({
@@ -73,12 +74,10 @@ describe("VISIT-1-P1 home list", () => {
   test("starts at current location and lists nearby", async () => {
     await render(<HomeScreen />);
     expect(await screen.findByText("정독도서관")).toBeTruthy();
-    // 종로·남산은 같은 남서 방향이라 가까운 종로가 먼저 보이고 남산은 "+1곳"으로 넘겨 본다
+    // 2026-11-18 큐브 배치: 가장 가까운 정독이 주인공, 종로·남산은 가장자리에 걸친 큐브로 함께 보인다
+    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/정독도서관/);
     expect(screen.getByText("종로도서관")).toBeTruthy();
-    expect(screen.queryByText("남산도서관")).toBeNull();
-    await fireEvent.press(screen.getByLabelText("같은 방향 도서관 1곳 더 보기"));
     expect(screen.getByText("남산도서관")).toBeTruthy();
-    expect(screen.queryByText("종로도서관")).toBeNull();
     expect(m.fetchLibrariesNearby).toHaveBeenCalledTimes(1);
     expect(m.fetchLibrariesNearby).toHaveBeenCalledWith(37.5815, 126.9831, 3, expect.anything());
     expect(screen.queryByText("위치 허용하기")).toBeNull();

@@ -1,11 +1,12 @@
-// 홈 (계약서 library-visit.md VISIT-1). 시안 C(2026-11-17 확정): 지도 대신 파사드 격자 + 방위 블록(FacadeHome).
+// 홈 (계약서 library-visit.md VISIT-1). 지도 대신 파사드 격자 + 등각 큐브(FacadeHome, 2026-11-18 큐브 배치).
 // 위치·주변 조회·도서관 찾기 창은 그대로, 지도 끌기·"이 지역에서 다시 찾기"는 없다(지도는 책 검색 LIB-2로 이관).
 // VISIT-1b: 아래에서 올려 보는 홈 하단 창(HomeSheet). 안내 카드·아래 가운데 버튼은 창 위쪽 끝에 붙어 함께 움직인다.
-import { useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import type { LibrarySummary, Region } from "./deps";
-import { onFill, theme, actionColors } from "../../theme";
+import { getHeroRule, getRecentVisitedLibraryId, setHeroRule, type LibrarySummary, type Region } from "./deps";
+import type { HeroRule } from "./direction";
+import { theme, actionColors } from "../../theme";
 import { FacadeHome } from "./FacadeHome";
 import { FindLibrarySheet } from "./FindLibrarySheet";
 import { HomeSheet } from "./HomeSheet";
@@ -43,6 +44,67 @@ export function HomeScreen() {
       });
     },
     [router]
+  );
+
+  // 처음 주인공(2026-11-18 D): 기본은 가장 가까운 곳, "최근 방문"은 기기에 둔 설정(홈에서 주인공 큐브 꾹 누르기)
+  const [heroRule, setRule] = useState<HeroRule>("nearest");
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+  // 저장값은 처음 한 번 읽는다. 그 전에 사용자가 고르면 늦게 온 이전 저장값은 버린다(화면·저장 모두 새 설정)
+  const ruleTouched = useRef(false);
+  useEffect(() => {
+    void getHeroRule()
+      .catch((): HeroRule => "nearest")
+      .then((rule) => {
+        if (alive.current && !ruleTouched.current) setRule(rule);
+      });
+  }, []);
+
+  // 최근 방문: 홈은 방문 페이지(루트 Stack)로 가도 unmount되지 않으므로 홈에 돌아올 때(focus)와 "최근 방문한 곳"을
+  // 고를 때 다시 읽는다. 순번으로 늦은 응답은 버린다.
+  // latest = 마지막으로 읽은 값, shown = 파사드에 넘긴 값. V3는 "보는 위치·목록·설정이 바뀌면" 고른 주인공을 되돌리므로
+  // 홈 복귀만으로는 shown을 바꾸지 않는다(FacadeHome은 recentId가 바뀌면 고른 주인공을 처음으로 되돌린다).
+  // shown은 처음 읽었을 때, 설정을 고를 때, 보는 위치·목록이 바뀔 때(어차피 되돌리는 때) latest로 맞춘다.
+  const [recent, setRecent] = useState<{ latest: number | null; shown: number | null; read: boolean }>({
+    latest: null,
+    shown: null,
+    read: false,
+  });
+  const recentSeq = useRef(0);
+  const readRecent = useCallback((apply: boolean) => {
+    const mine = ++recentSeq.current;
+    void getRecentVisitedLibraryId()
+      .catch(() => null)
+      .then((id) => {
+        if (!alive.current || mine !== recentSeq.current) return;
+        setRecent((r) => ({ latest: id, shown: apply || !r.read ? id : r.shown, read: true }));
+      });
+  }, []);
+  useFocusEffect(useCallback(() => readRecent(false), [readRecent]));
+  const [seenView, setSeenView] = useState({ libraries: home.libraries, viewSeq: home.viewSeq, center: home.center });
+  if (seenView.libraries !== home.libraries || seenView.viewSeq !== home.viewSeq || seenView.center !== home.center) {
+    // 렌더 중 상태 맞추기(React "이전 값 저장" 방식): FacadeHome이 같은 렌더에서 목록 변경과 새 최근 방문을 함께 받는다
+    setSeenView({ libraries: home.libraries, viewSeq: home.viewSeq, center: home.center });
+    if (recent.shown !== recent.latest) setRecent({ ...recent, shown: recent.latest });
+  }
+
+  const changeHeroRule = useCallback(
+    (rule: HeroRule) => {
+      ruleTouched.current = true;
+      setRule(rule);
+      void setHeroRule(rule);
+      if (rule === "recent") {
+        // 홈 복귀 때 읽은 값으로 바로 보여 주고, 기록이 그 뒤 바뀌었을 수 있으니 한 번 더 읽어 맞춘다
+        setRecent((r) => ({ ...r, shown: r.latest }));
+        readRecent(true);
+      }
+    },
+    [readRecent]
   );
 
   const [findOpen, setFindOpen] = useState(false);
@@ -141,8 +203,10 @@ export function HomeScreen() {
           libraries={home.libraries}
           originTitle={originTitle}
           originSub={`${home.radiusKm}KM`}
-          radiusKm={home.radiusKm}
           selectedId={home.selectedId}
+          heroRule={heroRule}
+          recentId={recent.shown}
+          onHeroRuleChange={changeHeroRule}
           onLibraryPress={openLibrary}
         />
 
@@ -177,7 +241,7 @@ export function HomeScreen() {
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.panelFrosted },
-  // 건축 프레임 바: 파사드 상단 줄눈에 맞물리는 직각 가까운 모서리 + 1px 줄눈선 + 오른쪽 마이크로 베벨 "도서관 찾기" 태그
+  // 건축 프레임 바: 파사드 상단 줄눈에 맞물리는 입력 칸(곡률 9) + 1px 줄눈선 + 오른쪽 무광 판 "도서관 찾기" 버튼
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -189,7 +253,7 @@ const styles = StyleSheet.create({
     paddingRight: 6,
     borderWidth: 1,
     borderColor: theme.colors.seamHairline,
-    borderRadius: 6,
+    borderRadius: theme.radii.infoCard,
     backgroundColor: theme.colors.paper,
   },
   searchBody: { flex: 1, paddingVertical: 6, paddingLeft: 12 },
@@ -197,12 +261,10 @@ const styles = StyleSheet.create({
   findButton: {
     paddingVertical: 4,
     paddingHorizontal: 10,
-    borderRadius: theme.radii.block + 1,
-    borderWidth: 1,
-    borderColor: theme.colors.seamHairline,
-    backgroundColor: theme.colors.fill1,
+    borderRadius: theme.radii.control,
+    ...ACT.primary,
   },
-  findText: { fontSize: 12, fontWeight: "500", color: onFill(theme.colors.fill1) }, // 채움 위 글자색 자동(디자인_기준 §2, 사후 검토 ③-5)
+  findText: { fontSize: 12, fontWeight: "500", ...ACT.primaryText },
   body: { flex: 1, overflow: "hidden" },
   card: { alignItems: "center", gap: 10, padding: 20 },
   cardText: { fontSize: 15, textAlign: "center", color: theme.colors.text },

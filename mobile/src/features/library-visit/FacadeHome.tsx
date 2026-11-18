@@ -1,378 +1,493 @@
-// 홈 파사드(시안 C): 프로스티드 유리 격자 + 수평 스케일 룰러 + 중앙 + 기점 + 3D 컬러 스파인 블록 (VISIT-1 총정리 §2).
-// 지도는 쓰지 않는다. 색·곡률은 theme 토큰만 쓴다.
-import React, { useEffect, useMemo, useState } from "react";
-import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type ViewStyle } from "react-native";
-import { onFill, theme, type as T } from "../../theme";
+// 홈 파사드 — 등각 큐브(C2) + 주인공 포커스·가장자리 걸침 (VISIT-1 V3·V18, 2026-11-18 D 결정 "홈 큐브 배치").
+// 기준 시안: 개발산출물/시안/홈_파사드_큐브_시안.html "3. 실제 배치 미리보기 v2". 지도는 쓰지 않는다. 색·곡률은 theme 토큰만.
+// 세 플랫폼 같은 코드: 큐브 면은 View + transform(rotate·skewY·scale), 끌기는 PanResponder, 움직임은 Animated(useNativeDriver: false — 웹과 같게).
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import {
+  Animated,
+  Easing,
+  PanResponder,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  type LayoutChangeEvent,
+} from "react-native";
+import { mix, onFill, theme, type as T } from "../../theme";
 import type { LatLng, LibrarySummary } from "./deps";
 import {
+  CUBE_H,
+  CUBE_W,
   assignSpineTones,
-  groupLibrariesForFacade,
-  type FacadeGroup,
+  facadeItems,
+  heroScene,
+  initialHeroId,
+  pickByDrag,
+  ringScene,
+  shownItems,
+  type CubePlace,
+  type CubeRole,
   type FacadeItem,
-  type FacadeKind,
-  type FacadeSlot,
+  type FacadeScene,
+  type HeroRule,
   type SpineTone,
 } from "./direction";
 import { formatDistance } from "./format";
 import { snapOffsets } from "./useHomeSheet";
 
 const { colors: C, radii: R } = theme;
-const BLOCK_BORDER = 1; // styles.block borderWidth
-const BODY_PAD_V = 8;
-const BODY_PAD_H = 9;
-const PILL_H = 15; // "+N곳 ↻" 알약(글자 10 + 위아래 여백)
-const GRID_COLS = 4;
-const GRID_ROWS = 4;
-const TICKS = 41;
+
+/** 움직임 0.8초, 끝으로 갈수록 천천히(시안 cubic-bezier(.22,1,.36,1)) */
+export const MOVE_MS = 800;
+const EASE = Easing.bezier(0.22, 1, 0.36, 1);
+/** 주인공 큐브 꾹 누르기(처음 주인공 설정 메뉴) */
+export const LONG_PRESS_MS = 600;
+/** 기점에 맞춘 격자 간격(시안 96px). 따로 그린 축 선은 없다 — 기점을 지나는 격자선이 축 */
+const GRID_STEP = 96;
+const PLINTH_W = 58;
+const PLINTH_H = 44;
+/** 재기 전(시험·첫 그리기) 판 크기: 390×844 웹에서 하단 창 위로 보이는 판 */
+const FALLBACK_W = 390;
+const FALLBACK_H = 325;
 
 export type FacadeHomeProps = {
   center: LatLng;
-  /** 보는 위치를 다시 정할 때마다 바뀐다. 바뀌면 "+N곳 전환"으로 넘겨 둔 칸을 처음으로 되돌린다 */
+  /** 보는 위치를 다시 정할 때마다 바뀐다. 바뀌면 주인공·전체 보기를 처음으로 되돌린다 */
   viewSeq?: number;
   libraries: LibrarySummary[];
-  /** 기점 매스에 새기는 이름. 예: "현위치", "임시 시작점" */
+  /** 기점에 새기는 이름. 예: "현위치", "임시 시작점" */
   originTitle: string;
   originSub: string;
-  radiusKm: number;
+  /** 찾기 창에서 고른 도서관(V12). 판에 있으면 그곳이 주인공 */
   selectedId: number | null;
+  /** 처음 주인공 설정(기기 저장). 기본 "nearest" */
+  heroRule?: HeroRule;
+  /** 최근 방문한 도서관 id(heroRule "recent"일 때) */
+  recentId?: number | null;
+  onHeroRuleChange?(rule: HeroRule): void;
   onLibraryPress(lib: LibrarySummary): void;
 };
+
+const TEXT = {
+  menuTitle: "홈을 열면 처음 크게 보일 도서관",
+  nearest: "가장 가까운 곳",
+  recent: "최근 방문한 곳",
+  basic: "기본",
+  ring: "주변 도서관 전체 보기",
+  back: "원래 도서관 크게 보기",
+};
+
+function toneColor(tone: SpineTone): string {
+  return tone === "closed" ? C.pinClosed : C[tone];
+}
+
+function statusOf(lib: LibrarySummary): string {
+  if (lib.today.is_closed === true) return "CLOSED";
+  if (lib.today.is_closed === false) return "OPEN";
+  return "—";
+}
 
 function hoursOf(lib: LibrarySummary): string {
   if (lib.today.is_closed === true) return "오늘 휴관";
   return lib.today.hours_text ?? "";
 }
 
-function spineColor(tone: SpineTone): string {
-  return tone === "closed" ? C.pinClosed : C[tone];
-}
-
-/** 칸별 자리. 맨 아래는 홈 하단 창(HomeSheet)이 덮으므로 블록은 위쪽 절반에 모은다.
- *  네 칸(NW·NE·SW·SE) 세로 자리는 판 높이를 잰 뒤 quadLayout()이 px로 정한다(아래는 재기 전 자리) */
-const SLOT_STYLE: Record<FacadeSlot, ViewStyle> = {
-  NW: { left: 16, width: "44%", top: "5%" },
-  NE: { right: 22, width: "44%", top: "3%" },
-  SW: { left: 16, width: "44%", bottom: "52%" },
-  SE: { right: 22, width: "44%", bottom: "51%" },
-  W: { left: 16, width: "44%", top: "14%" },
-  E: { right: 22, width: "44%", top: "14%" },
-  MAIN: { left: 28, right: 34, top: "8%" },
-};
-
-/** 넓은 화면(태블릿·가로 휴대폰)에서 블록이 늘어나지 않게 폭 상한, 가운데 축 양옆에 붙인다(2026-11-18 D) */
-export const BLOCK_W_MAX = 300;
-const AXIS_GAP_W = 7; // 서쪽 블록 오른쪽 끝 ~ 축(휴대폰에서 지금 자리와 같다)
-const AXIS_GAP_E = 2; // 축 ~ 동쪽 블록 왼쪽 끝
-
-/** 판 폭에 따른 블록 가로 자리. 휴대폰(폭 44% ≤ 300)에서는 지금 퍼센트 자리와 거의 같다 */
-export function horizontalPlace(slot: FacadeSlot, boardWidth: number): { left: number; width: number } {
-  const mid = boardWidth / 2;
-  if (slot === "MAIN") {
-    const width = Math.min(boardWidth - 62, BLOCK_W_MAX + 60);
-    return { left: Math.round(mid - width / 2 - 3), width };
-  }
-  const width = Math.min(Math.round(boardWidth * 0.44), BLOCK_W_MAX);
-  const west = slot === "NW" || slot === "SW" || slot === "W";
-  return { left: Math.round(west ? mid - AXIS_GAP_W - width : mid + AXIS_GAP_E), width };
-}
-
-const BLOCK_H = 104;
-/** 작은 화면에서 줄일 수 있는 블록 높이 하한(코드·이름·거리 줄이 남는 높이) */
-const BLOCK_H_MIN = 64;
-/** 이보다 낮으면 지역 줄을 뺀다 */
-const BLOCK_H_FULL_TEXT = 90;
-const QUAD_TOP = 10; // 판 위 여백
-const QUAD_STAGGER = 6; // 같은 줄 두 블록의 어긋남
-const QUAD_BOTTOM = 6; // 남쪽 블록 아래 끝과 창 위쪽 끝 사이
-const PLINTH_W = 78;
-const PLINTH_H = 62;
-/** 북·남 줄 사이 = 기점 매스 높이 + 위아래 1px. 기점이 블록 글자를 덮지도, 블록에 가려지지도 않게(2026-11-18 D 지적 ②) */
-const QUAD_MID = PLINTH_H + 2;
-/** 한 줄 배치(W·E·MAIN): 블록 아래 끝(두께 그림자 8 포함)과 기점 위 끝 사이 */
-const UPPER_GAP = 8 + 8;
-const ORIGIN_RATIO = 0.4;
-
-export type QuadLayout = {
-  /** 하단 창이 평소 높이(half)일 때 창 위로 보이는 판 높이 */
-  visible: number;
-  blockH: number;
-  top: Record<"NW" | "NE" | "SW" | "SE", number>;
-  /** 룰러·기점의 세로 가운데 */
-  originY: number;
-};
-
+/** 윗면 이름 한 줄 길이(큐브 기본 좌표). 윗면 마름모 가운데 줄 110.8에서 양옆 여백을 뺀 값 */
+const TOP_LINE = 92;
+const TOP_LS = 1;
 /**
- * ③-2: 네 칸 배치의 세로 자리. 파사드와 하단 창은 같은 영역을 쓰므로, 처음 열린 홈(half)에서
- * 남쪽 블록까지 창 위쪽 끝(snapOffsets(h).half) 위에 오게 한다. 자리가 모자라면 블록 높이를 줄인다.
+ * 윗면 이름 글자 크기·줄 수(큐브 기본 좌표). 이름 줄이는 규칙은 디자인 뒤라(D 결정) 그 전까지는
+ * 7자 이상이면 두 줄로 나누고, 한 줄이 윗면 안에 들어오게 글자를 줄인다 — 기본값(Claude, 임시)
  */
-export function quadLayout(boardHeight: number): QuadLayout {
-  const visible = snapOffsets(boardHeight).half;
-  const fit = Math.floor((visible - QUAD_TOP - QUAD_STAGGER - QUAD_BOTTOM - QUAD_MID - QUAD_STAGGER) / 2);
-  const blockH = Math.max(BLOCK_H_MIN, Math.min(BLOCK_H, fit));
-  const SE = visible - QUAD_BOTTOM - blockH;
-  const SW = SE - QUAD_STAGGER;
-  const NE = QUAD_TOP;
-  const NW = NE + QUAD_STAGGER;
-  return { visible, blockH, top: { NW, NE, SW, SE }, originY: Math.round((NW + blockH + SW) / 2) };
+export function topFont(name: string, role: CubeRole, scale: number): { fontSize: number; lines: 1 | 2; width: number } {
+  const len = Math.max(1, [...name].length);
+  const lines = len > 6 ? 2 : 1;
+  const per = Math.ceil(len / lines);
+  const want = role === "hero" ? 16 : 12.5 / scale; // 걸침·전체 보기는 화면에서 약 12.5px
+  const fontSize = Math.max(6, Math.min(want, TOP_LINE / per - TOP_LS));
+  return { fontSize, lines, width: Math.ceil(per * (fontSize + TOP_LS)) + 2 };
 }
 
-export type UpperLayout = { blockH: number; top: number; originY: number };
+type Anim = { cx: Animated.Value; cy: Animated.Value; scale: Animated.Value };
 
-/**
- * 한 줄 배치(dual·single)의 세로 자리. 퍼센트 자리를 그대로 쓰면 낮은 화면에서 블록이 기점 매스를 덮었다(D 지적 ②).
- * 블록 아래 끝이 기점 위 끝보다 UPPER_GAP 위에 오게 하고, 자리가 모자라면 블록 높이를 줄인다.
- */
-export function upperLayout(boardHeight: number, slot: FacadeSlot): UpperLayout {
-  const originY = Math.round(boardHeight * ORIGIN_RATIO);
-  const limit = originY - PLINTH_H / 2 - UPPER_GAP; // 블록 아래 끝 한계
-  const blockH = Math.max(BLOCK_H_MIN, Math.min(BLOCK_H, limit - QUAD_TOP));
-  const pct = slot === "MAIN" ? 0.08 : 0.14;
-  const top = Math.max(QUAD_TOP, Math.min(Math.round(boardHeight * pct), limit - blockH));
-  return { blockH, top, originY };
-}
-
-function FacadeGrid() {
-  const cells = useMemo(() => Array.from({ length: GRID_COLS * GRID_ROWS }, (_, i) => i), []);
-  return (
-    <View style={styles.grid} pointerEvents="none" testID="facade-grid">
-      {cells.map((i) => (
-        <View key={i} style={styles.bay}>
-          <View style={[styles.rivet, { top: 6, left: 6 }]} />
-          <View style={[styles.rivet, { top: 6, right: 6 }]} />
-          <View style={[styles.rivet, { bottom: 6, left: 6 }]} />
-          <View style={[styles.rivet, { bottom: 6, right: 6 }]} />
-        </View>
-      ))}
-    </View>
-  );
-}
-
-function RulerTrack({ radiusKm, y }: { radiusKm: number; y?: number }) {
-  const half = radiusKm / 2;
-  const third = (radiusKm / 6).toFixed(1);
-  return (
-    <View style={[styles.ruler, y != null ? { top: y } : null]} pointerEvents="none" testID="facade-ruler">
-      <View style={styles.ticks}>
-        {Array.from({ length: TICKS }, (_, i) => (
-          <View key={i} style={[styles.tick, i % 5 === 0 ? styles.tickMajor : null]} />
-        ))}
-      </View>
-      <View style={styles.rulerLabels}>
-        <Text style={styles.rulerText}>{`W ${half}km`}</Text>
-        <Text style={styles.rulerText}>{`${third}km`}</Text>
-        <Text style={styles.rulerText}>{`${third}km`}</Text>
-        <Text style={styles.rulerText}>{`E ${half}km`}</Text>
-      </View>
-    </View>
-  );
-}
-
-function OriginPlinth({ title, sub, y }: { title: string; sub: string; y?: number }) {
-  return (
-    <View style={[styles.plinthWrap, y != null ? { top: y } : null]} pointerEvents="none" testID="facade-origin">
-      <View style={styles.plinthSide} />
-      <View style={styles.plinth}>
-        <View style={styles.cross}>
-          <View style={styles.crossV} />
-          <View style={styles.crossH} />
-        </View>
-        <Text style={styles.plinthTitle}>{title}</Text>
-        <Text style={styles.plinthSub}>{sub}</Text>
-      </View>
-    </View>
-  );
-}
-
-type BlockProps = {
-  group: FacadeGroup;
-  index: number;
+type CubeProps = {
+  item: FacadeItem;
   tone: SpineTone;
-  selected: boolean;
-  /** 네 칸 배치에서 판 높이를 잰 뒤의 세로 자리·높이 */
-  place?: { top: number; height: number };
-  /** 판 폭을 잰 뒤의 가로 자리 */
-  hplace?: { left: number; width: number };
-  onOpen(lib: LibrarySummary): void;
-  onCycle(slot: FacadeSlot, count: number): void;
+  place: CubePlace;
+  anim: Anim;
+  onPress(): void;
+  onLongPress?(): void;
 };
 
-function ReliefLibraryBlock({ group, index, tone, selected, place, hplace, onOpen, onCycle }: BlockProps) {
-  const item: FacadeItem = group.items[index % group.items.length] as FacadeItem;
-  const count = group.items.length;
-  const closed = item.lib.today.is_closed === true;
-  const h = place?.height ?? BLOCK_H;
-  const sub = h >= BLOCK_H_FULL_TEXT ? item.lib.area_label ?? item.lib.address ?? "" : "";
-  const placed: ViewStyle | null = place ? { top: place.top, bottom: undefined, height: h } : null;
-  const across: ViewStyle | null = hplace ? { left: hplace.left, right: undefined, width: hplace.width } : null;
+/** C2 등각 큐브: 윗면 = 색 + 이름, 왼쪽 면 = 상태·거리·주소, 오른쪽 면 = 오늘·방위 */
+function IsoCube({ item, tone, place, anim, onPress, onLongPress }: CubeProps) {
+  const { lib } = item;
+  const fill = toneColor(tone);
+  const hero = place.role === "hero";
+  const label = hero ? `${lib.name} ${formatDistance(item.distanceM)}` : `${lib.name} 크게 보기`;
+  const fs = topFont(lib.name, place.role, place.scale);
+  const quiet = hero ? null : styles.quiet;
   return (
-    <View style={[styles.blockWrap, SLOT_STYLE[group.slot], placed, across]} testID={`facade-block-${group.slot}`}>
-      {count > 1 ? <View style={[styles.slab, { height: h }]} /> : null}
-      <View style={[styles.layer, { left: 3, top: 4, height: h, backgroundColor: C.surface3 }]} />
-      <View style={[styles.layer, { left: 6, top: 8, height: h, backgroundColor: C.reliefSideDark }]} />
+    <Animated.View
+      testID={hero ? "facade-hero" : `facade-cube-${lib.id}`}
+      accessibilityHint={place.role}
+      style={[
+        styles.cube,
+        {
+          left: Animated.subtract(anim.cx, CUBE_W / 2),
+          top: Animated.subtract(anim.cy, CUBE_H / 2),
+          zIndex: hero ? 4 : place.role === "ring" ? 3 : 2,
+          opacity: place.role === "peek" ? 0.94 : 1,
+          transform: [{ scale: anim.scale }],
+        },
+      ]}
+    >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${item.lib.name} ${formatDistance(item.distanceM)}`}
-        onPress={() => onOpen(item.lib)}
-        style={[styles.block, selected ? styles.blockSelected : null]}
+        accessibilityLabel={label}
+        onPress={onPress}
+        onLongPress={onLongPress}
+        delayLongPress={LONG_PRESS_MS}
+        style={styles.cubeHit}
       >
-        <View style={[styles.spine, { backgroundColor: spineColor(tone) }]}>
-          <View style={styles.slit} />
+        <View style={styles.ground} />
+        <View style={[styles.faceLeft, hero ? styles.faceHero : null]}>
+          <View style={styles.leftTop}>
+            <View style={styles.badge}>
+              <View style={[styles.dot, { backgroundColor: fill }]} />
+              <Text style={styles.status}>{statusOf(lib)}</Text>
+            </View>
+            <Text style={styles.dist}>{formatDistance(item.distanceM)}</Text>
+          </View>
+          <View style={quiet}>
+            <Text style={styles.lbl}>ADDRESS</Text>
+            <Text numberOfLines={2} style={styles.addr}>
+              {lib.area_label ?? lib.address ?? ""}
+            </Text>
+          </View>
         </View>
-        <View style={styles.blockBody}>
-          <View style={styles.blockHead}>
-            <Text style={styles.code}>{item.code}</Text>
+        <View style={[styles.faceRight, hero ? styles.faceHero : null]}>
+          <View style={quiet}>
+            <Text style={styles.lbl}>TODAY</Text>
+            <Text numberOfLines={2} style={[styles.hours, lib.today.is_closed === true ? styles.closed : null]}>
+              {hoursOf(lib)}
+            </Text>
           </View>
-          <Text numberOfLines={1} style={styles.name}>
-            {item.lib.name}
+          <View style={[styles.bearWrap, quiet]}>
+            <Text style={styles.lbl}>BEARING</Text>
+            <Text style={styles.bear}>{item.code}</Text>
+          </View>
+        </View>
+        <View style={[styles.faceTop, { backgroundColor: fill }]} />
+        <View style={styles.topTextWrap} pointerEvents="none">
+          <Text
+            numberOfLines={fs.lines}
+            style={[styles.topText, { fontSize: fs.fontSize, lineHeight: fs.fontSize * 1.2, width: fs.width, color: mix(fill, C.inkStrong, 0.4) }]}
+          >
+            {lib.name}
           </Text>
-          {sub ? (
-            <Text numberOfLines={1} style={styles.area}>
-              {sub}
-            </Text>
-          ) : null}
-          <View style={styles.edge}>
-            <Text style={styles.edgeText}>{formatDistance(item.distanceM)}</Text>
-            <Text numberOfLines={1} style={[styles.edgeText, closed ? styles.closedText : null]}>
-              {hoursOf(item.lib)}
-            </Text>
-          </View>
         </View>
       </Pressable>
-      {/* 버튼 안 버튼 금지(웹 <button> 중첩 오류, 시연 전 개선 S1 W-3): 블록 버튼의 형제로 두고 머리 줄 오른쪽에 겹친다 */}
-      {count > 1 ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={`같은 방향 도서관 ${count - 1}곳 더 보기`}
-          onPress={() => onCycle(group.slot, count)}
-          style={styles.stackPill}
-          testID={`facade-cycle-${group.slot}`}
-        >
-          <Text style={styles.stackText}>{`+${count - 1}곳 ↻`}</Text>
-        </Pressable>
-      ) : null}
-    </View>
+    </Animated.View>
+  );
+}
+
+/** 기점에 맞춘 격자. 기점과 함께 움직인다 */
+function OriginGrid({ origin, w, h }: { origin: Animated.ValueXY; w: number; h: number }) {
+  const nx = Math.ceil(w / GRID_STEP) + 1;
+  const ny = Math.ceil(h / GRID_STEP) + 1;
+  const xs = Array.from({ length: nx * 2 + 1 }, (_, i) => (i - nx) * GRID_STEP);
+  const ys = Array.from({ length: ny * 2 + 1 }, (_, i) => (i - ny) * GRID_STEP);
+  return (
+    <Animated.View
+      pointerEvents="none"
+      testID="facade-grid"
+      style={[styles.gridLayer, { left: origin.x, top: origin.y }]}
+    >
+      {xs.map((x) => (
+        <View key={`v${x}`} style={[styles.gridV, { left: x, top: -ny * GRID_STEP, height: ny * 2 * GRID_STEP }]} />
+      ))}
+      {ys.map((y) => (
+        <View key={`h${y}`} style={[styles.gridH, { top: y, left: -nx * GRID_STEP, width: nx * 2 * GRID_STEP }]} />
+      ))}
+    </Animated.View>
   );
 }
 
 export function FacadeHome(props: FacadeHomeProps) {
-  const { center, viewSeq, libraries, originTitle, originSub, radiusKm, selectedId, onLibraryPress } = props;
-  const layout = useMemo(() => groupLibrariesForFacade(center, libraries), [center, libraries]);
-  const tones = useMemo(() => assignSpineTones(layout), [layout]);
-  const [indices, setIndices] = useState<Partial<Record<FacadeSlot, number>>>({});
+  const { center, viewSeq, libraries, originTitle, originSub, selectedId, onLibraryPress } = props;
+  const heroRule = props.heroRule ?? "nearest";
+  const recentId = props.recentId ?? null;
+
+  const items = useMemo(() => facadeItems(center, libraries), [center, libraries]);
+  const tones = useMemo(() => assignSpineTones(items), [items]);
+
   const [boardH, setBoardH] = useState(0);
   const [boardW, setBoardW] = useState(0);
   const onLayout = (e: LayoutChangeEvent) => {
     setBoardH(e.nativeEvent.layout.height);
     setBoardW(e.nativeEvent.layout.width);
   };
-  const quad = layout.kind === "quad" && boardH > 0 ? quadLayout(boardH) : null;
-  const upper = (slot: FacadeSlot) => (boardH > 0 && !quad ? upperLayout(boardH, slot) : null);
-  const originY = quad?.originY ?? (boardH > 0 ? Math.round(boardH * ORIGIN_RATIO) : undefined);
-  const placeOf = (slot: FacadeSlot): { top: number; height: number } | undefined => {
-    if (quad && slot in quad.top) return { top: quad.top[slot as keyof QuadLayout["top"]], height: quad.blockH };
-    const u = upper(slot);
-    return u ? { top: u.top, height: u.blockH } : undefined;
+  // V18: 하단 창이 평소 높이(half)일 때 창 위로 보이는 판 안에 놓는다
+  const W = boardW > 0 ? boardW : FALLBACK_W;
+  const H = boardH > 0 ? snapOffsets(boardH).half : FALLBACK_H;
+
+  // 사용자가 고른 주인공·전체 보기. 보는 위치·목록·설정이 바뀌면 처음으로
+  const [chosen, setChosen] = useState<number | null>(null);
+  const [ring, setRing] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  useEffect(() => {
+    setChosen(null);
+    setRing(false);
+    setMenuOpen(false);
+  }, [center.lat, center.lng, viewSeq, libraries, heroRule, recentId]);
+
+  const has = (id: number | null) => id != null && items.some((it) => it.lib.id === id);
+  const heroId = has(chosen) ? chosen : has(selectedId) ? selectedId : initialHeroId(items, heroRule, recentId);
+  const shown = useMemo(() => shownItems(items, heroId), [items, heroId]);
+  const scene: FacadeScene = useMemo(
+    () => (heroId == null ? { origin: { x: W / 2, y: H / 2 }, cubes: [] } : ring ? ringScene(shown, W, H) : heroScene(shown, heroId, W, H)),
+    [shown, heroId, ring, W, H]
+  );
+
+  // 큐브마다 움직임 값. 처음 보이는 큐브는 그 자리에서 시작하고, 그 뒤 바뀐 자리로는 0.8초에 걸쳐 옮긴다
+  const anims = useRef(new Map<number, Anim>()).current;
+  const origin = useRef(new Animated.ValueXY(scene.origin)).current;
+  const pan = useRef(new Animated.ValueXY({ x: 0, y: 0 })).current;
+  const hadCubes = useRef(false);
+  for (const c of scene.cubes) {
+    if (!anims.has(c.id)) anims.set(c.id, { cx: new Animated.Value(c.cx), cy: new Animated.Value(c.cy), scale: new Animated.Value(c.scale) });
+  }
+  useEffect(() => {
+    if (scene.cubes.length === 0) {
+      hadCubes.current = false;
+      origin.setValue(scene.origin);
+      return;
+    }
+    if (!hadCubes.current) {
+      hadCubes.current = true;
+      origin.setValue(scene.origin);
+      for (const c of scene.cubes) {
+        const a = anims.get(c.id) as Anim;
+        a.cx.setValue(c.cx);
+        a.cy.setValue(c.cy);
+        a.scale.setValue(c.scale);
+      }
+      return;
+    }
+    const to = (v: Animated.Value | Animated.ValueXY, toValue: number | { x: number; y: number }) =>
+      Animated.timing(v, { toValue, duration: MOVE_MS, easing: EASE, useNativeDriver: false });
+    const runs = [to(origin, scene.origin)];
+    for (const c of scene.cubes) {
+      const a = anims.get(c.id) as Anim;
+      runs.push(to(a.cx, c.cx), to(a.cy, c.cy), to(a.scale, c.scale));
+    }
+    const all = Animated.parallel(runs);
+    all.start();
+    return () => all.stop();
+  }, [scene, anims, origin]);
+
+  // 빈 판 끌기(주인공 모드만): 지도처럼 끈 반대 방향의 도서관이 주인공. 40px 미만이면 제자리로
+  const live = useRef({ shown, heroId, ring });
+  live.current = { shown, heroId, ring };
+  const responder = useMemo(
+    () =>
+      PanResponder.create({
+        // 큐브·기점 위에서 시작해도 6px 넘게 움직이면 판이 가져간다(그 누름은 취소된다 — 웹 Pressable도 끌기 뒤 눌림으로 치지 않게)
+        onMoveShouldSetPanResponderCapture: (_, g) => !live.current.ring && Math.hypot(g.dx, g.dy) > 6,
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderGrant: () => setMenuOpen(false),
+        onPanResponderMove: (_, g) => pan.setValue({ x: g.dx, y: g.dy }),
+        onPanResponderRelease: (_, g) => {
+          Animated.timing(pan, { toValue: { x: 0, y: 0 }, duration: MOVE_MS, easing: EASE, useNativeDriver: false }).start();
+          const pick = pickByDrag(live.current.shown, live.current.heroId, g.dx, g.dy);
+          if (pick != null) setChosen(pick);
+        },
+        onPanResponderTerminate: () => {
+          Animated.timing(pan, { toValue: { x: 0, y: 0 }, duration: MOVE_MS, easing: EASE, useNativeDriver: false }).start();
+        },
+      }),
+    [pan]
+  );
+
+  const byId = new Map(shown.map((it) => [it.lib.id, it]));
+  const heroPlace = scene.cubes.find((c) => c.role === "hero");
+  const chooseRule = (rule: HeroRule) => {
+    setMenuOpen(false);
+    props.onHeroRuleChange?.(rule);
   };
 
-  // 보는 위치나 목록이 바뀌면 전환해 둔 자리를 처음(가장 가까운 곳)으로 되돌린다
-  useEffect(() => {
-    setIndices({});
-  }, [center.lat, center.lng, viewSeq, libraries]);
-
-  const cycle = (slot: FacadeSlot, count: number) =>
-    setIndices((prev) => ({ ...prev, [slot]: ((prev[slot] ?? 0) + 1) % count }));
-
   return (
-    <View style={styles.board} testID="facade-board" onLayout={onLayout}>
-      <FacadeGrid />
-      <View style={styles.axis} pointerEvents="none" />
-      <RulerTrack radiusKm={radiusKm} y={originY} />
-      {layout.groups.map((g) => {
-        const idx = indices[g.slot] ?? 0;
-        const shown = g.items[idx % g.items.length] as FacadeItem;
-        return (
-          <ReliefLibraryBlock
-            key={g.slot}
-            group={g}
-            index={idx}
-            tone={tones.get(shown.lib.id) ?? "fill1"}
-            selected={selectedId === shown.lib.id}
-            place={placeOf(g.slot)}
-            hplace={boardW > 0 ? horizontalPlace(g.slot, boardW) : undefined}
-            onOpen={onLibraryPress}
-            onCycle={cycle}
-          />
-        );
-      })}
-      {/* 기점은 블록 뒤에 깔리지 않게 맨 마지막(맨 위)에 그린다 */}
-      <OriginPlinth title={originTitle} sub={originSub} y={originY} />
+    <View style={styles.board} testID="facade-board" onLayout={onLayout} {...responder.panHandlers}>
+      <Animated.View style={[StyleSheet.absoluteFill, { transform: pan.getTranslateTransform() }]} pointerEvents="box-none">
+        <OriginGrid origin={origin} w={W} h={Math.max(H, boardH)} />
+        {scene.cubes.map((c) => {
+          const it = byId.get(c.id);
+          if (!it) return null;
+          const open = () => onLibraryPress(it.lib);
+          const focus = () => {
+            setMenuOpen(false);
+            setRing(false);
+            setChosen(c.id);
+          };
+          return (
+            <IsoCube
+              key={c.id}
+              item={it}
+              tone={tones.get(c.id) ?? "fill1"}
+              place={c}
+              anim={anims.get(c.id) as Anim}
+              onPress={c.role === "hero" ? open : focus}
+              onLongPress={c.role === "hero" ? () => setMenuOpen(true) : undefined}
+            />
+          );
+        })}
+        {/* 기점: 누르면 전체 보기 ↔ 원래 주인공 */}
+        <Animated.View
+          style={[styles.plinthWrap, { left: Animated.subtract(origin.x, PLINTH_W / 2), top: Animated.subtract(origin.y, PLINTH_H / 2) }]}
+        >
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={ring ? TEXT.back : TEXT.ring}
+            testID="facade-origin"
+            onPress={() => {
+              setMenuOpen(false);
+              setRing((r) => !r);
+            }}
+            style={styles.plinth}
+          >
+            <Text style={styles.plus}>+</Text>
+            <Text style={styles.plinthTitle}>{originTitle}</Text>
+            <Text style={styles.plinthSub}>{originSub}</Text>
+          </Pressable>
+        </Animated.View>
+      </Animated.View>
+
+      {menuOpen && heroPlace ? (
+        <>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenuOpen(false)} accessibilityLabel="메뉴 닫기" />
+          <View
+            accessibilityRole="menu"
+            testID="facade-hero-menu"
+            style={[
+              styles.menu,
+              {
+                left: Math.min(W - 212, Math.max(8, heroPlace.cx - 102)),
+                top: Math.min(H - 140, Math.max(8, heroPlace.cy - 60)),
+              },
+            ]}
+          >
+            <Text style={styles.menuTitle}>{TEXT.menuTitle}</Text>
+            {(["nearest", "recent"] as const).map((rule) => (
+              <Pressable
+                key={rule}
+                accessibilityRole="menuitem"
+                accessibilityState={{ selected: heroRule === rule }}
+                onPress={() => chooseRule(rule)}
+                style={[styles.menuItem, heroRule === rule ? styles.menuItemOn : null]}
+              >
+                <Text style={styles.menuText}>{rule === "nearest" ? TEXT.nearest : TEXT.recent}</Text>
+                {rule === "nearest" ? <Text style={styles.menuSmall}>{TEXT.basic}</Text> : null}
+              </Pressable>
+            ))}
+          </View>
+        </>
+      ) : null}
     </View>
   );
 }
 
-export type { FacadeKind };
+const TOP_SIDE = 192 / Math.SQRT2; // 윗면 마름모(192×110.8)를 만드는 정사각형 한 변
+const LEFT_FACE = mix(C.paper, C.surface3, 0.8);
 
 const styles = StyleSheet.create({
-  board: { flex: 1, backgroundColor: C.panelFrosted, overflow: "hidden" },
-  grid: {
+  // 웹에서 꾹 누르기·끌기 때 글자가 선택되지 않게
+  board: { flex: 1, backgroundColor: C.panelFrosted, overflow: "hidden", userSelect: "none" },
+  gridLayer: { position: "absolute", width: 0, height: 0, opacity: 0.8 },
+  gridV: { position: "absolute", width: 1, backgroundColor: C.seamHairline },
+  gridH: { position: "absolute", height: 1, backgroundColor: C.seamHairline },
+  cube: { position: "absolute", width: CUBE_W, height: CUBE_H },
+  cubeHit: { width: CUBE_W, height: CUBE_H },
+  // 바닥 그림자(시안의 흐린 다각형 대신 옅은 마름모)
+  ground: {
     position: "absolute",
-    left: 16,
-    right: 16,
-    top: 8,
-    bottom: 8,
-    flexDirection: "row",
-    flexWrap: "wrap",
-    borderTopWidth: 1,
-    borderLeftWidth: 1,
-    borderColor: C.seamHairline,
+    left: 110 - TOP_SIDE / 2 + 8,
+    top: 150 - TOP_SIDE / 2,
+    width: TOP_SIDE,
+    height: TOP_SIDE,
+    backgroundColor: C.shadowAmbient,
+    transform: [{ scaleY: 110.8 / 192 }, { rotate: "45deg" }],
   },
-  bay: {
-    width: `${100 / GRID_COLS}%`,
-    height: `${100 / GRID_ROWS}%`,
-    borderRightWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: C.seamHairline,
-  },
-  rivet: { position: "absolute", width: 4, height: 4, borderRadius: 2, backgroundColor: C.rivetBase },
-  axis: { position: "absolute", top: 8, bottom: 8, left: "50%", width: 1, backgroundColor: C.seamHairline },
-  ruler: {
+  // 윗면: (110,12)·(206,67.4)·(110,122.8)·(14,67.4)
+  faceTop: {
     position: "absolute",
-    left: 16,
-    right: 16,
-    top: "40%",
-    height: 36,
-    marginTop: -18,
-    backgroundColor: C.paper,
-    borderTopWidth: 1,
-    borderBottomWidth: 1,
-    borderColor: C.surface3,
-    paddingHorizontal: 10,
+    left: 110 - TOP_SIDE / 2,
+    top: 67.4 - TOP_SIDE / 2,
+    width: TOP_SIDE,
+    height: TOP_SIDE,
+    borderWidth: 1,
+    borderColor: C.seamHairline,
+    transform: [{ scaleY: 110.8 / 192 }, { rotate: "45deg" }],
+  },
+  topTextWrap: {
+    position: "absolute",
+    left: 14,
+    top: 67.4 - 30,
+    width: 192,
+    height: 60,
+    alignItems: "center",
+    justifyContent: "center",
+    transform: [{ rotate: "-30deg" }, { skewX: "30deg" }, { scaleY: 0.866 }],
+  },
+  topText: { fontWeight: "500", letterSpacing: TOP_LS, textAlign: "center" },
+  // 왼쪽 면: (14,67.4) 기준 96×78, skewY(30°)
+  faceLeft: {
+    position: "absolute",
+    left: 14,
+    top: 67.4,
+    width: 96,
+    height: 78,
+    transformOrigin: "left top",
+    transform: [{ skewY: "30deg" }],
+    backgroundColor: LEFT_FACE,
+    borderWidth: 1,
+    borderRightWidth: 0,
+    borderColor: C.seamHairline,
+    paddingVertical: 7,
+    paddingHorizontal: 8,
     justifyContent: "space-between",
+    overflow: "hidden",
   },
-  ticks: { flexDirection: "row", justifyContent: "space-between", height: 14 },
-  tick: { width: 1, height: 7, backgroundColor: C.inkStrong, opacity: 0.45 },
-  tickMajor: { height: 14, opacity: 0.72 },
-  rulerLabels: { flexDirection: "row", justifyContent: "space-between", paddingBottom: 2 },
-  rulerText: { ...T.gauge, fontSize: 9, letterSpacing: 1 },
-  plinthWrap: {
+  // 오른쪽 면: (110,122.8) 기준 96×78, skewY(-30°)
+  faceRight: {
     position: "absolute",
-    left: "50%",
-    top: "40%",
-    width: PLINTH_W,
-    height: PLINTH_H,
-    marginLeft: -PLINTH_W / 2,
-    marginTop: -PLINTH_H / 2,
-    zIndex: 2,
+    left: 110,
+    top: 122.8,
+    width: 96,
+    height: 78,
+    transformOrigin: "left top",
+    transform: [{ skewY: "-30deg" }],
+    backgroundColor: C.paper,
+    borderWidth: 1,
+    borderColor: C.seamHairline,
+    paddingVertical: 7,
+    paddingHorizontal: 8,
+    justifyContent: "space-between",
+    overflow: "hidden",
   },
-  plinthSide: {
-    position: "absolute",
-    left: 6,
-    top: 8,
-    width: PLINTH_W,
-    height: PLINTH_H,
-    borderRadius: R.block,
-    backgroundColor: C.reliefSideDark,
-  },
+  faceHero: { borderColor: C.inkStrong },
+  quiet: { opacity: 0.5 },
+  leftTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  badge: { flexDirection: "row", alignItems: "center", gap: 3 },
+  dot: { width: 5, height: 5, borderRadius: 2.5 },
+  status: { fontSize: 8, fontWeight: "500", letterSpacing: 0.3, color: C.inkStrong },
+  dist: { fontSize: 8, fontWeight: "500", color: C.inkMuted },
+  lbl: { fontSize: 6.5, fontWeight: "500", letterSpacing: 0.7, color: C.inkMuted },
+  addr: { fontSize: 8.5, lineHeight: 11, fontWeight: "500", color: C.inkSoft },
+  hours: { fontSize: 8, lineHeight: 10.5, fontWeight: "500", color: C.inkStrong },
+  closed: { color: C.pinClosed },
+  bearWrap: { borderTopWidth: 1, borderColor: C.seamHairline, paddingTop: 3 },
+  bear: { ...T.gauge, fontSize: 9, fontWeight: "500", color: C.inkStrong },
+  plinthWrap: { position: "absolute", width: PLINTH_W, height: PLINTH_H, zIndex: 6 },
   plinth: {
     width: PLINTH_W,
     height: PLINTH_H,
@@ -380,83 +495,44 @@ const styles = StyleSheet.create({
     backgroundColor: C.inkStrong,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: C.inkStrong,
-    shadowOpacity: 0.22,
-    shadowRadius: 12,
-    shadowOffset: { width: 6, height: 10 },
+    shadowColor: C.reliefSideDark,
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    shadowOffset: { width: 4, height: 6 },
     elevation: 6,
   },
-  cross: { width: 18, height: 18, marginBottom: 4 },
-  crossV: { position: "absolute", left: 8, top: 0, width: 2.5, height: 18, backgroundColor: C.paper },
-  crossH: { position: "absolute", top: 8, left: 0, width: 18, height: 2.5, backgroundColor: C.paper },
-  plinthTitle: { fontSize: 10, fontWeight: "500", color: onFill(C.inkStrong) },
-  plinthSub: { ...T.gauge, fontSize: 8.5, letterSpacing: 1, color: onFill(C.inkStrong), opacity: 0.75 },
-  blockWrap: { position: "absolute", height: BLOCK_H },
-  layer: { position: "absolute", width: "100%", height: BLOCK_H, borderRadius: R.block },
-  slab: {
+  plus: { fontSize: 14, lineHeight: 14, color: onFill(C.inkStrong) },
+  plinthTitle: { fontSize: 8.5, fontWeight: "500", color: onFill(C.inkStrong) },
+  plinthSub: { ...T.gauge, fontSize: 7, letterSpacing: 1, color: onFill(C.inkStrong), opacity: 0.85 },
+  menu: {
     position: "absolute",
-    left: 10,
-    top: 12,
-    width: "100%",
-    height: BLOCK_H,
-    borderRadius: R.block,
-    backgroundColor: C.cream,
+    zIndex: 9,
+    width: 204,
+    padding: 10,
+    backgroundColor: C.panelLit,
     borderWidth: 1,
-    borderColor: C.surface3,
-  },
-  block: {
-    flex: 1,
-    flexDirection: "row",
-    backgroundColor: C.paper,
-    borderWidth: BLOCK_BORDER,
     borderColor: C.seamHairline,
-    borderRadius: R.block,
+    borderRadius: R.infoCard,
     shadowColor: C.inkStrong,
-    shadowOpacity: 0.22,
+    shadowOpacity: 0.18,
     shadowRadius: 12,
-    shadowOffset: { width: 6, height: 10 },
-    elevation: 5,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
-  blockSelected: { borderColor: C.inkStrong, borderWidth: 2 },
-  spine: { width: 16, borderRightWidth: 1, borderColor: C.seamHairline },
-  slit: {
-    position: "absolute",
-    top: 10,
-    left: 3,
-    right: 3,
-    height: 22,
-    backgroundColor: C.paper,
-    opacity: 0.88,
-    borderTopLeftRadius: R.libraryIconTop,
-    borderTopRightRadius: R.libraryIconTop,
-    borderBottomLeftRadius: R.libraryIconBottom,
-    borderBottomRightRadius: R.libraryIconBottom,
-  },
-  blockBody: { flex: 1, paddingVertical: BODY_PAD_V, paddingHorizontal: BODY_PAD_H, justifyContent: "space-between" },
-  blockHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 4, minHeight: PILL_H },
-  code: { ...T.gauge, fontSize: 9.5 },
-  // 블록 테두리 1 + 몸통 여백만큼 안쪽, 머리 줄과 같은 높이(예전 머리 줄 안 자리와 같다)
-  stackPill: {
-    position: "absolute",
-    top: BLOCK_BORDER + BODY_PAD_V,
-    right: BLOCK_BORDER + BODY_PAD_H,
-    height: PILL_H,
-    justifyContent: "center",
-    paddingHorizontal: 6,
-    borderRadius: R.block,
-    backgroundColor: C.inkStrong,
-  },
-  stackText: { fontSize: 10, fontWeight: "500", color: onFill(C.inkStrong) },
-  name: { ...T.name },
-  area: { fontSize: 11, color: C.inkMuted },
-  edge: {
+  menuTitle: { fontSize: 12, color: C.inkSoft, marginBottom: 6 },
+  menuItem: {
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: 6,
-    paddingTop: 4,
-    borderTopWidth: 1,
+    alignItems: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    marginTop: 4,
+    borderRadius: R.control,
+    borderWidth: 1,
     borderColor: C.seamHairline,
+    backgroundColor: C.panelFrosted,
   },
-  edgeText: { ...T.gauge, fontSize: 9.5, color: C.inkSoft },
-  closedText: { color: C.pinClosed },
+  menuItemOn: { backgroundColor: C.panelLit, borderBottomWidth: 2, borderBottomColor: C.reliefBottomMid },
+  menuText: { fontSize: 13, color: C.text },
+  menuSmall: { ...T.gauge, fontSize: 9, letterSpacing: 1 },
 });
