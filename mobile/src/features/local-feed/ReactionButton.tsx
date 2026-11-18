@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
   action: { flexDirection: "row", alignItems: "center", gap: 4, minHeight: 44, paddingHorizontal: 8 },
   heart: { fontSize: 22, color: C.text },
   heartOn: { color: C.fill1 },
-  count: { fontSize: 15, fontWeight: "700", color: C.text },
+  count: { fontSize: 15, fontWeight: "500", color: C.text },
   save: {
     minHeight: 44,
     paddingHorizontal: 20,
@@ -116,6 +116,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   saveOn: { backgroundColor: C.inkStrong },
-  saveText: { fontSize: 15, fontWeight: "800", color: onFill(C.fill1) },
+  saveText: { fontSize: 15, fontWeight: "500", color: onFill(C.fill1) },
   saveTextOn: { color: onFill(C.inkStrong) },
 });

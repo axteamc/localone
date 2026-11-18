@@ -144,7 +144,7 @@ const styles = StyleSheet.create({
   },
   notice: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "500",
     textAlign: "center",
     color: theme.colors.text,
   },
@@ -158,7 +158,7 @@ const styles = StyleSheet.create({
   },
   buttonText: {
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "500",
   },
   confirm: {
     gap: 10,
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   },
   confirmTitle: {
     fontSize: 17,
-    fontWeight: "700",
+    fontWeight: "500",
     color: theme.colors.text,
   },
   confirmBody: {
@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
   },
   error: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "500",
     color: theme.colors.text,
   },
 });

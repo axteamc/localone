@@ -5,7 +5,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, AppState, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { createLatestRunner } from "../../lib/latest";
-import { theme, actionColors } from "../../theme";
+import { theme, actionColors, type as T } from "../../theme";
 import { BookCover } from "../book-search/SearchScreen";
 import { ApiCallError, listLoans, returnLoan, type Loan, type LoanPage, type LoanStatus } from "./api";
 import { ddayColors, ddayFormat } from "./dday";
@@ -456,7 +456,7 @@ const c = theme.colors;
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   section: { gap: 10 },
-  title: { fontSize: 16, fontWeight: "700", color: c.text },
+  title: { ...T.title },
   tabs: { flexDirection: "row", gap: 8 },
   tab: {
     borderWidth: 1,
@@ -466,7 +466,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
   },
   tabOn: { backgroundColor: c.inkStrong, borderColor: c.inkStrong },
-  tabText: { fontSize: 14, color: c.text, fontWeight: "600" },
+  tabText: { fontSize: 14, color: c.text, fontWeight: "500" },
   tabTextOn: { color: c.paper },
   busy: { marginVertical: 16 },
   box: { backgroundColor: c.paper, borderRadius: theme.radii.card, padding: 16, gap: 12, alignItems: "flex-start" },
@@ -477,10 +477,10 @@ const styles = StyleSheet.create({
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
   cover: { width: 44, height: 62 },
   flex: { flex: 1 },
-  bookTitle: { fontSize: 15, fontWeight: "700", color: c.text },
+  bookTitle: { fontSize: 15, fontWeight: "500", color: c.text },
   meta: { fontSize: 13, color: c.textSub, marginTop: 2 },
   pill: { borderRadius: theme.radii.pill, paddingVertical: 5, paddingHorizontal: 12 },
-  pillText: { fontSize: 13, fontWeight: "700" },
+  pillText: { fontSize: 13, fontWeight: "500" },
   donePill: { backgroundColor: c.surface2 },
   doneText: { color: c.inkSoft },
   actions: { flexDirection: "row", justifyContent: "flex-end", gap: 8 },
@@ -491,7 +491,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 14,
   },
-  actionText: { fontSize: 14, color: c.text, fontWeight: "600" },
+  actionText: { fontSize: 14, color: c.text, fontWeight: "500" },
   dim: { opacity: 0.5 },
   more: {
     alignSelf: "center",
@@ -501,16 +501,16 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 18,
   },
-  moreText: { fontSize: 14, color: c.text, fontWeight: "600" },
+  moreText: { fontSize: 14, color: c.text, fontWeight: "500" },
   btn: {
     ...ACT.secondary,
     borderRadius: theme.radii.control,
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
-  btnText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "700" },
+  btnText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "500" },
   center: { flex: 1, justifyContent: "center", padding: 24, backgroundColor: c.shadowFloat },
   dialog: { backgroundColor: c.paper, borderRadius: theme.radii.card, padding: 20, gap: 12 },
-  dialogTitle: { fontSize: 17, fontWeight: "700", color: c.text },
+  dialogTitle: { fontSize: 17, fontWeight: "500", color: c.text },
   dialogActions: { flexDirection: "row", justifyContent: "flex-end", gap: 8 },
 });

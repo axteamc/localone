@@ -116,3 +116,24 @@ export function actionColors(colors: ThemeColors) {
 
 /** M1 기본 룩(warm). 도서관 룩(VISIT-4)이 붙기 전까지 모든 화면이 쓴다. */
 export const theme: Theme = getTheme();
+
+/**
+ * 글자 단계(2026-11-18 D 결정 "글자와 공간 규칙" 2단계, DESIGN.md 결정 기록).
+ * - 700은 쓰지 않는다. 강조는 크기로, 무게는 400·500 두 가지뿐.
+ * - 제목: 크게·가볍게(400, `inkSoft`), 한 줄 전체 같은 굵기.
+ * - 계기판 목소리: 방위·거리·날짜·개수·영문 표찰(작게, 자간 넓게, 대문자, `inkMuted`). 한글 문장과 한 줄에 섞지 않는다.
+ */
+export const type = {
+  pageTitle: { fontSize: 24, fontWeight: "400", letterSpacing: -0.5, color: theme.colors.inkSoft },
+  title: { fontSize: 22, fontWeight: "400", letterSpacing: -0.4, color: theme.colors.inkSoft },
+  name: { fontSize: 14, fontWeight: "500", color: theme.colors.text },
+  gauge: { fontSize: 10, fontWeight: "500", letterSpacing: 1.4, textTransform: "uppercase", color: theme.colors.inkMuted },
+  /** 머리 띠 영어 표찰(HOME · LOANS · BOOK …) */
+  label: { fontSize: 11, fontWeight: "500", letterSpacing: 3.5, color: theme.colors.inkMuted },
+} as const;
+
+/** 앱 공통 판 재질(머리 띠·탭·검색 띠·아래 창): 파사드와 같은 유리판 + 1px 줄눈 (D 결정 "머리·검색·탭 재질" A) */
+export const panel = {
+  backgroundColor: theme.colors.panelFrosted,
+  borderColor: theme.colors.seamHairline,
+} as const;

@@ -74,7 +74,7 @@ export function PostCard({ post, onPress, onMenu, width }: PostCardProps) {
 
 const styles = StyleSheet.create({
   card: { borderRadius: theme.radii.card, overflow: "hidden" },
-  overlay: { position: "absolute", left: 10, right: 10, textAlign: "center", fontSize: 15, fontWeight: "700" },
+  overlay: { position: "absolute", left: 10, right: 10, textAlign: "center", fontSize: 15, fontWeight: "500" },
   mid: { top: "35%" },
   bottom: { bottom: 10 },
   shadow: { textShadowColor: C.shadowSoft, textShadowRadius: 6, textShadowOffset: { width: 0, height: 1 } },
@@ -89,5 +89,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  dotsText: { fontSize: 18, fontWeight: "800", color: C.text },
+  dotsText: { fontSize: 18, fontWeight: "500", color: C.text },
 });

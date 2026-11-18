@@ -122,10 +122,10 @@ const styles = StyleSheet.create({
   },
   head: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   flex: { flex: 1 },
-  title: { fontSize: 17, fontWeight: "700", color: c.text },
+  title: { fontSize: 17, fontWeight: "500", color: c.text },
   subtitle: { fontSize: 13, color: c.textSub, marginTop: 4, lineHeight: 19 },
   close: { paddingVertical: 4, paddingHorizontal: 6 },
-  closeText: { fontSize: 15, color: c.text, fontWeight: "600" },
+  closeText: { fontSize: 15, color: c.text, fontWeight: "500" },
   error: { fontSize: 14, color: c.loanOut },
   empty: { fontSize: 15, color: c.text, lineHeight: 22, paddingVertical: 8 },
   list: { flexGrow: 0 },
@@ -138,7 +138,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: c.divider,
   },
-  name: { fontSize: 15, fontWeight: "700", color: c.text },
+  name: { fontSize: 15, fontWeight: "500", color: c.text },
   meta: { fontSize: 13, color: c.textSub, marginTop: 2 },
   choose: {
     ...ACT.secondary,
@@ -147,5 +147,5 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   dim: { opacity: 0.5 },
-  chooseText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "700" },
+  chooseText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "500" },
 });

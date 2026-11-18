@@ -196,9 +196,9 @@ const styles = StyleSheet.create({
   },
   head: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   flex: { flex: 1 },
-  title: { fontSize: 17, fontWeight: "700", color: c.text },
+  title: { fontSize: 17, fontWeight: "500", color: c.text },
   sub: { fontSize: 13, color: c.textSub, marginTop: 4 },
-  close: { fontSize: 15, color: c.text, fontWeight: "600" },
+  close: { fontSize: 15, color: c.text, fontWeight: "500" },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: {
     borderWidth: 1,
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
   },
-  chipText: { fontSize: 14, color: c.text, fontWeight: "600" },
+  chipText: { fontSize: 14, color: c.text, fontWeight: "500" },
   input: {
     backgroundColor: c.cream,
     borderRadius: theme.radii.pill,
@@ -223,6 +223,6 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
   },
-  saveText: { color: c.paper, fontSize: 16, fontWeight: "700" },
+  saveText: { color: c.paper, fontSize: 16, fontWeight: "500" },
   dim: { opacity: 0.5 },
 });

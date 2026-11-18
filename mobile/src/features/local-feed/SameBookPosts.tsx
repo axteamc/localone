@@ -63,5 +63,5 @@ export function LibraryOtherPosts({ postId, libraryId, onOpen }: Props & { libra
 
 const styles = StyleSheet.create({
   section: { gap: 12, paddingHorizontal: 12, paddingTop: 20 },
-  title: { fontSize: 18, fontWeight: "800", color: C.text },
+  title: { fontSize: 18, fontWeight: "500", color: C.text },
 });

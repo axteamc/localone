@@ -186,13 +186,13 @@ const styles = StyleSheet.create({
   },
   brand: {
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "500",
     letterSpacing: 1,
     color: TOKENS.text,
   },
   title: {
     fontSize: 24,
-    fontWeight: "700",
+    fontWeight: "500",
     lineHeight: 34,
     color: TOKENS.text,
     marginTop: 12,
@@ -242,7 +242,7 @@ const styles = StyleSheet.create({
   googleButtonText: {
     color: TOKENS.text,
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "500",
   },
   appleContainer: {
     minHeight: 48,

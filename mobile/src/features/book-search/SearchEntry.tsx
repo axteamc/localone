@@ -176,7 +176,7 @@ const c = theme.colors;
 const styles = StyleSheet.create({
   wrap: { paddingHorizontal: 16, paddingBottom: 24 },
   head: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", marginTop: 16, marginBottom: 8 },
-  headText: { fontSize: 15, fontWeight: "700", color: c.text },
+  headText: { fontSize: 15, fontWeight: "500", color: c.text },
   headSub: { fontSize: 13, fontWeight: "400", color: c.textSub },
   pills: { gap: 6, paddingBottom: 4 },
   pill: {
@@ -195,11 +195,11 @@ const styles = StyleSheet.create({
   rankRow: { flexDirection: "row", gap: 12 },
   rankCol: { flex: 1 },
   rankItem: { flexDirection: "row", alignItems: "center", paddingVertical: 6 },
-  rankNo: { width: 22, fontSize: 14, fontWeight: "700", color: c.inkStrong },
+  rankNo: { width: 22, fontSize: 14, fontWeight: "500", color: c.inkStrong },
   rankTitle: { flex: 1, fontSize: 14, color: c.text },
   muted: { fontSize: 13, color: c.textSub, paddingVertical: 8 },
   stateBox: { backgroundColor: c.cream, borderRadius: theme.radii.card, padding: 16, gap: 10, alignItems: "flex-start" },
   stateText: { fontSize: 14, color: c.text },
   stateBtn: { backgroundColor: c.inkStrong, borderRadius: theme.radii.control, paddingVertical: 8, paddingHorizontal: 16 },
-  stateBtnText: { fontSize: 14, color: c.paper, fontWeight: "700" },
+  stateBtnText: { fontSize: 14, color: c.paper, fontWeight: "500" },
 });

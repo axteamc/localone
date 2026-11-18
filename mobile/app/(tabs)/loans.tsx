@@ -6,7 +6,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useAuth } from "../../src/auth/AuthProvider";
 import { LoanPlansSection } from "../../src/features/book-search/LoanPlansSection";
 import { LoansSection } from "../../src/features/loan-assistant/LoansSection";
-import { theme, actionColors } from "../../src/theme";
+import { theme, actionColors, type as T } from "../../src/theme";
 
 export const LOANS_LOGIN = "로그인하면 빌릴 예정과 내 대출을 볼 수 있어요";
 
@@ -47,10 +47,10 @@ export default function LoansTabScreen() {
 const c = theme.colors;
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: c.bg },
+  screen: { flex: 1, backgroundColor: c.panelFrosted },
   center: { alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
   pad: { padding: 16, paddingBottom: 32, gap: 24 },
-  title: { fontSize: 18, fontWeight: "600", color: c.text },
+  title: { ...T.pageTitle },
   text: { fontSize: 15, color: c.text, lineHeight: 22, textAlign: "center" },
   darkBtn: {
     ...ACT.primary,
@@ -58,5 +58,5 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
-  darkBtnText: { fontSize: 14, ...ACT.primaryText, fontWeight: "700" },
+  darkBtnText: { fontSize: 14, ...ACT.primaryText, fontWeight: "500" },
 });

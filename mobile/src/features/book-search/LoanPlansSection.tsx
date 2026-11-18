@@ -5,7 +5,7 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { createLatestRunner } from "../../lib/latest";
-import { theme, actionColors } from "../../theme";
+import { theme, actionColors, type as T } from "../../theme";
 import type { Loan } from "../loan-assistant/api";
 import {
   START_CONFLICT,
@@ -213,7 +213,7 @@ const c = theme.colors;
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   section: { gap: 10 },
-  title: { fontSize: 16, fontWeight: "700", color: c.text },
+  title: { ...T.title },
   busy: { marginVertical: 16 },
   box: { backgroundColor: c.paper, borderRadius: theme.radii.card, padding: 16, gap: 12, alignItems: "flex-start" },
   text: { fontSize: 15, color: c.text, lineHeight: 22 },
@@ -228,7 +228,7 @@ const styles = StyleSheet.create({
   },
   cover: { width: 44, height: 62 },
   flex: { flex: 1 },
-  bookTitle: { fontSize: 15, fontWeight: "700", color: c.text },
+  bookTitle: { fontSize: 15, fontWeight: "500", color: c.text },
   meta: { fontSize: 13, color: c.textSub, marginTop: 2 },
   release: {
     borderWidth: 1,
@@ -237,7 +237,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 14,
   },
-  releaseText: { fontSize: 14, color: c.text, fontWeight: "600" },
+  releaseText: { fontSize: 14, color: c.text, fontWeight: "500" },
   dim: { opacity: 0.5 },
   more: {
     alignSelf: "center",
@@ -247,12 +247,12 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 18,
   },
-  moreText: { fontSize: 14, color: c.text, fontWeight: "600" },
+  moreText: { fontSize: 14, color: c.text, fontWeight: "500" },
   darkBtn: {
     ...ACT.secondary,
     borderRadius: theme.radii.control,
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
-  darkBtnText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "700" },
+  darkBtnText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "500" },
 });

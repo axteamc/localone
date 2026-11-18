@@ -118,14 +118,14 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: "center",
   },
-  wideText: { ...ACT.secondaryText, fontSize: 15, fontWeight: "700" },
+  wideText: { ...ACT.secondaryText, fontSize: 15, fontWeight: "500" },
   pill: {
     ...ACT.secondary,
     borderRadius: theme.radii.pill,
     paddingVertical: 6,
     paddingHorizontal: 14,
   },
-  pillText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "700" },
+  pillText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "500" },
   dim: { opacity: 0.5 },
   note: {
     marginTop: 10,
@@ -143,5 +143,5 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
-  smallBtnText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "700" },
+  smallBtnText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "500" },
 });

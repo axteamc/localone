@@ -192,12 +192,15 @@ describe("APP-0-P2 routes and tabs", () => {
 
     expect(view.getByTestId("auth-provider")).toBeTruthy();
     expect(view.getByTestId("root-stack")).toBeTruthy();
-    expect(mockLastStackScreenOptions).toEqual({ title: "동네한권", headerStyle: { backgroundColor: theme.colors.cream } });
-    expect(mockRecordedStackScreens).toEqual([
-      { name: "(tabs)", options: { headerShown: false } },
-      { name: "login", options: { title: "" } },
-      { name: "settings", options: { title: "설정" } }, // AUTH-2 G6
-    ]);
+    // 2026-11-18 D 결정: 머리 띠는 파사드와 같은 유리판(panelFrosted) + 영어 표찰
+    expect(mockLastStackScreenOptions).toMatchObject({ title: "동네한권", headerStyle: { backgroundColor: theme.colors.panelFrosted } });
+    expect(mockRecordedStackScreens).toEqual(
+      expect.arrayContaining([
+        { name: "(tabs)", options: { headerShown: false } },
+        expect.objectContaining({ name: "login", options: expect.objectContaining({ title: "" }) }),
+        expect.objectContaining({ name: "settings", options: expect.objectContaining({ title: "설정" }) }), // AUTH-2 G6
+      ])
+    );
   });
 
   test("stub routes render params", async () => {

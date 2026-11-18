@@ -2,7 +2,7 @@
 // 지도는 쓰지 않는다. 색·곡률은 theme 토큰만 쓴다.
 import React, { useEffect, useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent, type ViewStyle } from "react-native";
-import { onFill, theme } from "../../theme";
+import { onFill, theme, type as T } from "../../theme";
 import type { LatLng, LibrarySummary } from "./deps";
 import {
   assignSpineTones,
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   tick: { width: 1, height: 7, backgroundColor: C.inkStrong, opacity: 0.45 },
   tickMajor: { height: 14, opacity: 0.72 },
   rulerLabels: { flexDirection: "row", justifyContent: "space-between", paddingBottom: 2 },
-  rulerText: { fontSize: 10, color: C.inkMuted },
+  rulerText: { ...T.gauge, fontSize: 9, letterSpacing: 1 },
   plinthWrap: {
     position: "absolute",
     left: "50%",
@@ -364,8 +364,8 @@ const styles = StyleSheet.create({
   cross: { width: 18, height: 18, marginBottom: 4 },
   crossV: { position: "absolute", left: 8, top: 0, width: 2.5, height: 18, backgroundColor: C.paper },
   crossH: { position: "absolute", top: 8, left: 0, width: 18, height: 2.5, backgroundColor: C.paper },
-  plinthTitle: { fontSize: 10, fontWeight: "700", color: onFill(C.inkStrong) },
-  plinthSub: { fontSize: 9, color: onFill(C.inkStrong), opacity: 0.75 },
+  plinthTitle: { fontSize: 10, fontWeight: "500", color: onFill(C.inkStrong) },
+  plinthSub: { ...T.gauge, fontSize: 8.5, letterSpacing: 1, color: onFill(C.inkStrong), opacity: 0.75 },
   blockWrap: { position: "absolute", height: BLOCK_H },
   layer: { position: "absolute", width: "100%", height: BLOCK_H, borderRadius: R.block },
   slab: {
@@ -409,7 +409,7 @@ const styles = StyleSheet.create({
   },
   blockBody: { flex: 1, paddingVertical: BODY_PAD_V, paddingHorizontal: BODY_PAD_H, justifyContent: "space-between" },
   blockHead: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 4, minHeight: PILL_H },
-  code: { fontSize: 10.5, fontWeight: "700", color: C.inkMuted },
+  code: { ...T.gauge, fontSize: 9.5 },
   // 블록 테두리 1 + 몸통 여백만큼 안쪽, 머리 줄과 같은 높이(예전 머리 줄 안 자리와 같다)
   stackPill: {
     position: "absolute",
@@ -421,8 +421,8 @@ const styles = StyleSheet.create({
     borderRadius: R.block,
     backgroundColor: C.inkStrong,
   },
-  stackText: { fontSize: 10, fontWeight: "700", color: onFill(C.inkStrong) },
-  name: { fontSize: 14, fontWeight: "700", color: C.text },
+  stackText: { fontSize: 10, fontWeight: "500", color: onFill(C.inkStrong) },
+  name: { ...T.name },
   area: { fontSize: 11, color: C.inkMuted },
   edge: {
     flexDirection: "row",
@@ -432,6 +432,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderColor: C.seamHairline,
   },
-  edgeText: { fontSize: 11, fontWeight: "700", color: C.text },
+  edgeText: { ...T.gauge, fontSize: 9.5, color: C.inkSoft },
   closedText: { color: C.pinClosed },
 });

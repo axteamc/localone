@@ -1,7 +1,7 @@
 // "이 동네 인기 도서" 옆으로 넘기는 한 줄 (계약서 library-visit.md VISIT-1b W1·W2·W7·W10, 예외 #1·#2-d)
 import React, { useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
-import { theme } from "../../theme";
+import { theme, type as T } from "../../theme";
 import type { Book } from "./deps";
 
 const TEXT = {
@@ -107,9 +107,9 @@ const c = theme.colors;
 const [tl, tr, br, bl] = theme.radii.bookCover;
 
 const styles = StyleSheet.create({
-  head: { flexDirection: "row", alignItems: "baseline", justifyContent: "space-between", gap: 8, marginTop: 6, marginBottom: 6 },
-  title: { fontSize: 15, fontWeight: "700", color: c.text },
-  basis: { flexShrink: 1, fontSize: 12, color: c.textSub },
+  head: { gap: 2, marginTop: 6, marginBottom: 10 },
+  title: { ...T.title },
+  basis: { ...T.gauge, fontSize: 9, letterSpacing: 1.2, textTransform: "none" },
   row: { gap: 12, paddingBottom: 2 },
   book: { width: COVER_W, minHeight: COVER_H + 4 + 36 },
   cover: {

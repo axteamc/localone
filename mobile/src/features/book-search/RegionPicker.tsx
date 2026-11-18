@@ -80,7 +80,7 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: "center",
   },
-  locBtnText: { ...ACT.primaryText, fontSize: 15, fontWeight: "700" },
+  locBtnText: { ...ACT.primaryText, fontSize: 15, fontWeight: "500" },
   input: {
     backgroundColor: c.paper,
     borderWidth: 1,

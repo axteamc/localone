@@ -154,7 +154,7 @@ export function createMarkerContentElement(
   titleEl.textContent = marker.title;
   Object.assign(titleEl.style, {
     fontSize: "11px",
-    fontWeight: "700",
+    fontWeight: "500",
     color: palette.text,
     whiteSpace: "nowrap",
     overflow: "hidden",
@@ -167,7 +167,7 @@ export function createMarkerContentElement(
     subEl.textContent = marker.subtitle;
     Object.assign(subEl.style, {
       fontSize: "10px",
-      fontWeight: "600",
+      fontWeight: "500",
       color: isClosed ? palette.pinClosed : palette.textSub,
       whiteSpace: "nowrap",
     });
@@ -213,7 +213,7 @@ export function createClusterContentElement(
     border: `3px solid ${palette.paper}`,
     color: palette.onFill1,
     fontSize: "15px",
-    fontWeight: "700",
+    fontWeight: "500",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -232,7 +232,7 @@ export function createClusterContentElement(
     background: palette.paper,
     color: palette.text,
     fontSize: "10px",
-    fontWeight: "700",
+    fontWeight: "500",
     whiteSpace: "nowrap",
     boxShadow: `0 1px 3px ${palette.shadowSoft}`,
     pointerEvents: "none",

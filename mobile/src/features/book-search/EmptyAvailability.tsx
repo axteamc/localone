@@ -52,7 +52,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     alignItems: "center",
   },
-  primaryText: { ...ACT.primaryText, fontSize: 16, fontWeight: "700" },
+  primaryText: { ...ACT.primaryText, fontSize: 16, fontWeight: "500" },
   secondary: {
     borderWidth: 1,
     borderColor: c.divider,
@@ -60,5 +60,5 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     alignItems: "center",
   },
-  secondaryText: { color: c.text, fontSize: 15, fontWeight: "600" },
+  secondaryText: { color: c.text, fontSize: 15, fontWeight: "500" },
 });
