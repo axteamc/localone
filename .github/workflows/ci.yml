@@ -125,9 +125,37 @@ jobs:
       # 시뮬레이터용 빌드만 한다(generic/platform=iOS Simulator, 개발 서버 안 띄움)
       - run: npx expo run:ios --device generic --no-bundler
 
+  android:
+    name: Android 빌드 점검
+    needs: changes
+    # iOS와 동일하게 PR에서는 돌리지 않는다(PR 대기 0). main push·수동 실행에서만 돌고, config plugin·Gradle 깨짐을 잡는다.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - run: npx expo prebuild --platform android --clean
+      - name: Android Debug APK 빌드
+        working-directory: mobile/android
+        run: ./gradlew assembleDebug --no-daemon
+
   ci-ok:
     name: CI ok
-    needs: [changes, server, app, ios]
+    needs: [changes, server, app, ios, android]
     if: always()
     runs-on: ubuntu-latest
     steps:
