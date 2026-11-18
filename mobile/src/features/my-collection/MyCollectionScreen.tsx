@@ -14,7 +14,7 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { onFill, theme } from "../../theme";
+import { actionColors, cardSurface, theme, type as typeScale } from "../../theme";
 import { COLUMN_GAP, splitColumns } from "../local-feed/LibraryFeed";
 import { PostCard } from "../local-feed/PostCard";
 import { PostMenu } from "../local-feed/PostMenu";
@@ -24,6 +24,7 @@ import { ProfileHeader } from "./ProfileHeader";
 import { MY_TEXT, useMyCollection, type CollectionTab, type Dim, type TabState } from "./useMyCollection";
 
 const C = theme.colors;
+const ACT = actionColors(C);
 const SIDE = 12; // 좌우 여백(Y4)
 const END_THRESHOLD = 200; // 끝에서 이만큼 남으면 다음 묶음
 const DIM_OPACITY = 0.45; // Y-O4 기본값(Claude)
@@ -46,10 +47,15 @@ export function MyCollectionScreen() {
   if (!my.signedIn) {
     return (
       <View style={[styles.screen, styles.center]} testID="my-collection-signed-out">
+        <Text style={styles.gauge} numberOfLines={1}>SIGN IN REQUIRED</Text>
         <Text style={styles.loginTitle}>{MY_TEXT.loginTitle}</Text>
         <Text style={styles.loginSub}>{MY_TEXT.loginSub}</Text>
-        <Pressable accessibilityRole="button" onPress={() => router.push("/login")} style={styles.fillButton}>
-          <Text style={styles.fillButtonText}>{MY_TEXT.login}</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push("/login")}
+          style={({ pressed }) => [styles.primaryButton, pressed && ACT.primaryPressed]}
+        >
+          <Text style={styles.primaryButtonText} numberOfLines={1}>{MY_TEXT.login}</Text>
         </Pressable>
       </View>
     );
@@ -112,7 +118,7 @@ export function MyCollectionScreen() {
           <Text style={styles.noticeText}>{my.notice.text}</Text>
           {my.notice.undo ? (
             <Pressable accessibilityRole="button" onPress={my.undo} style={styles.undo}>
-              <Text style={styles.undoText}>{MY_TEXT.undo}</Text>
+              <Text style={styles.undoText} numberOfLines={1}>{MY_TEXT.undo}</Text>
             </Pressable>
           ) : null}
         </View>
@@ -157,13 +163,14 @@ function TabBody({ tab, state, dimmedId, onPress, onMenu, onRetry, onRetryMore, 
     const empty = MY_TEXT.empty[tab];
     return (
       <View style={styles.empty} testID={`empty-${tab}`}>
-        <View style={styles.emptyIcon}>
-          <Text style={styles.emptyIconText}>{empty.icon}</Text>
-        </View>
         <Text style={styles.emptyTitle}>{empty.title}</Text>
         <Text style={styles.emptySub}>{empty.sub}</Text>
-        <Pressable accessibilityRole="button" onPress={onBrowse} style={styles.fillButton}>
-          <Text style={styles.fillButtonText}>{MY_TEXT.browse}</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onBrowse}
+          style={({ pressed }) => [styles.secondaryButton, pressed && ACT.secondaryPressed]}
+        >
+          <Text style={styles.secondaryButtonText} numberOfLines={1}>{MY_TEXT.browse}</Text>
         </Pressable>
       </View>
     );
@@ -247,8 +254,12 @@ function CardSkeleton() {
 
 function ReloadButton({ onPress }: { onPress(): void }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={styles.reload}>
-      <Text style={styles.reloadText}>{MY_TEXT.reload}</Text>
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [styles.reload, pressed && ACT.secondaryPressed]}
+    >
+      <Text style={styles.reloadText} numberOfLines={1}>{MY_TEXT.reload}</Text>
     </Pressable>
   );
 }
@@ -257,16 +268,29 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.panelFrosted },
   center: { alignItems: "center", justifyContent: "center", padding: 24, gap: 8 },
   content: { paddingBottom: 80 },
-  loginTitle: { fontSize: 17, fontWeight: "500", color: C.text, textAlign: "center" },
+  gauge: { ...typeScale.gauge },
+  loginTitle: { ...typeScale.title, textAlign: "center" },
   loginSub: { fontSize: 14, color: C.textSub, textAlign: "center", marginBottom: 8 },
-  fillButton: {
+  primaryButton: {
     marginTop: 8,
-    paddingVertical: 12,
+    height: 48,
+    paddingHorizontal: 28,
+    borderRadius: theme.radii.control,
+    ...ACT.primary,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  primaryButtonText: { fontSize: 15, fontWeight: "500", ...ACT.primaryText },
+  secondaryButton: {
+    marginTop: 10,
+    paddingVertical: 11,
     paddingHorizontal: 20,
     borderRadius: theme.radii.control,
-    backgroundColor: C.inkStrong,
+    ...ACT.secondary,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  fillButtonText: { fontSize: 15, fontWeight: "500", color: onFill(C.inkStrong) },
+  secondaryButtonText: { fontSize: 14, fontWeight: "500", ...ACT.secondaryText },
   grid: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -284,35 +308,23 @@ const styles = StyleSheet.create({
     left: 8,
     paddingVertical: 2,
     paddingHorizontal: 8,
-    borderRadius: theme.radii.pill,
-    backgroundColor: C.inkStrong,
+    ...cardSurface(theme, { onPanel: true }),
   },
-  dimTagText: { fontSize: 12, fontWeight: "500", color: onFill(C.inkStrong) },
+  dimTagText: { fontSize: 12, fontWeight: "500", color: C.inkStrong },
   message: { alignItems: "center", gap: 10, paddingVertical: 48, paddingHorizontal: 24 },
   messageText: { fontSize: 14, color: C.textSub, textAlign: "center" },
-  empty: { alignItems: "center", paddingVertical: 48, paddingHorizontal: 24, gap: 6 },
-  emptyIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: "50%",
-    backgroundColor: C.surface2,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 6,
-  },
-  emptyIconText: { fontSize: 24, color: C.text },
-  emptyTitle: { fontSize: 15, fontWeight: "500", color: C.text, textAlign: "center" },
+  empty: { alignItems: "center", paddingVertical: 48, paddingHorizontal: 24, gap: 8 },
+  emptyTitle: { ...typeScale.title, textAlign: "center" },
   emptySub: { fontSize: 13, color: C.textSub, textAlign: "center" },
   footer: { alignItems: "center", gap: 8, paddingVertical: 20 },
   footerText: { fontSize: 13, color: C.textSub },
   reload: {
     paddingVertical: 6,
     paddingHorizontal: 12,
-    borderWidth: 1,
-    borderColor: C.divider,
+    ...ACT.secondary,
     borderRadius: theme.radii.control,
   },
-  reloadText: { fontSize: 13, color: C.text },
+  reloadText: { fontSize: 13, fontWeight: "500", ...ACT.secondaryText },
   notice: {
     position: "absolute",
     left: 16,
@@ -324,10 +336,9 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 12,
     paddingHorizontal: 16,
-    borderRadius: theme.radii.control,
-    backgroundColor: C.inkStrong,
+    ...cardSurface(theme, { onPanel: true }),
   },
-  noticeText: { flex: 1, fontSize: 14, color: onFill(C.inkStrong) },
+  noticeText: { flex: 1, fontSize: 14, color: C.inkStrong },
   undo: { paddingVertical: 4, paddingHorizontal: 4, minHeight: 32, justifyContent: "center" },
-  undoText: { fontSize: 14, fontWeight: "500", color: onFill(C.inkStrong) },
+  undoText: { fontSize: 14, fontWeight: "500", color: C.inkStrong },
 });
