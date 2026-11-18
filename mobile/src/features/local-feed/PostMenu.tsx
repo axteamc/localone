@@ -67,9 +67,20 @@ export type PostMenuProps = {
   onChange(postId: string, patch: PostReactionPatch): void;
   onNotice(text: string): void;
   onLoginNeeded(): void;
+  /** 선택: 실패 안내 문구를 바꾼다(my-collection MY-1 Y-O4). 없으면 toggleFailText(e) — 홈·방문 페이지 동작 그대로 */
+  failText?(kind: "reaction" | "bookmark", e: unknown): string;
 };
 
-export function PostMenu({ post, signedIn, authLoading, onClose, onChange, onNotice, onLoginNeeded }: PostMenuProps) {
+export function PostMenu({
+  post,
+  signedIn,
+  authLoading,
+  onClose,
+  onChange,
+  onNotice,
+  onLoginNeeded,
+  failText,
+}: PostMenuProps) {
   const router = useRouter();
   const busy = useRef({ reaction: false, bookmark: false, share: false });
   const [, rerender] = useState(0);
@@ -94,7 +105,7 @@ export function PostMenu({ post, signedIn, authLoading, onClose, onChange, onNot
         onChange(post.id, { my_bookmark: res.bookmarked });
       }
     } catch (e) {
-      onNotice(toggleFailText(e));
+      onNotice(failText ? failText(kind, e) : toggleFailText(e));
     } finally {
       busy.current[kind] = false;
       rerender((n) => n + 1);
