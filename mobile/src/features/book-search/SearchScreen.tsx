@@ -15,7 +15,7 @@ import {
   type ViewStyle,
 } from "react-native";
 import type { Book } from "../../lib/publicApi";
-import { theme, actionColors } from "../../theme";
+import { theme, actionColors, cardSurface, type } from "../../theme";
 import { SearchEntry } from "./SearchEntry";
 import {
   QUERY_MAX_CHARS,
@@ -86,10 +86,9 @@ export function BookCover({
   );
 }
 
-function publisherLine(b: Book): string {
-  return [b.publisher, b.pub_year === null ? null : String(b.pub_year)]
-    .filter((v): v is string => !!v)
-    .join(" · ");
+/** 출간 연도 글자. `null`이면 숨긴다(B11). 출판사와 한 줄에 섞지 않는다(C-74). */
+function yearText(b: Book): string | null {
+  return b.pub_year === null ? null : String(b.pub_year);
 }
 
 export function SearchScreen({ initialQuery }: { initialQuery?: string }) {
@@ -151,9 +150,11 @@ export function SearchScreen({ initialQuery }: { initialQuery?: string }) {
           accessibilityState={{ disabled: !canSubmit }}
           disabled={!canSubmit}
           onPress={() => submit(input)}
-          style={[styles.searchBtn, !canSubmit && styles.dim]}
+          style={({ pressed }) => [styles.searchBtn, pressed && canSubmit && ACT.primaryPressed, !canSubmit && styles.dim]}
         >
-          <Text style={styles.searchBtnText}>검색</Text>
+          <Text style={styles.searchBtnText} numberOfLines={1}>
+            검색
+          </Text>
         </Pressable>
       </View>
 
@@ -223,8 +224,8 @@ function Results({
     return (
       <View style={styles.stateBox}>
         <Text style={styles.stateText}>{SEARCH_FAILED}</Text>
-        <Pressable accessibilityRole="button" onPress={search.retry} style={styles.stateBtn}>
-          <Text style={styles.stateBtnText}>다시 해 보기</Text>
+        <Pressable accessibilityRole="button" onPress={search.retry} style={stateBtnStyle}>
+          <Text style={styles.stateBtnText} numberOfLines={1}>다시 해 보기</Text>
         </Pressable>
       </View>
     );
@@ -235,8 +236,8 @@ function Results({
         <Text style={styles.stateText}>
           {`‘${query}’는 찾지 못했어요. 글자를 바꿔서 다시 찾아보세요.`}
         </Text>
-        <Pressable accessibilityRole="button" onPress={onRetype} style={styles.stateBtn}>
-          <Text style={styles.stateBtnText}>다시 찾기</Text>
+        <Pressable accessibilityRole="button" onPress={onRetype} style={stateBtnStyle}>
+          <Text style={styles.stateBtnText} numberOfLines={1}>다시 찾기</Text>
         </Pressable>
       </View>
     );
@@ -250,8 +251,8 @@ function Results({
       {status === "error" && (
         <View style={styles.moreError}>
           <Text style={styles.more}>{SEARCH_FAILED}</Text>
-          <Pressable accessibilityRole="button" onPress={search.retry} style={styles.stateBtn}>
-            <Text style={styles.stateBtnText}>다시 해 보기</Text>
+          <Pressable accessibilityRole="button" onPress={search.retry} style={stateBtnStyle}>
+            <Text style={styles.stateBtnText} numberOfLines={1}>다시 해 보기</Text>
           </Pressable>
         </View>
       )}
@@ -266,9 +267,11 @@ function Results({
         <Pressable
           accessibilityRole="button"
           onPress={() => setView(grid ? "list" : "grid")}
-          style={styles.viewBtn}
+          style={({ pressed }) => [styles.viewBtn, pressed && ACT.secondaryPressed]}
         >
-          <Text style={styles.viewBtnText}>{grid ? "☰ 목록으로" : "▦ 표지로"}</Text>
+          <Text style={styles.viewBtnText} numberOfLines={1}>
+            {grid ? "☰ 목록으로" : "▦ 표지로"}
+          </Text>
         </Pressable>
       </View>
       <FlatList
@@ -295,11 +298,17 @@ function Results({
               <Text style={styles.title} numberOfLines={2}>
                 {item.title}
               </Text>
-              {!!item.author && (
-                <Text style={styles.sub} numberOfLines={1}>
-                  {item.author}
+              {/* 저자(왼쪽) · 연도(오른쪽 계기판). C-74 B11 */}
+              <View style={styles.gridFoot}>
+                <Text style={[styles.sub, styles.shrink]} numberOfLines={1}>
+                  {item.author ?? ""}
                 </Text>
-              )}
+                {!!yearText(item) && (
+                  <Text style={styles.gauge} numberOfLines={1}>
+                    {yearText(item)}
+                  </Text>
+                )}
+              </View>
             </Pressable>
           ) : (
             <Pressable
@@ -309,12 +318,40 @@ function Results({
               style={styles.row}
             >
               <BookCover book={item} style={styles.rowCover} fontSize={9} />
-              <View style={styles.flex}>
-                <Text style={styles.title} numberOfLines={2}>
-                  {item.title}
-                </Text>
-                {!!item.author && <Text style={styles.sub}>{item.author}</Text>}
-                {!!publisherLine(item) && <Text style={styles.sub}>{publisherLine(item)}</Text>}
+              {/* C + A의 오른쪽 계기판 연도, 점선 없음(DESIGN.md 결정 기록 "책 검색 결과 줄 모양", C-74 B11) */}
+              <View style={styles.rowMain}>
+                <View style={styles.rowTop}>
+                  <View style={styles.shrink}>
+                    <Text style={styles.title} numberOfLines={2}>
+                      {item.title}
+                    </Text>
+                    {!!item.author && (
+                      <Text style={styles.sub} numberOfLines={1}>
+                        {item.author}
+                      </Text>
+                    )}
+                  </View>
+                  <View style={styles.rowRight}>
+                    {!!yearText(item) && (
+                      <Text style={styles.gauge} numberOfLines={1}>
+                        {yearText(item)}
+                      </Text>
+                    )}
+                    <Text style={styles.gauge} numberOfLines={1}>
+                      {item.isbn13}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.rowStrip}>
+                  <Text style={[styles.sub, styles.shrink]} numberOfLines={1}>
+                    {item.publisher ?? ""}
+                  </Text>
+                  {!!yearText(item) && (
+                    <Text style={styles.gauge} numberOfLines={1}>
+                      {`PUB ${yearText(item)} · →`}
+                    </Text>
+                  )}
+                </View>
               </View>
             </Pressable>
           )
@@ -327,17 +364,20 @@ function Results({
 const c = theme.colors;
 const GRID_HALF_GAP = 5; // 2열 칸 사이 10의 반
 const ACT = actionColors(theme.colors);
+const stateBtnStyle = ({ pressed }: { pressed: boolean }) => [styles.stateBtn, pressed && ACT.secondaryPressed];
+// DESIGN.md "페이지 적용 레시피": 바탕 유리판, 줄눈 `seamHairline`, 입력 칸 곡률 9, 주 버튼 무광 판, 보조 버튼 평면
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: c.cream },
+  screen: { flex: 1, backgroundColor: c.panelFrosted },
   flex: { flex: 1 },
+  shrink: { flexShrink: 1, minWidth: 0 },
   mt8: { marginTop: 8 },
   barRow: { flexDirection: "row", gap: 8, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
   bar: {
     flex: 1,
     backgroundColor: c.paper,
-    borderColor: c.surface3,
+    borderColor: c.seamHairline,
     borderWidth: 1,
-    borderRadius: theme.radii.control,
+    borderRadius: theme.radii.infoCard,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 16,
@@ -349,7 +389,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     ...ACT.primary,
     borderRadius: theme.radii.control,
-    paddingHorizontal: 16,
+    paddingHorizontal: 18,
+    minHeight: 48,
+    flexShrink: 0,
   },
   searchBtnText: { ...ACT.primaryText, fontSize: 15, fontWeight: "500" },
   dim: { opacity: 0.4 },
@@ -361,17 +403,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: 8,
     borderBottomWidth: 1,
-    borderBottomColor: c.surface2,
+    borderBottomColor: c.seamHairline,
   },
   suggestCover: { width: 34, height: 48 },
-  suggestTitle: { fontSize: 15, fontWeight: "500", color: c.text },
-  suggestQuery: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.surface2 },
+  suggestTitle: { ...type.name, fontSize: 15 },
+  suggestQuery: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: c.seamHairline },
   suggestQueryText: { fontSize: 15, color: c.text },
   center: { paddingTop: 48, alignItems: "center" },
   stateBox: {
+    ...cardSurface(theme, { onPanel: true }),
     margin: 16,
-    backgroundColor: c.paper,
-    borderRadius: theme.radii.card,
     padding: 18,
     gap: 12,
     alignItems: "flex-start",
@@ -395,30 +436,37 @@ const styles = StyleSheet.create({
   },
   cnt: { flex: 1, fontSize: 13, color: c.textSub },
   viewBtn: {
-    backgroundColor: c.paper,
-    borderColor: c.surface3,
-    borderWidth: 1,
-    borderRadius: theme.radii.pill,
-    paddingVertical: 4,
+    ...ACT.secondary,
+    borderRadius: theme.radii.control,
+    paddingVertical: 5,
     paddingHorizontal: 12,
+    flexShrink: 0,
   },
-  viewBtnText: { fontSize: 13, color: c.text },
+  viewBtnText: { fontSize: 13, ...ACT.secondaryText },
   listPad: { paddingHorizontal: 16, paddingBottom: 24 },
   // 칸마다 정확히 반 폭(B11 2열). flex: 1이면 홀수 마지막·한 권 결과가 줄 전체로 늘어난다.
   // 칸 사이 10은 양쪽 안쪽 여백 5로 나누고, 줄을 5씩 밖으로 당겨 바깥 끝은 그대로 둔다.
   gridRow: { marginHorizontal: -GRID_HALF_GAP },
   gridCell: { width: "50%", paddingHorizontal: GRID_HALF_GAP, marginBottom: 14 },
   gridCover: { width: "100%", aspectRatio: 3 / 4, marginBottom: 6 },
+  gridFoot: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: 6 },
+  // 1열 목록 줄: 카드 아님 — 유리판 위 평면 + 아래 1px 줄눈
   row: {
     flexDirection: "row",
+    alignItems: "stretch",
     gap: 12,
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: c.surface2,
+    borderBottomColor: c.seamHairline,
   },
   rowCover: { width: 52, height: 74 },
-  title: { fontSize: 15, fontWeight: "500", color: c.text },
+  rowMain: { flex: 1, minWidth: 0, justifyContent: "space-between", gap: 4 },
+  rowTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", gap: 8 },
+  rowRight: { alignItems: "flex-end", gap: 2, flexShrink: 0 },
+  rowStrip: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
+  title: { ...type.name },
   sub: { fontSize: 13, color: c.textSub, marginTop: 2 },
+  gauge: { ...type.gauge, flexShrink: 0 },
   footer: { paddingVertical: 14, alignItems: "center", gap: 6 },
   more: { fontSize: 13, color: c.textSub, textAlign: "center" },
   moreError: { alignItems: "center", gap: 8 },
