@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
 import React from "react";
 import SettingsScreen from "../../../app/settings";
+import { actionColors, theme } from "../../theme";
 import { AuthStatus, useAccountActions, useAuth, WithdrawResult } from "../AuthProvider";
 import { SignInResult } from "../platform";
 
@@ -120,5 +121,35 @@ describe("SettingsScreen (AUTH-2-P2)", () => {
     });
     expect(mockReplace).toHaveBeenCalledWith("/");
     expect(signOutMock).not.toHaveBeenCalled(); // 로그아웃은 withdrawAccount 안에서
+  });
+
+  test("settings_design_confirm_card_and_single_primary_button", async () => {
+    authAs("signedIn");
+    const ACT = actionColors(theme.colors);
+    const screen = await render(<SettingsScreen />);
+
+    // 확인 칸 닫힘: 로그아웃이 주 버튼(primary)
+    const signOutBtnBefore = screen.getByRole("button", { name: "로그아웃" });
+    expect(signOutBtnBefore.props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ backgroundColor: ACT.primary.backgroundColor })])
+    );
+
+    // 확인 칸 열림: 곡률 9(infoCard) + panelLit, 로그아웃은 보조(secondary), 탈퇴하기만 주 버튼(primary)
+    await fireEvent.press(screen.getByText("회원 탈퇴"));
+    const confirmBox = screen.getByTestId("withdraw-confirm");
+    expect(confirmBox.props.style).toEqual(
+      expect.objectContaining({
+        borderRadius: theme.radii.infoCard,
+        backgroundColor: theme.colors.panelLit,
+      })
+    );
+    const signOutBtnAfter = screen.getByRole("button", { name: "로그아웃" });
+    expect(signOutBtnAfter.props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ backgroundColor: ACT.secondary.backgroundColor })])
+    );
+    const withdrawBtn = screen.getByRole("button", { name: "탈퇴하기" });
+    expect(withdrawBtn.props.style).toEqual(
+      expect.arrayContaining([expect.objectContaining({ backgroundColor: ACT.primary.backgroundColor })])
+    );
   });
 });

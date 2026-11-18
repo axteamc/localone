@@ -3,7 +3,7 @@ import { useRouter } from "expo-router";
 import { useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { useAccountActions, useAuth } from "../src/auth/AuthProvider";
-import { actionColors, theme } from "../src/theme";
+import { actionColors, cardSurface, panel, theme, type as T } from "../src/theme";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -54,12 +54,20 @@ export default function SettingsScreen() {
     return (
       <View style={styles.container}>
         <Text style={styles.notice}>로그인하면 설정을 볼 수 있어요</Text>
-        <Pressable accessibilityRole="button" onPress={() => router.push("/login")} style={[styles.button, ACT.primary]}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push("/login")}
+          style={({ pressed }) => [styles.button, ACT.primary, pressed && ACT.primaryPressed]}
+        >
           <Text style={[styles.buttonText, ACT.primaryText]}>로그인</Text>
         </Pressable>
       </View>
     );
   }
+
+  const signOutBtnStyle = confirming ? ACT.secondary : ACT.primary;
+  const signOutPressedStyle = confirming ? ACT.secondaryPressed : ACT.primaryPressed;
+  const signOutTextStyle = confirming ? ACT.secondaryText : ACT.primaryText;
 
   return (
     <View style={styles.container}>
@@ -70,12 +78,12 @@ export default function SettingsScreen() {
         onPress={() => {
           void onSignOut();
         }}
-        style={[styles.button, ACT.primary]}
+        style={({ pressed }) => [styles.button, signOutBtnStyle, pressed && !busy && signOutPressedStyle]}
       >
         {signingOut ? (
-          <ActivityIndicator accessibilityLabel="로그아웃하는 중" color={ACT.primaryText.color} />
+          <ActivityIndicator accessibilityLabel="로그아웃하는 중" color={signOutTextStyle.color} />
         ) : (
-          <Text style={[styles.buttonText, ACT.primaryText]}>로그아웃</Text>
+          <Text style={[styles.buttonText, signOutTextStyle]}>로그아웃</Text>
         )}
       </Pressable>
 
@@ -88,7 +96,7 @@ export default function SettingsScreen() {
             setWithdrawError(null);
             setConfirming(true);
           }}
-          style={[styles.button, ACT.secondary]}
+          style={({ pressed }) => [styles.button, ACT.secondary, pressed && !busy && ACT.secondaryPressed]}
         >
           <Text style={[styles.buttonText, ACT.secondaryText]}>회원 탈퇴</Text>
         </Pressable>
@@ -106,7 +114,7 @@ export default function SettingsScreen() {
             onPress={() => {
               void onWithdraw();
             }}
-            style={[styles.button, ACT.primary]}
+            style={({ pressed }) => [styles.button, ACT.primary, pressed && !busy && ACT.primaryPressed]}
           >
             {withdrawing ? (
               <ActivityIndicator accessibilityLabel="탈퇴하는 중" color={ACT.primaryText.color} />
@@ -122,7 +130,7 @@ export default function SettingsScreen() {
               setConfirming(false);
               setWithdrawError(null);
             }}
-            style={[styles.button, ACT.secondary]}
+            style={({ pressed }) => [styles.button, ACT.secondary, pressed && !busy && ACT.secondaryPressed]}
           >
             <Text style={[styles.buttonText, ACT.secondaryText]}>취소</Text>
           </Pressable>
@@ -140,13 +148,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     padding: 24,
     gap: 12,
-    backgroundColor: theme.colors.bg,
+    backgroundColor: panel.backgroundColor,
   },
   notice: {
-    fontSize: 16,
-    fontWeight: "500",
+    ...T.title,
     textAlign: "center",
-    color: theme.colors.text,
   },
   button: {
     minHeight: 48,
@@ -157,21 +163,16 @@ const styles = StyleSheet.create({
     borderRadius: theme.radii.control,
   },
   buttonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "500",
   },
   confirm: {
+    ...cardSurface(theme, { onPanel: true }),
     gap: 10,
     padding: 16,
-    borderRadius: theme.radii.control,
-    backgroundColor: theme.colors.cream,
-    borderWidth: 1,
-    borderColor: theme.colors.surface3,
   },
   confirmTitle: {
-    fontSize: 17,
-    fontWeight: "500",
-    color: theme.colors.text,
+    ...T.title,
   },
   confirmBody: {
     fontSize: 14,
