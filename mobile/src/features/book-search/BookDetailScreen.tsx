@@ -1,5 +1,6 @@
 // 책 상세: 표지 + 제목·저자·출판사·연도 → 빌릴 예정에 저장 → 가까운 도서관 → 책 소개
 // book-search.md LIB-1 B4·B5·B12, S-4·S-9·S-11 / LIB-2 A1~A3·A7·A10·A11, V-1·V-4·V-9 / LIB-3 N7·N8
+// loan-assistant.md LOAN-1 M10 ① — "빌릴 예정에 저장" 아래 "빌렸어요"
 import { useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -7,6 +8,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
 import { ApiCallError, fetchBook, type AvailabilityItem, type Book } from "../../lib/publicApi";
 import { theme, actionColors } from "../../theme";
+import { StartLoanButton } from "../loan-assistant/StartLoanButton";
 import { availabilitySummary, checkedAtLabel } from "./availabilityText";
 import { EmptyAvailability } from "./EmptyAvailability";
 import { LibraryAvailabilityCard } from "./LibraryAvailabilityCard";
@@ -137,6 +139,7 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
       >
         <Text style={styles.saveBtnText}>빌릴 예정에 저장</Text>
       </Pressable>
+      <StartLoanButton variant="detail" input={{ isbn13: b.isbn13 }} />
       {saveNote === "login" && (
         <View style={styles.note}>
           <Text style={styles.noteText}>{LOGIN_TO_SAVE}</Text>
