@@ -225,6 +225,7 @@ def book(db_engine: Engine, public_reference_data):  # noqa: F811
             {"i": AUTH3_ISBN}).scalar_one()
     yield bid
     with db_engine.begin() as conn:
+        conn.execute(text("DELETE FROM loans WHERE book_id = :b"), {"b": bid})
         conn.execute(text("DELETE FROM loan_plans WHERE book_id = :b"), {"b": bid})
     clean()
 
@@ -245,6 +246,30 @@ def test_withdraw_deletes_own_loan_plans(client, auth, db_engine, book):
     assert client.delete("/api/v1/me", headers=auth["A"]).status_code == 200
     assert _plans(db_engine, A) == 0
     assert _plans(db_engine, B) == 1
+
+
+def _loan(conn, user: UUID, book_id: int, plan_id: Any = None) -> None:
+    conn.execute(text(
+        "INSERT INTO loans (user_id, book_id, library_id, plan_id, loaned_on, due_on) "
+        "VALUES (:u, :b, 101, :p, DATE '2026-11-01', DATE '2026-11-15')"),
+        {"u": user, "b": book_id, "p": plan_id})
+
+
+def _loans(engine: Engine, user: UUID) -> int:
+    return scalar(engine, "SELECT count(*) FROM loans WHERE user_id = :u", u=user)
+
+
+def test_withdraw_deletes_own_loans_before_plans(client, auth, db_engine, book):
+    """loans는 loan_plans보다 먼저 지운다(plan_id FK). 내 대출만 지우고 B 대출은 그대로."""
+    with db_engine.begin() as conn:
+        _plan(conn, A, book)
+        _plan(conn, B, book)
+        a_plan = conn.execute(text("SELECT id FROM loan_plans WHERE user_id = :u"), {"u": A}).scalar_one()
+        _loan(conn, A, book, a_plan)  # 예정에서 시작한 대출 — 순서가 거꾸로면 FK 위반
+        _loan(conn, B, book)
+    assert client.delete("/api/v1/me", headers=auth["A"]).status_code == 200
+    assert (_loans(db_engine, A), _plans(db_engine, A)) == (0, 0)
+    assert (_loans(db_engine, B), _plans(db_engine, B)) == (1, 1)
 
 
 def test_write_committed_before_withdraw_is_cleaned(auth, db_engine, book):
