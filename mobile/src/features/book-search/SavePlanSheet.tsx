@@ -4,7 +4,7 @@
 import { useRef, useState } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import type { AvailabilityItem } from "../../lib/publicApi";
-import { theme, actionColors } from "../../theme";
+import { theme, actionColors, type as typeScale } from "../../theme";
 import { ApiCallError, saveLoanPlan, type LoanPlan } from "./api";
 import { distanceLabel, holdingText } from "./availabilityText";
 
@@ -92,9 +92,13 @@ export function SavePlanSheet({
                       accessibilityState={{ disabled: pendingId !== null }}
                       disabled={pendingId !== null}
                       onPress={() => void choose(lib.id)}
-                      style={[styles.choose, pendingId !== null && styles.dim]}
+                      style={({ pressed }) => [
+                        styles.choose,
+                        pressed && ACT.secondaryPressed,
+                        pendingId !== null && styles.dim,
+                      ]}
                     >
-                      <Text style={styles.chooseText}>선택</Text>
+                      <Text style={styles.chooseText} numberOfLines={1}>선택</Text>
                     </Pressable>
                   </View>
                 );
@@ -112,9 +116,12 @@ const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   scrim: { flex: 1, justifyContent: "flex-end", backgroundColor: c.shadowSoft },
   sheet: {
-    backgroundColor: c.paper,
-    borderTopLeftRadius: theme.radii.card,
-    borderTopRightRadius: theme.radii.card,
+    backgroundColor: c.panelLit,
+    borderWidth: 1,
+    borderBottomWidth: 0,
+    borderColor: c.seamHairline,
+    borderTopLeftRadius: theme.radii.infoCard,
+    borderTopRightRadius: theme.radii.infoCard,
     padding: 18,
     paddingBottom: 28,
     gap: 12,
@@ -122,7 +129,7 @@ const styles = StyleSheet.create({
   },
   head: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   flex: { flex: 1 },
-  title: { fontSize: 17, fontWeight: "500", color: c.text },
+  title: { ...typeScale.title },
   subtitle: { fontSize: 13, color: c.textSub, marginTop: 4, lineHeight: 19 },
   close: { paddingVertical: 4, paddingHorizontal: 6 },
   closeText: { fontSize: 15, color: c.text, fontWeight: "500" },
@@ -136,7 +143,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: c.divider,
+    borderBottomColor: c.seamHairline,
   },
   name: { fontSize: 15, fontWeight: "500", color: c.text },
   meta: { fontSize: 13, color: c.textSub, marginTop: 2 },
@@ -145,6 +152,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radii.control,
     paddingVertical: 8,
     paddingHorizontal: 16,
+    flexShrink: 0,
   },
   dim: { opacity: 0.5 },
   chooseText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "500" },

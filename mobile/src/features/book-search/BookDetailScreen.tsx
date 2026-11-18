@@ -7,7 +7,7 @@ import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
 import { ApiCallError, fetchBook, type AvailabilityItem, type Book } from "../../lib/publicApi";
-import { theme, actionColors } from "../../theme";
+import { actionColors, cardSurface, theme, type as typeScale } from "../../theme";
 import { StartLoanButton } from "../loan-assistant/StartLoanButton";
 import { availabilitySummary, checkedAtLabel } from "./availabilityText";
 import { EmptyAvailability } from "./EmptyAvailability";
@@ -107,8 +107,12 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
       <View style={styles.screen}>
         <View style={styles.stateBox}>
           <Text style={styles.stateText}>{SEARCH_FAILED}</Text>
-          <Pressable accessibilityRole="button" onPress={() => void load()} style={styles.darkBtn}>
-            <Text style={styles.darkBtnText}>다시 해 보기</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void load()}
+            style={({ pressed }) => [styles.darkBtn, pressed && ACT.secondaryPressed]}
+          >
+            <Text style={styles.darkBtnText} numberOfLines={1}>다시 해 보기</Text>
           </Pressable>
         </View>
       </View>
@@ -116,79 +120,92 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
   }
 
   const b = state.book;
-  const pubLine = [b.publisher, b.pub_year === null ? null : String(b.pub_year)]
+  const gaugeLine = [b.pub_year === null ? null : String(b.pub_year), b.isbn13 ? `ISBN ${b.isbn13}` : null]
     .filter((v): v is string => !!v)
     .join(" · ");
 
+  const saveButton = (
+    <Pressable
+      testID="save-plan"
+      accessibilityRole="button"
+      onPress={onSave}
+      style={({ pressed }) => [styles.saveBtn, pressed && ACT.primaryPressed]}
+    >
+      <Text style={styles.saveBtnText} numberOfLines={1}>빌릴 예정에 저장</Text>
+    </Pressable>
+  );
+
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.pad}>
-      <View testID="detail-info" style={styles.head}>
-        <BookCover book={b} style={styles.cover} fontSize={13} />
-        <View style={styles.flex}>
-          <Text style={styles.title}>{b.title}</Text>
-          {!!b.author && <Text style={styles.sub}>{b.author}</Text>}
-          {!!pubLine && <Text style={styles.sub}>{pubLine}</Text>}
+      <View style={styles.topPanel}>
+        <View testID="detail-info" style={styles.head}>
+          <BookCover book={b} style={styles.cover} fontSize={13} />
+          <View style={styles.flex}>
+            <Text style={styles.title}>{b.title}</Text>
+            {!!b.author && <Text style={styles.sub}>{b.author}</Text>}
+            {!!b.publisher && <Text style={styles.sub}>{b.publisher}</Text>}
+            {!!gaugeLine && (
+              <Text style={styles.gauge} numberOfLines={1}>
+                {gaugeLine}
+              </Text>
+            )}
+          </View>
         </View>
+
+        <StartLoanButton variant="detail" input={{ isbn13: b.isbn13 }} leftSlot={saveButton} />
       </View>
 
-      <Pressable
-        testID="save-plan"
-        accessibilityRole="button"
-        onPress={onSave}
-        style={styles.saveBtn}
-      >
-        <Text style={styles.saveBtnText}>빌릴 예정에 저장</Text>
-      </Pressable>
-      <StartLoanButton variant="detail" input={{ isbn13: b.isbn13 }} />
-      {saveNote === "login" && (
-        <View style={styles.note}>
-          <Text style={styles.noteText}>{LOGIN_TO_SAVE}</Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push("/login")}
-            style={styles.darkBtn}
-          >
-            <Text style={styles.darkBtnText}>로그인</Text>
-          </Pressable>
-        </View>
-      )}
-      {saveNote === "saved" && (
-        <View testID="saved-note" style={styles.note}>
-          <Text style={styles.noteText}>{SAVED_NOTE}</Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push("/loans")}
-            style={styles.darkBtn}
-          >
-            <Text style={styles.darkBtnText}>대출·반납 보기</Text>
-          </Pressable>
-        </View>
-      )}
+      <View style={styles.bodyPad}>
+        {saveNote === "login" && (
+          <View style={styles.note}>
+            <Text style={styles.noteText}>{LOGIN_TO_SAVE}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/login")}
+              style={({ pressed }) => [styles.darkBtn, pressed && ACT.secondaryPressed]}
+            >
+              <Text style={styles.darkBtnText} numberOfLines={1}>로그인</Text>
+            </Pressable>
+          </View>
+        )}
+        {saveNote === "saved" && (
+          <View testID="saved-note" style={styles.note}>
+            <Text style={styles.noteText}>{SAVED_NOTE}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.push("/loans")}
+              style={({ pressed }) => [styles.darkBtn, pressed && ACT.secondaryPressed]}
+            >
+              <Text style={styles.darkBtnText} numberOfLines={1}>대출·반납 보기</Text>
+            </Pressable>
+          </View>
+        )}
 
-      {/* B5 ③ 가까운 도서관. 책을 받아 온 뒤에만 조회한다(A10). */}
-      <AvailabilitySection isbn13={b.isbn13} onItems={setCandidates} onSaveForLater={onSave} />
+        {/* B5 ③ 가까운 도서관. 책을 받아 온 뒤에만 조회한다(A10). */}
+        <AvailabilitySection isbn13={b.isbn13} onItems={setCandidates} onSaveForLater={onSave} />
 
-      <SavePlanSheet
-        visible={sheetOpen}
-        isbn13={b.isbn13}
-        candidates={candidates}
-        onClose={() => setSheetOpen(false)}
-        onSaved={() => {
-          setSheetOpen(false);
-          setSaveNote("saved");
-        }}
-        onLoginRequired={() => {
-          setSheetOpen(false);
-          setSaveNote("login");
-        }}
-      />
+        <SavePlanSheet
+          visible={sheetOpen}
+          isbn13={b.isbn13}
+          candidates={candidates}
+          onClose={() => setSheetOpen(false)}
+          onSaved={() => {
+            setSheetOpen(false);
+            setSaveNote("saved");
+          }}
+          onLoginRequired={() => {
+            setSheetOpen(false);
+            setSaveNote("login");
+          }}
+        />
 
-      {b.description !== null && (
-        <View testID="description">
-          <Text style={styles.section}>책 소개</Text>
-          <Text style={styles.desc}>{b.description}</Text>
-        </View>
-      )}
+        {b.description !== null && (
+          <View testID="description">
+            <Text style={styles.section} numberOfLines={1}>책 소개</Text>
+            <Text style={styles.desc}>{b.description}</Text>
+          </View>
+        )}
+      </View>
     </ScrollView>
   );
 }
@@ -224,7 +241,7 @@ function AvailabilitySection({
 
   return (
     <View testID="availability" style={styles.availability}>
-      <Text style={styles.section}>
+      <Text style={styles.section} numberOfLines={1}>
         {city ? "도시 전체 도서관" : "가까운 도서관"}
         {city && a.selectedRegionLabel ? ` · ${a.selectedRegionLabel}` : ""}
       </Text>
@@ -237,13 +254,17 @@ function AvailabilitySection({
             setPicking(false);
             a.searchCity();
           }}
-          style={styles.scopeBtn}
+          style={({ pressed }) => [styles.scopeBtn, pressed && ACT.secondaryPressed]}
         >
-          <Text style={styles.scopeBtnText}>현재 도시 내 모든 도서관 검색</Text>
+          <Text style={styles.scopeBtnText} numberOfLines={1}>현재 도시 내 모든 도서관 검색</Text>
         </Pressable>
         {city && (
-          <Pressable accessibilityRole="button" onPress={nearbyAgain} style={styles.scopeBtn}>
-            <Text style={styles.scopeBtnText}>내 주변 다시 보기</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={nearbyAgain}
+            style={({ pressed }) => [styles.scopeBtn, pressed && ACT.secondaryPressed]}
+          >
+            <Text style={styles.scopeBtnText} numberOfLines={1}>내 주변 다시 보기</Text>
           </Pressable>
         )}
       </View>
@@ -270,8 +291,12 @@ function AvailabilitySection({
       {a.status === "error" && (
         <View style={styles.stateBoxInline}>
           <Text style={styles.stateText}>{a.errorMessage}</Text>
-          <Pressable accessibilityRole="button" onPress={a.retry} style={styles.darkBtn}>
-            <Text style={styles.darkBtnText}>다시 시도</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={a.retry}
+            style={({ pressed }) => [styles.darkBtn, pressed && ACT.secondaryPressed]}
+          >
+            <Text style={styles.darkBtnText} numberOfLines={1}>다시 시도</Text>
           </Pressable>
         </View>
       )}
@@ -297,54 +322,63 @@ const styles = StyleSheet.create({
   cards: { gap: 12 },
   scopeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   scopeBtn: {
-    borderWidth: 1,
-    borderColor: c.divider,
-    backgroundColor: c.paper,
+    ...ACT.secondary,
     borderRadius: theme.radii.control,
     paddingVertical: 8,
     paddingHorizontal: 14,
   },
-  scopeBtnText: { fontSize: 14, color: c.text, fontWeight: "500" },
-  summary: { fontSize: 13, color: c.textSub },
-  footer: { fontSize: 12, color: c.textSub, marginTop: 2 },
+  scopeBtnText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "500" },
+  summary: { ...typeScale.gauge },
+  footer: { ...typeScale.gauge, marginTop: 2 },
   stateBoxInline: {
-    backgroundColor: c.paper,
-    borderRadius: theme.radii.card,
+    ...cardSurface(theme, { onPanel: true }),
     padding: 18,
     gap: 12,
     alignItems: "flex-start",
   },
-  screen: { flex: 1, backgroundColor: c.cream },
+  screen: { flex: 1, backgroundColor: c.panelFrosted },
   center: { alignItems: "center", justifyContent: "center" },
-  flex: { flex: 1 },
-  pad: { padding: 16, paddingBottom: 32 },
-  head: { flexDirection: "row", gap: 14 },
+  flex: { flex: 1, minWidth: 0 },
+  pad: { paddingBottom: 32 },
+  bodyPad: { paddingHorizontal: 16, paddingTop: 12 },
+  topPanel: {
+    backgroundColor: c.panelLit,
+    borderBottomWidth: 1,
+    borderBottomColor: c.seamHairline,
+    borderBottomLeftRadius: theme.radii.block,
+    borderBottomRightRadius: theme.radii.block,
+    boxShadow: `0 1px 0 ${c.seamHighlight}`,
+    padding: 16,
+  },
+  head: { flexDirection: "row", gap: 14, alignItems: "flex-start" },
   cover: { width: 84, height: 118 },
-  title: { fontSize: 19, fontWeight: "500", color: c.text, lineHeight: 26 },
-  sub: { fontSize: 14, color: c.textSub, marginTop: 4 },
+  title: { ...typeScale.title, lineHeight: 28 },
+  sub: { fontSize: 14, color: c.textSub, marginTop: 3 },
+  gauge: { ...typeScale.gauge, marginTop: 5 },
   saveBtn: {
-    marginTop: 16,
+    flex: 1.55,
+    flexShrink: 0,
+    height: 48,
     ...ACT.primary,
     borderRadius: theme.radii.control,
-    paddingVertical: 14,
+    paddingHorizontal: 12,
     alignItems: "center",
+    justifyContent: "center",
   },
-  saveBtnText: { ...ACT.primaryText, fontSize: 16, fontWeight: "500" },
+  saveBtnText: { ...ACT.primaryText, fontSize: 15, fontWeight: "500" },
   note: {
     marginTop: 10,
-    backgroundColor: c.paper,
-    borderRadius: theme.radii.card,
+    ...cardSurface(theme, { onPanel: true }),
     padding: 14,
     gap: 10,
     alignItems: "flex-start",
   },
   noteText: { fontSize: 15, color: c.text },
-  section: { fontSize: 15, fontWeight: "500", color: c.text, marginTop: 24, marginBottom: 6 },
+  section: { ...typeScale.title, marginTop: 20, marginBottom: 6 },
   desc: { fontSize: 15, color: c.inkSoft, lineHeight: 23 },
   stateBox: {
     margin: 16,
-    backgroundColor: c.paper,
-    borderRadius: theme.radii.card,
+    ...cardSurface(theme, { onPanel: true }),
     padding: 18,
     gap: 12,
     alignItems: "flex-start",

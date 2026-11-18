@@ -1,13 +1,8 @@
 // `/books/[isbn13]` 책 상세(core.md APP-0 C2, book-search.md LIB-1 B5)
-import { Stack, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { BookDetailScreen } from "../../src/features/book-search/BookDetailScreen";
 
 export default function BookDetail() {
   const { isbn13 } = useLocalSearchParams<{ isbn13: string }>();
-  return (
-    <>
-      <Stack.Screen options={{ title: "책" }} />
-      <BookDetailScreen isbn13={typeof isbn13 === "string" ? isbn13 : ""} />
-    </>
-  );
+  return <BookDetailScreen isbn13={typeof isbn13 === "string" ? isbn13 : ""} />;
 }

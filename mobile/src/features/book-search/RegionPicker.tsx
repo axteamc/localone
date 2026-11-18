@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { requestLocationPermission } from "../../lib/platform";
 import { REGIONS, searchRegions } from "../../lib/regions";
-import { theme, actionColors } from "../../theme";
+import { theme, actionColors, cardSurface } from "../../theme";
 
 export const REGION_INTRO = "위치를 쓰지 않고 지역을 골라 찾을 수 있어요.";
 export const REGION_NO_MATCH = "일치하는 지역이 없어요. 시·군·구 이름으로 다시 입력해 주세요.";
@@ -20,6 +20,7 @@ export function RegionPicker({
 }) {
   const [q, setQ] = useState("");
   const [denied, setDenied] = useState(false);
+  const [focused, setFocused] = useState(false);
   const regions = useMemo(() => (q.trim() ? searchRegions(q, 20) : REGIONS.slice(0, 10)), [q]);
 
   const allowLocation = async () => {
@@ -31,8 +32,12 @@ export function RegionPicker({
   return (
     <View testID="region-picker" style={styles.box}>
       <Text style={styles.intro}>{REGION_INTRO}</Text>
-      <Pressable accessibilityRole="button" onPress={() => void allowLocation()} style={styles.locBtn}>
-        <Text style={styles.locBtnText}>위치 허용해서 주변 찾기</Text>
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => void allowLocation()}
+        style={({ pressed }) => [styles.locBtn, pressed && ACT.secondaryPressed]}
+      >
+        <Text style={styles.locBtnText} numberOfLines={1}>위치 허용해서 주변 찾기</Text>
       </Pressable>
       {denied && (
         <Text style={styles.denied} accessibilityLiveRegion="polite">
@@ -43,9 +48,11 @@ export function RegionPicker({
         testID="region-input"
         value={q}
         onChangeText={setQ}
+        onFocus={() => setFocused(true)}
+        onBlur={() => setFocused(false)}
         placeholder={REGION_PLACEHOLDER}
         placeholderTextColor={theme.colors.textSub}
-        style={styles.input}
+        style={[styles.input, focused && styles.inputFocused]}
         returnKeyType="search"
       />
       {regions.length === 0 ? (
@@ -72,24 +79,29 @@ export function RegionPicker({
 const c = theme.colors;
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
-  box: { backgroundColor: c.paper, borderRadius: theme.radii.card, padding: 16, gap: 10 },
+  box: { ...cardSurface(theme, { onPanel: true }), padding: 16, gap: 10 },
   intro: { fontSize: 15, color: c.text, lineHeight: 22 },
   locBtn: {
-    ...ACT.primary,
+    ...ACT.secondary,
     borderRadius: theme.radii.control,
     paddingVertical: 12,
+    paddingHorizontal: 14,
     alignItems: "center",
   },
-  locBtnText: { ...ACT.primaryText, fontSize: 15, fontWeight: "500" },
+  locBtnText: { ...ACT.secondaryText, fontSize: 15, fontWeight: "500" },
   input: {
     backgroundColor: c.paper,
     borderWidth: 1,
-    borderColor: c.divider,
-    borderRadius: theme.radii.pill,
+    borderColor: c.seamHairline,
+    borderRadius: theme.radii.infoCard,
     paddingHorizontal: 14,
     paddingVertical: 10,
     fontSize: 15,
     color: c.text,
+  },
+  inputFocused: {
+    borderWidth: 1.5,
+    borderColor: c.inkStrong,
   },
   noMatch: { fontSize: 14, color: c.textSub, lineHeight: 20 },
   denied: { fontSize: 14, color: c.textSub, lineHeight: 20 },
@@ -97,7 +109,7 @@ const styles = StyleSheet.create({
     minHeight: 44,
     justifyContent: "center",
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: c.divider,
+    borderBottomColor: c.seamHairline,
   },
   rowText: { fontSize: 15, color: c.text },
 });

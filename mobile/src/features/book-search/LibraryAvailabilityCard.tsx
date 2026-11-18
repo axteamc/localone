@@ -79,7 +79,7 @@ export function LibraryAvailabilityCard({
         <View style={styles.bodyMain}>
           <View style={styles.statusRow}>
             <View style={[styles.dot, { backgroundColor: line.dot }]} />
-            <Text style={styles.statusText}>{line.parts.join(" · ")}</Text>
+            <Text style={styles.statusText} numberOfLines={1}>{line.parts.join(" · ")}</Text>
             {line.retry && (
               <Pressable accessibilityRole="button" onPress={onRetry} hitSlop={8}>
                 <Text style={styles.retry}>다시 시도</Text>
@@ -115,9 +115,9 @@ export function LibraryAvailabilityCard({
             accessibilityRole="button"
             onPress={() => void openLive()}
             hitSlop={LIVE_HIT_SLOP}
-            style={styles.liveBtn}
+            style={({ pressed }) => [styles.liveBtn, pressed && ACT.secondaryPressed]}
           >
-            <Text style={styles.liveBtnText}>실시간 ↗</Text>
+            <Text style={styles.liveBtnText} numberOfLines={1}>실시간 ↗</Text>
           </Pressable>
         )}
       </View>
@@ -136,7 +136,7 @@ const styles = StyleSheet.create({
   // A11(C-70, DESIGN.md "정보 카드 질감"): 무광 면 + 1px 줄눈 + 아래 2px 받침, 그림자 없음
   foot: { backgroundColor: c.reliefBottomMid, borderRadius: theme.radii.infoCard, paddingBottom: 2 },
   card: {
-    backgroundColor: c.panelFrosted,
+    backgroundColor: c.panelLit,
     borderWidth: 1,
     borderColor: c.seamHairline,
     borderRadius: theme.radii.infoCard,
@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   meta: { fontSize: 13, color: c.textSub },
   statusRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 },
   dot: { width: 8, height: 8, borderRadius: "50%" }, // B9 예외: 점 모양만 50%
-  statusText: { fontSize: 14, color: c.text },
+  statusText: { fontSize: 14, color: c.text, flexShrink: 1 },
   retry: { fontSize: 14, color: c.inkStrong, fontWeight: "500", textDecorationLine: "underline" },
   info: { gap: 2, alignItems: "flex-start" },
   fold: { fontSize: 13, color: c.textSub, fontWeight: "500", paddingVertical: 2 },
