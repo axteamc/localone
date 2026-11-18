@@ -76,7 +76,8 @@ export type TabState =
   | { kind: "ready"; items: MyCollectionPost[]; nextCursor: string | null; more: "idle" | "loading" | "error" };
 type Cache = Partial<Record<CollectionTab, TabState>>;
 export type Notice = { id: number; text: string; undo: boolean };
-export type Dim = { tab: CollectionTab; postId: string };
+export type Dim = { id: number; tab: CollectionTab; postId: string };
+type MenuTarget = { postId: string; session: number };
 
 /** 응답을 못 받았거나 5xx: 서버가 처리했는지 기기 혼자 알 수 없다(C6 예외 #5 결과 불명) */
 function resultUnknown(e: unknown): boolean {
@@ -115,15 +116,18 @@ export function useMyCollection() {
     dimRef.current = d;
     setDimState(d);
   };
-  const [menuFor, setMenuFor] = useState<string | null>(null);
+  const [menu, setMenu] = useState<MenuTarget | null>(null);
 
   const session = useRef(0); // 계정 전환·로그아웃마다 올린다. 앞 계정의 늦은 결과·타이머를 버린다
   const inFlight = useRef<CollectionTab | null>(null); // listRunner가 지금 부르는 탭
   const refreshSeq = useRef(0);
   const noticeSeq = useRef(0);
+  const dimSeq = useRef(0);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dimTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const undoBusy = useRef(false);
+  const undoing = useRef(new Set<string>()); // `${tab}:${postId}` 복구 중인 카드
+
+  const undoKey = (tab: CollectionTab, postId: string) => `${tab}:${postId}`;
 
   const clearTimers = () => {
     if (noticeTimer.current) clearTimeout(noticeTimer.current);
@@ -143,6 +147,27 @@ export function useMyCollection() {
 
   const removeFromTab = useCallback(
     (tab: CollectionTab, postId: string) => setCache((c) => ({ ...c, [tab]: withoutPost(c[tab], postId) })),
+    [setCache]
+  );
+
+  /** 결과 불명 시 영향받는 수집 탭과 같은 게시물이 캐시된 다른 탭 캐시를 비워 다음 진입 때 서버와 맞춘다 */
+  const invalidateTabsWithPost = useCallback(
+    (postId: string, exceptTab?: CollectionTab, extraTabs: readonly CollectionTab[] = []) => {
+      setCache((c) => {
+        let changed = false;
+        const next: Cache = { ...c };
+        for (const t of TABS) {
+          if (t === exceptTab) continue;
+          const st = next[t];
+          const hasPost = st?.kind === "ready" && st.items.some((p) => p.id === postId);
+          if ((hasPost || extraTabs.includes(t)) && t in next) {
+            delete next[t];
+            changed = true;
+          }
+        }
+        return changed ? next : c;
+      });
+    },
     [setCache]
   );
 
@@ -246,10 +271,10 @@ export function useMyCollection() {
     setActiveTab("posts");
     setDim(null);
     setNotice(null);
-    setMenuFor(null);
+    setMenu(null);
     setRefreshing(false);
     inFlight.current = null;
-    undoBusy.current = false;
+    undoing.current.clear();
     if (!signedIn) return; // 비로그인: /me/* 호출 0번(M-#1)
     void loadProfile();
     void loadFirst("posts", "fresh"); // 처음 탭은 늘 "내 게시물"(Y1)
@@ -334,42 +359,67 @@ export function useMyCollection() {
   const startDim = (tab: CollectionTab, postId: string, field: Field) => {
     const prev = dimRef.current;
     if (dimTimer.current) clearTimeout(dimTimer.current);
-    if (prev && !(prev.tab === tab && prev.postId === postId)) removeFromTab(prev.tab, prev.postId); // 흐린 카드는 하나만
-    setDim({ tab, postId });
+    // 복구(undo) 요청이 진행 중인 카드는 목록에서 미리 빼지 않는다(완료 결과로 유지·제거)
+    if (prev && !(prev.tab === tab && prev.postId === postId) && !undoing.current.has(undoKey(prev.tab, prev.postId))) {
+      removeFromTab(prev.tab, prev.postId); // 흐린 카드는 하나만
+    }
+    const id = ++dimSeq.current;
+    setDim({ id, tab, postId });
     showNotice(field === "my_reaction" ? MY_TEXT.unliked : MY_TEXT.unbookmarked, { undo: true, ms: UNDO_MS });
     dimTimer.current = setTimeout(() => {
       removeFromTab(tab, postId);
-      setDim(null);
+      if (dimRef.current?.id === id) setDim(null);
     }, UNDO_MS);
   };
 
-  /** B `PostMenu` onChange: 응답이 온 필드만 온다 */
+  const menuSession = menu?.session ?? null;
+  const menuPostId = menu?.postId ?? null;
+
+  /** B `PostMenu` onChange: 메뉴를 연 계정 세대와 같을 때만 적용한다 */
   const onMenuChange = (postId: string, patch: PostReactionPatch) => {
+    if (menuSession === null || menuSession !== session.current) return;
     const tab = activeRef.current;
     const field = COLLECTION_FIELD[tab];
     if (field && patch[field] === false) {
-      setMenuFor(null);
+      setMenu(null);
       startDim(tab, postId, field);
     }
     emitPostReaction(postId, patch); // 이 화면(applyPatch)과 다른 피드에 함께 알린다
   };
 
-  /** B `PostMenu` failText: 수집 탭의 해제 실패만 MY 문구, 결과 불명이면 지금 탭을 조용히 다시 불러 맞춘다 */
+  const onMenuNotice = (text: string) => {
+    if (menuSession === null || menuSession !== session.current) return;
+    showNotice(text);
+  };
+
+  const closeMenu = () => {
+    if (menuSession === null || menuSession !== session.current) return;
+    setMenu(null);
+  };
+
+  /** B `PostMenu` failText: 메뉴를 연 계정 세대에 한정해 실패 문구와 결과 불명 캐시 수렴을 처리한다 */
   const failText = (kind: "reaction" | "bookmark", e: unknown): string => {
+    if (menuSession === null || menuSession !== session.current) return toggleFailText(e);
     const tab = activeRef.current;
     const field = COLLECTION_FIELD[tab];
     const unset = field !== undefined && (kind === "reaction") === (field === "my_reaction");
+    if (resultUnknown(e)) {
+      const extra: CollectionTab[] = [kind === "reaction" ? "reactions" : "bookmarks"];
+      if (unset) void loadFirst(tab, "silent");
+      if (menuPostId) invalidateTabsWithPost(menuPostId, tab, extra);
+    }
     if (!unset) return toggleFailText(e);
-    if (resultUnknown(e)) void loadFirst(tab, "silent");
     return kind === "reaction" ? MY_TEXT.unlikeFailed : MY_TEXT.unbookmarkFailed;
   };
 
   const undo = async () => {
     const d = dimRef.current;
-    if (!d || undoBusy.current) return; // 연타 막기(예외 #3)
+    if (!d) return;
+    const key = undoKey(d.tab, d.postId);
+    if (undoing.current.has(key)) return; // 같은 카드 연타 막기(예외 #3)
     const field = COLLECTION_FIELD[d.tab];
     if (!field) return;
-    undoBusy.current = true;
+    undoing.current.add(key);
     if (dimTimer.current) clearTimeout(dimTimer.current); // 4초 타이머는 누르는 즉시 끈다
     dimTimer.current = null;
     const sess = session.current;
@@ -377,36 +427,41 @@ export function useMyCollection() {
       if (field === "my_reaction") await setReaction(d.postId, true);
       else await setBookmark(d.postId, true);
       if (sess !== session.current) return;
-      setDim(null);
-      hideUndoNotice();
+      if (dimRef.current?.id === d.id) {
+        setDim(null);
+        hideUndoNotice();
+      }
       emitPostReaction(d.postId, { [field]: true }); // 같은 자리 원래 모습
     } catch (e) {
       if (sess !== session.current) return;
-      showNotice(MY_TEXT.undoFailed);
+      const isCurrentDim = dimRef.current?.id === d.id;
+      if (isCurrentDim || !dimRef.current) showNotice(MY_TEXT.undoFailed);
       if (resultUnknown(e)) {
-        setDim(null); // 기기 혼자 정하지 않고 서버 목록으로 맞춘다
-        if (d.tab === activeRef.current) void loadFirst(d.tab, "silent");
-        else
-          setCache((c) => {
-            const next = { ...c };
-            delete next[d.tab];
-            return next;
-          });
-      } else {
+        if (isCurrentDim) setDim(null); // 기기 혼자 정하지 않고 서버 목록으로 맞춘다
+        const extra: CollectionTab[] = [field === "my_reaction" ? "reactions" : "bookmarks"];
+        if (d.tab === activeRef.current) {
+          void loadFirst(d.tab, "silent");
+          invalidateTabsWithPost(d.postId, d.tab, extra);
+        } else {
+          invalidateTabsWithPost(d.postId, undefined, [d.tab, ...extra]);
+        }
+      } else if (isCurrentDim) {
         // 확정 실패: 서버는 해제 상태라 안내 뒤 카드를 뺀다
         dimTimer.current = setTimeout(() => {
           removeFromTab(d.tab, d.postId);
-          if (dimRef.current?.postId === d.postId) setDim(null);
+          if (dimRef.current?.id === d.id) setDim(null);
         }, NOTICE_MS);
+      } else {
+        removeFromTab(d.tab, d.postId);
       }
     } finally {
-      undoBusy.current = false;
+      undoing.current.delete(key);
     }
   };
 
   const tabState = cache[activeTab];
   const menuPost =
-    menuFor && tabState?.kind === "ready" ? tabState.items.find((p) => p.id === menuFor) ?? null : null;
+    menu && tabState?.kind === "ready" ? tabState.items.find((p) => p.id === menu.postId) ?? null : null;
 
   return {
     status,
@@ -424,9 +479,10 @@ export function useMyCollection() {
     retryTab: () => void loadFirst(activeRef.current, "fresh"),
     loadMore: () => void loadMore(activeRef.current),
     showNotice,
-    openMenu: (postId: string) => setMenuFor(postId),
-    closeMenu: () => setMenuFor(null),
+    openMenu: (postId: string) => setMenu({ postId, session: session.current }),
+    closeMenu,
     onMenuChange,
+    onMenuNotice,
     failText,
     undo: () => void undo(),
   };

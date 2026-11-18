@@ -123,7 +123,7 @@ export function MyCollectionScreen() {
           signedIn
           onClose={my.closeMenu}
           onChange={my.onMenuChange}
-          onNotice={(text) => my.showNotice(text)}
+          onNotice={my.onMenuNotice}
           onLoginNeeded={() => undefined}
           failText={my.failText}
         />
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: C.bg },
   center: { alignItems: "center", justifyContent: "center", padding: 24, gap: 8 },
   content: { paddingBottom: 80 },
-  loginTitle: { fontSize: 17, fontWeight: "700", color: C.text, textAlign: "center" },
+  loginTitle: { fontSize: 17, fontWeight: "500", color: C.text, textAlign: "center" },
   loginSub: { fontSize: 14, color: C.textSub, textAlign: "center", marginBottom: 8 },
   fillButton: {
     marginTop: 8,
@@ -266,7 +266,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radii.control,
     backgroundColor: C.inkStrong,
   },
-  fillButtonText: { fontSize: 15, fontWeight: "700", color: onFill(C.inkStrong) },
+  fillButtonText: { fontSize: 15, fontWeight: "500", color: onFill(C.inkStrong) },
   grid: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.radii.pill,
     backgroundColor: C.inkStrong,
   },
-  dimTagText: { fontSize: 12, fontWeight: "700", color: onFill(C.inkStrong) },
+  dimTagText: { fontSize: 12, fontWeight: "500", color: onFill(C.inkStrong) },
   message: { alignItems: "center", gap: 10, paddingVertical: 48, paddingHorizontal: 24 },
   messageText: { fontSize: 14, color: C.textSub, textAlign: "center" },
   empty: { alignItems: "center", paddingVertical: 48, paddingHorizontal: 24, gap: 6 },
@@ -301,7 +301,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   emptyIconText: { fontSize: 24, color: C.text },
-  emptyTitle: { fontSize: 15, fontWeight: "700", color: C.text, textAlign: "center" },
+  emptyTitle: { fontSize: 15, fontWeight: "500", color: C.text, textAlign: "center" },
   emptySub: { fontSize: 13, color: C.textSub, textAlign: "center" },
   footer: { alignItems: "center", gap: 8, paddingVertical: 20 },
   footerText: { fontSize: 13, color: C.textSub },
@@ -329,5 +329,5 @@ const styles = StyleSheet.create({
   },
   noticeText: { flex: 1, fontSize: 14, color: onFill(C.inkStrong) },
   undo: { paddingVertical: 4, paddingHorizontal: 4, minHeight: 32, justifyContent: "center" },
-  undoText: { fontSize: 14, fontWeight: "700", color: onFill(C.inkStrong) },
+  undoText: { fontSize: 14, fontWeight: "500", color: onFill(C.inkStrong) },
 });

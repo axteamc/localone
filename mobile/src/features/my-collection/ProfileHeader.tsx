@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   avatarEmpty: { backgroundColor: C.surface3, alignItems: "center", justifyContent: "center" },
   avatarIcon: { fontSize: 28, color: C.textSub },
   info: { flex: 1, gap: 4, alignItems: "flex-start" },
-  nickname: { fontSize: 17, fontWeight: "700", color: C.text },
+  nickname: { fontSize: 17, fontWeight: "500", color: C.text },
   bio: { fontSize: 13, color: C.textSub },
   edit: {
     marginTop: 4,
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     borderColor: C.divider,
     borderRadius: theme.radii.control,
   },
-  editText: { fontSize: 13, fontWeight: "600", color: C.text },
+  editText: { fontSize: 13, fontWeight: "500", color: C.text },
   skeleton: { backgroundColor: C.surface2 },
   lineLong: { width: "55%", height: 14, borderRadius: theme.radii.inner },
   lineShort: { width: "35%", height: 12, borderRadius: theme.radii.inner },

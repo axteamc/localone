@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
   iconLabel: { fontSize: 12, color: C.textSub, marginTop: 2 },
   divider: { height: StyleSheet.hairlineWidth, backgroundColor: C.divider, marginVertical: 4 },
   row: { minHeight: 44, justifyContent: "center", paddingHorizontal: 16 },
-  rowText: { fontSize: 15, color: C.text, fontWeight: "600" },
+  rowText: { fontSize: 15, color: C.text, fontWeight: "500" },
   sheetBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: C.shadowSoft },
   sheet: {
     backgroundColor: C.paper,
@@ -229,9 +229,9 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
     gap: 12,
   },
-  sheetTitle: { fontSize: 16, fontWeight: "700", color: C.text },
+  sheetTitle: { fontSize: 16, fontWeight: "500", color: C.text },
   primary: { ...ACT.primary, borderRadius: theme.radii.control, paddingVertical: 12, alignItems: "center" },
-  primaryText: { ...ACT.primaryText, fontWeight: "700" },
+  primaryText: { ...ACT.primaryText, fontWeight: "500" },
   textButton: { paddingVertical: 8, minHeight: 44, justifyContent: "center", alignItems: "center" },
   sub: { fontSize: 15, color: C.textSub },
 });

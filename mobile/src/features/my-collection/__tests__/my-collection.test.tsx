@@ -693,6 +693,100 @@ describe("MY-1-P2 열린 테스트(명세 결정·예외)", () => {
     expect(failText).toHaveBeenCalledTimes(1);
     expect(failText.mock.calls[0]![0]).toBe("reaction");
   });
+
+  test("stale PostMenu response from previous account does not mutate new account", async () => {
+    jest.useFakeTimers();
+    const sharedP = liked("P");
+    fetchMyReactions.mockResolvedValue(fakePage([sharedP]));
+    const view = await show();
+    await pressTab("reactions");
+    await waitFor(() => expect(cardIds()).toEqual(["P"]));
+
+    // A 계정에서 P 좋아요 해제 요청을 보류한 채 B 계정으로 전환
+    const pendingDelete = deferred<feedApi.ReactionState>();
+    setReaction.mockReturnValueOnce(pendingDelete.promise);
+    await openMenu("P");
+    await fireEvent.press(screen.getByLabelText(MENU_TEXT.liked));
+
+    setAuth("signedIn", USER_B);
+    await view.rerender(<MyCollectionScreen />);
+    await pressTab("reactions");
+    await waitFor(() => expect(cardIds()).toEqual(["P"]));
+
+    // 뒤늦게 이전 A 계정의 DELETE 응답이 성공해도 B 계정의 P는 유지되어야 한다
+    await act(async () => pendingDelete.resolve({ post_id: "P", reacted: false, reaction_count: 0 }));
+    expect(screen.queryByTestId("dimmed-P")).toBeNull();
+    expect(screen.queryByText(MY_TEXT.unliked)).toBeNull();
+    await act(async () => jest.advanceTimersByTime(5000));
+    expect(cardIds()).toEqual(["P"]);
+    await openMenu("P");
+    expect(screen.getByLabelText(MENU_TEXT.liked)).toBeTruthy();
+  });
+
+  test("unknown result invalidates other cached tabs containing the post so next request uses server state", async () => {
+    const P = fakePost("P", { my_reaction: true, my_bookmark: true });
+    fetchMyPosts.mockResolvedValueOnce(fakePage([P]));
+    fetchMyBookmarks.mockResolvedValueOnce(fakePage([P]));
+    fetchMyReactions.mockResolvedValueOnce(fakePage([P]));
+    await show();
+    await pressTab("bookmarks");
+    await waitFor(() => expect(cardIds()).toEqual(["P"]));
+    await pressTab("reactions");
+    await waitFor(() => expect(cardIds()).toEqual(["P"]));
+
+    // 좋아요 탭에서 P 해제 응답 유실(status 0) → 서버에서는 이미 해제된 상태
+    fetchMyReactions.mockResolvedValueOnce(fakePage([]));
+    setReaction.mockRejectedValueOnce(network());
+    await openMenu("P");
+    await fireEvent.press(screen.getByLabelText(MENU_TEXT.liked));
+    await act(async () => undefined);
+    expect(screen.getByText(MY_TEXT.unlikeFailed)).toBeTruthy();
+
+    // 북마크 탭으로 넘어가면 캐시가 무효화되어 서버에서 최신 상태(my_reaction: false)를 다시 받아온다
+    fetchMyBookmarks.mockResolvedValueOnce(fakePage([fakePost("P", { my_reaction: false, my_bookmark: true })]));
+    await pressTab("bookmarks");
+    await waitFor(() => expect(fetchMyBookmarks).toHaveBeenCalledTimes(2));
+    await openMenu("P");
+    expect(screen.getByLabelText(MENU_TEXT.like)).toBeTruthy();
+    setReaction.mockResolvedValueOnce({ post_id: "P", reacted: true, reaction_count: 1 });
+    await fireEvent.press(screen.getByLabelText(MENU_TEXT.like));
+    await act(async () => undefined);
+    expect(setReaction).toHaveBeenLastCalledWith("P", true);
+  });
+
+  test("previous undo completion does not clear newer card dim or undo notice", async () => {
+    jest.useFakeTimers();
+    fetchMyReactions.mockResolvedValueOnce(fakePage([liked("P"), liked("Q"), liked("R")]));
+    await show();
+    await pressTab("reactions");
+    await waitFor(() => expect(cardIds()).toEqual(["P", "Q", "R"]));
+
+    // P 취소 후 되돌리기 PUT을 보류
+    await openMenu("P");
+    await fireEvent.press(screen.getByLabelText(MENU_TEXT.liked));
+    await act(async () => undefined);
+    const putP = deferred<feedApi.ReactionState>();
+    setReaction.mockReturnValueOnce(putP.promise);
+    await fireEvent.press(screen.getByText(MY_TEXT.undo));
+
+    // P의 PUT이 진행 중인 동안 Q 취소
+    await openMenu("Q");
+    await fireEvent.press(screen.getByLabelText(MENU_TEXT.liked));
+    await act(async () => undefined);
+    expect(screen.getByTestId("dimmed-Q")).toBeTruthy();
+    expect(screen.getByText(MY_TEXT.unliked)).toBeTruthy();
+
+    // 뒤늦게 P의 PUT이 성공해도 P는 복원되고 Q의 흐림·안내는 유지된다
+    await act(async () => putP.resolve({ post_id: "P", reacted: true, reaction_count: 1 }));
+    expect(screen.getByTestId("dimmed-Q")).toBeTruthy();
+    expect(screen.getByText(MY_TEXT.unliked)).toBeTruthy();
+    expect(screen.getByText(MY_TEXT.undo)).toBeTruthy();
+    expect(cardIds()).toEqual(["P", "Q", "R"]);
+
+    // 4초 뒤 Q만 제거되고 P와 R은 남는다
+    await act(async () => jest.advanceTimersByTime(4000));
+    expect(cardIds()).toEqual(["P", "R"]);
+  });
 });
 
 // 시험 데이터 형태 점검(가짜 응답이 계약 C3 MyCollectionPost 키를 모두 갖는지)

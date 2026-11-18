@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
   },
   tab: { flex: 1, alignItems: "center", paddingTop: 10, minHeight: 44 },
   label: { fontSize: 14, color: C.textSub, paddingBottom: 8 },
-  labelOn: { fontWeight: "700", color: C.text },
+  labelOn: { fontWeight: "500", color: C.text },
   underline: { height: 2, alignSelf: "stretch", marginHorizontal: 16 },
   underlineOn: { backgroundColor: C.inkStrong },
 });
