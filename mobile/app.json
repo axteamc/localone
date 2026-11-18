@@ -19,7 +19,8 @@
         "photosPermission": "게시물에 넣을 사진을 고를 때만 써요.",
         "cameraPermission": "게시물에 넣을 사진을 고를 때만 써요.",
         "microphonePermission": false
-      }]
+      }],
+      "expo-notifications"
     ],
     "ios": {
       "bundleIdentifier": "kr.localone.app"

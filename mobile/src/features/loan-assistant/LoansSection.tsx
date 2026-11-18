@@ -1,15 +1,17 @@
-// 대출·반납 탭의 "내 대출" 구역(loan-assistant.md LOAN-1 M8·M9, LOAN-2 E6~E8).
+// 대출·반납 탭의 "내 대출" 구역(loan-assistant.md LOAN-1 M8·M9, LOAN-2 E6~E8, LOAN-3 T4·T9~T11).
 // "빌린 책"(반납 임박 순)·"지난 대출"(최근 반납 순) 두 탭. 로그인했을 때만 그린다(비로그인 처리는 탭 화면).
 // D-day는 서버가 준 d_day·is_overdue만 쓴다(기기 날짜로 다시 계산하지 않는다, M4).
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, AppState, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { createLatestRunner } from "../../lib/latest";
 import { theme, actionColors } from "../../theme";
 import { BookCover } from "../book-search/SearchScreen";
 import { ApiCallError, listLoans, returnLoan, type Loan, type LoanStatus } from "./api";
 import { ddayColors, ddayFormat } from "./dday";
 import { DueDateSheet } from "./DueDateSheet";
+import { NOTIFICATIONS_SUPPORTED, openNotificationSettings } from "./notifications.platform";
+import { syncLoanReminders } from "./reminders";
 
 export const LOANS_TITLE = "내 대출";
 export const LOANS_EMPTY = "지금 빌린 책이 없어요. 책 상세나 빌릴 예정에서 '빌렸어요'를 눌러 보세요.";
@@ -20,6 +22,9 @@ export const RETURN_TITLE = "이 책을 반납했나요?";
 export const returnBody = (loan: Loan) => `${loan.book.title}을 지난 대출로 옮길게요.`;
 export const RETURNED_NOTE = "반납 처리했어요. 지난 대출에서 다시 볼 수 있어요.";
 export const RETURN_FAILED = "반납 처리하지 못했어요. 다시 시도해 주세요.";
+export const WEB_NO_REMINDERS = "알림은 휴대폰 앱에서만 와요"; // T9
+export const REMINDERS_DENIED =
+  "알림을 꺼 두셨어요. 알림이 오지 않아도 내 대출에서 D-day와 연체를 바로 볼 수 있어요."; // T11
 
 export const loanDates = (loan: Loan) =>
   `대출 ${loan.loaned_on} · 예정 ${loan.due_on}${loan.due_on_assumed ? " (추정)" : ""}`;
@@ -46,6 +51,18 @@ export function LoansSection({ refreshKey = 0 }: { refreshKey?: number }) {
   const [banner, setBanner] = useState<string | null>(null);
   const [editing, setEditing] = useState<Loan | null>(null);
   const [returning, setReturning] = useState<Loan | null>(null);
+  const [remindersDenied, setRemindersDenied] = useState(false);
+  const todayRef = useRef<string | null>(null); // 서버가 준 서울 오늘(T5)
+
+  /** 빌린 책 목록이 바뀔 때마다 기기 알림을 지우고 다시 건다(T4). 실패해도 목록·D-day는 그대로 보인다(T7). */
+  const syncReminders = useCallback((items: Loan[]) => {
+    const today = todayRef.current;
+    if (today === null) return;
+    syncLoanReminders(items, today).then(
+      (r) => setRemindersDenied(r.status === "denied"),
+      () => setRemindersDenied(false) // 기기 예약 실패는 화면을 막지 않는다(T7)
+    );
+  }, []);
 
   const load = useCallback(
     async (status: LoanStatus = tabRef.current) => {
@@ -54,8 +71,12 @@ export function LoansSection({ refreshKey = 0 }: { refreshKey?: number }) {
       const r = await runner.run((signal) => listLoans(status, { cursor: null }, signal));
       if (r.status === "stale") return; // 늦게 온 앞 응답(다른 탭 포함)은 버린다(AC-RACE)
       setList(r.status === "ok" ? { kind: "ready", items: r.value.items, nextCursor: r.value.next_cursor } : { kind: "error" });
+      if (r.status === "ok" && status === "on_loan") {
+        todayRef.current = r.value.today;
+        syncReminders(r.value.items); // #19 빌린 책을 받을 때마다(T4·T10)
+      }
     },
-    [runner]
+    [runner, syncReminders]
   );
 
   // 탭으로 돌아올 때마다 새로 읽는다(책 상세에서 "빌렸어요" → "내 대출 보기"). 포커스를 잃으면 진행 중인 읽기는 버린다.
@@ -65,6 +86,14 @@ export function LoansSection({ refreshKey = 0 }: { refreshKey?: number }) {
       return () => runner.cancel();
     }, [load, runner])
   );
+
+  // 앱이 앞으로 올 때 빌린 책을 다시 읽어 알림도 맞춘다(T4·T10)
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (next) => {
+      if (next === "active" && tabRef.current === "on_loan") void load("on_loan");
+    });
+    return () => sub.remove();
+  }, [load]);
 
   const firstKey = useRef(refreshKey);
   useEffect(() => {
@@ -109,12 +138,18 @@ export function LoansSection({ refreshKey = 0 }: { refreshKey?: number }) {
     });
   };
 
-  const replace = (loan: Loan) =>
-    setList((prev) =>
-      prev.kind === "ready" ? { ...prev, items: prev.items.map((x) => (x.id === loan.id ? loan : x)) } : prev
-    );
-  const remove = (loanId: string) =>
-    setList((prev) => (prev.kind === "ready" ? { ...prev, items: prev.items.filter((x) => x.id !== loanId) } : prev));
+  const replace = (loan: Loan) => {
+    if (list.kind !== "ready") return;
+    const items = list.items.map((x) => (x.id === loan.id ? loan : x));
+    setList({ ...list, items });
+    syncReminders(items); // 기한 수정 뒤(E5·T4)
+  };
+  const remove = (loanId: string) => {
+    if (list.kind !== "ready") return;
+    const items = list.items.filter((x) => x.id !== loanId);
+    setList({ ...list, items });
+    syncReminders(items); // 반납 뒤(E5·T4)
+  };
 
   const onLoan = tab === "on_loan";
   return (
@@ -138,6 +173,16 @@ export function LoansSection({ refreshKey = 0 }: { refreshKey?: number }) {
           );
         })}
       </View>
+
+      {onLoan && !NOTIFICATIONS_SUPPORTED && <Text style={styles.hint}>{WEB_NO_REMINDERS}</Text>}
+      {onLoan && remindersDenied && (
+        <View testID="reminders-denied" style={styles.box}>
+          <Text style={styles.text}>{REMINDERS_DENIED}</Text>
+          <Pressable accessibilityRole="button" onPress={openNotificationSettings} style={styles.btn}>
+            <Text style={styles.btnText}>알림 설정 열기</Text>
+          </Pressable>
+        </View>
+      )}
 
       {list.kind === "loading" && <ActivityIndicator accessibilityLabel="불러오는 중" style={styles.busy} />}
 
@@ -201,8 +246,7 @@ export function LoansSection({ refreshKey = 0 }: { refreshKey?: number }) {
         onClose={() => setEditing(null)}
         onSaved={(loan) => {
           setEditing(null);
-          replace(loan); // (추정)이 사라진다(E1)
-          // TODO(연결): C LOAN-3-P1 — 예정일이 바뀌면 기기 알림 다시 맞추기(E5)
+          replace(loan); // (추정)이 사라지고 알림을 다시 맞춘다(E1·E5)
         }}
         onChanged={() => {
           setEditing(null);
@@ -215,9 +259,8 @@ export function LoansSection({ refreshKey = 0 }: { refreshKey?: number }) {
         onCancel={() => setReturning(null)}
         onReturned={(loan) => {
           setReturning(null);
-          remove(loan.id);
+          remove(loan.id); // 그 책의 알림도 빠진다(E5)
           setBanner(RETURNED_NOTE);
-          // TODO(연결): C LOAN-3-P1 — 반납하면 기기 알림 지우기(E5)
         }}
         onChanged={() => {
           setReturning(null);
@@ -359,6 +402,7 @@ const styles = StyleSheet.create({
   busy: { marginVertical: 16 },
   box: { backgroundColor: c.paper, borderRadius: theme.radii.card, padding: 16, gap: 12, alignItems: "flex-start" },
   text: { fontSize: 15, color: c.text, lineHeight: 22 },
+  hint: { fontSize: 13, color: c.textSub },
   notice: { fontSize: 14, color: c.loanOut },
   card: { backgroundColor: c.paper, borderRadius: theme.radii.card, padding: 12, gap: 10 },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
