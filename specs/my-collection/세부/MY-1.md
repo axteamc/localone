@@ -1,6 +1,6 @@
 # 내 정보 모음 — MY-1 세부 명세서
 
-- 담당: A · 큰 틀: `specs/my-collection/명세서.md` · 계획 Step: MY-1 · 상태: 검토 요청
+- 담당: A · 큰 틀: `specs/my-collection/명세서.md` · 계획 Step: MY-1 · 상태: 승인(머지됨, 기획 #167·계약 #169, 발행 본문 `d00b205`) · 구현 중
 - 한 줄 설명 (사용자 말 그대로, 버튼을 누르면 어떻게 이어지는지 순서대로): "내 정보 들어오면 내 프로필이 보이며, 좋아요나 표시해 둔 게시글이 보이고, 원하는 대로 게시글 관리할 수 있는 곳" (원래 "게시글과 책이 보이고" → 이 화면엔 게시물 카드만 나온다고 짚자 "응 그렇게 해 줘"로 "책"을 뺌. 보이는 것: 내가 올린 글·좋아요·북마크한 게시물)
 - 이 세부가 끝나면 사용자가 눈으로 볼 수 있는 것: 하단 `"내 정보"` 탭에서 위쪽 내 프로필과, 내 게시물 / 좋아요 / 북마크 3탭의 2열 게시물 카드
 - 시안: `specs/my-collection/세부/MY-1_시안.html`
@@ -107,6 +107,10 @@
 - [Claude 맞춤] 시안 카드 메뉴 그림을 local-feed H10 모양으로 맞춤(결정 내용 불변)
 - [정해진 것 이견] 처음 열리는 탭을 사용자가 고르기 — 사용자 "내 게시글 좋아요 북마크에서 원하는 거 먼저 보게 하는 기능 넣는 건 어려워?", "고르는 건 어떤 식으로 만들 수 있어?" — 계약 Y1(기본 탭 `내 게시물`, C-46 F2) 잠금이라 MY-1에 넣지 않고 다음에 할 것에 기록. 방법 후보: 마지막에 본 탭 기억 / 설정에서 고르기 / 탭 길게 눌러 지정
 
+- [계약 보완 필요] `server/tests/test_user_profiles.py:190`(D core SRV-0-P2 시험)이 `user_profiles` 컬럼을 정확히 3개로 고정해, 계약 C5가 정한 `bio`·`avatar_url` 추가만으로 실패함 — MY-1-P1 허용 파일 밖이지만 CI를 위해 그 단언만 5컬럼 + 기존 3컬럼 NOT NULL·새 2컬럼 NULL 허용으로 최소 수정(별도 커밋, 되돌리기 쉬움) — 계약 my-collection.md C5·P2 허용 파일 표
+- [처리 못 함] 받은 알림 이슈 닫기(#174 등) — 이 PC의 자동 권한 판단이 `gh issue close`를 막음. 내용은 처리함(구현 시작) — CLAUDE.md 10절
+- (해결됨) 위 `[기준 충돌] ↻ 새로고침`·`[계약 보완 필요] 가짜 메뉴`는 D 확정판(`d00b205`)에서 반영됨(M-#7 문구, B `PostMenu` 실제 import)
+
 ## 다음에 할 것
 
 - 프로필 수정 화면(MY-2), 팔로우·타인 프로필(C-46 §8-5), 방문 기록 카드 북마크(VISIT-4 D3).
@@ -118,7 +122,7 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 | 구현 근거 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| MY-1-P1 | `feat/my-collection-MY-1` | - | 대기 | - | - |
-| MY-1-P2 | `feat/my-collection-MY-1` | - | 대기 | - | - |
+| MY-1-P1 | `feat/my-collection-MY-1` | (Draft) | 완료 | 마이그레이션 `server/migrations/versions/0009_user_profiles_bio_avatar.py`(bio·avatar_url + CHECK 2, RLS 유지) · 라우터 `server/app/routers/my_collection.py`(커서 L38-56, 탭별 조회 L61-80, 목록 공통 L83-107, 4경로 L110-145) · 등록 `server/app/main.py` `[my-collection-A]` 블록 · 시험 `server/tests/test_my_collection.py` 14개 통과, 서버 전체 398 passed(`-W error`). 가드 제거 5종(소유자·published·id 타이브레이커·공감 소유 조인·커서 시간대) 모두 빨강 확인 | `TODO(연결): VISIT-4 D3`(`my_collection.py` `item_kind`) |
+| MY-1-P2 | `feat/my-collection-MY-1` | (Draft) | 진행 중 | - | `TODO(연결): D(AUTH-2)` 예정 |
 
-- **다음 세션 이어하기 메모**: 제출 완료 — 기획 PR #167·계약 PR 검토 대기(다음 세부 자동 시작 금지).
+- **다음 세션 이어하기 메모**: MY-1-P1 끝, MY-1-P2(앱 화면) 진행 중. 이 PC는 Windows 앱 제어 정책이 `.venv`의 psycopg DLL을 막아 서버 시험은 도커 컨테이너(`localone-test-db` 5439 + `python:3.12-slim`, `--network container:localone-test-db`)에서 `uv run pytest -W error`로 돌림. 5433은 다른 프로젝트 DB가 사용 중.
