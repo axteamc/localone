@@ -398,6 +398,13 @@
   .v2menu small { font-size:9px; letter-spacing:.12em; color:var(--ink-muted); }
   .v2menu-n { font-size:10.5px; color:var(--ink-muted); margin-top:8px; }
   .v2set { font-size:13px; color:var(--ink-soft); }
+
+  /* 3차: 뚜껑 대신 가장자리 걸침(작은 큐브가 가장자리 밖으로 잘림) */
+  .v2lib .lid { display:none; }
+  .v2lib.peek { cursor:pointer; }
+  .v2lib.peek .iso-cube { opacity:.94; pointer-events:auto; transform:scale(var(--p)); }
+  .v2lib.peek .iso-cube:hover { transform:scale(calc(var(--p) * 1.04)); }
+  .v2lib.peek .face-left .l-addr-wrap, .v2lib.peek .face-right .r-hours, .v2lib.peek .face-right .r-closed, .v2lib.peek .face-right .r-tel-wrap { opacity:.5; }
 </style>
 </head>
 <body class="ink-deboss">
@@ -633,11 +640,11 @@
 
   <!-- ===== 3. 실제 배치 미리보기 v2 (2026-11-18 D 피드백 2차 반영) ===== -->
   <section id="v2">
-    <h2>3. 실제 배치 미리보기 v2 — 주인공 크게 + 기점은 반대쪽으로 + 가장자리 뚜껑 <span class="badge v2badge">D 피드백 2차</span></h2>
+    <h2>3. 실제 배치 미리보기 v2 — 주인공 크게 + 기점은 반대쪽으로 + 가장자리 걸침 <span class="badge v2badge">D 피드백 2차</span></h2>
     <div class="how">
       <b>D 결정(2026-11-18).</b> 큰 틀은 2번 "주인공 포커스 + 가장자리 걸침". ① 처음 주인공 기본값은 <b>가장 가까운 곳</b>, 최근 방문은 별도 설정(도서관 안 설정 + 홈에서 큐브 꾹 누르기). ② 검정 + 노랑은 로고에만 피함(앱에서는 씀). ③ 뚜껑에는 <b>이름만</b>(이름 줄이는 규칙은 디자인 뒤에). ④ 주인공은 더 크게, 기점은 더 치우쳐도 됨.<br>
-      <b>위치 추상화를 남기면서 크게 보이는 방법.</b> 주인공 도서관의 방향으로 판을 네 칸으로 나눠요 — <b>북동~남동(45°~135°)이면 기점을 왼쪽으로 밀고 오른쪽 넓은 칸에 주인공</b>, 북쪽(315°~45°)이면 기점을 아래로 밀고 위쪽에, 남쪽이면 기점을 위로, 서쪽이면 기점을 오른쪽으로. 칸 안에서도 실제 방향만큼 더 비켜요(북동이면 오른쪽 칸의 위쪽). 나머지 도서관 뚜껑은 <b>밀려난 기점에서 본 실제 방향</b>의 가장자리에 걸려요. 가로 화면(가로가 세로의 1.6배 넘음)에서는 위·아래 칸이 너무 낮아서 북·남도 동·서 칸으로 보내요.<br>
-      <b>눌러 보기.</b> 뚜껑 누르기 → 그 도서관이 주인공. <b>빈 판을 끌기</b> → 지도처럼 끈 반대쪽(왼쪽으로 끌면 오른쪽)에 있는 도서관이 주인공. <b>주인공 큐브를 꾹(0.6초) 누르기</b> → "처음 크게 보일 도서관" 설정. 움직임은 0.8초로 느리게 했어요.
+      <b>위치 추상화를 남기면서 크게 보이는 방법.</b> 주인공 도서관의 방향으로 판을 네 칸으로 나눠요 — <b>북동~남동(45°~135°)이면 기점을 왼쪽으로 밀고 오른쪽 넓은 칸에 주인공</b>, 북쪽(315°~45°)이면 기점을 아래로 밀고 위쪽에, 남쪽이면 기점을 위로, 서쪽이면 기점을 오른쪽으로. 칸 안에서도 실제 방향만큼 더 비켜요(북동이면 오른쪽 칸의 위쪽). 나머지 도서관은 <b>작은 큐브가 밀려난 기점에서 본 실제 방향의 가장자리에 걸쳐</b> 잘린 채 보여요. 윗면 이름은 판 안쪽에 오게 둬요(D 3차: "가장자리 걸침이 더 내가 원하는 방향"). 가로 화면(가로가 세로의 1.6배 넘음)에서는 위·아래 칸이 너무 낮아서 북·남도 동·서 칸으로 보내요.<br>
+      <b>눌러 보기.</b> 걸친 큐브 누르기 → 그 도서관이 주인공. <b>빈 판을 끌기</b> → 지도처럼 끈 반대쪽(왼쪽으로 끌면 오른쪽)에 있는 도서관이 주인공. <b>주인공 큐브를 꾹(0.6초) 누르기</b> → "처음 크게 보일 도서관" 설정. 움직임은 0.8초로 느리게 했어요.
     </div>
     <div class="bar">
       <label>화면 크기 <select id="v2size"><option value="390x844" selected>휴대폰 390×844</option><option value="360x640">작은 휴대폰 360×640</option><option value="844x412">가로 웹 844×412</option></select></label>
@@ -782,7 +789,7 @@ document.querySelectorAll(".hero-btn").forEach(btn=>{
       <div class="face-left"><div class="l-top"><span class="l-badge"><i class="l-dot"></i>OPEN</span><span class="l-dist">${l.km}KM</span></div><div class="l-addr-wrap"><div class="l-lbl">ADDRESS</div><div class="l-addr">${l.addr}</div></div></div>
       <div class="face-right"><div><div class="r-hours">화~일<br>09:00 ~ 18:00</div><div class="r-closed">매주 월요일 휴관</div></div><div class="r-tel-wrap"><div class="r-lbl">TEL</div><div class="r-tel">${l.tel}</div></div></div></div>
       <div class="lid" role="button" aria-label="${l.full} 크게 보기"><svg viewBox="0 0 120 69"><polygon points="60,0 120,34.5 60,69 0,34.5" fill="var(--c-top)" stroke="var(--seam)" stroke-width="1"/><polyline points="0,34.5 60,69 120,34.5" fill="none" stroke="var(--seam-hi)" stroke-width="1"/></svg><div class="lname">${l.short}</div></div>`;
-    el.querySelector(".lid").addEventListener("click",e=>{ if(dragMoved) return; setHero(l.id); });
+    el.addEventListener("click",()=>{ if(dragMoved || el.classList.contains("hero")) return; setHero(l.id); });
     board.appendChild(el);
   });
   let hero=byDist[0].id, rule="nearest";
@@ -815,7 +822,7 @@ document.querySelectorAll(".hero-btn").forEach(btn=>{
     const heroRect=[hx, hy+ch*0.05, hx+cw, hy+ch*0.92];
     const inHero=(x,y)=>x>heroRect[0]-62 && x<heroRect[2]+62 && y>heroRect[1]-36 && y<heroRect[3]+36;
     const nearPlinth=(x,y)=>Math.abs(x-O[0])<29+62 && Math.abs(y-O[1])<22+36;
-    const placed=[];
+    const placed=[], P=Math.max(.45, Math.min(.62, s*.5));   /* 걸친 큐브 크기 */
     LIBS.forEach(l=>{
       const el=document.getElementById("v2-"+l.id), cube=el.querySelector(".iso-cube"), [dx,dy]=dirOf(l.bear);
       if(l.id===hero){
@@ -823,16 +830,18 @@ document.querySelectorAll(".hero-btn").forEach(btn=>{
         el.style.left=hx+"px"; el.style.top=hy+"px"; cube.style.left="0px"; cube.style.top="0px";
         return;
       }
-      el.className="v2lib peek"; cube.style.left="-110px"; cube.style.top="-67px";
+      el.className="v2lib peek"; el.style.setProperty("--p",P); cube.style.left=(-110*P)+"px"; cube.style.top=(-67.4*P)+"px";
       /* 밀려난 기점에서 실제 방향으로 그은 선이 가장자리와 만나는 곳 */
       const tx = dx>0 ? (W-O[0])/dx : dx<0 ? -O[0]/dx : Infinity;
       const ty = dy>0 ? (H-O[1])/dy : dy<0 ? -O[1]/dy : Infinity;
       const t=Math.min(tx,ty), onSide = tx<ty;
       let ex=O[0]+dx*t, ey=O[1]+dy*t;
-      if(onSide) ex = dx>0 ? W-30 : 30; else ey = dy>0 ? H-20 : 20;
-      ex=Math.min(W-30, Math.max(30, ex)); ey=Math.min(H-20, Math.max(20, ey));
+      /* 이름(윗면 가운데)만 판 안쪽에 두고 큐브 몸은 가장자리 밖으로 걸친다 */
+      const IX=24, IY=24;
+      if(onSide) ex = dx>0 ? W-IX : IX; else ey = dy>0 ? H-IY : IY;
+      ex=Math.min(W-IX, Math.max(IX, ex)); ey=Math.min(H-IY, Math.max(IY, ey));
       for(let k=0;k<8;k++){
-        const hit = inHero(ex,ey) ? "hero" : nearPlinth(ex,ey) ? "plinth" : placed.find(q=>Math.abs(q[0]-ex)<118 && Math.abs(q[1]-ey)<64);
+        const hit = inHero(ex,ey) ? "hero" : nearPlinth(ex,ey) ? "plinth" : placed.find(q=>Math.abs(q[0]-ex)<136*P/.62 && Math.abs(q[1]-ey)<78*P/.62);
         if(!hit) break;
         if(onSide){ const box = hit==="hero" ? [heroRect[1]-40, heroRect[3]+40] : hit==="plinth" ? [O[1]-62, O[1]+62] : [hit[1]-66, hit[1]+66];
           ey = (box[0]>20 && (Math.abs(box[0]-ey)<=Math.abs(box[1]-ey) || box[1]>H-20)) ? box[0] : Math.min(H-20, box[1]); }
@@ -854,7 +863,7 @@ document.querySelectorAll(".hero-btn").forEach(btn=>{
     if(e.target.closest(".v2menu")) return;
     const onHeroCube=e.target.closest(".v2lib.hero");
     if(onHeroCube){ startPress(e); return; }
-    if(e.target.closest(".lid")) { drag={x:e.clientX,y:e.clientY,id:e.pointerId,lid:true}; return; }
+    if(e.target.closest(".v2lib.peek")) { drag={x:e.clientX,y:e.clientY,id:e.pointerId,lid:true}; return; }
     menu.classList.remove("on");
     drag={x:e.clientX,y:e.clientY,id:e.pointerId}; board.setPointerCapture(e.pointerId); board.classList.add("dragging");
   });
