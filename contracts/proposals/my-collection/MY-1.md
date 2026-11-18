@@ -19,7 +19,7 @@
 ## MY-1 내 정보 모음 (상단 프로필 · 3탭: 내 게시물 / 좋아요 / 북마크)
 
 - **담당 역할**: A (서버 파트 포함) · **대상 브랜치**: `main`
-- **기준 명세서**: 미작성 — A가 `spec/my-collection` 브랜치에서 `specs/my-collection/명세서.md` 및 시안(`specs/my-collection/시안.html` 또는 `specs/my-collection/세부/MY-1.md`·`MY-1_시안.html`) 작성 예정 (Issue #130)
+- **기준 명세서**: `specs/my-collection/명세서.md`, `specs/my-collection/세부/MY-1.md`, 시안 `specs/my-collection/세부/MY-1_시안.html` (기획 PR #167, Issue #130)
 - **판**: **1차 계약서 — D 기준선(2026-11-17, 검토 전·구현 착수 불가)**
 - **기준선**: `B2` 이후 M2/C-46 확장 — D 1차 기준선
 - **선행 설계**: `../team/기능_배정.md` A절(M2 배정안, F4), `개발산출물/명세/SNS_검색_프로필_상세결정.md` C-46(F1·F2·F4·D3·D4·D5), `local-feed.md` LOCAL-1/LOCAL-2 C3·C5, `05 §3.1 user_profiles`, `06 §3` 공통 오류 코드
@@ -50,9 +50,9 @@
 | # | 열린 항목 (A 결정 대상) | 결정 내용 (A 채움) | 상태 (A 채움) | 근거 (A 채움) |
 | :--- | :--- | :--- | :--- | :--- |
 | Y-O1 | **상단 프로필 배치·요소 상세**: 아바타 크기/모양, 닉네임·한 줄 소개(`bio === null`일 때 숨김 또는 안내 문구), `"프로필 수정"` 버튼 위치·눌렀을 때(`MY-2` 전 `"준비 중이에요"` 안내 등), 기존 `me.tsx`의 로그인/로그아웃·설정 자리와의 배치 | **왼쪽 사진 + 옆에 이름(시안 `#el-1` 후보 A 채택)**: 머리줄 왼쪽 `"내 정보"` 제목, 오른쪽 설정 `⚙` 버튼(30×30, 누르면 설정·로그아웃 자리 — `AUTH-2` 전 `TODO(연결): D(AUTH-2)`, 연결 전에는 눌러도 아무 화면도 열지 않는다). 그 아래 프로필 행: 원형 아바타 64(`avatar_url === null`이면 `theme.colors.surface3` 원 + 사람 아이콘) 왼쪽, 오른쪽 세로로 `nickname`(17, 굵게) → `bio`(13, `theme.colors.textSub`) → `"프로필 수정"` 테두리 버튼(`theme.radii.control`). `bio === null`이면 소개 줄을 숨긴다(안내 문구 없음). `"프로필 수정"`을 누르면 `MY-2` 전까지 화면 아래 짧은 안내 `"프로필 수정은 곧 열려요"` 2초(화면 이동 없음, API 호출 없음). 아래로 내리면 프로필 행은 위로 스크롤되어 사라지고 3탭 바가 맨 위에 붙는다(Y-O2) | 확인 (사용자 A, 2026-11-18) / `bio` 숨김·수정 안내·`⚙` 자리 기본값(Claude) | `specs/my-collection/세부/MY-1.md` 결정 1, 시안 `specs/my-collection/세부/MY-1_시안.html` `#el-1` |
-| Y-O2 | **3탭 전환 바 모양 · 스크롤 · 탭 재조회 정책**: 탭 바 스타일(밑줄/알약 등), 탭 전환 시 이미 불러온 탭 캐시 유지 vs 전환마다 재조회 여부(단, 늦은 응답은 `createLatestRunner` 필수) | **글자 + 밑줄형 탭 바**: 3칸 균등, 글자 14, 선택 탭은 굵게 + 아래 2 두께 `theme.colors.inkStrong` 밑줄, 바 아래 1 두께 `theme.colors.divider`. 탭 바는 프로필 아래에 있다가 내리면 화면 맨 위에 붙는다(sticky). **캐시**: 한 번 불러온 탭의 목록(`items`·`next_cursor`)은 같은 계정·같은 화면 수명 동안 기억해 다시 눌렀을 때 그대로 보이고 재조회하지 않는다. 화면을 아래로 당기면(당겨서 새로고침) 지금 탭과 프로필을 처음부터 다시 불러온다. 게시물 상세에서 돌아와 화면이 다시 보이면 지금 탭만 조용히 다시 불러온다(받기 전까지 기존 카드 유지). 모든 조회는 `listRunner`/`profileRunner`를 거쳐 늦은 응답을 버린다(M-#6) | 기본값(Claude) — 중심 아님(플로우·첫눈 불변), 세부 명세 검토 메모 `[Claude가 정함]` | `specs/my-collection/세부/MY-1.md` 0절 기본값, 시안 명세 패널 "탭 바 모양"·"탭 오갈 때" |
+| Y-O2 | **3탭 전환 바 모양 · 스크롤 · 탭 재조회 정책**: 탭 바 스타일(밑줄/알약 등), 탭 전환 시 이미 불러온 탭 캐시 유지 vs 전환마다 재조회 여부(단, 늦은 응답은 `createLatestRunner` 필수) | **글자 + 밑줄형 탭 바**: 3칸 균등, 글자 14, 선택 탭은 굵게 + 아래 2 두께 `theme.colors.inkStrong` 밑줄, 바 아래 1 두께 `theme.colors.divider`. 탭 바는 프로필 아래에 있다가 내리면 화면 맨 위에 붙는다(sticky). **캐시**: 한 번 불러온 탭의 목록(`items`·`next_cursor`)은 같은 계정·같은 화면 수명 동안 기억해 다시 눌렀을 때 그대로 보이고 재조회하지 않는다. 화면을 아래로 당기면(당겨서 새로고침) 지금 탭과 프로필을 처음부터 다시 불러온다. 게시물 상세에서 돌아와 화면이 다시 보이면 지금 탭만 조용히 다시 불러온다(받기 전까지 기존 카드 유지). 모든 조회는 `listRunner`/`profileRunner`를 거쳐 늦은 응답을 버린다(M-#6). **[D 보완] 캐시 맞추기**: 어떤 게시물의 `my_reaction`/`my_bookmark`가 바뀌면(이 화면 카드 메뉴 성공·되돌리기 성공, 또는 B `onPostReaction` 알림 — 상세 화면 등 다른 곳에서 바꾼 것) ⓐ 세 탭 캐시에 있는 그 게시물의 해당 필드를 모두 새 값으로 바꾸고, ⓑ 그 변화로 모음이 달라지는 수집 탭(`my_reaction` → `좋아요`, `my_bookmark` → `북마크`)이 **지금 보는 탭이 아니면** 그 탭 캐시를 버린다(다음에 누를 때 첫 페이지부터 다시 불러옴, 스켈레톤). 지금 보는 탭에서 해제한 카드는 Y-O4 흐림·되돌리기 흐름을 따르고, 지금 보는 탭에 새로 켜진 게시물은 다음 당겨서 새로고침·상세 복귀 재조회 때 반영된다. B `onPostWithdrawn` 알림이 오면 세 탭 캐시에서 그 게시물을 지운다. 되돌리기(`PUT`)도 같은 규칙을 따른다 | 기본값(Claude) — 중심 아님(플로우·첫눈 불변), 세부 명세 검토 메모 `[Claude가 정함]` | `specs/my-collection/세부/MY-1.md` 0절 기본값, 시안 명세 패널 "탭 바 모양"·"탭 오갈 때" |
 | Y-O3 | **각 탭 빈 상태(0건) 화면 구성**: ① `내 게시물` 0건 안내 문구·일러스트/아이콘·이동 버튼 ② `좋아요` 0건 안내 문구·이동 버튼 ③ `북마크` 0건 안내 문구·이동 버튼 (가짜 게시물 생성 금지) | **탭별 안내 + `"가까운 도서관 둘러보기"` 버튼(시안 `#el-3` 후보 A 채택, 화살표 없음)**: 프로필·탭 바는 그대로 두고 카드 자리 가운데에 원형 아이콘(56, `theme.colors.surface2`) → 굵은 안내 한 줄 → 보조 한 줄(`theme.colors.textSub`) → 채움 버튼(`theme.colors.inkStrong` 바탕, 글자색 `onFill(theme.colors.inkStrong)`, `theme.radii.control`). 아이콘·문구는 C3 열린 문구 행. 버튼은 세 탭 모두 `router.navigate("/")`(홈 탭)로 간다. 가짜 게시물·추천 게시물을 채우지 않는다 | 확인 (사용자 A, 2026-11-18) | `specs/my-collection/세부/MY-1.md` 결정 3·예외 #2, 시안 `#el-3` |
-| Y-O4 | **3탭 카드 메뉴(`onMenu`) 및 좋아요·북마크 해제 반영**: 목록에서 `PostCard` 길게 누르기/웹 호버 메뉴 연결 시, 좋아요 탭에서 좋아요 취소하거나 북마크 탭에서 북마크 해제한 뒤 목록 즉시 제거 여부 (API는 B `#29`·`#30`만 사용) | **흐리게 남고 "되돌리기", 4초 뒤 함께 빠짐(시안 `#el-2` 합친 안 D 채택)**: 카드 길게 누르기/웹 호버 `⋯`는 `PostCard`의 `onMenu`로 B의 카드 작은 창(`local-feed.md` H10: `♡ 좋아요`·`🔖 북마크`·`↗ 공유` + 책 줄)을 그대로 연다. ① `좋아요` 탭에서 켜진 `♡`를 누르면 `DELETE /posts/{id}/reaction`(#29)을 즉시 보내고, 성공하면 그 카드를 자리에 그대로 두되 흐리게(불투명도 0.45) + 좌상단 `"취소함"` 표시로 바꾸고 화면 아래에 `"좋아요를 취소했어요"` + `"되돌리기"` 안내를 4초 보인다. ② 4초 안에 `"되돌리기"`를 누르면 `PUT /posts/{id}/reaction`을 보내고 성공 시 카드를 원래 모습으로 되돌린다(같은 자리 유지). ③ 4초가 지나면 안내와 흐린 카드를 함께 목록에서 지운다. ④ 흐린 카드는 한 번에 하나만 둔다: 4초 안에 다른 카드를 또 취소하면 앞서 흐려 둔 카드는 즉시 지우고 새 카드만 흐리게 + 안내를 새로 4초. ⑤ `북마크` 탭의 `🔖` 해제도 같은 동작(`DELETE/PUT /posts/{id}/bookmark` #30, 안내 `"북마크를 해제했어요"`). ⑥ `내 게시물` 탭 카드의 `♡`·`🔖`는 상태만 바꾸고 목록에서 빼지 않는다. 같은 카드에 진행 중인 요청이 있으면 다음 누름을 무시한다(C6 열린 행) | 확인 (사용자 A, 2026-11-18) / 4초·불투명도 값·`내 게시물` 탭 처리 기본값(Claude) | `specs/my-collection/세부/MY-1.md` 결정 2·예외 #3·#5, 시안 `#el-2` |
+| Y-O4 | **3탭 카드 메뉴(`onMenu`) 및 좋아요·북마크 해제 반영**: 목록에서 `PostCard` 길게 누르기/웹 호버 메뉴 연결 시, 좋아요 탭에서 좋아요 취소하거나 북마크 탭에서 북마크 해제한 뒤 목록 즉시 제거 여부 (API는 B `#29`·`#30`만 사용) | **흐리게 남고 "되돌리기", 4초 뒤 함께 빠짐(시안 `#el-2` 합친 안 D 채택)**: 카드 길게 누르기/웹 호버 `⋯`는 `PostCard`의 `onMenu`로 B의 카드 작은 창(`local-feed.md` H10: `♡ 좋아요`·`🔖 북마크`·`↗ 공유` + 책 줄)을 그대로 연다. ① `좋아요` 탭에서 켜진 `♡`를 누르면 `DELETE /posts/{id}/reaction`(#29)을 즉시 보내고, 성공하면 그 카드를 자리에 그대로 두되 흐리게(불투명도 0.45) + 좌상단 `"취소함"` 표시로 바꾸고 화면 아래에 `"좋아요를 취소했어요"` + `"되돌리기"` 안내를 4초 보인다. ② 4초 안에 `"되돌리기"`를 누르면 `PUT /posts/{id}/reaction`을 보내고 성공 시 카드를 원래 모습으로 되돌린다(같은 자리 유지). ③ 4초가 지나면 안내와 흐린 카드를 함께 목록에서 지운다. ④ 흐린 카드는 한 번에 하나만 둔다: 4초 안에 다른 카드를 또 취소하면 앞서 흐려 둔 카드는 즉시 지우고 새 카드만 흐리게 + 안내를 새로 4초. ⑤ `북마크` 탭의 `🔖` 해제도 같은 동작(`DELETE/PUT /posts/{id}/bookmark` #30, 안내 `"북마크를 해제했어요"`). ⑥ `내 게시물` 탭 카드의 `♡`·`🔖`는 상태만 바꾸고 목록에서 빼지 않는다. 같은 카드에 진행 중인 요청이 있으면 다음 누름을 무시한다(C6 열린 행). **[D 보완] 연결 책임**: 작은 창은 B `PostMenu`(`mobile/src/features/local-feed/PostMenu.tsx`, B 파일 수정 금지)를 그대로 띄운다. 해제 `DELETE`와 같은 버튼 연타 막기는 `PostMenu`가 하고, MY는 `onChange(postId, patch)`를 받아 지금 수집 탭의 필드가 `false`가 되면 창을 닫고 ① 흐림 흐름을 시작하며, Y-O2 캐시 맞추기 + `emitPostReaction(postId, patch)`로 다른 피드에도 알린다. `onNotice(text)`는 그대로 화면 아래 2초 안내로 보인다(해제 실패 문구는 B `toggleFailText` 결과). **되돌리기 `PUT`은 MY가 `setReaction(postId, true)`/`setBookmark(postId, true)`(B `api.ts` import)로 직접 보내고**, 진행 중이면 다음 누름을 무시한다. 같은 카드의 4초 타이머는 되돌리기를 누르는 즉시 끈다. 실패 처리(확정 실패 / 결과 불명)는 C6 예외 #5 | 확인 (사용자 A, 2026-11-18) / 4초·불투명도 값·`내 게시물` 탭 처리 기본값(Claude) | `specs/my-collection/세부/MY-1.md` 결정 2·예외 #3·#5, 시안 `#el-2` |
 | Y-O5 | **로딩 · 오류 · 다음 페이지(`next_cursor`) 불러오기 방식**: 상단 프로필/탭별 로딩 스켈레톤·문구, 실패 시 오류 문구 + `"다시 시도"`(부분 실패 시 나머지 영역 유지), `next_cursor !== null`일 때 끝까지 스크롤 vs `"더 보기"` 버튼 | **로딩**: 처음 불러오는 동안 프로필 자리(원 + 회색 줄 2개)와 카드 자리(2열 회색 상자 4개, `theme.colors.surface2`, `theme.radii.card`)에 빈 모양(스켈레톤)을 보이고, 받으면 바로 바꾼다(문구 없음). **실패(부분 실패 유지)**: 실패한 영역만 C3 실패 문구 + `"↻ 새로고침"` 테두리 버튼(아이콘 글자 왼쪽, 홈 `VISIT-1`·`VISIT-1b`와 같은 표현). 프로필 실패 → 프로필 자리 한 줄, 탭·카드 유지. 탭 목록 실패 → 카드 자리, 프로필·탭 바 유지. 누르면 실패 영역만 다시 부른다. **다음 페이지**: `next_cursor !== null`이면 끝까지 내렸을 때 자동으로 이어 불러온다(버튼 없음, 중복 호출 방지). 이어 불러오는 중에는 맨 아래 `"불러오는 중…"`, 실패하면 맨 아래 `"더 불러오지 못했어요"` + `"↻ 새로고침"`(보이던 카드 유지)이며, 맨 아래에서 한 번 더 끝까지 내려도 같은 재시도를 한다. `next_cursor === null`이면 맨 아래 `"모두 봤어요"` | 확인 (사용자 A, 2026-11-18: 실패 화면·아이콘 왼쪽·한 번 더 내려 재시도) / 스켈레톤·자동 이어 불러오기 기본값(Claude) | `specs/my-collection/세부/MY-1.md` 예외 #1·#6, 시안 `#except` ①②③⑧ |
 
 #### C2. 엔드포인트 / 주요 함수 (잠금)
@@ -123,9 +123,9 @@
 | 화면 문구 | `내 게시물` 탭 빈 상태 문구·버튼 (`Y-O3`) | — | — | 아이콘 `✎` · `"아직 올린 게시물이 없어요"` · `"도서관 방문 페이지에서 첫 글을 올려 보세요"` · 버튼 `"가까운 도서관 둘러보기"` (결정 3) |
 | 화면 문구 | `좋아요` 탭 빈 상태 문구·버튼 (`Y-O3`) | — | — | 아이콘 `♡` · `"아직 좋아요한 게시물이 없어요"` · `"마음에 드는 게시물에 ♡를 누르면 여기 모여요"` · 버튼 `"가까운 도서관 둘러보기"` (결정 3) |
 | 화면 문구 | `북마크` 탭 빈 상태 문구·버튼 (`Y-O3`) | — | — | 아이콘 `🔖` · `"아직 북마크한 게시물이 없어요"` · `"다시 보고 싶은 게시물을 북마크하면 여기 모여요"` · 버튼 `"가까운 도서관 둘러보기"` (결정 3) |
-| 화면 문구 | 상단 프로필 / 각 탭 조회 실패 문구·재시도 (`Y-O5`) | — | — | 프로필 `"내 정보를 불러오지 못했어요"`, 탭 목록 `"게시물을 불러오지 못했어요"`, 버튼 `"↻ 새로고침"` (예외 #1). 잠금 M-#7·P5의 `"다시 시도"`와 다름 — PR 검토 메모 `[기준 충돌]` |
+| 화면 문구 | 상단 프로필 / 각 탭 조회 실패 문구·재시도 (`Y-O5`) | — | — | 프로필 `"내 정보를 불러오지 못했어요"`, 탭 목록 `"게시물을 불러오지 못했어요"`, 버튼 `"↻ 새로고침"` (예외 #1). [D 결정 2026-11-18] 잠금 M-#7·P5의 `"다시 시도"`를 홈(`VISIT-1`·`VISIT-1b`)과 같은 `"↻ 새로고침"`으로 맞춤 |
 | 화면 문구 | 좋아요 취소·북마크 해제 안내와 되돌리기 (`Y-O4`) | — | — | `"좋아요를 취소했어요"` / `"북마크를 해제했어요"` + `"되돌리기"`(4초), 흐린 카드 표시 `"취소함"` (결정 2) |
-| 화면 문구 | 좋아요 취소·북마크 해제·되돌리기 실패 (`Y-O4`) | — | — | `"좋아요를 취소하지 못했어요. 다시 해 주세요"` / `"북마크를 해제하지 못했어요. 다시 해 주세요"` / `"되돌리지 못했어요"` 2초 (예외 #5) |
+| 화면 문구 | 좋아요 취소·북마크 해제·되돌리기 실패 (`Y-O4`) | — | — | [D 보완] 해제 실패는 메뉴가 B `PostMenu`라서 B 문구 그대로: `toggleFailText(e)` — 서버가 준 오류 문구, 없거나 통신 실패·`503`이면 `"지금은 처리하지 못했어요. 다시 시도해 주세요."`(B `MENU_TEXT.failed`). 시안의 `"좋아요를 취소하지 못했어요. 다시 해 주세요"`·`"북마크를 해제하지 못했어요. 다시 해 주세요"`는 B 파일을 바꿔야 해서 쓰지 않는다. 되돌리기 실패는 MY 문구 `"되돌리지 못했어요"` 2초 (예외 #5) |
 | 화면 문구 | 다음 페이지 불러오는 중 / 목록 끝 문구 (`Y-O5`) | — | — | 불러오는 중 `"불러오는 중…"`(말줄임표는 실제 화면 문자열), 실패 `"더 불러오지 못했어요"` + `"↻ 새로고침"`, 끝 `"모두 봤어요"` (예외 #1) |
 
 #### C4. 플랫폼 분기 표 (잠금)
@@ -154,8 +154,8 @@
 **2) 조회 대상 기존/B 소유 테이블 (A가 수정·생성하지 않음 — 잠금)**
 
 - `posts` (`local-feed.md` LOCAL-1 C5 `0004_posts.py`): `WHERE p.user_id = :uid AND p.status = 'published'`, 정렬 `p.published_at DESC, p.id DESC`
-- `post_reactions` (`local-feed.md` LOCAL-2 C5 `0005_post_reactions_bookmarks.py`): `WHERE pr.user_id = :uid AND p.status = 'published'`, 정렬 `pr.created_at DESC, p.id DESC`
-- `post_bookmarks` (`local-feed.md` LOCAL-2 C5 `0005_post_reactions_bookmarks.py`): `WHERE pb.user_id = :uid AND p.status = 'published'`, 정렬 `pb.saved_at DESC, p.id DESC`
+- `post_reactions` (`local-feed.md` LOCAL-2 C5, 실제 파일 `0006_post_reactions_bookmarks.py` — [D 보완] 기준선의 `0005`는 머지 순서로 바뀜): `WHERE pr.user_id = :uid AND p.status = 'published'`, 정렬 `pr.created_at DESC, p.id DESC`
+- `post_bookmarks` (`local-feed.md` LOCAL-2 C5, 실제 파일 `0006_post_reactions_bookmarks.py`): `WHERE pb.user_id = :uid AND p.status = 'published'`, 정렬 `pb.saved_at DESC, p.id DESC`
 - `users` (`0001_users.py`), `libraries`·`books` (`0002_public_reference.py`)
 - 팔로우 테이블은 C-46 §8-5 미결에 따라 `MY-1`에서 만들지 않는다(Y5).
 
@@ -171,7 +171,7 @@
 | `M-#4` | 쿼리/헤더로 타인의 `user_id`를 전달 (`?user_id=<other>`) | 무시하고 `200` (본인 데이터만 반환) | 본인 프로필·본인 3탭 목록만 표시 (타인 데이터 노출 0건) | 타인 데이터 접근 0 |
 | `M-#5` | 내가 쓴 글 또는 좋아요·북마크한 글이 `withdrawn`·`hidden` 상태임 | `200` (목록에서 제외) | 자리표시 카드 없이 숨김. 연결 행(`post_reactions`·`post_bookmarks`)은 유지되어 재공개 시 원래 순서로 복원 | 연결 행 무변경 |
 | `M-#6` | 탭 빠르게 전환(`내 게시물` ↔ `좋아요` ↔ `북마크`)·새로고침 연타·계정 전환 중 늦은 응답 | 늦은 `200` 또는 늦은 오류 | `createLatestRunner`가 이전 요청 취소·`stale` 폐기(`AC-RACE`), 현재 선택 탭·계정 화면 무변경 | — |
-| `M-#7` | 네트워크 끊김(`status 0`)·서버 `503 DB_UNAVAILABLE` | `503` / `DB_UNAVAILABLE` 또는 `NETWORK` | 실패한 영역(상단 프로필 또는 활성 탭 목록)만 오류 안내 + `"다시 시도"`, 정상 영역 유지 | 기기 상태 무변경 |
+| `M-#7` | 네트워크 끊김(`status 0`)·서버 `503 DB_UNAVAILABLE` | `503` / `DB_UNAVAILABLE` 또는 `NETWORK` | 실패한 영역(상단 프로필 또는 활성 탭 목록)만 오류 안내 + `"↻ 새로고침"`([D 결정 2026-11-18] 기준선 `"다시 시도"`에서 변경, 홈과 같게), 정상 영역 유지 | 기기 상태 무변경 |
 
 ##### 열린 예외/동작 행 (A가 명세서 예외 표 작성 후 빈 칸 채움)
 
@@ -179,9 +179,11 @@
 | :--- | :--- | :--- | :--- | :--- |
 | 예외 #2 (결정 3) | 각 탭 조회 결과가 `items: []` (0건) | `200` (`items: []`) | 프로필·탭 바 유지, 카드 자리만 탭별 빈 안내 + `"가까운 도서관 둘러보기"`(→ 홈 탭). 다른 탭 캐시는 그대로 | 조회만 함. DB·기기 무변경, 가짜 게시물 0 |
 | 결정 1 | `"프로필 수정"` 버튼 누름 (`MY-1` 범위) | N/A: 기기 내 처리 | 화면 이동 없이 아래 `"프로필 수정은 곧 열려요"` 2초. 연타해도 안내는 하나만 | API 호출 0, DB·기기 무변경 |
-| 결정 2 | 카드 메뉴에서 좋아요 취소 또는 북마크 해제 후 수집 탭 반영 | B `#29`·`#30` (`200`) | `DELETE` 성공 → 카드 자리 유지 + 흐림 + `"취소함"`, 아래 안내 + `"되돌리기"` 4초 → 4초 뒤 카드·안내 함께 제거. 4초 안에 다른 카드 취소 시 앞 흐린 카드 즉시 제거. `"되돌리기"` → `PUT` 성공 시 같은 자리 원래 모습(다음 재조회 때는 B 계약대로 새 시각 기준 맨 앞) | 서버 행은 B #29·#30 결과만 반영(`DELETE` 행 0개, `PUT` 행 1개). 다른 카드·다른 탭 목록 무변경 |
+| 결정 2 | 카드 메뉴에서 좋아요 취소 또는 북마크 해제 후 수집 탭 반영 | B `#29`·`#30` (`200`) | `DELETE` 성공 → 카드 자리 유지 + 흐림 + `"취소함"`, 아래 안내 + `"되돌리기"` 4초 → 4초 뒤 카드·안내 함께 제거. 4초 안에 다른 카드 취소 시 앞 흐린 카드 즉시 제거. `"되돌리기"` → `PUT` 성공 시 같은 자리 원래 모습(다음 재조회 때는 B 계약대로 새 시각 기준 맨 앞) | 서버 행은 B #29·#30 결과만 반영(`DELETE` 행 0개, `PUT` 행 1개). 다른 카드 무변경. [D 보완] 다른 탭 캐시는 Y-O2 캐시 맞추기(같은 게시물 필드 갱신, 모음이 달라진 다른 수집 탭 캐시는 버림) |
 | 예외 #3 | 같은 카드의 `♡`/`🔖` 또는 `"되돌리기"`를 빠르게 두 번 누름 | N/A: 기기 내 처리 (진행 중 요청 1개만) | 첫 누름만 보내고 응답 전 같은 카드 누름은 무시. 흐린 카드·안내 하나만 | 요청 1회, 행 수는 B 멱등 규칙 그대로 |
-| 예외 #5 | 좋아요 취소·북마크 해제 `DELETE` 실패(네트워크·`5xx`·B `H-#3`·`H-#4`) | B `#29`·`#30` 오류 / `NETWORK` | 카드를 흐리게 하지 않고 원래대로, 아래 `"좋아요를 취소하지 못했어요. 다시 해 주세요"`(북마크: `"북마크를 해제하지 못했어요. 다시 해 주세요"`) 2초. `"되돌리기"`의 `PUT` 실패는 `"되돌리지 못했어요"` 2초 후 카드 제거(서버 상태와 맞춤) | 실패 요청은 서버 행 무변경, 기기 목록은 서버 상태와 같게 |
+| 예외 #5 (확정 실패) | [D 보완] 좋아요 취소·북마크 해제 `DELETE` 또는 되돌리기 `PUT`에 서버가 **4xx 오류로 답함**(B `H-#3`·`H-#4` 등) | B `#29`·`#30` `4xx` | `DELETE`: 카드를 흐리게 하지 않고 원래대로 + `PostMenu`의 `toggleFailText` 안내 2초. `PUT`: `"되돌리지 못했어요"` 2초 후 흐린 카드 제거 | 서버가 처리하지 않았다고 답한 경우만 "서버 행 무변경"으로 본다. `DELETE` 확정 실패 → 기기 목록 그대로, `PUT` 확정 실패 → 서버는 해제 상태라 카드 제거가 맞음 |
+| 예외 #5 (결과 불명) | [D 보완] 같은 요청이 **응답 없이 끊김(`status 0`, `NETWORK`) 또는 `5xx`**(`503 DB_UNAVAILABLE` 포함 — 커밋 뒤 응답만 잃었을 수 있음) | `NETWORK` / `5xx` | 안내는 확정 실패와 같다(`DELETE`: 카드 원래대로 + `toggleFailText`, `PUT`: `"되돌리지 못했어요"` 2초). 단 카드를 지우거나 남기는 것을 기기 혼자 정하지 않고, 안내 뒤 **지금 탭을 조용히 첫 페이지부터 다시 불러와**(Y-O2 상세 복귀와 같은 방식: 응답 전 기존 카드 유지, 흐린 카드는 그 자리에서 보통 모습으로) 서버 목록대로 맞추고, 모음이 달라졌을 수 있는 다른 수집 탭 캐시는 버린다. 다시 불러오기도 실패하면 M-#7 실패 안내 | 서버 행은 B #29·#30 멱등 규칙대로 어느 쪽이든 1회 반영 가능 — 기기는 기존 `GET`(`/me/reactions`·`/me/bookmarks`) 결과로 수렴. 새 API·B 파일 변경 없음 |
+| [D 보완] 캐시 맞추기 | 다른 탭 카드 메뉴 또는 게시물 상세에서 같은 게시물의 좋아요·북마크를 바꿈(B `onPostReaction`), 또는 상세에서 글을 내림(B `onPostWithdrawn`) | N/A: 기기 내 처리 | 세 탭 캐시의 같은 게시물 필드를 새 값으로 바꿈. 모음이 달라진 수집 탭이 지금 탭이 아니면 캐시를 버려 다음 진입 때 첫 페이지부터 다시 불러옴. 내린 글은 세 탭에서 지움 | 서버 요청 추가 0(다음 진입 때만 조회). 옛 `my_bookmark`·`my_reaction`으로 다음 메뉴 동작을 반대로 보내지 않음 |
 | 예외 #1 | 다음 페이지 조회 실패 | `503 DB_UNAVAILABLE` / `NETWORK` | 보이던 카드 유지, 맨 아래 `"더 불러오지 못했어요"` + `"↻ 새로고침"`. 버튼 또는 맨 아래에서 한 번 더 내리면 같은 `next_cursor`로 재시도 | 기기 목록·커서 무변경 |
 
 #### C7. 다른 기능과 닿는 곳과 `TODO(연결)` 가짜 값
@@ -191,8 +193,8 @@
 | D `AUTH-1` · `SRV-0` | `get_current_user`, `nickname_of`, `useAuth`, `apiFetch` | `origin/main` `cb25785`에 **머지 완료** — 그대로 import해 사용 |
 | D `APP-0` | `theme`, `onFill`, `createLatestRunner`, `mobile/app/(tabs)/me.tsx` 스텁 | `origin/main` `cb25785`에 **머지 완료** — `MY-1-P2`가 `(tabs)/me.tsx` 스텁을 교체 |
 | D `AUTH-2` | `registerSignOutCleanup`, 설정·로그아웃 연결 | 미구현 — 부르지 않고 `// TODO(연결): D(AUTH-2) registerSignOutCleanup` 주석 + `useAuth().userId` 변화로 상태 초기화 |
-| B `LOCAL-1` · `LOCAL-2` (서버) | `posts`, `post_reactions`, `post_bookmarks` 테이블(`0004`·`0005`) | PR #126 OPEN / LOCAL-2 미머지 — `MY-1-P1` 라우터 SQL은 계약 C5 스키마 그대로 작성. B 테이블 머지 전 단독 테스트는 계약 C5 스키마와 동일한 시험용 테이블로 검증하고 B 머지 후 통합 확인 (`TODO(연결): B LOCAL-1/LOCAL-2`) |
-| B `LOCAL-2-P3` · `P4` (앱) | `PostCard` (`mobile/src/features/local-feed/PostCard.tsx`), `PostMenu` / `api.ts`, `/posts/[postId]` | 미머지 — 머지 전 `mobile/src/features/my-collection/__fakes__/PostCard.tsx` (`library-visit/__fakes__/PostCard.tsx`와 동일한 props `{ post: FeedPost; onPress; onMenu?; width }`) + `// TODO(연결): B LOCAL-2-P3 PostCard` 사용. 상세 경로 `/posts/[postId]`는 core 스텁으로 연결 |
+| B `LOCAL-1` · `LOCAL-2` (서버) | `posts`, `post_reactions`, `post_bookmarks` 테이블(`0004_posts.py`·`0006_post_reactions_bookmarks.py`) | [D 보완] `origin/main` `e54da73`에 **머지 완료** — 시험용 테이블 없이 실제 마이그레이션(`alembic upgrade head`) 위에서 시험. `MY-1-P1` 새 마이그레이션은 머지 시점 `head`(현재 `0007`) 다음 순번 |
+| B `LOCAL-2-P3` · `P4` (앱) | `PostCard` (`mobile/src/features/local-feed/PostCard.tsx`), `PostMenu`(`PostMenu.tsx`), `setReaction`·`setBookmark`·`onPostReaction`·`emitPostReaction`·`onPostWithdrawn`(`api.ts`), `/posts/[postId]` | [D 보완] `origin/main` `e54da73`에 **머지 완료** — 가짜 카드·가짜 메뉴 없이 실제 `PostCard`(`onMenu` 사용)·`PostMenu`를 import(B 파일 수정 금지). 연결 책임은 Y-O4 `[D 보완] 연결 책임`. local-feed C2의 "A가 `onMenu` 없이 쓴다"는 홈 하단 창 이야기이며 내 정보 화면은 `onMenu`를 쓴다. 상세 경로 `/posts/[postId]`는 B `PostDetail` |
 | A `MY-1-P1` → `MY-1-P2` (앱 단독 선행 시) | `GET /api/v1/me/profile` · `/me/posts` · `/me/reactions` · `/me/bookmarks` 가짜 응답 | `MyProfile` 가짜: `{"user_id":"00000000-0000-4000-8000-00000000000a","nickname":"이웃-0000","bio":"동네 도서관 산책을 좋아해요","avatar_url":null,"updated_at":"2026-11-17T09:00:00+09:00"}` / `MyCollectionPage` 가짜: `{"items":[{"id":"7c9e6679-7425-40de-944b-e07fc1f90ae7","library_id":101,"library_name":"정독도서관","image_kind":"color","image_url":null,"image_color":"fill2","overlay_text":"마음에 남은 문장","book":{"isbn13":"9788936434120","title":"소년이 온다","author":"한강"},"published_at":"2026-11-15T19:20:00+09:00","my_reaction":true,"my_bookmark":false,"item_kind":"post","collected_at":"2026-11-16T10:00:00+09:00"}],"next_cursor":null}` + `// TODO(연결): A MY-1-P1` |
 | A `VISIT-4` (M2 후속) | 방문 기록 카드 북마크 통합(C-46 D3) | 미구현 — `item_kind: "post"`만 지원하고 `TODO(연결): VISIT-4 D3` |
 
@@ -210,7 +212,8 @@
 | 선행 마이그레이션 | `server/migrations/versions/0003_user_profiles.py:13-24` | `user_profiles` 테이블과 RLS 유지, 새 순번 파일로 `bio`·`avatar_url` 추가 |
 | 하단 탭·내 정보 스텁 | `mobile/app/(tabs)/_layout.tsx:18-21`, `mobile/app/(tabs)/me.tsx:1-69`, `mobile/src/__tests__/routes.test.tsx:23-27,149-163` | `_layout.tsx`는 `"me"`(`"내 정보"`) 유지. `me.tsx` 교체 및 `routes.test.tsx` `HomeScreen` 방식 mock 정합 |
 | 앱 인증·통신·러너·토큰 | `mobile/src/auth/AuthProvider.tsx:253-259`(`useAuth`), `mobile/src/auth/apiFetch.ts:72-116`(`apiFetch`), `mobile/src/lib/latest.ts:6-25`(`createLatestRunner`), `mobile/src/theme/tokens.ts:31-143`(`theme`, `onFill`) | 그대로 import해 사용 |
-| 가짜 카드 패턴 | `mobile/src/features/library-visit/__fakes__/PostCard.tsx:9-46` | B `PostCard` 머지 전 동일 props 구조 참고 |
+| 가짜 카드 패턴 | `mobile/src/features/library-visit/__fakes__/PostCard.tsx:9-46` | [D 보완] B `PostCard` 머지 완료로 쓰지 않음(참고만) |
+| [D 보완] B 카드·메뉴·반응 (`origin/main` `e54da73`) | `mobile/src/features/local-feed/PostCard.tsx:17-24`, `PostMenu.tsx:61-102`, `api.ts:102-147,167-194`, `server/migrations/versions/0006_post_reactions_bookmarks.py` | `PostCard`·`PostMenuProps { post; signedIn; authLoading?; onClose; onChange(postId, patch); onNotice(text); onLoginNeeded }`·`toggleFailText`, `setReaction(postId, on)`·`setBookmark(postId, on)`, `onPostReaction`·`emitPostReaction`·`onPostWithdrawn` 그대로 import |
 
 #### P2. Step 및 파트 분할 표 (잠금 칸과 열린 칸 명시)
 
@@ -228,11 +231,11 @@
 | 파트 | 브랜치 | 수정/생성 허용 파일(전수, 잠금) | 완료 시 확인할 항목 (잠금 + 열린 칸) |
 | :--- | :--- | :--- | :--- |
 | `MY-1-P1` 서버: 내 프로필 및 3탭 모음 조회 API | `feat/my-collection-MY-1` | `server/migrations/versions/NNNN_user_profiles_bio_avatar.py`, `server/app/routers/my_collection.py`, `server/app/main.py`(`# ── [my-collection-A] ──` 블록만), `server/tests/test_my_collection.py` | 잠금: `Y1~Y3·Y5·Y6, C2~C3, C5, M-#1~#5, P5 MY-1-P1 시험` |
-| `MY-1-P2` 앱: 내 정보 화면 (상단 프로필 + 3탭 2열 피드) | `feat/my-collection-MY-1` (같은 PR) | `mobile/app/(tabs)/me.tsx`, `mobile/src/features/my-collection/MyCollectionScreen.tsx`, `mobile/src/features/my-collection/ProfileHeader.tsx`, `mobile/src/features/my-collection/CollectionTabs.tsx`, `mobile/src/features/my-collection/api.ts`, `mobile/src/features/my-collection/useMyCollection.ts`, `mobile/src/features/my-collection/__fakes__/PostCard.tsx`, `mobile/src/features/my-collection/__fakes__/myCollectionApi.ts`, `mobile/src/features/my-collection/__tests__/my-collection.test.tsx`, `mobile/src/__tests__/routes.test.tsx`, `specs/my-collection/명세서.md`(또는 `specs/my-collection/세부/MY-1.md` 구현 진행 상태) | 잠금: `Y1·Y4·Y5·Y7·Y8, M-#1·#6·#7, P5 MY-1-P2 시험` + A 보완(열린 칸 채움) |
+| `MY-1-P2` 앱: 내 정보 화면 (상단 프로필 + 3탭 2열 피드) | `feat/my-collection-MY-1` (같은 PR) | `mobile/app/(tabs)/me.tsx`, `mobile/src/features/my-collection/MyCollectionScreen.tsx`, `mobile/src/features/my-collection/ProfileHeader.tsx`, `mobile/src/features/my-collection/CollectionTabs.tsx`, `mobile/src/features/my-collection/api.ts`, `mobile/src/features/my-collection/useMyCollection.ts`, `mobile/src/features/my-collection/__fakes__/myCollectionApi.ts`, `mobile/src/features/my-collection/__tests__/my-collection.test.tsx`, `mobile/src/__tests__/routes.test.tsx`, `specs/my-collection/명세서.md`(또는 `specs/my-collection/세부/MY-1.md` 구현 진행 상태) | 잠금: `Y1·Y4·Y5·Y7·Y8, M-#1·#6·#7, P5 MY-1-P2 시험` + A 보완(열린 칸 채움) |
 
 | 열린 칸 (A 보완): `MY-1-P2` 완료 시 추가 확인할 명세서 결정·예외 ID (A 채움) | |
 | :--- | :--- |
-| `MY-1-P2` 명세서 결정·예외 ID | `specs/my-collection/세부/MY-1.md` 결정 1(Y-O1)·결정 2(Y-O4)·결정 3(Y-O3), 예외 #1~#6(Y-O5·C6 열린 행), 기본값(Claude) Y-O2 탭 바·캐시·당겨서 새로고침·상세 복귀 재조회(P5 `revisiting loaded tab...`·`pull to refresh...`·`returning from post detail...`). 추가 P5 `MY-1-P2` 열린 테스트 11행 |
+| `MY-1-P2` 명세서 결정·예외 ID | `specs/my-collection/세부/MY-1.md` 결정 1(Y-O1)·결정 2(Y-O4)·결정 3(Y-O3), 예외 #1~#6(Y-O5·C6 열린 행), 기본값(Claude) Y-O2 탭 바·캐시·당겨서 새로고침·상세 복귀 재조회(P5 `revisiting loaded tab...`·`pull to refresh...`·`returning from post detail...`). 추가 P5 `MY-1-P2` 열린 테스트 11행 + [D 보완] 2행(캐시 맞추기·결과 불명 수렴) |
 
 ##### 파트 머리말 — MY-1-P1 / MY-1-P2 (Step 하나 = 브랜치 `feat/my-collection-MY-1` 하나 = PR 하나)
 
@@ -242,8 +245,8 @@
 | 2. 담당 역할 | A | A |
 | 3. 기준선 버전 | B2 이후 M2/C-46 확장 (`MY-1` D 기준선 — 발행 전 착수 불가) | 같음 |
 | 4. 계약서 커밋 | `발행 뒤 기입` (기획 + 계약 수정본 승인·발행 후 SHA 기입, 비어 있으면 착수 금지) | 같음 |
-| 5. 선행 태스크 | 기획 명세서·시안 PR + 계약 수정본 PR 모두 D 승인·발행 완료. (`posts`·`post_reactions`·`post_bookmarks`가 `main`에 아직 없으면 C7 시험용 테이블/시드로 검증 후 B 머지 시 통합) | 같은 브랜치·PR 안 `MY-1-P1` 구현·검증·커밋·CI 확인 완료 (B `PostCard` 미머지 시 C7 가짜 카드 + `TODO(연결): B`) |
-| 6. 수정 허용 파일 | 위 표 `MY-1-P1` 4개 경로만 | 위 표 `MY-1-P2` 11개 경로만 (`_layout.tsx`·B 파일 수정 금지) |
+| 5. 선행 태스크 | 기획 명세서·시안 PR + 계약 수정본 PR 모두 D 승인·발행 완료. ([D 보완] B 테이블은 `main`에 있음 — 실제 마이그레이션 위에서 검증) | 같은 브랜치·PR 안 `MY-1-P1` 구현·검증·커밋·CI 확인 완료 ([D 보완] B `PostCard`·`PostMenu`는 `main`에 있음 — 실제 import) |
+| 6. 수정 허용 파일 | 위 표 `MY-1-P1` 4개 경로만 | 위 표 `MY-1-P2` 10개 경로만 (`_layout.tsx`·B 파일 수정 금지; [D 보완] B `PostCard` 머지로 `__fakes__/PostCard.tsx` 제외) |
 | 7. 금지된 결정 | 타인 `user_id` 쿼리 허용 금지. 팔로워 수/목록·타인 프로필·이메일 노출 금지. 팔로우 테이블·프로필 수정 `PATCH` API 임의 추가 금지 | `mobile/app/(tabs)/my.tsx` 신규 탭 파일 생성 금지(`me.tsx` 교체). `PostCard` 재디자인·색/곡률 하드코딩·`Platform.OS` 금지. 비로그인 시 `/me/*` 호출 금지 |
 | 8. 완료 조건 | `Y1~Y3·Y5·Y6`, `C2~C3`, `C5`, `M-#1~#5`, `P5 MY-1-P1` 시험 통과 | `Y1·Y4·Y5·Y7·Y8`, `Y-O1~O5`, `M-#1·#6·#7`, `P5 MY-1-P2` 시험 통과 + 웹·Android 확인 |
 | 9. 검증 명령 | 루트 `docker compose up -d --wait db` → `server`에서 `APP_ENV=test python -m uv run alembic upgrade head` → `APP_ENV=test python -m uv run pytest -W error` | `mobile`에서 `npm ci` → `npx tsc --noEmit` → `npx jest --runInBand src/features/my-collection src/__tests__/routes.test.tsx` → `npx expo export --platform web` |
@@ -313,8 +316,18 @@ useEffect(() => {
 
 async function selectTab(tab: CollectionTab) {
   setActiveTab(tab);
+  if (cache[tab]) return;                          // [D 보완] Y-O2: 이미 읽은 탭은 재조회 0(캐시를 버린 탭만 다시 부름)
   await loadTab(tab, null);                        // listRunner가 이전 탭 늦은 응답 폐기(M-#6)
 }
+
+// [D 보완] Y-O2 캐시 맞추기: 같은 게시물 필드 갱신 + 모음이 달라진 다른 수집 탭 캐시 버림
+function applyPatch(postId: string, patch: PostReactionPatch) {
+  patchAllTabs(postId, patch);
+  if (patch.my_reaction !== undefined && activeTab !== "reactions") dropCache("reactions");
+  if (patch.my_bookmark !== undefined && activeTab !== "bookmarks") dropCache("bookmarks");
+}
+useEffect(() => onPostReaction(applyPatch), [activeTab]);
+useEffect(() => onPostWithdrawn(removeFromAllTabs), []);
 ```
 
 #### P5. 필수 테스트 (단언 왜곡 금지 · 잡아야 할 버그)
@@ -338,7 +351,7 @@ async function selectTab(tab: CollectionTab) {
 | `MY-1-P2` | `tab switch drops late response from previous tab` | `좋아요` deferred, `북마크` 즉시 완료 | `좋아요` → `북마크` → `좋아요` 뒤늦게 resolve | 화면은 `북마크` 결과 유지, `좋아요` 데이터 덮어쓰기 없음 | `createLatestRunner` 누락 (`AC-RACE`, M-#6) |
 | `MY-1-P2` | `account change or sign out clears previous user profile and lists` | A 로그인 데이터 표시 | `userId` B로 변경 또는 `signedOut` 전환 | 이전 A 닉네임·목록 즉시 비움, 진행 중 요청 취소 | 계정 전환 시 타인/이전 목록 잔존 (Y7) |
 | `MY-1-P2` | `post card press navigates to post detail without rendering follow counts` | 3탭 게시물 카드 1건 | 카드 누름 + 화면 텍스트 검사 | `router.push({ pathname: "/posts/[postId]", params: { postId } })`, `"팔로워"`·`"팔로잉"` 텍스트 없음 | 상세 경로 오기·금지 지표 노출 (Y4·Y5) |
-| `MY-1-P2` | `section errors are isolated and retry refetches failed section only` | 프로필 503 / 탭 목록 200 (및 반대) | `"다시 시도"` 누름 | 정상 영역은 유지, 실패 영역만 오류 안내·재조회 | 전체 화면 먹통 (M-#7) |
+| `MY-1-P2` | `section errors are isolated and retry refetches failed section only` | 프로필 503 / 탭 목록 200 (및 반대) | `"↻ 새로고침"` 누름([D 결정 2026-11-18] 기준선 `"다시 시도"`에서 변경) | 정상 영역은 유지, 실패 영역만 오류 안내·재조회 | 전체 화면 먹통 (M-#7) |
 | `MY-1-P2` | `no hard-coded colors radii or platform branches in my-collection` | — | `src/features/my-collection/*.ts(x)` 검사 | `#[0-9A-Fa-f]{3,8}`·`rgb(`·`Platform.OS` 0건 | 토큰·플랫폼 규칙 위반 (Y8) |
 
 ##### 열린 테스트 자리 (A가 `Y-O1~O5` 채운 뒤 명세서 결정·예외 ID를 연결해 행 추가)
@@ -351,8 +364,10 @@ async function selectTab(tab: CollectionTab) {
 | `MY-1-P2` | `undo within 4 seconds restores card in place via reaction put` | 위와 같음, #29 `PUT` 200 | `♡` 취소 → 2초 뒤 `"되돌리기"` | `PUT` 1회, 카드 같은 자리·흐림 해제, 4초 지나도 유지 | 되돌리기 미전송·자리 이동 (결정 2) |
 | `MY-1-P2` | `second cancel within 4 seconds removes previously dimmed card immediately` | `좋아요` 탭 카드 3개 | 카드1 취소 → 1초 뒤 카드2 취소 | 카드1 즉시 제거, 카드2만 흐림, 안내 1개 | 흐린 카드 누적 (결정 2) |
 | `MY-1-P2` | `bookmark tab unbookmark follows same dim and undo flow` | `북마크` 탭, #30 `DELETE`/`PUT` | `🔖` 해제 → `"되돌리기"` | `"북마크를 해제했어요"`, `DELETE`·`PUT` 각 1회, 카드 복원 | 북마크 탭 분기 누락 (결정 2) |
-| `MY-1-P2` | `double press on same card sends one request and failed delete keeps card` | #29 `DELETE` deferred 후 reject | 같은 카드 `♡` 2번 → reject | `DELETE` 1회, 카드 흐려지지 않음, `"좋아요를 취소하지 못했어요. 다시 해 주세요"` | 진행 중 가드 누락·실패 시 카드 사라짐 (예외 #3·#5) |
+| `MY-1-P2` | `double press on same card sends one request and failed delete keeps card` | #29 `DELETE` deferred 후 reject | 같은 카드 `♡` 2번 → reject | `DELETE` 1회, 카드 흐려지지 않음, B `toggleFailText` 안내(`"지금은 처리하지 못했어요. 다시 시도해 주세요."` 또는 서버 문구) ([D 보완] 메뉴가 B `PostMenu`) | 진행 중 가드 누락·실패 시 카드 사라짐 (예외 #3·#5) |
 | `MY-1-P2` | `next page failure keeps cards and retries same cursor` | 1쪽 `next_cursor: "c1"`, 2쪽 첫 호출 503 후 200 | 끝까지 스크롤 → 실패 → `"↻ 새로고침"` / 한 번 더 끝 도달 | 1쪽 카드 유지, `"더 불러오지 못했어요"`, 재시도 `cursor === "c1"`, 성공 후 이어 붙임·중복 0, 끝이면 `"모두 봤어요"` | 실패 시 목록 비움·커서 전진·중복 요청 (예외 #1) |
 | `MY-1-P2` | `revisiting loaded tab reuses cached items and cursor without refetch` | `signedIn` A, `내 게시물` 1쪽(`next_cursor: "p1"`)·`좋아요` 1쪽(`next_cursor: "r1"`) 각각 한 번 불러옴 | `내 게시물` → `좋아요` → `내 게시물` → `좋아요` 다시 누름 → `좋아요` 끝까지 스크롤 | 다시 누를 때 `fetchMyPosts`·`fetchMyReactions` 추가 호출 0(각 첫 1회만), 카드 목록·순서 그대로, 스켈레톤 0; 끝 도달 시 다음 요청 `cursor === "r1"` | 탭 전환마다 무조건 재조회(깜빡임)·커서 초기화로 1쪽 중복 (Y-O2 캐시, 명세 0절 기본값) |
 | `MY-1-P2` | `pull to refresh refetches active tab first page and profile only` | `내 게시물`·`좋아요`·`북마크` 모두 불러옴, 활성 `좋아요`는 2쪽까지 이어 붙임 | 피드를 아래로 당김(`onRefresh`) → 응답 resolve | `fetchMyProfile` 1회 + `fetchMyReactions` `cursor === null` 1회, `fetchMyPosts`·`fetchMyBookmarks` 0회; 응답 뒤 `좋아요` 목록을 1쪽 응답으로 교체(2쪽 카드 잔존 0)·`next_cursor` 갱신, 새로고침 표시 꺼짐 | 다른 탭까지 재조회·기존 커서로 이어 붙여 중복·프로필 미갱신·새로고침 표시 안 꺼짐 (Y-O2 당겨서 새로고침, 명세 0절 기본값) |
 | `MY-1-P2` | `returning from post detail silently refetches active tab keeping cards until response` | `좋아요` 탭 카드 2개 표시, `내 게시물`도 불러옴, 복귀 시 `fetchMyReactions` deferred | 카드 눌러 상세 이동 → 화면 다시 보임(focus) → deferred resolve(카드 1개) | resolve 전: 기존 카드 2개 그대로, 스켈레톤·빈 안내 0, `fetchMyReactions` `cursor === null` 1회, `fetchMyPosts`·`fetchMyProfile` 0회; resolve 뒤 카드 1개로 교체. 첫 진입 focus에서는 최초 조회 외 추가 호출 0 | 복귀 재조회 누락(상세에서 바꾼 상태 미반영)·응답 전 카드 비움·다른 탭/프로필 재조회·첫 진입 중복 요청 (Y-O2 상세 복귀, 명세 검토 메모 `[Claude가 정함]`) |
+| `MY-1-P2` | `reaction change elsewhere patches same post in all tabs and drops changed collection cache` | [D 보완] `내 게시물`·`좋아요`·`북마크` 모두 불러옴, 게시물 P가 `내 게시물`·`북마크`에 있음(`my_bookmark: true`), 활성 `내 게시물` | P 메뉴에서 `🔖` 해제 성공(`onChange(P, { my_bookmark: false })`) → `북마크` 탭 누름 / 별도로 `emitPostReaction(P, { my_reaction: true })` 후 `좋아요` 탭 누름 | `북마크` 진입 시 `fetchMyBookmarks` `cursor === null` 1회 + 응답 전 스켈레톤(옛 P 카드 0); `내 게시물` 캐시의 P는 `my_bookmark === false`; `좋아요` 진입 시 `fetchMyReactions` 재조회 1회; 모음이 안 바뀐 탭 재조회 0 | 캐시가 해제한 글을 계속 보여 줌·옛 `my_bookmark`로 다음 메뉴가 반대 요청 (Y-O2 캐시 맞추기, PR #169 리뷰) |
+| `MY-1-P2` | `unknown result on unlike or undo reconciles with silent refetch instead of guessing` | [D 보완] `좋아요` 탭 카드 2개. ① `DELETE`가 `status 0`으로 reject ② `DELETE` 200 후 `"되돌리기"` `PUT`이 `503`으로 reject ③ `PUT`이 `404`로 reject; 재조회 `fetchMyReactions` deferred | 각 경우 실행 → 재조회 resolve(①은 P 없음, ②는 P 있음) | ①②: 안내 뒤 `fetchMyReactions` `cursor === null` 1회, 응답 전 기존 카드 유지, resolve 뒤 서버 목록대로(①: P 제거, ②: P 보통 모습으로 남음), `내 게시물` 캐시 그대로. ③: `"되돌리지 못했어요"` 뒤 재조회 0, P 제거 | 결과 불명을 "서버 무변경"으로 단정해 카드를 남기거나 지움·확정 실패에도 불필요 재조회 (예외 #5, PR #169 리뷰) |
