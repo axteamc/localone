@@ -1,11 +1,12 @@
-// 홈 (계약서 library-visit.md VISIT-1). 시안 C(2026-11-17 확정): 지도 대신 파사드 격자 + 방위 블록(FacadeHome).
+// 홈 (계약서 library-visit.md VISIT-1). 지도 대신 파사드 격자 + 등각 큐브(FacadeHome, 2026-11-18 큐브 배치).
 // 위치·주변 조회·도서관 찾기 창은 그대로, 지도 끌기·"이 지역에서 다시 찾기"는 없다(지도는 책 검색 LIB-2로 이관).
 // VISIT-1b: 아래에서 올려 보는 홈 하단 창(HomeSheet). 안내 카드·아래 가운데 버튼은 창 위쪽 끝에 붙어 함께 움직인다.
 import { useRouter } from "expo-router";
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import type { LibrarySummary, Region } from "./deps";
-import { onFill, theme, actionColors } from "../../theme";
+import { getHeroRule, getRecentVisitedLibraryId, setHeroRule, type LibrarySummary, type Region } from "./deps";
+import type { HeroRule } from "./direction";
+import { theme, actionColors } from "../../theme";
 import { FacadeHome } from "./FacadeHome";
 import { FindLibrarySheet } from "./FindLibrarySheet";
 import { HomeSheet } from "./HomeSheet";
@@ -44,6 +45,26 @@ export function HomeScreen() {
     },
     [router]
   );
+
+  // 처음 주인공(2026-11-18 D): 기본은 가장 가까운 곳, "최근 방문"은 기기에 둔 설정(홈에서 주인공 큐브 꾹 누르기)
+  const [heroRule, setRule] = useState<HeroRule>("nearest");
+  const [recentId, setRecentId] = useState<number | null>(null);
+  useEffect(() => {
+    let alive = true;
+    void (async () => {
+      const [rule, recent] = await Promise.all([getHeroRule(), getRecentVisitedLibraryId().catch(() => null)]);
+      if (!alive) return;
+      setRule(rule);
+      setRecentId(recent);
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const changeHeroRule = useCallback((rule: HeroRule) => {
+    setRule(rule);
+    void setHeroRule(rule);
+  }, []);
 
   const [findOpen, setFindOpen] = useState(false);
   const closeFind = useCallback(() => setFindOpen(false), []);
@@ -141,8 +162,10 @@ export function HomeScreen() {
           libraries={home.libraries}
           originTitle={originTitle}
           originSub={`${home.radiusKm}KM`}
-          radiusKm={home.radiusKm}
           selectedId={home.selectedId}
+          heroRule={heroRule}
+          recentId={recentId}
+          onHeroRuleChange={changeHeroRule}
           onLibraryPress={openLibrary}
         />
 
@@ -177,7 +200,7 @@ export function HomeScreen() {
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: theme.colors.panelFrosted },
-  // 건축 프레임 바: 파사드 상단 줄눈에 맞물리는 직각 가까운 모서리 + 1px 줄눈선 + 오른쪽 마이크로 베벨 "도서관 찾기" 태그
+  // 건축 프레임 바: 파사드 상단 줄눈에 맞물리는 입력 칸(곡률 9) + 1px 줄눈선 + 오른쪽 무광 판 "도서관 찾기" 버튼
   searchBar: {
     flexDirection: "row",
     alignItems: "center",
@@ -189,7 +212,7 @@ const styles = StyleSheet.create({
     paddingRight: 6,
     borderWidth: 1,
     borderColor: theme.colors.seamHairline,
-    borderRadius: 6,
+    borderRadius: theme.radii.infoCard,
     backgroundColor: theme.colors.paper,
   },
   searchBody: { flex: 1, paddingVertical: 6, paddingLeft: 12 },
@@ -197,12 +220,10 @@ const styles = StyleSheet.create({
   findButton: {
     paddingVertical: 4,
     paddingHorizontal: 10,
-    borderRadius: theme.radii.block + 1,
-    borderWidth: 1,
-    borderColor: theme.colors.seamHairline,
-    backgroundColor: theme.colors.fill1,
+    borderRadius: theme.radii.control,
+    ...ACT.primary,
   },
-  findText: { fontSize: 12, fontWeight: "500", color: onFill(theme.colors.fill1) }, // 채움 위 글자색 자동(디자인_기준 §2, 사후 검토 ③-5)
+  findText: { fontSize: 12, fontWeight: "500", ...ACT.primaryText },
   body: { flex: 1, overflow: "hidden" },
   card: { alignItems: "center", gap: 10, padding: 20 },
   cardText: { fontSize: 15, textAlign: "center", color: theme.colors.text },

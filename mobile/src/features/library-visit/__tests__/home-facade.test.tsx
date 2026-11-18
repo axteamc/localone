@@ -1,13 +1,12 @@
-// VISIT-1 시안 C 홈 파사드 시험 (총정리 §2·§3): 방위 블록·"+N곳 전환"·개수별 배치·블록 눌러 방문 페이지
+// VISIT-1 홈 큐브 파사드 시험 (2026-11-18 "홈 큐브 배치"): 주인공·가장자리 걸침·기점 전체 보기·꾹 누르기 설정·큐브 눌러 방문 페이지.
+// 자리 계산(칸 나누기·기점·걸침·전체 보기·끌기)은 direction.test.ts가 순수 함수로 본다.
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { fireEvent, render, screen, within } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import React from "react";
 import { StyleSheet } from "react-native";
 import * as api from "../deps";
-import { BLOCK_W_MAX, horizontalPlace, quadLayout, upperLayout } from "../FacadeHome";
 import { HomeScreen } from "../HomeScreen";
-import { snapOffsets } from "../useHomeSheet";
-import { onFill, theme } from "../../../theme";
+import { theme } from "../../../theme";
 
 const mockPush = jest.fn();
 
@@ -19,7 +18,7 @@ jest.mock("../../../auth/AuthProvider", () => ({
   useAuth: jest.fn(() => ({ status: "signedOut", session: null, user: null })),
 }));
 
-// 홈 시험은 파사드 블록 동작만 본다. 하단 창(VISIT-1b)은 home-sheet·home-news 시험이 따로 본다.
+// 홈 시험은 파사드 동작만 본다. 하단 창(VISIT-1b)은 home-sheet·home-news 시험이 따로 본다.
 jest.mock("../HomeSheet", () => ({
   HomeSheet: (p: { above?: unknown }) => p.above ?? null,
 }));
@@ -31,6 +30,9 @@ jest.mock("../deps", () => {
     fetchLibrariesNearby: jest.fn(),
     locate: jest.fn(),
     getDefaultLibrary: jest.fn(),
+    getHeroRule: jest.fn(),
+    setHeroRule: jest.fn(),
+    getRecentVisitedLibraryId: jest.fn(),
   };
 });
 
@@ -39,6 +41,9 @@ const m = api as unknown as {
   fetchLibrariesNearby: jest.Mock<typeof api.fetchLibrariesNearby>;
   locate: jest.Mock<typeof api.locate>;
   getDefaultLibrary: jest.Mock<typeof api.getDefaultLibrary>;
+  getHeroRule: jest.Mock<typeof api.getHeroRule>;
+  setHeroRule: jest.Mock<typeof api.setHeroRule>;
+  getRecentVisitedLibraryId: jest.Mock<typeof api.getRecentVisitedLibraryId>;
 };
 
 const nearby = (items: api.LibrarySummary[]): api.LibraryListResponse => ({
@@ -49,46 +54,46 @@ const nearby = (items: api.LibrarySummary[]): api.LibraryListResponse => ({
   items,
 });
 
+const role = (id: string) => screen.getByTestId(id).props.accessibilityHint as string;
+
 beforeEach(() => {
   jest.clearAllMocks();
   m.locate.mockResolvedValue({ ok: true, lat: 37.5815, lng: 126.9831 });
   m.getDefaultLibrary.mockResolvedValue(null);
   m.fetchLibrariesNearby.mockImplementation(actual.fetchLibrariesNearby);
+  m.getHeroRule.mockResolvedValue("nearest");
+  m.setHeroRule.mockResolvedValue(undefined);
+  m.getRecentVisitedLibraryId.mockResolvedValue(102);
 });
 
-describe("VISIT-1 home facade", () => {
-  test("blocks carry name, distance, compass code and closed band", async () => {
+// 가짜 #10: 정독(101, 기준 위치, 420m) · 종로(102, 남서 1.3km, 오늘 휴관) · 남산(103, 남쪽 2.9km)
+describe("VISIT-1 home cubes", () => {
+  test("the nearest library is the hero and every cube carries name, distance, bearing and today", async () => {
     await render(<HomeScreen />);
     await screen.findByText("정독도서관");
-    expect(screen.getByTestId("facade-grid")).toBeTruthy();
-    expect(screen.getByTestId("facade-ruler")).toBeTruthy();
-    expect(screen.getByTestId("facade-origin")).toBeTruthy();
-    expect(screen.getByText("420m")).toBeTruthy();
-    // 종로도서관은 오늘 휴관이 확실하다
-    expect(screen.getByText("종로도서관")).toBeTruthy();
+    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/정독도서관/);
+    expect(screen.getByLabelText("정독도서관 420m")).toBeTruthy();
+    // 나머지는 가장자리에 걸친 작은 큐브
+    expect(role("facade-cube-102")).toBe("peek");
+    expect(role("facade-cube-103")).toBe("peek");
     expect(screen.getByText("1.3km")).toBeTruthy();
     expect(screen.getByText("오늘 휴관")).toBeTruthy();
-    // 방위 코드 "SW 2xx°" 형태
-    expect(screen.getAllByText(/^(N|NE|E|SE|S|SW|W|NW) \d{3}°$/).length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("CLOSED")).toBeTruthy();
+    expect(screen.getAllByText(/^(N|NE|E|SE|S|SW|W|NW) \d{3}°$/).length).toBe(3);
+    expect(screen.getByTestId("facade-grid")).toBeTruthy();
   });
 
-  test("origin plinth says current location and radius", async () => {
+  test("origin says current location and radius, and there is no separate axis or ruler", async () => {
     await render(<HomeScreen />);
     await screen.findByText("정독도서관");
     expect(screen.getByText("현위치")).toBeTruthy();
     expect(screen.getByText("3KM")).toBeTruthy();
-    expect(screen.getByText("W 1.5km")).toBeTruthy();
-    expect(screen.getByText("E 1.5km")).toBeTruthy();
+    expect(screen.queryByTestId("facade-ruler")).toBeNull();
+    expect(screen.queryByTestId("facade-axis")).toBeNull();
   });
 
-  test("libraries without coords get no block", async () => {
-    const noCoords: api.LibrarySummary = {
-      ...actual.FAKE_LIBRARIES[0]!,
-      id: 104,
-      name: "좌표없는도서관",
-      latitude: null,
-      longitude: null,
-    };
+  test("libraries without coords get no cube", async () => {
+    const noCoords: api.LibrarySummary = { ...actual.FAKE_LIBRARIES[0]!, id: 104, name: "좌표없는도서관", latitude: null, longitude: null };
     m.fetchLibrariesNearby.mockResolvedValue(nearby([...actual.FAKE_LIBRARIES, noCoords]));
     await render(<HomeScreen />);
     await screen.findByText("정독도서관");
@@ -105,70 +110,39 @@ describe("VISIT-1 home facade", () => {
     expect(screen.queryByText("좌표없는도서관")).toBeNull();
   });
 
-  test("find button text color is chosen for its fill (③-5)", async () => {
+  test("find button uses matte primary plate instead of yellow fill (2026-11-18 주 버튼 색 B)", async () => {
     await render(<HomeScreen />);
     await screen.findByText("정독도서관");
-    expect(StyleSheet.flatten(screen.getByText("도서관 찾기").props.style).color).toBe(onFill(theme.colors.fill1));
+    expect(StyleSheet.flatten(screen.getByTestId("home-find-library").props.style).backgroundColor).toBe(theme.colors.panelLit);
+    expect(StyleSheet.flatten(screen.getByText("도서관 찾기").props.style).color).toBe(theme.colors.inkStrong);
   });
 
   test("distance falls back to straight-line when the server gives none", async () => {
     m.fetchLibrariesNearby.mockResolvedValue(nearby([{ ...actual.FAKE_LIBRARIES[0]!, distance_m: null }]));
     await render(<HomeScreen />);
     await screen.findByText("정독도서관");
-    // 한 곳뿐이면 와이드 한 블록(MAIN). 기준 위치와 같은 좌표라 0m
-    expect(screen.getByTestId("facade-block-MAIN")).toBeTruthy();
-    expect(screen.getByText("0m")).toBeTruthy();
+    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/0m/);
   });
 
-  test("two libraries on opposite sides sit west and east", async () => {
-    m.fetchLibrariesNearby.mockResolvedValue(nearby([actual.FAKE_LIBRARIES[0]!, actual.FAKE_LIBRARIES[1]!]));
+  test("hero press opens visit page without preview", async () => {
     await render(<HomeScreen />);
     await screen.findByText("정독도서관");
-    expect(screen.getByTestId("facade-block-W")).toHaveTextContent(/종로도서관/);
-    expect(screen.getByTestId("facade-block-E")).toHaveTextContent(/정독도서관/);
+    await fireEvent.press(screen.getByLabelText("정독도서관 420m"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/libraries/[libraryId]", params: { libraryId: "101", distanceM: "420" } });
   });
 
-  test("same-direction libraries stack and the +N pill cycles without leaving the page", async () => {
+  test("an edge cube becomes the hero without leaving the page, then opens on press", async () => {
     await render(<HomeScreen />);
     await screen.findByText("정독도서관");
-    // 종로(1.3km)와 남산(2.9km)은 같은 남서 방향 → 가까운 종로가 대표
-    expect(screen.getByText("종로도서관")).toBeTruthy();
-    expect(screen.queryByText("남산도서관")).toBeNull();
-    await fireEvent.press(screen.getByLabelText("같은 방향 도서관 1곳 더 보기"));
-    expect(screen.getByText("남산도서관")).toBeTruthy();
-    expect(screen.queryByText("종로도서관")).toBeNull();
+    await fireEvent.press(screen.getByLabelText("종로도서관 크게 보기"));
     expect(mockPush).not.toHaveBeenCalled();
-    // 한 바퀴 돌면 처음으로
-    await fireEvent.press(screen.getByLabelText("같은 방향 도서관 1곳 더 보기"));
-    expect(screen.getByText("종로도서관")).toBeTruthy();
-  });
-
-  // 시연 전 개선 S1 W-3: 웹에서 <button> 안 <button>이 되지 않게 "+N곳" 버튼은 블록 버튼 밖(형제)에 있다
-  test("+N pill is not nested inside the block button", async () => {
-    await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
-    const block = screen.getByLabelText("종로도서관 1.3km");
-    expect(within(block).queryByLabelText("같은 방향 도서관 1곳 더 보기")).toBeNull();
-    // 같은 블록 자리 안에는 그대로 있다
-    const wrap = screen.getByTestId("facade-block-SW");
-    expect(within(wrap).getByLabelText("같은 방향 도서관 1곳 더 보기")).toBeTruthy();
-    await fireEvent.press(screen.getByLabelText("같은 방향 도서관 1곳 더 보기"));
-    expect(mockPush).not.toHaveBeenCalled();
-  });
-
-  test("block press opens visit page without preview", async () => {
-    await render(<HomeScreen />);
-    await screen.findByText("정독도서관");
+    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/종로도서관/);
+    expect(role("facade-cube-101")).toBe("peek");
     await fireEvent.press(screen.getByLabelText("종로도서관 1.3km"));
-    expect(mockPush).toHaveBeenCalledTimes(1);
-    // V5: 그 도서관의 distance_m(1310)을 distanceM으로 같이 넘긴다
-    expect(mockPush).toHaveBeenCalledWith({
-      pathname: "/libraries/[libraryId]",
-      params: { libraryId: "102", distanceM: "1310" },
-    });
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/libraries/[libraryId]", params: { libraryId: "102", distanceM: "1310" } });
   });
 
-  test("block press omits distanceM when distance is null or invalid", async () => {
+  test("hero press omits distanceM when distance is null or invalid", async () => {
     m.fetchLibrariesNearby.mockResolvedValue(
       nearby([
         { ...actual.FAKE_LIBRARIES[0]!, id: 201, distance_m: null },
@@ -178,97 +152,59 @@ describe("VISIT-1 home facade", () => {
     );
     await render(<HomeScreen />);
     await screen.findByText("정독도서관");
-    await fireEvent.press(screen.getByLabelText(/^정독도서관 /));
-    await fireEvent.press(screen.getByLabelText(/^종로도서관 /));
-    // 남산(203)은 종로(202)와 같은 방향이라 한 번 넘겨야 보인다. 거리가 음수(-1)면 직선거리로 보이되 distanceM은 뺀다
-    await fireEvent.press(screen.getByLabelText("같은 방향 도서관 1곳 더 보기"));
-    await fireEvent.press(screen.getByLabelText(/^남산도서관 /));
+    await fireEvent.press(screen.getByLabelText(/^정독도서관 \d/));
+    await fireEvent.press(screen.getByLabelText("종로도서관 크게 보기"));
+    await fireEvent.press(screen.getByLabelText(/^종로도서관 \d/));
+    await fireEvent.press(screen.getByLabelText("남산도서관 크게 보기"));
+    await fireEvent.press(screen.getByLabelText(/^남산도서관 \d/));
     expect(mockPush).toHaveBeenNthCalledWith(1, { pathname: "/libraries/[libraryId]", params: { libraryId: "201" } });
     expect(mockPush).toHaveBeenNthCalledWith(2, { pathname: "/libraries/[libraryId]", params: { libraryId: "202" } });
     expect(mockPush).toHaveBeenNthCalledWith(3, { pathname: "/libraries/[libraryId]", params: { libraryId: "203" } });
   });
 
-  // ③-2: 파사드와 하단 창은 같은 영역. 처음 열린 홈(half)에서 남쪽 블록도 창 위쪽 끝 위에 있어야 보이고 눌린다.
-  // 판 높이 650·450은 웹 390×844·375×667에서 잰 값(PR 141 사후 검토 §4.7)
-  test.each([650, 450, 400])("south blocks stay above the half sheet (board %ipx)", async (boardH) => {
-    // 기준점(37.5815, 126.9831) 둘레 네 방향에 한 곳씩 → 네 칸 배치
-    const base = actual.FAKE_LIBRARIES[0]!;
-    const at = (id: number, name: string, dLat: number, dLng: number): api.LibrarySummary => ({
-      ...base,
-      id,
-      name,
-      latitude: 37.5815 + dLat,
-      longitude: 126.9831 + dLng,
-    });
-    m.fetchLibrariesNearby.mockResolvedValue(
-      nearby([
-        at(301, "북서도서관", 0.005, -0.006),
-        at(302, "북동도서관", 0.006, 0.005),
-        at(303, "남서도서관", -0.005, -0.006),
-        at(304, "남동도서관", -0.006, 0.005),
-      ])
-    );
+  test("origin press shows every library as same-size cubes, a cube press focuses it, origin again restores", async () => {
     await render(<HomeScreen />);
-    await screen.findByText("남서도서관");
-    await fireEvent(screen.getByTestId("facade-board"), "layout", {
-      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: boardH } },
-    });
-    const half = snapOffsets(boardH).half;
-    const box = (slot: string) => {
-      const st = StyleSheet.flatten(screen.getByTestId(`facade-block-${slot}`).props.style);
-      return { top: st.top as number, bottom: (st.top as number) + (st.height as number) };
-    };
-    expect(screen.getByTestId("facade-block-SW")).toHaveTextContent(/남서도서관/);
-    expect(screen.getByTestId("facade-block-SE")).toHaveTextContent(/남동도서관/);
-    for (const slot of ["SW", "SE"]) {
-      expect(typeof box(slot).top).toBe("number");
-      expect(box(slot).bottom).toBeLessThanOrEqual(half);
-    }
-    // 북쪽 블록과 같은 줄에서 겹치지 않는다
-    expect(box("NW").bottom).toBeLessThan(box("SW").top);
-    expect(box("NE").bottom).toBeLessThan(box("SE").top);
+    await screen.findByText("정독도서관");
+    await fireEvent.press(screen.getByLabelText("주변 도서관 전체 보기"));
+    expect(screen.queryByTestId("facade-hero")).toBeNull();
+    for (const id of [101, 102, 103]) expect(role(`facade-cube-${id}`)).toBe("ring");
+    // 기점 다시 → 원래 주인공
+    await fireEvent.press(screen.getByLabelText("원래 도서관 크게 보기"));
+    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/정독도서관/);
+    // 전체 보기에서 큐브 누르기 → 그 도서관이 주인공
+    await fireEvent.press(screen.getByLabelText("주변 도서관 전체 보기"));
+    await fireEvent.press(screen.getByLabelText("남산도서관 크게 보기"));
+    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/남산도서관/);
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
-  test("quad layout keeps full blocks on tall boards and shrinks them on short ones", () => {
-    const tall = quadLayout(650);
-    expect(tall.blockH).toBe(104);
-    expect(tall.top.SE + tall.blockH).toBeLessThanOrEqual(snapOffsets(650).half);
-    const short = quadLayout(450);
-    expect(short.blockH).toBeLessThan(104);
-    expect(short.top.SE + short.blockH).toBeLessThanOrEqual(snapOffsets(450).half);
-    expect(short.top.NE + short.blockH).toBeLessThan(short.originY);
-    expect(short.originY).toBeLessThan(short.top.SW);
+  test("long press on the hero opens the first-hero setting and saves it on the device", async () => {
+    await render(<HomeScreen />);
+    await screen.findByText("정독도서관");
+    await fireEvent(screen.getByLabelText("정독도서관 420m"), "longPress");
+    expect(screen.getByTestId("facade-hero-menu")).toBeTruthy();
+    expect(screen.getByText("홈을 열면 처음 크게 보일 도서관")).toBeTruthy();
+    await fireEvent.press(screen.getByText("최근 방문한 곳"));
+    expect(m.setHeroRule).toHaveBeenCalledWith("recent");
+    expect(screen.queryByTestId("facade-hero-menu")).toBeNull();
+    // 최근 방문(102 종로)이 주인공
+    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/종로도서관/);
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
-  // 2026-11-18 D: 태블릿·가로 휴대폰처럼 넓은 판에서는 블록이 늘어나지 않고 가운데 축 양옆에 붙는다
-  test("blocks keep max width and hug the center axis on wide boards", () => {
-    for (const w of [820, 1180]) {
-      const west = horizontalPlace("NW", w);
-      const east = horizontalPlace("NE", w);
-      expect(west.width).toBe(BLOCK_W_MAX);
-      expect(east.width).toBe(BLOCK_W_MAX);
-      expect(west.left + west.width).toBeLessThanOrEqual(w / 2);
-      expect(w / 2 - (west.left + west.width)).toBeLessThan(10);
-      expect(east.left - w / 2).toBeLessThan(10);
-    }
-    // 휴대폰(390)에서는 지금 자리(왼쪽 16, 폭 44%)와 거의 같다
-    const phone = horizontalPlace("NW", 390);
-    expect(Math.abs(phone.left - 16)).toBeLessThanOrEqual(1);
-    expect(phone.width).toBe(172);
+  test("a saved recent-visit setting makes that library the first hero", async () => {
+    m.getHeroRule.mockResolvedValue("recent");
+    await render(<HomeScreen />);
+    await screen.findByText("정독도서관");
+    await waitFor(() => expect(screen.getByTestId("facade-hero")).toHaveTextContent(/종로도서관/));
   });
 
-  // D 지적 ②(2026-11-18): 화면이 작아지면 기점 매스(높이 62)가 블록에 가려졌다
-  test("origin plinth fits between block rows on every board height", () => {
-    for (const h of [360, 450, 520, 610, 700, 900]) {
-      const q = quadLayout(h);
-      if (q.blockH > 64) {
-        expect(q.originY - 31).toBeGreaterThanOrEqual(q.top.NW + q.blockH);
-        expect(q.originY + 31).toBeLessThanOrEqual(q.top.SW);
-      }
-      for (const slot of ["W", "E", "MAIN"] as const) {
-        const u = upperLayout(h, slot);
-        expect(u.top + u.blockH + 8).toBeLessThan(u.originY - 31);
-      }
-    }
+  test("recent-visit setting falls back to the nearest when that library is not on the board", async () => {
+    m.getHeroRule.mockResolvedValue("recent");
+    m.getRecentVisitedLibraryId.mockResolvedValue(999);
+    await render(<HomeScreen />);
+    await screen.findByText("정독도서관");
+    await act(async () => {});
+    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/정독도서관/);
   });
 });
