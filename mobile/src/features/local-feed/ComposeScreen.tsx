@@ -6,7 +6,6 @@ import {
   ActivityIndicator,
   Image,
   Keyboard,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -15,7 +14,6 @@ import {
   TextInput,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useAuth } from "../../auth/AuthProvider";
 import { fetchBook, fetchLibrary, searchBooks, type Book } from "../../lib/publicApi";
@@ -348,7 +346,6 @@ export type ComposeScreenProps = { libraryId: number; isbn13?: string | null };
 export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
   const router = useRouter();
   const navigation = useNavigation();
-  const insets = useSafeAreaInsets();
   const { status } = useAuth();
   const clientRequestId = useRef<string>(Crypto.randomUUID()).current; // 화면을 열 때 하나(F9)
 
@@ -364,6 +361,7 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
   const [overlayFocused, setOverlayFocused] = useState(false);
   const [bodyFocused, setBodyFocused] = useState(false);
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<SubmitError | null>(null);
@@ -390,12 +388,14 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
   useEffect(() => {
     const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
     const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
-    const subShow = Keyboard.addListener(showEvent, () => {
+    const subShow = Keyboard.addListener(showEvent, (e) => {
       setKeyboardVisible(true);
+      setKeyboardHeight(e?.endCoordinates?.height ?? 320);
       if (focusedField.current) scrollToFocused(focusedField.current);
     });
     const subHide = Keyboard.addListener(hideEvent, () => {
       setKeyboardVisible(false);
+      setKeyboardHeight(0);
     });
     return () => {
       subShow.remove();
@@ -476,8 +476,8 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
                 onPress={() => void submitRef.current()}
                 style={({ pressed }) => [
                   styles.headerSubmit,
-                  !canSubmit && styles.submitOff,
-                  canSubmit && pressed && ACT.primaryPressed,
+                  !canSubmit && styles.headerSubmitOff,
+                  canSubmit && pressed && styles.headerSubmitPressed,
                 ]}
               >
                 <Text style={styles.headerSubmitText}>
@@ -667,11 +667,7 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
     nullIfBlank(overlay) ?? (coverMissing && book ? titleAuthorText(book) : null);
 
   return (
-    <KeyboardAvoidingView
-      style={styles.screen}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-      keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 44 : 0}
-    >
+    <View style={styles.screen}>
       {error ? (
         <View style={styles.banner} accessibilityRole="alert">
           <Text style={styles.bannerText}>{error.message}</Text>
@@ -691,7 +687,7 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
       <ScrollView
         ref={scrollRef}
         style={styles.scroll}
-        contentContainerStyle={styles.body}
+        contentContainerStyle={[styles.body, keyboardHeight > 0 && { paddingBottom: keyboardHeight + 32 }]}
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.pageHead}>
@@ -785,6 +781,8 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
             setOverlayFocused(false);
           }}
           maxLength={OVERLAY_MAX}
+          autoCorrect={false}
+          spellCheck={false}
           style={[styles.input, overlayFocused && styles.inputFocus]}
         />
         {effectiveKind === "photo" || effectiveKind === "cover" ? (
@@ -836,6 +834,8 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
             maxLength={BODY_MAX}
             multiline
             autoFocus
+            autoCorrect={false}
+            spellCheck={false}
             style={[styles.input, styles.bodyInput, bodyFocused && styles.inputFocus]}
           />
         ) : null}
@@ -947,7 +947,7 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
 
       {discardDialog}
       <Toast text={toast} />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 
@@ -1019,15 +1019,14 @@ const styles = StyleSheet.create({
   center: { alignItems: "center", justifyContent: "center", gap: 12 },
   headerClose: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center", marginLeft: -8 },
   headerSubmit: {
-    ...ACT.primary,
-    borderRadius: theme.radii.control,
-    minHeight: 34,
-    paddingHorizontal: 14,
+    minHeight: 44,
+    paddingHorizontal: 10,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: -4,
   },
-  headerSubmitText: { ...ACT.primaryText, fontSize: 13, fontWeight: "500" },
+  headerSubmitOff: { opacity: 0.4 },
+  headerSubmitPressed: { opacity: 0.6 },
+  headerSubmitText: { color: C.inkStrong, fontSize: 15, fontWeight: "600" },
   headerSide: { minWidth: 44, minHeight: 44, justifyContent: "center", alignItems: "flex-end" },
   headerX: { fontSize: 18, fontWeight: "400", color: C.inkStrong },
   pageHead: { gap: 2 },
