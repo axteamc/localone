@@ -458,7 +458,8 @@
         h += '</div>';
       });
       h += '</div></div></div><div class="nav"><span>홈</span><span>대출·반납</span><span class="on">내 정보</span></div>';
-      if (step === 1) h += '<div class="menu"><div class="pick">좋아요 취소</div><div>게시물 보기</div><div>닫기</div></div>';
+      // 카드 메뉴는 방문 페이지 피드와 같은 작은 창(local-feed H10): 위 아이콘 3개 + 책 줄. 켜진 ♥를 누르면 좋아요 취소
+      if (step === 1) h += '<div class="menu"><div style="display:flex;justify-content:space-around"><span class="pick">♥ 좋아요 (누르면 취소)</span><span>🔖 북마크</span><span>↗ 공유</span></div><div>📖 소년이 온다 검색</div><div>👤 한강의 다른 책</div></div>';
       var undo = (step === 2 || step === 3) && (id === 'A' || id === 'D');
       if (undo) h += '<div class="toast">좋아요를 취소했어요<span class="undo">되돌리기</span></div>';
       phone.innerHTML = h;
