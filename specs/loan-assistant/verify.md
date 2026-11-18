@@ -88,3 +88,58 @@
 
 - Android 미실행(에뮬레이터 없음), 실제 서버 + 로그인 화면 확인 미실행.
 - 기한 수정·반납 뒤 기기 알림 다시 맞추기는 LOAN-3(`TODO(연결): C LOAN-3-P1`, `LoansSection.tsx`).
+
+---
+
+# 반납 비서 LOAN-3 검증서
+
+- 기능: `loan-assistant` LOAN-3(기기 예약 알림·알림 진입) · 담당: C · 대상 PR: #172(스택: #170 위) · 작성일: 2026-11-18
+- 기준: 02 LOAN-04·LOAN-05·AC-NOTIFY, 계약서 LOAN-3 D+C 확정판(본문 `11f0bfaa`) T1~T11·C6 T-#1~#5·P5.
+- 앱 시험은 기기 예약 저장소를 흉내 낸 목(`notifications.platform` 목)으로 했다. 분기 파일 자체는 `expo-notifications` 목으로 따로 시험. Android는 PR #172 리뷰 보완 때 에뮬레이터로 확인(아래 5절).
+
+## 1. 수용 기준 전수 점검
+
+| 요구사항 ID | AC | 준비 | 행동 | 기대 | 실제 | 증거 | 웹 | Android | iOS (D) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| LOAN-04 | AC-NOTIFY | today 11-16, due 11-24 | `reminderPlan` | 11-21·11-23·11-24 09:00+09:00 | 시험 통과 | `reminders.ts` `reminderPlan`, `plan has d3 d1 d0 at 09:00 KST` | 해당 없음 | 미실행(실기기) | 대기 |
+| LOAN-04 | AC-NOTIFY | due 11-17, 08:00/09:00 | 같음 | 지난 차수 제외(당일 09:00 지나면 그 차수도) | 시험 통과 | `past reminders are skipped` | — | — | 대기 |
+| LOAN-04 | AC-NOTIFY | 같은 목록 두 번·겹쳐 부름·책 빠짐 | `syncLoanReminders` | 중복 없음, 빠진 책 알림 지움, 나중 호출이 최종 | 시험 통과 | `sync twice does not duplicate` | — | 미실행 | 대기 |
+| LOAN-04 | — | 제목 두 권 | 맞추기 | 잠금 화면 글에 제목 없음 | 시험 통과 | `body never contains title` | — | — | 대기 |
+| LOAN-04 | — | 기기 날짜 12-20 | 계획 | 서버 today 기준 | 시험 통과 | `uses server today not device date` | — | — | 대기 |
+| LOAN-05 | AC-NOTIFY | 권한 거부 | `/loans` | 예약 0, 안내 + 알림 설정 열기, D-day 그대로 | 시험 통과 | `LoansSection.tsx` 거부 배너, `permission denied skips scheduling…` | — | 미실행 | 대기 |
+| — | T9 | 웹 | 맞추기·화면 | `status: "web"`, 한 줄 안내 | 시험 통과, 웹 내보내기 통과 | `web schedules nothing` | 통과(가짜) | — | — |
+| — | T8 | 알림 누름 | 루트 구독 | `/loans`로 이동, 대출 알림만 | 시험 통과 | `tapping notification navigates…`, `subscribeNotificationTap fires only…` | — | 미실행 | 대기 |
+| — | T6 | 예약 있음 | `clearLoanReminders` | 대출 알림만 지움 | 시험 통과 | `sign out clears all loan reminders` (로그아웃 연결은 `TODO(연결): D(AUTH-2)`) | — | — | 대기 |
+
+## 2. 예외 상황 점검 (계약 C6)
+
+| 예외 # | 확인한 방법 | 결과 |
+| :--- | :--- | :--- |
+| T-#1 권한 거부 | `permission denied skips scheduling…` | 통과 |
+| T-#2 D-1 지남 | `past reminders are skipped` | 통과 |
+| T-#3 반납한 대출 | `returned loan has no reminders`, `sync twice…`(다 반납하면 지움) | 통과 |
+| T-#4 두 번 맞춤 | `sync twice does not duplicate` | 통과 |
+| T-#5 로그아웃 | `sign out clears all loan reminders` — 함수만, 로그아웃 연결은 AUTH-2 대기 | 통과(함수) / 연결 미실행 |
+
+## 3. 명세서와 달라진 점
+
+- 없음.
+
+## 4. 남은 문제
+
+- Android는 에뮬레이터 확인만 했다(실제 휴대폰은 미실행). 로그인한 대출 탭 화면에서 직접 누르는 확인은 못 했다(Google 로그인 자동화 불가 — 5절 방법 참고). iOS는 D `needs-ios`.
+- 로그아웃 시 알림 지우기 연결은 D AUTH-2의 `registerSignOutCleanup`이 생긴 뒤(`reminders.ts` `TODO(연결): D(AUTH-2)`).
+
+## 5. PR #172 리뷰 보완 — Android 새 설치·권한·예약 확인 (2026-11-18)
+
+- 환경: Android Emulator 37.2.13, 시스템 이미지 `android-36;google_apis;x86_64`(API 36), `-wipe-data`로 새로 띄움. 앱은 `expo prebuild` + `assembleRelease`(x86_64) 릴리스 APK, `targetSdk=36`, 매 단계 `adb uninstall` 뒤 새로 설치(채널·권한 이력 없음).
+- 방법: 로그인 없이 같은 코드 경로를 부르는 **임시 화면**(커밋 안 함)을 APK에 넣었다 — `syncLoanReminders([2권], 서울 오늘)` → `requestNotificationPermission` → `scheduleLocal`. 상태는 `adb shell dumpsys package/notification/alarm`과 `expo-notifications` 조회로 확인.
+
+| 확인 | 결과 |
+| :--- | :--- |
+| 새 설치 직후 상태 | `POST_NOTIFICATIONS granted=false`, 앱 채널 0개, `getPermissionsAsync()` = `{ status: "denied", canAskAgain: true }`(아직 안 물었는데 denied로 옴) |
+| 리뷰 지적(채널 없이 권한 요청) 대조 | 채널 없이 `requestPermissionsAsync()`만 불러도 권한 창이 떴다 — targetSdk 33+ 앱은 권한 창 시점을 앱이 정하므로, 채널 필요 조건은 이 앱(targetSdk 36)에서는 재현되지 않음. 채널 먼저 만들기는 그대로 둠(해롭지 않고, 예약 채널을 미리 준비) |
+| **새로 찾은 결함**: 채널 순서 고친 뒤에도 새 설치에서 앱 경로 | 채널 `loan-reminders`는 생겼지만 **권한 창이 뜨지 않고 `denied`, 예약 0건** — `status === "denied"`면 묻지 않던 조건 때문. `canAskAgain === false`일 때만 묻지 않도록 수정 + 단위 시험(`android fresh install reports denied+canAskAgain…`) |
+| 수정 뒤 새 설치 → 첫 권한 창 → 허용 | 권한 창 "Allow 동네한권 to send you notifications?" 표시 → 허용 → `granted=true`, 채널 `loan-reminders`(중요도 3), `{"scheduled":6,"status":"scheduled"}`, 예약 `loan:emu1:d0/d1/d3`, `loan:emu2:d0/d1/d3`, AlarmManager에 `expo.modules.notifications.NOTIFICATION_EVENT` 등록 |
+| 도착 | 70초 뒤로 건 `loan:emu-now:d0`가 `channel=loan-reminders`, 제목 "동네한권", `vis=PRIVATE`로 표시(정확한 알람 권한이 없어 Android가 최대 약 1분 늦춰 울림 — 09:00 알림도 몇 분 늦을 수 있음) |
+| 알림 누름(앱 꺼진 상태) | 프로세스 종료 뒤 알림 탭 → 앱이 열리고 "대출·반납" 탭(비로그인 안내)으로 이동(T8) |

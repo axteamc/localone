@@ -26,6 +26,8 @@ let mockLastTabsScreenOptions: Record<string, unknown> | undefined;
 jest.mock("../features/book-search/LoanPlansSection", () => ({ LoanPlansSection: () => null }));
 // LOAN-1: 내 대출 구역은 loan-assistant loans.test.tsx에서 본다(같은 이유)
 jest.mock("../features/loan-assistant/LoansSection", () => ({ LoansSection: () => null }));
+// LOAN-3: 루트의 알림 누름 구독은 loan-assistant reminders.test.ts에서 본다(기기 알림 모듈을 읽지 않게)
+jest.mock("../features/loan-assistant/notifications.platform", () => ({ subscribeNotificationTap: () => () => undefined }));
 
 const mockComposeScreen = jest.fn<(props: { libraryId: number; isbn13?: string | null }) => void>();
 const mockVisitScreen = jest.fn<(props: { libraryId: number | null; distanceM: number | null }) => void>();

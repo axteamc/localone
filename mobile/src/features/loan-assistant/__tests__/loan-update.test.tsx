@@ -260,7 +260,11 @@ describe("LOAN-2-P2", () => {
   test("due change re-reads from first page so order and cursor follow the server (M8·C2)", async () => {
     const a = loan("a", { due_on: "2026-11-20", d_day: 4 });
     const b = loan("b", { due_on: "2026-11-21", d_day: 5 });
-    listLoans.mockResolvedValueOnce(page([a, b], "cur-old"));
+    const c = loan("c", { due_on: "2026-12-01", d_day: 15 });
+    // 서버 흉내: 첫 페이지는 지금 서버 상태, 다음 페이지는 커서로 답한다(알림 맞추기도 같은 #19를 끝까지 읽는다, LOAN-3 T4)
+    let firstPage = page([a, b], "cur-old");
+    listLoans.mockImplementation(async (_status, p) => (p.cursor === null ? firstPage : page([c])));
+    const firstPageReads = () => listLoans.mock.calls.filter((call) => call[1].cursor === null).length;
     await render(<LoansSection />);
     await screen.findByTestId("loan-a");
     expect(cardOrder()).toEqual(["loan-a", "loan-b"]);
@@ -270,19 +274,17 @@ describe("LOAN-2-P2", () => {
     await fireEvent.changeText(screen.getByTestId("due-input"), "2026-11-30");
     const savedA = loan("a", { due_on: "2026-11-30", due_on_assumed: false, d_day: 14 });
     changeDueDate.mockResolvedValueOnce(savedA);
-    listLoans.mockResolvedValueOnce(page([b, savedA], "cur-new"));
+    const before = firstPageReads();
+    firstPage = page([b, savedA], "cur-new");
     await fireEvent.press(screen.getByTestId("due-save"));
     await waitFor(() => expect(cardOrder()).toEqual(["loan-b", "loan-a"]));
-    expect(listLoans).toHaveBeenCalledTimes(2);
-    expect(listLoans.mock.calls[1]?.slice(0, 2)).toEqual(["on_loan", { cursor: null }]);
+    expect(firstPageReads()).toBe(before + 1);
     expect(within(screen.getByTestId("loan-a")).getByText("대출 2026-11-10 · 예정 2026-11-30")).toBeTruthy();
 
     // 다음 페이지는 새 커서로 이어진다(중복·누락 없음)
-    const c = loan("c", { due_on: "2026-12-01", d_day: 15 });
-    listLoans.mockResolvedValueOnce(page([c]));
     await fireEvent.press(screen.getByText("더 보기"));
     await waitFor(() => expect(cardOrder()).toEqual(["loan-b", "loan-a", "loan-c"]));
-    expect(listLoans.mock.calls[2]?.slice(0, 2)).toEqual(["on_loan", { cursor: "cur-new" }]);
+    expect(listLoans.mock.lastCall?.slice(0, 2)).toEqual(["on_loan", { cursor: "cur-new" }]);
     expect(screen.queryByText("더 보기")).toBeNull();
   });
 
