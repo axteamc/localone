@@ -88,3 +88,44 @@
 
 - Android 미실행(에뮬레이터 없음), 실제 서버 + 로그인 화면 확인 미실행.
 - 기한 수정·반납 뒤 기기 알림 다시 맞추기는 LOAN-3(`TODO(연결): C LOAN-3-P1`, `LoansSection.tsx`).
+
+---
+
+# 반납 비서 LOAN-3 검증서
+
+- 기능: `loan-assistant` LOAN-3(기기 예약 알림·알림 진입) · 담당: C · 대상 PR: #172(스택: #170 위) · 작성일: 2026-11-18
+- 기준: 02 LOAN-04·LOAN-05·AC-NOTIFY, 계약서 LOAN-3 D+C 확정판(본문 `11f0bfaa`) T1~T11·C6 T-#1~#5·P5.
+- 앱 시험은 기기 예약 저장소를 흉내 낸 목(`notifications.platform` 목)으로 했다. 분기 파일 자체는 `expo-notifications` 목으로 따로 시험. **Android 실기기에서 시각 맞춰 오는지는 미실행**(이 PC에 기기·에뮬레이터 없음, 개발 빌드 필요).
+
+## 1. 수용 기준 전수 점검
+
+| 요구사항 ID | AC | 준비 | 행동 | 기대 | 실제 | 증거 | 웹 | Android | iOS (D) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| LOAN-04 | AC-NOTIFY | today 11-16, due 11-24 | `reminderPlan` | 11-21·11-23·11-24 09:00+09:00 | 시험 통과 | `reminders.ts` `reminderPlan`, `plan has d3 d1 d0 at 09:00 KST` | 해당 없음 | 미실행(실기기) | 대기 |
+| LOAN-04 | AC-NOTIFY | due 11-17, 08:00/09:00 | 같음 | 지난 차수 제외(당일 09:00 지나면 그 차수도) | 시험 통과 | `past reminders are skipped` | — | — | 대기 |
+| LOAN-04 | AC-NOTIFY | 같은 목록 두 번·겹쳐 부름·책 빠짐 | `syncLoanReminders` | 중복 없음, 빠진 책 알림 지움, 나중 호출이 최종 | 시험 통과 | `sync twice does not duplicate` | — | 미실행 | 대기 |
+| LOAN-04 | — | 제목 두 권 | 맞추기 | 잠금 화면 글에 제목 없음 | 시험 통과 | `body never contains title` | — | — | 대기 |
+| LOAN-04 | — | 기기 날짜 12-20 | 계획 | 서버 today 기준 | 시험 통과 | `uses server today not device date` | — | — | 대기 |
+| LOAN-05 | AC-NOTIFY | 권한 거부 | `/loans` | 예약 0, 안내 + 알림 설정 열기, D-day 그대로 | 시험 통과 | `LoansSection.tsx` 거부 배너, `permission denied skips scheduling…` | — | 미실행 | 대기 |
+| — | T9 | 웹 | 맞추기·화면 | `status: "web"`, 한 줄 안내 | 시험 통과, 웹 내보내기 통과 | `web schedules nothing` | 통과(가짜) | — | — |
+| — | T8 | 알림 누름 | 루트 구독 | `/loans`로 이동, 대출 알림만 | 시험 통과 | `tapping notification navigates…`, `subscribeNotificationTap fires only…` | — | 미실행 | 대기 |
+| — | T6 | 예약 있음 | `clearLoanReminders` | 대출 알림만 지움 | 시험 통과 | `sign out clears all loan reminders` (로그아웃 연결은 `TODO(연결): D(AUTH-2)`) | — | — | 대기 |
+
+## 2. 예외 상황 점검 (계약 C6)
+
+| 예외 # | 확인한 방법 | 결과 |
+| :--- | :--- | :--- |
+| T-#1 권한 거부 | `permission denied skips scheduling…` | 통과 |
+| T-#2 D-1 지남 | `past reminders are skipped` | 통과 |
+| T-#3 반납한 대출 | `returned loan has no reminders`, `sync twice…`(다 반납하면 지움) | 통과 |
+| T-#4 두 번 맞춤 | `sync twice does not duplicate` | 통과 |
+| T-#5 로그아웃 | `sign out clears all loan reminders` — 함수만, 로그아웃 연결은 AUTH-2 대기 | 통과(함수) / 연결 미실행 |
+
+## 3. 명세서와 달라진 점
+
+- 없음.
+
+## 4. 남은 문제
+
+- Android 실기기 알림 도착 확인 미실행(개발 빌드·기기 필요). iOS는 D `needs-ios`.
+- 로그아웃 시 알림 지우기 연결은 D AUTH-2의 `registerSignOutCleanup`이 생긴 뒤(`reminders.ts` `TODO(연결): D(AUTH-2)`).
