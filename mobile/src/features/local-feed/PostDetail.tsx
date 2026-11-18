@@ -9,7 +9,8 @@ import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
 import { openExternalUrl } from "../../lib/platform";
 import { fetchAvailabilityAt, type AvailabilityItem } from "../../lib/publicApi";
-import { actionColors, cardSurface, panel, theme, type as T } from "../../theme";
+import { actionColors, cardSurface, onFill, panel, theme, type as T } from "../../theme";
+import { ON_FILL_LIGHT } from "../../theme/tokens";
 import { ApiCallError, emitPostReaction, emitPostWithdrawn, fetchPost, type Post } from "./api";
 import { PostImage, PostMoreMenu } from "./ComposeScreen";
 import { LoginPrompt, MENU_TEXT } from "./PostMenu";
@@ -235,6 +236,11 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
     loan
   );
 
+  const backOnDark =
+    post.image_kind === "color"
+      ? post.image_color !== null && onFill(C[post.image_color]) === ON_FILL_LIGHT
+      : true;
+
   const image = (
     <View style={wide ? styles.imageWide : styles.imageNarrow} testID="detail-image">
       <PostImage
@@ -246,7 +252,7 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
       />
       {/* 이미지 위에는 ‹만 둔다. 사이트 방문·이미지 검색·확대 버튼은 두지 않는다(H9) */}
       <Pressable accessibilityRole="button" accessibilityLabel="돌아가기" onPress={goBack} style={styles.backOnImage}>
-        <Text style={styles.backText}>‹</Text>
+        <Text style={[styles.backText, backOnDark && styles.backTextLight]}>‹</Text>
       </Pressable>
     </View>
   );
@@ -425,6 +431,11 @@ const styles = StyleSheet.create({
     textShadowColor: C.seamHighlight,
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
+  },
+  backTextLight: {
+    color: ON_FILL_LIGHT,
+    textShadowColor: C.shadowDeep,
+    textShadowRadius: 6,
   },
   actionBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", zIndex: 2 },
   actionLeft: { flexDirection: "row", alignItems: "center", gap: 4 },

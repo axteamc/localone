@@ -5,6 +5,9 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import {
   ActivityIndicator,
   Image,
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,6 +15,7 @@ import {
   TextInput,
   View,
 } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useAuth } from "../../auth/AuthProvider";
 import { fetchBook, fetchLibrary, searchBooks, type Book } from "../../lib/publicApi";
@@ -344,6 +348,7 @@ export type ComposeScreenProps = { libraryId: number; isbn13?: string | null };
 export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
   const router = useRouter();
   const navigation = useNavigation();
+  const insets = useSafeAreaInsets();
   const { status } = useAuth();
   const clientRequestId = useRef<string>(Crypto.randomUUID()).current; // 화면을 열 때 하나(F9)
 
@@ -358,6 +363,7 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
   const [attachOpen, setAttachOpen] = useState(false);
   const [overlayFocused, setOverlayFocused] = useState(false);
   const [bodyFocused, setBodyFocused] = useState(false);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<SubmitError | null>(null);
@@ -368,6 +374,34 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
   const running = useRef(false);
   const uploaded = useRef<{ uri: string; image: UploadedImage } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const scrollRef = useRef<React.ComponentRef<typeof ScrollView>>(null);
+  const overlayY = useRef(0);
+  const bodyY = useRef(0);
+  const focusedField = useRef<"overlay" | "body" | null>(null);
+  const submitRef = useRef<() => Promise<void>>(async () => {});
+
+  const scrollToFocused = useCallback((field: "overlay" | "body") => {
+    const y = field === "overlay" ? overlayY.current : bodyY.current;
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: Math.max(0, y - 24), animated: true });
+    }, 120);
+  }, []);
+
+  useEffect(() => {
+    const showEvent = Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent = Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+    const subShow = Keyboard.addListener(showEvent, () => {
+      setKeyboardVisible(true);
+      if (focusedField.current) scrollToFocused(focusedField.current);
+    });
+    const subHide = Keyboard.addListener(hideEvent, () => {
+      setKeyboardVisible(false);
+    });
+    return () => {
+      subShow.remove();
+      subHide.remove();
+    };
+  }, [scrollToFocused]);
 
   const showToast = useCallback((text: string) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
@@ -431,8 +465,29 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
           <Text style={styles.headerX}>✕</Text>
         </Pressable>
       ),
+      headerRight:
+        keyboardVisible && !posted
+          ? () => (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={submitting ? TEXT.submitting : TEXT.submit}
+                accessibilityState={{ disabled: !canSubmit }}
+                disabled={!canSubmit}
+                onPress={() => void submitRef.current()}
+                style={({ pressed }) => [
+                  styles.headerSubmit,
+                  !canSubmit && styles.submitOff,
+                  canSubmit && pressed && ACT.primaryPressed,
+                ]}
+              >
+                <Text style={styles.headerSubmitText}>
+                  {submitting ? TEXT.submitting : TEXT.submit}
+                </Text>
+              </Pressable>
+            )
+          : undefined,
     });
-  }, [navigation]);
+  }, [navigation, keyboardVisible, canSubmit, submitting, posted]);
 
   const choosePhoto = async (source: PickSource) => {
     setNotice(null);
@@ -487,6 +542,7 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
       setSubmitting(false);
     }
   };
+  submitRef.current = submit;
 
   if (invalidLibraryId) {
     return (
@@ -611,7 +667,11 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
     nullIfBlank(overlay) ?? (coverMissing && book ? titleAuthorText(book) : null);
 
   return (
-    <View style={styles.screen}>
+    <KeyboardAvoidingView
+      style={styles.screen}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      keyboardVerticalOffset={Platform.OS === "ios" ? insets.top + 44 : 0}
+    >
       {error ? (
         <View style={styles.banner} accessibilityRole="alert">
           <Text style={styles.bannerText}>{error.message}</Text>
@@ -628,7 +688,12 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
         </View>
       ) : null}
 
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        ref={scrollRef}
+        style={styles.scroll}
+        contentContainerStyle={styles.body}
+        keyboardShouldPersistTaps="handled"
+      >
         <View style={styles.pageHead}>
           <Text style={T.gauge}>{`NEW POST · ${libraryName ?? "이 도서관"}`}</Text>
           <Text style={T.pageTitle}>새 게시물</Text>
@@ -707,8 +772,18 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
           placeholderTextColor={C.inkMuted}
           value={overlay}
           onChangeText={setOverlay}
-          onFocus={() => setOverlayFocused(true)}
-          onBlur={() => setOverlayFocused(false)}
+          onLayout={(e) => {
+            overlayY.current = e.nativeEvent.layout.y;
+          }}
+          onFocus={() => {
+            focusedField.current = "overlay";
+            setOverlayFocused(true);
+            scrollToFocused("overlay");
+          }}
+          onBlur={() => {
+            if (focusedField.current === "overlay") focusedField.current = null;
+            setOverlayFocused(false);
+          }}
           maxLength={OVERLAY_MAX}
           style={[styles.input, overlayFocused && styles.inputFocus]}
         />
@@ -746,8 +821,18 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
             placeholderTextColor={C.inkMuted}
             value={body}
             onChangeText={setBody}
-            onFocus={() => setBodyFocused(true)}
-            onBlur={() => setBodyFocused(false)}
+            onLayout={(e) => {
+              bodyY.current = e.nativeEvent.layout.y;
+            }}
+            onFocus={() => {
+              focusedField.current = "body";
+              setBodyFocused(true);
+              scrollToFocused("body");
+            }}
+            onBlur={() => {
+              if (focusedField.current === "body") focusedField.current = null;
+              setBodyFocused(false);
+            }}
             maxLength={BODY_MAX}
             multiline
             autoFocus
@@ -792,22 +877,24 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
         ) : null}
       </ScrollView>
 
-      <View style={styles.dock}>
-        {!picked ? <Text style={[T.gauge, styles.dockHint]}>{TEXT.needImage}</Text> : null}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: !canSubmit }}
-          disabled={!canSubmit}
-          onPress={() => void submit()}
-          style={({ pressed }) => [
-            styles.submit,
-            !canSubmit && styles.submitOff,
-            canSubmit && pressed && ACT.primaryPressed,
-          ]}
-        >
-          <Text style={styles.submitText}>{submitting ? TEXT.submitting : TEXT.submit}</Text>
-        </Pressable>
-      </View>
+      {!keyboardVisible ? (
+        <View style={styles.dock}>
+          {!picked ? <Text style={[T.gauge, styles.dockHint]}>{TEXT.needImage}</Text> : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canSubmit }}
+            disabled={!canSubmit}
+            onPress={() => void submit()}
+            style={({ pressed }) => [
+              styles.submit,
+              !canSubmit && styles.submitOff,
+              canSubmit && pressed && ACT.primaryPressed,
+            ]}
+          >
+            <Text style={styles.submitText}>{submitting ? TEXT.submitting : TEXT.submit}</Text>
+          </Pressable>
+        </View>
+      ) : null}
 
       {attachOpen ? (
         <View style={styles.attachOverlay} testID="attach-overlay">
@@ -860,7 +947,7 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
 
       {discardDialog}
       <Toast text={toast} />
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
@@ -931,6 +1018,16 @@ const styles = StyleSheet.create({
   scroll: { flex: 1, minHeight: 0 },
   center: { alignItems: "center", justifyContent: "center", gap: 12 },
   headerClose: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center", marginLeft: -8 },
+  headerSubmit: {
+    ...ACT.primary,
+    borderRadius: theme.radii.control,
+    minHeight: 34,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: -4,
+  },
+  headerSubmitText: { ...ACT.primaryText, fontSize: 13, fontWeight: "500" },
   headerSide: { minWidth: 44, minHeight: 44, justifyContent: "center", alignItems: "flex-end" },
   headerX: { fontSize: 18, fontWeight: "400", color: C.inkStrong },
   pageHead: { gap: 2 },

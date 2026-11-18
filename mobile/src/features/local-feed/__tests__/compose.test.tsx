@@ -2,7 +2,7 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import React from "react";
-import { StyleSheet } from "react-native";
+import { Keyboard, StyleSheet } from "react-native";
 import { useAuth } from "../../../auth/AuthProvider";
 import * as publicApi from "../../../lib/publicApi";
 import type { Book } from "../../../lib/publicApi";
@@ -16,8 +16,16 @@ const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockBack = jest.fn();
 const mockCanGoBack = jest.fn(() => true);
-let setNavOptionsImpl: ((opts: { headerLeft?: () => React.ReactNode }) => void) | null = null;
-const mockNav = { setOptions: (opts: { headerLeft?: () => React.ReactNode }) => setNavOptionsImpl?.(opts) };
+let setNavOptionsImpl: ((opts: {
+  headerLeft?: () => React.ReactNode;
+  headerRight?: (() => React.ReactNode) | undefined;
+}) => void) | null = null;
+const mockNav = {
+  setOptions: (opts: {
+    headerLeft?: () => React.ReactNode;
+    headerRight?: (() => React.ReactNode) | undefined;
+  }) => setNavOptionsImpl?.(opts),
+};
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, replace: mockReplace, back: mockBack, canGoBack: mockCanGoBack }),
   useNavigation: () => mockNav,
@@ -111,12 +119,15 @@ const submitButton = () => screen.getByRole("button", { name: /올리기|올리�
 
 function ComposeWithHeader(props: React.ComponentProps<typeof ComposeScreen>) {
   const [headerLeft, setHeaderLeft] = React.useState<(() => React.ReactNode) | null>(null);
+  const [headerRight, setHeaderRight] = React.useState<(() => React.ReactNode) | null>(null);
   setNavOptionsImpl = (opts) => {
     if ("headerLeft" in opts) setHeaderLeft(() => opts.headerLeft ?? null);
+    if ("headerRight" in opts) setHeaderRight(() => opts.headerRight ?? null);
   };
   return (
     <>
       {headerLeft ? headerLeft() : null}
+      {headerRight ? headerRight() : null}
       <ComposeScreen {...props} />
     </>
   );
@@ -445,5 +456,42 @@ describe("내리기", () => {
     await fireEvent.press(screen.getByText(TEXT.cancel));
     expect(screen.queryByText(TEXT.withdrawTitle)).toBeNull();
     expect(withdrawPost).not.toHaveBeenCalled();
+  });
+
+  test("keyboard show moves submit button to headerRight and hides dock, keyboard hide restores dock", async () => {
+    const listeners: Record<string, (() => void)[]> = {};
+    const addSpy = jest.spyOn(Keyboard, "addListener").mockImplementation((event, cb) => {
+      const key = String(event);
+      listeners[key] = listeners[key] ?? [];
+      listeners[key]!.push(cb as () => void);
+      return { remove: jest.fn() } as never;
+    });
+
+    try {
+      await openCompose();
+      await chooseColor();
+      expect(screen.getAllByRole("button", { name: TEXT.submit })).toHaveLength(1);
+      expect(screen.queryByText(TEXT.needImage)).toBeNull();
+
+      await act(async () => {
+        for (const fn of [...(listeners.keyboardWillShow ?? []), ...(listeners.keyboardDidShow ?? [])]) fn();
+      });
+
+      const headerSubmit = screen.getByRole("button", { name: TEXT.submit });
+      expect(headerSubmit).toBeTruthy();
+
+      await act(async () => {
+        for (const fn of [...(listeners.keyboardWillHide ?? []), ...(listeners.keyboardDidHide ?? [])]) fn();
+      });
+      expect(screen.getAllByRole("button", { name: TEXT.submit })).toHaveLength(1);
+
+      await act(async () => {
+        for (const fn of [...(listeners.keyboardWillShow ?? []), ...(listeners.keyboardDidShow ?? [])]) fn();
+      });
+      await fireEvent.press(screen.getByRole("button", { name: TEXT.submit }));
+      await waitFor(() => expect(createPost).toHaveBeenCalledTimes(1));
+    } finally {
+      addSpy.mockRestore();
+    }
   });
 });
