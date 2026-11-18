@@ -3,7 +3,7 @@
 // - plan: 빌릴 예정 카드의 "빼기" 옆 작은 버튼. 결과 안내는 부모(빌릴 예정 구역)가 배너로 보인다.
 // 대출일·예정일은 서버가 정한다(M2). 진행 중에는 "기록 중…"으로 막아 한 번만 보낸다(M-#8).
 import { useRouter } from "expo-router";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
 import { theme, actionColors } from "../../theme";
@@ -29,10 +29,22 @@ type Props =
 
 export function StartLoanButton(props: Props) {
   const router = useRouter();
-  const { status: authStatus } = useAuth();
+  const { status: authStatus, userId } = useAuth();
   const sending = useRef(false);
+  const reqGen = useRef(0);
+  const userIdRef = useRef<string | null>(userId);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ kind: "login" | "failed" } | { kind: "started"; loan: Loan } | null>(null);
+
+  useEffect(() => {
+    if (userIdRef.current !== userId || authStatus === "signedOut") {
+      userIdRef.current = userId;
+      reqGen.current += 1;
+      sending.current = false;
+      setBusy(false);
+      setNote(null);
+    }
+  }, [userId, authStatus]);
 
   const press = async () => {
     if (sending.current || authStatus === "loading") return; // 로그인 복원 중에는 아무것도 하지 않는다
@@ -40,19 +52,25 @@ export function StartLoanButton(props: Props) {
       setNote({ kind: "login" }); // 비로그인은 서버에 묻지 않는다(M-#1)
       return;
     }
+    const gen = reqGen.current;
+    const reqUserId = userId;
     sending.current = true;
     setBusy(true);
     setNote(null);
     try {
       const loan = await startLoan(props.input);
+      if (reqGen.current !== gen || userIdRef.current !== reqUserId) return;
       if (props.variant === "plan") props.onStarted(loan);
       else setNote({ kind: "started", loan });
     } catch (error) {
+      if (reqGen.current !== gen || userIdRef.current !== reqUserId) return;
       if (props.variant === "plan") props.onFailed(error);
       else setNote({ kind: "failed" });
     } finally {
-      sending.current = false;
-      setBusy(false);
+      if (reqGen.current === gen) {
+        sending.current = false;
+        setBusy(false);
+      }
     }
   };
 

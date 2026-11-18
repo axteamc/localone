@@ -85,9 +85,14 @@ export function LoanPlansSection({ onLoanStarted }: { onLoanStarted?: () => void
   }, [emptyWithMore, moreBusy]);
 
   const loanStarted = (planId: string, loan: Loan) => {
-    setList((prev) =>
-      prev.kind === "ready" ? { ...prev, items: prev.items.filter((p) => p.id !== planId) } : prev
-    );
+    runner.cancel();
+    if (list.kind === "ready") {
+      setList((prev) =>
+        prev.kind === "ready" ? { ...prev, items: prev.items.filter((p) => p.id !== planId) } : prev
+      );
+    } else {
+      void load();
+    }
     setNotice(null);
     setBanner(convertedNote(loan));
     onLoanStarted?.();

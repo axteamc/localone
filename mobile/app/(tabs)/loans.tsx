@@ -12,7 +12,7 @@ export const LOANS_LOGIN = "로그인하면 빌릴 예정과 내 대출을 볼 �
 
 export default function LoansTabScreen() {
   const router = useRouter();
-  const { status } = useAuth();
+  const { status, userId } = useAuth();
   const [loansKey, setLoansKey] = useState(0); // 빌릴 예정에서 "빌렸어요" → 내 대출 다시 읽기(M10 ②)
 
   if (status === "loading") {
@@ -35,10 +35,11 @@ export default function LoansTabScreen() {
     );
   }
 
+  const scopeKey = userId ?? "signed-in";
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.pad}>
-      <LoansSection refreshKey={loansKey} />
-      <LoanPlansSection onLoanStarted={() => setLoansKey((k) => k + 1)} />
+      <LoansSection key={`loans-${scopeKey}`} refreshKey={loansKey} />
+      <LoanPlansSection key={`plans-${scopeKey}`} onLoanStarted={() => setLoansKey((k) => k + 1)} />
     </ScrollView>
   );
 }

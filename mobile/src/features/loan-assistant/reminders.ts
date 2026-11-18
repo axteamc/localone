@@ -2,13 +2,37 @@
 // 알림은 앱이 기기에 직접 예약한다(서버 없음). 날짜는 서버가 준 today·due_on(서울 날짜)으로 셈한다(T5).
 // 플랫폼 일은 notifications.platform.ts가 맡는다(여기서는 플랫폼 분기·알림 모듈을 직접 쓰지 않는다, C4).
 import { addDays } from "./DueDateSheet";
-import type { Loan } from "./api";
+import { listLoans, type Loan, type LoanPage } from "./api";
 import {
   NOTIFICATIONS_SUPPORTED,
   cancelAllLoan,
   requestNotificationPermission,
   scheduleLocal,
 } from "./notifications.platform";
+
+/** 서버 페이지가 끝나지 않을 때(커서 반복 등) 무한히 읽지 않도록 막는 상한(기본 50권 × 200 = 1만 권). */
+const MAX_PAGES = 200;
+
+/**
+ * 알림 맞추기용 빌린 책 전체(T4): #19 on_loan을 next_cursor가 null일 때까지 모은다.
+ * first가 있으면(화면이 방금 받은 첫 페이지) 그 다음부터 읽는다. today는 첫 페이지의 서버 서울 날짜(T5).
+ * 중간 페이지가 하나라도 실패하면 throw — 부르는 쪽은 일부 목록을 전체처럼 적용하면 안 된다.
+ */
+export async function fetchAllOnLoan(signal?: AbortSignal, first?: LoanPage): Promise<{ items: Loan[]; today: string }> {
+  let page = first ?? (await listLoans("on_loan", { cursor: null }, signal));
+  const today = page.today;
+  const items = [...page.items];
+  const seenCursors = new Set<string>();
+  for (let n = 1; page.next_cursor !== null; n += 1) {
+    const cursor = page.next_cursor;
+    if (n >= MAX_PAGES || seenCursors.has(cursor)) throw new Error("on_loan pagination did not finish");
+    seenCursors.add(cursor);
+    page = await listLoans("on_loan", { cursor }, signal);
+    items.push(...page.items);
+  }
+  const unique = new Map(items.map((l) => [l.id, l] as const)); // 페이지 사이에 순서가 바뀌어 겹친 책은 한 번만
+  return { items: [...unique.values()], today };
+}
 
 export const REMINDER_TITLE = "동네한권"; // 잠금 화면에 책 제목을 넣지 않는다(T3)
 
