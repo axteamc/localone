@@ -36,8 +36,14 @@ export type WithdrawResult = { ok: true } | { ok: false; errorMessage: string };
 
 export type SignOutCleanup = () => void | Promise<void>;
 
+export interface SignInErrorContextValue {
+  error: string | null;
+  clearError: () => void;
+}
+
 const AuthContext = createContext<AuthContextValue | null>(null);
 const AccountActionsContext = createContext<AccountActionsValue | null>(null);
+const SignInErrorContext = createContext<SignInErrorContextValue | null>(null);
 
 // AUTH-2 G5: 기기 예약 알림 취소·화면 밖 캐시 비우기. 모듈 단위라 화면이 언마운트될 때 해제한다.
 const signOutCleanups = new Set<SignOutCleanup>();
@@ -95,6 +101,8 @@ export function AuthProvider({
 }): React.JSX.Element {
   const [status, setStatus] = useState<AuthStatus>("loading");
   const [userId, setUserId] = useState<string | null>(null);
+  const [signInError, setSignInError] = useState<string | null>(null);
+  const clearSignInError = useCallback(() => setSignInError(null), []);
   const mountedRef = useRef(true);
   const generationRef = useRef(0);
   const statusRef = useRef<AuthStatus>("loading");
@@ -135,15 +143,32 @@ export function AuthProvider({
               ? body.user_id
               : null;
           if (resolvedId) {
+            setSignInError(null);
             setUserId(resolvedId);
             setStatus("signedIn");
             return { ok: true };
           }
         }
+        const errorCode = await parseErrorCode(res);
         const errorMessage = await parseErrorMessage(res);
-        if (mountedRef.current && generationRef.current === gen) {
-          setUserId(null);
-          setStatus("signedOut");
+        if (!mountedRef.current || generationRef.current !== gen) {
+          return { ok: false, reason: "cancelled" };
+        }
+        setUserId(null);
+        setStatus("signedOut");
+        if (errorCode === "ACCOUNT_WITHDRAWN") {
+          const withdrawnMessage = errorMessage ?? "탈퇴한 계정이에요.";
+          setSignInError(withdrawnMessage);
+          try {
+            await supabase.auth.signOut({ scope: "local" });
+          } catch (error) {
+            console.warn("[signOut withdrawn]", error);
+          }
+          return {
+            ok: false,
+            reason: "failed",
+            errorMessage: withdrawnMessage,
+          };
         }
         return {
           ok: false,
@@ -350,11 +375,24 @@ export function AuthProvider({
     [signOut, withdrawAccount]
   );
 
+  const signInErrorValue = useMemo<SignInErrorContextValue>(
+    () => ({ error: signInError, clearError: clearSignInError }),
+    [signInError, clearSignInError]
+  );
+
   return (
     <AuthContext.Provider value={value}>
-      <AccountActionsContext.Provider value={actions}>{children}</AccountActionsContext.Provider>
+      <AccountActionsContext.Provider value={actions}>
+        <SignInErrorContext.Provider value={signInErrorValue}>{children}</SignInErrorContext.Provider>
+      </AccountActionsContext.Provider>
     </AuthContext.Provider>
   );
+}
+
+const NOOP_SIGN_IN_ERROR: SignInErrorContextValue = { error: null, clearError: () => {} };
+
+export function useSignInError(): SignInErrorContextValue {
+  return useContext(SignInErrorContext) ?? NOOP_SIGN_IN_ERROR;
 }
 
 export function useAccountActions(): AccountActionsValue {

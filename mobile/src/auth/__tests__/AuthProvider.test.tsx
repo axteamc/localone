@@ -7,6 +7,7 @@ import {
   registerSignOutCleanup,
   useAccountActions,
   useAuth,
+  useSignInError,
 } from "../AuthProvider";
 import {
   abortInFlightRequests,
@@ -595,5 +596,38 @@ describe("AuthProvider withdrawAccount (AUTH-3-P2)", () => {
     expect(mockedSignOut).toHaveBeenCalledWith({ scope: "local" });
     await view.unmount();
     expect(unsubscribe).toHaveBeenCalled();
+  });
+
+  test("web_redirect_withdrawn_sets_sign_in_error_and_clears_local_session", async () => {
+    mockedGetSession.mockResolvedValueOnce({
+      data: { session: { access_token: "tok-withdrawn", user: { id: uid } } as never },
+      error: null,
+    });
+    mockedRawRegisterSession.mockResolvedValueOnce(
+      makeJsonResponse(403, {
+        error: { code: "ACCOUNT_WITHDRAWN", message: "탈퇴한 계정이에요.", detail: "" },
+      })
+    );
+    mockedSignOut.mockResolvedValueOnce({ error: null });
+
+    let latestError: string | null = null;
+    function ErrorProbe() {
+      const { error } = useSignInError();
+      latestError = error;
+      return <Text testID="err">{error ?? ""}</Text>;
+    }
+
+    const view = await render(
+      <AuthProvider>
+        <Probe />
+        <ErrorProbe />
+      </AuthProvider>
+    );
+
+    await waitFor(() => {
+      expect(view.getByTestId("probe").props.children).toBe("signedOut:none");
+      expect(latestError).toBe("탈퇴한 계정이에요.");
+    });
+    expect(mockedSignOut).toHaveBeenCalledWith({ scope: "local" });
   });
 });
