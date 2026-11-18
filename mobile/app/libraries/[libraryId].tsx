@@ -2,7 +2,7 @@
 import { Stack, useLocalSearchParams } from "expo-router";
 import { VisitScreen } from "../../src/features/local-feed/VisitScreen";
 import { parseDistanceM, parseLibraryId } from "../../src/features/local-feed/VisitHeader";
-import { theme } from "../../src/theme";
+import { panel } from "../../src/theme";
 
 export default function LibraryVisitScreen() {
   const params = useLocalSearchParams<{
@@ -13,7 +13,7 @@ export default function LibraryVisitScreen() {
     <>
       {/* 오른쪽에서 밀려 들어오는 기본 전환, 왼쪽 끝 밀어 돌아가기(G14, C4) */}
       <Stack.Screen
-        options={{ headerShown: false, gestureEnabled: true, contentStyle: { backgroundColor: theme.colors.cream } }}
+        options={{ headerShown: false, gestureEnabled: true, contentStyle: { backgroundColor: panel.backgroundColor } }}
       />
       <VisitScreen libraryId={parseLibraryId(params.libraryId)} distanceM={parseDistanceM(params.distanceM)} />
     </>

@@ -2,8 +2,9 @@
 import { afterEach, beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import React from "react";
-import { Text } from "react-native";
+import { StyleSheet, Text } from "react-native";
 import LibraryVisitRoute from "../../../../app/libraries/[libraryId]";
+import { theme, type as T } from "../../../theme";
 import { useAuth } from "../../../auth/AuthProvider";
 import { deviceStorage } from "../../../lib/platform";
 import { STORAGE_KEYS } from "../../../lib/policy";
@@ -562,5 +563,84 @@ describe("늦은 응답", () => {
 
     await view.rerender(<VisitScreen libraryId={null} distanceM={null} />);
     expect(screen.getByText(VISIT_TEXT.notFound)).toBeTruthy();
+  });
+});
+
+describe("L4 디자인 반영", () => {
+  test("matte FAB, panelFrosted screen, header typography and folded surface, empty title, ment & sheet surfaces", async () => {
+    jest.useFakeTimers();
+    recordVisit.mockResolvedValue(visit({ isFirst: true }));
+    setAuth("signedOut");
+    await enter({ distanceM: 320 });
+    expect(await screen.findByText("정독도서관")).toBeTruthy();
+
+    // 바탕: panelFrosted
+    const rootStyle = StyleSheet.flatten(screen.getByTestId("visit-screen").props.style);
+    expect(rootStyle.backgroundColor).toBe(theme.colors.panelFrosted);
+
+    // 머리 이름 type.pageTitle, 거리/시간 type.gauge
+    const nameStyle = StyleSheet.flatten(screen.getByText("정독도서관").props.style);
+    expect(nameStyle).toEqual(expect.objectContaining(T.pageTitle));
+    const infoStyle = StyleSheet.flatten(screen.getByTestId("visit-header-info").props.style);
+    expect(infoStyle).toEqual(expect.objectContaining(T.gauge));
+
+    // 빈 피드 제목 type.title
+    const emptyTitleStyle = StyleSheet.flatten(screen.getByText(VISIT_TEXT.emptyTitle).props.style);
+    expect(emptyTitleStyle).toEqual(expect.objectContaining(T.title));
+
+    // + FAB: 노랑 fill1 제거 → 무광 판(panelLit + seamHairline + 2px ledge + inkStrong)
+    const fab = screen.getByLabelText("글쓰기");
+    const fabStyle = StyleSheet.flatten(fab.props.style);
+    expect(fabStyle).toEqual(
+      expect.objectContaining({
+        backgroundColor: theme.colors.panelLit,
+        borderWidth: 1,
+        borderColor: theme.colors.seamHairline,
+        borderRadius: theme.radii.control,
+        width: 64,
+        height: 64,
+        right: 16,
+        bottom: 24,
+      }),
+    );
+    expect(fabStyle.backgroundColor).not.toBe(theme.colors.fill1);
+    expect(StyleSheet.flatten(within(fab).getByText("+").props.style).color).toBe(theme.colors.inkStrong);
+
+    // 접힌 머리: panelFrosted + 아래 1px seamHairline
+    await fireEvent.scroll(screen.getByTestId("visit-scroll"), { nativeEvent: { contentOffset: { y: 200 } } });
+    const foldedStyle = StyleSheet.flatten(screen.getByTestId("visit-header-one").props.style);
+    expect(foldedStyle).toEqual(
+      expect.objectContaining({
+        backgroundColor: theme.colors.panelFrosted,
+        borderBottomWidth: 1,
+        borderBottomColor: theme.colors.seamHairline,
+      }),
+    );
+
+    // 멘트 카드: cardSurface({ onPanel: true }) 곡률 9
+    await act(async () => {
+      jest.advanceTimersByTime(300);
+    });
+    const mentStyle = StyleSheet.flatten(screen.getByTestId("visit-ment").props.style);
+    expect(mentStyle).toEqual(
+      expect.objectContaining({
+        backgroundColor: theme.colors.panelLit,
+        borderRadius: theme.radii.infoCard,
+        borderColor: theme.colors.seamHairline,
+        borderWidth: 1,
+      }),
+    );
+
+    // 비로그인 시트: panelLit + 위쪽만 곡률 9
+    await fireEvent.press(fab);
+    const sheetStyle = StyleSheet.flatten(screen.getByTestId("visit-login-sheet").props.style);
+    expect(sheetStyle).toEqual(
+      expect.objectContaining({
+        backgroundColor: theme.colors.panelLit,
+        borderTopLeftRadius: theme.radii.infoCard,
+        borderTopRightRadius: theme.radii.infoCard,
+        borderColor: theme.colors.seamHairline,
+      }),
+    );
   });
 });

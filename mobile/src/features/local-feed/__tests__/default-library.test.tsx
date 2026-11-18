@@ -2,7 +2,9 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import React from "react";
+import { StyleSheet } from "react-native";
 import { useAuth } from "../../../auth/AuthProvider";
+import { theme } from "../../../theme";
 import * as platform from "../../../lib/platform";
 import * as publicApi from "../../../lib/publicApi";
 import type { LibraryDetail, LibraryListResponse, LibrarySummary } from "../../../lib/publicApi";
@@ -266,5 +268,35 @@ describe("앱 시작 분기", () => {
     expect(screen.queryByTestId("gate-notice")).toBeNull();
     expect(screen.queryByText(/기본 도서관/)).toBeNull();
     expect(mockPush).not.toHaveBeenCalled();
+  });
+});
+
+describe("L4 카드 표면", () => {
+  test("VisitMenu and AskDefaultCard use cardSurface onPanel with infoCard radius", async () => {
+    recordVisit.mockResolvedValue(visit(3));
+    await enterVisit();
+
+    const askCard = await screen.findByTestId("ask-default-card");
+    const askStyle = StyleSheet.flatten(askCard.props.style);
+    expect(askStyle).toEqual(
+      expect.objectContaining({
+        backgroundColor: theme.colors.panelLit,
+        borderRadius: theme.radii.infoCard,
+        borderWidth: 1,
+        borderColor: theme.colors.seamHairline,
+      }),
+    );
+
+    await fireEvent.press(screen.getByLabelText("도서관 메뉴"));
+    const menuCard = await screen.findByTestId("visit-menu-card");
+    const menuStyle = StyleSheet.flatten(menuCard.props.style);
+    expect(menuStyle).toEqual(
+      expect.objectContaining({
+        backgroundColor: theme.colors.panelLit,
+        borderRadius: theme.radii.infoCard,
+        borderWidth: 1,
+        borderColor: theme.colors.seamHairline,
+      }),
+    );
   });
 });

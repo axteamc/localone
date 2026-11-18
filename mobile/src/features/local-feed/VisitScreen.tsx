@@ -14,7 +14,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
 import { ApiCallError, fetchLibrary, type LibraryDetail } from "../../lib/publicApi";
 import { getDefaultLibrary, recordVisit } from "../../lib/visits";
-import { onFill, theme, actionColors } from "../../theme";
+import { actionColors, cardSurface, panel, theme, type as T } from "../../theme";
 import { FOLD_AT, VisitHeader, VisitHeaderFolded } from "./VisitHeader";
 import { AskDefaultCard } from "./AskDefaultCard";
 import { fetchLibraryPosts, type FeedPost } from "./api";
@@ -333,7 +333,7 @@ export function VisitScreen({
     ));
 
   return (
-    <View style={styles.screen}>
+    <View style={styles.screen} testID="visit-screen">
       <ScrollView onScroll={onScroll} scrollEventThrottle={16} testID="visit-scroll" contentContainerStyle={styles.content}>
         {lib.kind === "error" ? (
           <View style={styles.libError}>
@@ -396,7 +396,7 @@ export function VisitScreen({
         accessibilityRole="button"
         accessibilityLabel="글쓰기"
         onPress={openCompose}
-        style={styles.fab}
+        style={({ pressed }) => [styles.fab, pressed && ACT.primaryPressed]}
       >
         <Text style={styles.fabText}>+</Text>
       </Pressable>
@@ -417,7 +417,7 @@ export function VisitScreen({
 
       {loginSheet ? (
         <View style={styles.sheetBackdrop}>
-          <View style={styles.sheet} accessibilityRole="alert">
+          <View style={styles.sheet} accessibilityRole="alert" testID="visit-login-sheet">
             <Text style={styles.sheetTitle}>{VISIT_TEXT.loginNeeded}</Text>
             <Pressable
               accessibilityRole="button"
@@ -425,12 +425,16 @@ export function VisitScreen({
                 setLoginSheet(false);
                 router.push({ pathname: "/login" });
               }}
-              style={styles.primary}
+              style={({ pressed }) => [styles.primary, pressed && ACT.primaryPressed]}
             >
               <Text style={styles.primaryText}>{VISIT_TEXT.login}</Text>
             </Pressable>
-            <Pressable accessibilityRole="button" onPress={() => setLoginSheet(false)} style={styles.textButton}>
-              <Text style={styles.sub}>{VISIT_TEXT.close}</Text>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => setLoginSheet(false)}
+              style={({ pressed }) => [styles.secondary, pressed && ACT.secondaryPressed]}
+            >
+              <Text style={styles.secondaryText}>{VISIT_TEXT.close}</Text>
             </Pressable>
           </View>
         </View>
@@ -441,57 +445,56 @@ export function VisitScreen({
 
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: C.cream },
+  screen: { flex: 1, backgroundColor: panel.backgroundColor },
   content: { paddingBottom: 120, minHeight: "100%" },
   center: { alignItems: "center", justifyContent: "center", padding: 24, gap: 6 },
   libError: { minHeight: 115, paddingHorizontal: 16, justifyContent: "flex-end", gap: 4 },
-  backText: { fontSize: 30, fontWeight: "500", color: C.text },
+  backText: {
+    fontSize: 30,
+    fontWeight: "500",
+    color: C.inkStrong,
+    textShadowColor: C.shadowSoft,
+    textShadowRadius: 4,
+    textShadowOffset: { width: 0, height: 1 },
+  },
   moreSpace: { width: 44 },
   feed: { flexGrow: 1, minHeight: 360, justifyContent: "center", paddingHorizontal: 12, paddingTop: 12 },
   feedItems: { justifyContent: "flex-start" },
   pill: {
     alignSelf: "center",
-    backgroundColor: C.paper,
-    borderRadius: theme.radii.pill,
+    backgroundColor: C.panelLit,
+    borderWidth: 1,
+    borderColor: C.seamHairline,
+    borderRadius: theme.radii.control,
     paddingHorizontal: 14,
     paddingVertical: 6,
   },
-  pillText: { fontSize: 13, color: C.textSub },
-  emptyTitle: { fontSize: 18, fontWeight: "500", color: C.text },
-  emptySub: { fontSize: 18, color: C.textSub },
-  emptyLink: { fontSize: 18, fontWeight: "500", color: C.text },
-  sub: { fontSize: 15, color: C.textSub, textAlign: "center" },
+  pillText: { fontSize: 14, color: C.textSub },
+  emptyTitle: { ...T.title, textAlign: "center" },
+  emptySub: { fontSize: 14, color: C.textSub, textAlign: "center" },
+  emptyLink: { fontSize: 15, fontWeight: "500", color: C.inkStrong },
+  sub: { fontSize: 14, color: C.textSub, textAlign: "center" },
   textButton: { paddingVertical: 8, paddingHorizontal: 4, minHeight: 44, justifyContent: "center" },
-  link: { fontSize: 15, fontWeight: "500", color: C.text },
+  link: { fontSize: 15, fontWeight: "500", color: C.inkStrong },
   fab: {
+    ...ACT.primary,
     position: "absolute",
     right: 16,
     bottom: 24,
     width: 64,
     height: 64,
     borderRadius: theme.radii.control,
-    backgroundColor: C.fill1,
     alignItems: "center",
     justifyContent: "center",
-    shadowColor: C.shadowFloat,
-    shadowOpacity: 1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 6,
   },
-  fabText: { fontSize: 32, lineHeight: 36, fontWeight: "500", color: onFill(C.fill1) },
+  fabText: { ...ACT.primaryText, fontSize: 32, lineHeight: 36, fontWeight: "400" },
   ment: {
+    ...cardSurface(theme, { onPanel: true }),
     position: "absolute",
     bottom: 112,
     alignSelf: "center",
-    backgroundColor: C.paper,
-    borderRadius: theme.radii.card,
     paddingHorizontal: 16,
     paddingVertical: 10,
-    shadowColor: C.shadowFloat,
-    shadowOpacity: 1,
-    shadowRadius: 10,
-    elevation: 4,
   },
   mentText: { fontSize: 16, fontWeight: "500", color: C.text },
   sheetBackdrop: {
@@ -501,17 +504,33 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
     justifyContent: "flex-end",
-    backgroundColor: C.shadowSoft,
+    backgroundColor: C.shadowDeep,
   },
   sheet: {
-    backgroundColor: C.paper,
-    borderTopLeftRadius: theme.radii.card,
-    borderTopRightRadius: theme.radii.card,
+    backgroundColor: C.panelLit,
+    borderTopWidth: 1,
+    borderColor: C.seamHairline,
+    borderTopLeftRadius: theme.radii.infoCard,
+    borderTopRightRadius: theme.radii.infoCard,
     padding: 20,
     paddingBottom: 32,
     gap: 12,
   },
-  sheetTitle: { fontSize: 16, fontWeight: "500", color: C.text },
-  primary: { ...ACT.primary, borderRadius: theme.radii.control, paddingVertical: 12, alignItems: "center" },
-  primaryText: { ...ACT.primaryText, fontWeight: "500" },
+  sheetTitle: { ...T.title },
+  primary: {
+    ...ACT.primary,
+    borderRadius: theme.radii.control,
+    minHeight: 48,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  primaryText: { ...ACT.primaryText, fontSize: 15, fontWeight: "500" },
+  secondary: {
+    ...ACT.secondary,
+    borderRadius: theme.radii.control,
+    minHeight: 44,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  secondaryText: { ...ACT.secondaryText, fontSize: 15, fontWeight: "500" },
 });
