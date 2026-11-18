@@ -261,7 +261,8 @@
   <section class="element" id="el-3" data-chosen="">
     <h2>정할 것 3. 탭에 아무것도 없을 때 무엇을 보여 주고 어디로 이어질까<span class="status" data-status>결정 전</span></h2>
     <p style="margin:0;font-size:14px">처음 가입한 사람은 세 탭이 모두 비어 있어요. 아래 버튼으로 탭을 바꿔 보고, 화면 안의 버튼도 눌러 보세요.</p>
-    <div class="state">탭: <button aria-pressed="true" data-etab="0">내 게시물</button><button aria-pressed="false" data-etab="1">좋아요</button><button aria-pressed="false" data-etab="2">북마크</button></div>
+    <div class="state">탭: <button aria-pressed="true" data-etab="0">내 게시물</button><button aria-pressed="false" data-etab="1">좋아요</button><button aria-pressed="false" data-etab="2">북마크</button>
+      &nbsp; 버튼 글자: <button aria-pressed="true" data-arrow="1">화살표 있음 "→"</button><button aria-pressed="false" data-arrow="0">화살표 없음</button></div>
     <div class="cands">
       <article class="cand recommended" data-id="A">
         <h3>안내 + 홈으로 가는 버튼 <span class="badge">추천</span></h3>
@@ -465,6 +466,7 @@
       { ico: '♡', msg: '아직 좋아요한 게시물이 없어요', sub: '마음에 드는 게시물에 ♡를 누르면 여기 모여요', step: '♡ 누르기' },
       { ico: '🔖', msg: '아직 북마크한 게시물이 없어요', sub: '다시 보고 싶은 게시물을 북마크하면 여기 모여요', step: '북마크 누르기' }
     ];
+    var arrow = true;
     function render(phone, id, t, moved) {
       var h = '<div class="sbar">9:41</div><div class="topbar"><span class="ttl">' + (moved ? '홈' : '내 정보') + '</span>' + (moved ? '' : '<button class="gear">⚙</button>') + '</div><div class="body">';
       if (moved) {
@@ -476,7 +478,7 @@
         h += '</div><div class="empty"><div class="ico">' + m.ico + '</div><div class="msg">' + m.msg + '</div>';
         if (id !== 'C') h += '<div class="sub">' + m.sub + '</div>';
         if (id === 'C') h += '<div class="steps3"><span>도서관 들어가기</span>→<span>' + m.step + '</span>→<span>여기 모임</span></div>';
-        if (id !== 'B') h += '<button class="go" data-go>가까운 도서관 둘러보기 →</button>';
+        if (id !== 'B') h += '<button class="go" data-go>가까운 도서관 둘러보기' + (arrow ? ' →' : '') + '</button>';
         h += '</div>';
       }
       h += '</div><div class="nav"><span' + (moved ? ' class="on"' : '') + '>홈</span><span>대출·반납</span><span' + (moved ? '' : ' class="on"') + '>내 정보</span></div>';
@@ -489,6 +491,15 @@
       el3.querySelectorAll('[data-etab]').forEach(function (b) { b.setAttribute('aria-pressed', +b.dataset.etab === t); });
     }
     el3.querySelectorAll('[data-etab]').forEach(function (b) { b.addEventListener('click', function () { show(+b.dataset.etab); }); });
+    // 버튼 글자 화살표 있음/없음 (사용자 요청으로 추가)
+    el3.querySelectorAll('[data-arrow]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        arrow = b.dataset.arrow === '1';
+        el3.querySelectorAll('[data-arrow]').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+        var cur = el3.querySelector('[data-etab][aria-pressed="true"]');
+        show(cur ? +cur.dataset.etab : 0);
+      });
+    });
     show(0);
     function mark3(id) {
       el3.querySelectorAll('.cand').forEach(function (c) {
