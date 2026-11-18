@@ -1,6 +1,7 @@
 import * as AppleAuthentication from "expo-apple-authentication";
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
   ActivityIndicator,
   Pressable,
@@ -55,6 +56,7 @@ function messageForFailure(result: Extract<SignInResult, { ok: false }>): string
 
 export default function LoginScreen(): React.JSX.Element {
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const { width: winWidth, height: winHeight } = useWindowDimensions();
   const [boardSize, setBoardSize] = useState<{ width: number; height: number } | null>(null);
   const { status, signInWithGoogle, signInWithApple } = useAuth();
@@ -136,13 +138,13 @@ export default function LoginScreen(): React.JSX.Element {
     <View style={styles.screen} onLayout={onBoardLayout}>
       <LoginGrid width={gridWidth} height={gridHeight} />
 
-      <View style={styles.topHeader}>
+      <View style={[styles.topHeader, { paddingTop: Math.max(56, insets.top + 16) }]}>
         <Logo size={64} />
         <Text style={styles.brand}>동네한권</Text>
         <Text style={styles.title}>동네한권에 로그인</Text>
       </View>
 
-      <View style={styles.bottomSheet}>
+      <View style={[styles.bottomSheet, { paddingBottom: Math.max(28, insets.bottom + 16) }]}>
         <Text style={styles.gauge}>SIGN IN</Text>
 
         {busy && (

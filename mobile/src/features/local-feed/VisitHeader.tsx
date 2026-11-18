@@ -1,6 +1,7 @@
 // 방문 페이지 머리 (contracts/local-feed.md VISIT-2 G11·G12, 명세 결정 1·2)
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Today } from "../../lib/publicApi";
 import { panel, theme, type as T } from "../../theme";
 
@@ -53,10 +54,14 @@ export type VisitHeaderProps = {
 
 /** 두 줄 머리: ‹ / 이름 / "거리 · 오늘 운영시간" + ⋯ */
 export function VisitHeader({ name, distanceM, today, onBack, more, folded = false }: VisitHeaderProps) {
+  const insets = useSafeAreaInsets();
   const closed = today?.is_closed === true;
   const hours = today?.hours_text ?? "정보 없음";
   return (
-    <View style={styles.two} testID="visit-header-two">
+    <View
+      style={[styles.two, { paddingTop: Math.max(4, insets.top), minHeight: HEADER_TWO_LINES + insets.top }]}
+      testID="visit-header-two"
+    >
       {folded ? <View style={styles.back} /> : <BackButton onBack={onBack} size={30} />}
       <Text style={styles.name} numberOfLines={1}>
         {name}
@@ -74,8 +79,12 @@ export function VisitHeader({ name, distanceM, today, onBack, more, folded = fal
 
 /** 접힌 한 줄 머리: ‹ 이름 ⋯ (G12) */
 export function VisitHeaderFolded({ name, onBack, more }: Pick<VisitHeaderProps, "name" | "onBack" | "more">) {
+  const insets = useSafeAreaInsets();
   return (
-    <View style={styles.one} testID="visit-header-one">
+    <View
+      style={[styles.one, { paddingTop: insets.top, minHeight: HEADER_ONE_LINE + insets.top }]}
+      testID="visit-header-one"
+    >
       <BackButton onBack={onBack} size={24} />
       <Text style={styles.nameSmall} numberOfLines={1}>
         {name}
