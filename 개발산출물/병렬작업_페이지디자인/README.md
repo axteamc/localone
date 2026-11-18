@@ -35,7 +35,7 @@
 | **L3a** 시안 | 책 검색·결과, 책 상세 감사 + 시안 | [진행_L3a_책검색_상세_시안.md](진행_L3a_책검색_상세_시안.md) | 시니어 | 없음(시안 HTML) | 문서 PR 머지 | 완료 (#188 머지, D 선택 1 = C + A 오른쪽 계기판 연도, 2 = B) |
 | **L3b** 시안 | 대출·반납, 내 정보 감사 + 시안 | [진행_L3b_대출_내정보_시안.md](진행_L3b_대출_내정보_시안.md) | 시니어 | 없음(시안 HTML) | 문서 PR 머지 | 완료 (#190 머지, D 선택 1 = A, 2 = A) |
 | **L3c** 시안 | 글쓰기·글 상세, 설정, 방문 페이지 감사 + 시안 | [진행_L3c_글쓰기_설정_방문_시안.md](진행_L3c_글쓰기_설정_방문_시안.md) | 시니어 | 없음(시안 HTML) | 문서 PR 머지 | 완료 (#193 머지, D 선택 1 = A, 2 = A + C, `DESIGN.md`·계약 반영) |
-| **L4** 페이지 코드 | D가 시안을 고른 페이지마다 세션 하나, PR 하나 | 페이지마다 `진행_L4_<페이지>.md`([템플릿](_템플릿_진행.md)) | 주니어 | 그 페이지 `features/<기능>/` | L1 머지 + 그 페이지 시안 결정 | 대기 — L3c 세 페이지 진행 파일 만듦(아래 표) |
+| **L4** 페이지 코드 | D가 시안을 고른 페이지마다 세션 하나, PR 하나 | 페이지마다 `진행_L4_<페이지>.md`([템플릿](_템플릿_진행.md)) | 주니어 | 그 페이지 `features/<기능>/` | L1 머지 + 그 페이지 시안 결정 | 진행 중 — L3c 세 페이지 완료(#195·#196·#197 머지), L3a·L3b 네 페이지 진행 파일 만듦(아래 표, 계약 C-74 머지 뒤 시작) |
 | **L5** 로그인·로고 | `login.tsx`, 로고 컴포넌트, `개발산출물/로고/` SVG 교체, 아이콘 PNG | [진행_L5_로그인_로고.md](진행_L5_로그인_로고.md) | 주니어 | `app/login.tsx`, `theme/Logo.tsx`, `assets` | **로고 선택** + L1 머지 | 완료 (#189 머지, 로고 I4) |
 | **L6** 후순위 | 도서관 페이지 ⋯ "처음 주인공" 설정, 이름 줄이는 규칙, 방문 모음(+전용 팔레트) | [진행_L6_후순위.md](진행_L6_후순위.md) | 시니어(이름 규칙·방문 모음) / 주니어(⋯ 설정) | — | L2 머지 + D 결정 | 대기 |
 
@@ -55,15 +55,17 @@ L2 + L4가 같은 파일을 만질 수 있는 곳: 홈의 "도서관 찾기" 버
 
 | 페이지 | 코드 | 시안 레인 | 진행 파일 · 상태 |
 | --- | --- | --- | --- |
-| 책 검색·결과 | `app/search.tsx`, `features/book-search/SearchScreen.tsx` 등 | L3a | — (L3a 결정 반영 뒤 D 세션이 만듦) |
-| 책 상세 | `app/books/[isbn13].tsx`, `BookDetailScreen.tsx` 등 | L3a | — (L3a 결정 반영 뒤) |
-| 대출·반납 | `app/(tabs)/loans.tsx`, `features/loan-assistant/` | L3b | — (L3b 결정 반영 뒤) |
-| 내 정보 | `app/(tabs)/me.tsx`, `features/my-collection/` | L3b | — (L3b 결정 반영 뒤) |
-| 글쓰기·글 상세 | `app/posts/new.tsx`, `app/posts/[postId].tsx`, `features/local-feed/` | L3c | [진행_L4_글쓰기_글상세.md](진행_L4_글쓰기_글상세.md) · 대기 |
-| 설정 | `app/settings.tsx` | L3c | [진행_L4_설정.md](진행_L4_설정.md) · 대기 |
-| 방문 페이지 | `app/libraries/[libraryId].tsx`, `VisitScreen.tsx` (레시피만, 도서관 룩은 M2) | L3c | [진행_L4_방문페이지.md](진행_L4_방문페이지.md) · 대기 |
+| 책 검색·결과 | `app/search.tsx`, `features/book-search/SearchScreen.tsx`·`SearchEntry.tsx` | L3a | [진행_L4_책검색.md](진행_L4_책검색.md) · 대기 |
+| 책 상세 | `app/books/[isbn13].tsx`, `BookDetailScreen.tsx` 등 + `StartLoanButton.tsx`(detail) | L3a | [진행_L4_책상세.md](진행_L4_책상세.md) · 대기 |
+| 대출·반납 | `app/(tabs)/loans.tsx`, `features/loan-assistant/`, `LoanPlansSection.tsx` | L3b | [진행_L4_대출.md](진행_L4_대출.md) · 대기(**책 상세 PR 머지 뒤** — `StartLoanButton.tsx` 겹침) |
+| 내 정보 | `app/(tabs)/me.tsx`, `features/my-collection/` | L3b | [진행_L4_내정보.md](진행_L4_내정보.md) · 대기 |
+| 글쓰기·글 상세 | `app/posts/new.tsx`, `app/posts/[postId].tsx`, `features/local-feed/` | L3c | [진행_L4_글쓰기_글상세.md](진행_L4_글쓰기_글상세.md) · 완료 (#195 머지) |
+| 설정 | `app/settings.tsx` | L3c | [진행_L4_설정.md](진행_L4_설정.md) · 완료 (#196 머지) |
+| 방문 페이지 | `app/libraries/[libraryId].tsx`, `VisitScreen.tsx` (레시피만, 도서관 룩은 M2) | L3c | [진행_L4_방문페이지.md](진행_L4_방문페이지.md) · 완료 (#197 머지) |
 
-`actionColors`를 쓰는 파일이 19개라 L1이 값 하나만 바꿔도 모든 버튼이 같이 바뀐다. 다만 `onFill(theme.colors.fill1)`처럼 노랑 채움을 직접 쓰는 곳(`HomeScreen`·`ComposeScreen`·`PostMenu`·`VisitScreen`·`AskDefaultCard`·`ReactionButton`)은 L1이 못 바꾸므로 **그 페이지의 L4(홈은 L2)가 고친다.**
+`actionColors`를 쓰는 파일이 19개라 L1이 값 하나만 바꿔도 모든 버튼이 같이 바뀐다. 다만 `onFill(theme.colors.fill1)`처럼 노랑 채움을 직접 쓰는 곳(`HomeScreen`·`ComposeScreen`·`PostMenu`·`VisitScreen`·`AskDefaultCard`·`ReactionButton`)은 L1이 못 바꾸므로 **그 페이지의 L4(홈은 L2)가 고친다.** (2026-11-18: 홈 외 다섯 곳은 #195·#197에서 고침. 남은 곳은 `dday.ts` 임박 알약 — 진행_L4_대출)
+
+L3a·L3b 네 페이지 순서: 책 검색·책 상세·내 정보는 서로 파일이 겹치지 않아 순서 무관, **대출은 책 상세 머지 뒤**(`StartLoanButton.tsx`를 둘 다 고침). 시작 전 선행: 이 레인 표를 만든 L0 문서 PR과 team 계약 PR(C-74) 머지.
 
 ## 끝낼 때 (D 세션)
 
