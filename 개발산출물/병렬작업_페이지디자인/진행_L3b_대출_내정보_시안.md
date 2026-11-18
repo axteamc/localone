@@ -1,6 +1,6 @@
 # 진행 L3b 대출·반납, 내 정보 — 감사 + 시안
 
-상태: **진행 중(시안 작성·D 선택 대기)**
+상태: **완료** (D 선택 반영 완료: 1 = A 압축·1줄 고정, 2 = A)
 추천 AI: **시니어** · 브랜치: `design/mock-loans-me` · PR: #190 · 코드 수정 없음(시안 HTML + 이 파일만)
 
 ## 시작 멘트
@@ -72,36 +72,37 @@ git: 최신 main에서 새 브랜치 design/mock-loans-me. gh는 axteamc 레포�
 
 | 요소 | 후보 | 추천 | D 결정 |
 | --- | --- | --- | --- |
-| 1. 대출·반납(`/loans`) 반납일·D-day 계기판 표시와 카드 구성 (`#el-loans-dday`) | **A** 전면 계기판 숫자판(`+02D`·`D-DAY`·`D-02`·`D-08`) + 6px 상태 점(색 채움 알약 없음) + 계기판 날짜 줄 + 아래 줄눈 텍스트 행동(`기한 수정` · `반납했어요 →`) · **B** 연체·당일만 작은 직사각 상태 칩(곡률 9) 유지, `D-2`(노랑 제거)·`D-8`은 무채색 계기판 테두리 표찰 + 평면 보조 버튼 · **C** 기존 4단계 색 알약(`fill1`·`inkStrong` 포함) 유지 + 무광 카드(곡률 9)·계기판 날짜 줄만 적용 | **A** | 대기 |
-| 2. 내 정보(`/me`) 위쪽 프로필·3탭 머리 구성과 게시물 모음 목록 표현 (`#el-me-layout`) | **A** 유리판 일체형(`ProfileHeader`·`CollectionTabs` 배경을 `panelFrosted`로 통일 + 22/400 닉네임·계기판 표찰 + 순수 이미지 `PostCard` 2열) · **B** 상단 밝은 무광 판(`panelLit`) 도크 안에 프로필+3탭 묶기 + 3탭 영문·한글 2단 표찰(`POSTS`·`LIKES`·`SAVED`) + 세로 줄눈 · **C** 유리판 머리 + 2열 `PostCard` 아래마다 계기판 출처 줄(`도서관 · 수집 날짜`) 덧붙이기 | **A** | 대기 |
+| 1. 대출·반납(`/loans`) 반납일·D-day 계기판 표시와 카드 구성 (`#el-loans-dday`) | **A** 전면 계기판 숫자판(`+02D`·`D-DAY`·`D-02`·`D-08`) + 6px 상태 점(색 채움 알약 없음) + 바로 밑 `수정` + 계기판 날짜 줄 + 아래 줄눈 `반납->` · **B** 연체·당일만 작은 직사각 상태 칩(곡률 9) 유지, `D-2`(노랑 제거)·`D-8`은 무채색 계기판 테두리 표찰 + 평면 보조 버튼 · **C** 기존 4단계 색 알약(`fill1`·`inkStrong` 포함) 유지 + 무광 카드(곡률 9)·계기판 날짜 줄만 적용 | **A** | **A (압축·1줄 고정)** (`"1 - A (내용만 정리 압축하자)"`, `"MOBILE REMINDERS ONLY · 알림은 휴대폰 앱에서만 와요 -> 알림은 앱에서만 와요"`, `"기한 수정 -> 수정 (+o 연체 2일 여기 밑에 "수정"만 넣고 글자 크기 맞추고 두께만 지금처럼 해서 시안 보여줘)"`, `"반납했어요 -> 반납->"`, `"기존에 한 줄 처리되던 버튼, 섹션은 어떻게 하든 한 줄로 표기되도록 한다. 첨부파일처럼 2줄로 보이기 금지"`) |
+| 2. 내 정보(`/me`) 위쪽 프로필·3탭 머리 구성과 게시물 모음 목록 표현 (`#el-me-layout`) | **A** 유리판 일체형(`ProfileHeader`·`CollectionTabs` 배경을 `panelFrosted`로 통일 + 22/400 닉네임·계기판 표찰 + 순수 이미지 `PostCard` 2열) · **B** 상단 밝은 무광 판(`panelLit`) 도크 안에 프로필+3탭 묶기 + 3탭 영문·한글 2단 표찰(`POSTS`·`LIKES`·`SAVED`) + 세로 줄눈 · **C** 유리판 머리 + 2열 `PostCard` 아래마다 계기판 출처 줄(`도서관 · 수집 날짜`) 덧붙이기 | **A** | **A** (`"2 - A"`) |
 
 ## 진행 기록
 
 - 2026-11-18: `origin/main`에 `design/page-pass-1`(#186) 및 `design/theme-base`(#187) 머지 확인.
 - 2026-11-18: 웹 390·1280에서 `/loans`(비로그인·빈 목록·4단계 D-day 및 빌릴 예정·지난 대출·기한 수정 시트)와 `/me`(비로그인·빈 탭·2열 게시물 목록) 스크린샷 16장 촬영 및 레시피 전수 감사 완료.
-- 2026-11-18: `개발산출물/시안/대출_내정보_파사드_시안.html` 작성(`../team/tools/check_mockup.py` 통과), 브라우저로 열기 및 `design/mock-loans-me` 브랜치 커밋·push·PR 생성.
+- 2026-11-18: `개발산출물/시안/대출_내정보_파사드_시안.html` 작성(`../team/tools/check_mockup.py` 통과), 브라우저로 열기 및 `design/mock-loans-me` 브랜치 커밋·push·PR #190 생성.
+- 2026-11-18: D 선택(`1 - A 압축·1줄 고정`, `2 - A`) 반영: 상단 안내 `"알림은 앱에서만 와요"`, 오른쪽 D-day 칸의 `● 연체 2일`(상태 줄) 바로 밑에 같은 크기·두께(500)로 `"수정"` 배치, 하단 줄눈 행동 `"반납->"`, 모든 버튼·섹션·날짜 줄 1줄 고정(`white-space: nowrap` / `numberOfLines={1}`) 적용 후 커밋·push.
 
 ## D 세션에 넘길 것
 
-1. **`DESIGN.md` 결정 기록 추가 예정 행 (D 선택 후 확정):**
-   - 대출·반납 반납일·D-day 표시와 카드 구성 (`#el-loans-dday` A / B / C 중 D 선택 결과)
-   - 내 정보 위쪽 프로필·3탭 머리 구성과 수집 목록 표현 (`#el-me-layout` A / B / C 중 D 선택 결과)
-2. **레시피 표에 더할 것 / L4 반영 메모:**
+1. **`DESIGN.md` 결정 기록 추가 행 (2026-11-18 D 결정):**
+   - **대출·반납 D-day 표시와 카드 구성(2026-11-18):** 채택 **A 압축·1줄 고정 (전면 계기판 숫자판 + 상태 점 밑 `수정` + 아래 줄눈 `반납->`)** — 노랑(`fill1`)·남색(`inkStrong`) 배경 채움 알약을 모두 빼고, 무광 카드(`panelLit` + 1px `seamHairline` + 아래 2px `reliefBottomMid`, 곡률 9 `radii.infoCard`)의 오른쪽 세로 줄눈 칸에 계기판 숫자(`+02D`·`D-DAY`·`D-02`·`D-08`) + 6px 상태 점과 한글 상태(`● 연체 N일`·`● 오늘 반납`·`● 임박`·`● 여유`) + **바로 그 밑에 같은 글자 크기·두께(500, `inkStrong`)로 `"수정"` 버튼**을 둔다. 대출·예정 날짜는 `type.gauge`로 1줄에 표기하고, 카드 아래 1px 줄눈에는 왼쪽 상태 표찰·오른쪽 **`"반납->"`**(빌릴 예정 카드는 `"빼기"` · `"빌렸어요->"`)만 둔다. 웹 상단 알림 안내는 **`"알림은 앱에서만 와요"`** 한 줄로 줄인다. 차선: 없음. 탈락: B(연체·당일만 칩), C(기존 4단계 색 알약). D 말: `"1 - A (내용만 정리 압축하자)"`, `"MOBILE REMINDERS ONLY · 알림은 휴대폰 앱에서만 와요 -> 알림은 앱에서만 와요"`, `"기한 수정 -> 수정 (+o 연체 2일 여기 밑에 "수정"만 넣고 글자 크기 맞추고 두께만 지금처럼 해서 시안 보여줘)"`, `"반납했어요 -> 반납->"`, `"기존에 한 줄 처리되던 버튼, 섹션은 어떻게 하든 한 줄로 표기되도록 한다. 첨부파일처럼 2줄로 보이기 금지"`
+   - **내 정보 프로필·3탭 머리 구성과 수집 목록 표현(2026-11-18):** 채택 **A 유리판 일체형 (`panelFrosted` 통일 + 22/400 이름·계기판 + 순수 이미지 2열)** — `ProfileHeader`·`CollectionTabs` 배경을 `C.bg`에서 `panelFrosted`로 통일하고, 닉네임은 `type.title`(22/400 `inkSoft`) + 위 `MEMBER · PROFILE`(`type.gauge`), 아바타(64)는 무광 판 원, `"프로필 수정"`·`⚙`는 평면 보조 버튼(`actionColors().secondary`), 3탭 바는 1px `seamHairline` + 2px `inkStrong` 밑줄, 아래는 `PostCard`(곡률 18) 2열 메이슨리로 둔다. 차선: 없음. 탈락: B(상단 밝은 무광 판 도크 + 2단 탭), C(카드 아래 도서관·날짜 캡션 줄). D 말: `"2 - A"`
+2. **레시피 표에 더할 것 / L4 반영 메모 (중요 원칙):**
+   - **[중요] 버튼·섹션 머리·날짜·상태 줄 1줄 고정 규칙:** 기존에 한 줄로 처리되던 모든 버튼(`빌린 책`, `지난 대출`, `수정`, `반납->`, `프로필 수정` 등), 섹션 머리(`ACTIVE LOANS · 04`, `내 대출`, `빌릴 예정`), 날짜 줄(`2026.11.04 — 11.18 · 추정`)은 좁은 화면(390px 및 스크롤바 포함 폭)에서도 **절대 2줄로 줄바꿈되지 않도록** `numberOfLines={1}`·`flexShrink: 0`을 강제한다.
    - **비로그인·빈 화면 통일:** 비로그인 화면(`/loans`, `/me`)은 화면의 유일한 주 행동이 `"로그인"`이므로 `22~24/400 inkSoft` 제목 + 계기판(`SIGN IN REQUIRED`) + 무광 판 주 버튼(`actionColors().primary`)으로 통일하고, 로그인 후 빈 탭·빈 구역(`empty-posts/reactions/bookmarks`, 빈 빌릴 예정)은 레시피 "빈 화면(그림·색 덩어리 없음)"에 맞춰 56px 회색 원(`emptyIcon`)과 `inkStrong` 채움 버튼을 제거하고 `22/400 inkSoft` + 계기판 + 평면 보조 버튼(`actionColors().secondary`)으로 맞춘다.
    - **세그먼트 탭(`빌린 책` / `지난 대출`):** 선택 탭에 `inkStrong` 채움 알약을 쓰지 않고, 유리판 틀(`panelFrosted` + 1px `seamHairline`, 곡률 9) 안에 선택 탭만 밝은 무광 판(`panelLit` + 1px 줄눈 + 1px 받침)으로 표시해 화면 내 무거운 표식 1개(규칙 7)를 지킨다.
    - **취소 흐림 배지(`취소함`) 및 하단 되돌리기 바(`notice`):** `inkStrong` 채움 대신 무광 판(`panelLit` + 1px `seamHairline` + 2px 받침, 곡률 9)을 쓴다.
-3. **계약서(`../team/contracts/loan-assistant.md`, `book-search.md`, `my-collection.md`) 화면 칸과 어긋나는 제안 (D 선택 후 L4 착수 전 반영):**
-   - **`loan-assistant.md` LOAN-1 M8·M9 (정할 것 1 후보 A 또는 B 선택 시):**
-     - M8 대출 카드: `colors.paper`, `radii.card`(18) → `cardSurface(theme, { onPanel: true })`(`panelLit` + 1px `seamHairline` + 2px `reliefBottomMid`, 곡률 9 `radii.infoCard`). 후보 A 선택 시 오른쪽 D-day 알약을 세로 줄눈 계기판 칸(`+02D`·`D-DAY`·`D-02`·`D-08` + 6px 상태 점 + `연체 N일`/`오늘 반납`)으로, 아래 버튼을 줄눈 텍스트 링크로 개정. 후보 B 선택 시 M9 `soon`(`1 <= dDay <= 3`)의 `colors.fill1`(노랑 채움)과 `normal`의 `surface2`를 무채색 계기판 테두리 표찰(`panelFrosted` + 1px `seamHairline`)로 개정.
-     - `loan-assistant.md` LOAN-2 E6·E7·E8 및 LOAN-3 T11:
-       - E6 `DueDateSheet`: `colors.paper`·위 모서리 `radii.card`(18), 입력 칸 `colors.cream`·`radii.pill`, `"저장"` 버튼 `colors.inkStrong`·`radii.inner` → `panelLit` 시트(위 곡률 9 `radii.infoCard`), 입력 칸 `paper` + 1px `seamHairline` + 곡률 9, `"저장"` 무광 판 주 버튼(`actionColors().primary`, `radii.control`)으로 개정.
-       - E7 `"빌린 책"`/`"지난 대출"` 세그먼트 탭: `radii.pill` + `inkStrong` 채움 → 곡률 9 유리판 세그먼트(선택 탭 `panelLit`).
-       - E8 반납 확인 창 및 T11 권한 거부 배너: `colors.paper`·`radii.card`(18) → `panelLit` 무광 카드(`radii.infoCard` 9).
+3. **계약서(`../team/contracts/loan-assistant.md`, `book-search.md`, `my-collection.md`) 화면 칸 개정 사항 (L4 착수 전 D 반영):**
+   - **`loan-assistant.md` LOAN-1 M8·M9, LOAN-2 E6~E8, LOAN-3 T9·T11 (정할 것 1 후보 A 채택 반영):**
+     - **M8·M9 대출 카드 및 D-day 표시:** 카드는 `cardSurface(theme, { onPanel: true })`(`panelLit` + 1px `seamHairline` + 2px `reliefBottomMid`, 곡률 9 `radii.infoCard`). 오른쪽 세로 줄눈 칸에 계기판 숫자(`+02D`·`D-DAY`·`D-02`·`D-08`) + 6px 상태 점(`loanOut`·`inkStrong`·`fill1`·`surface3`)과 한글 상태(`연체 N일`·`오늘 반납`·`임박`·`여유`)를 두고(배경 채움 알약 제거), **바로 그 밑에 같은 글자 크기·두께(500)의 `"수정"` 버튼**(기존 `"기한 수정"`에서 압축)을 둔다. 카드 아래 줄눈 오른쪽 행동 문구는 **`"반납->"`**(기존 `"반납했어요"`에서 압축, 반납 확인 창 내부 확인 버튼은 `"반납했어요"` 유지)로 개정.
+     - **T9 웹 알림 안내 문구:** `"알림은 휴대폰 앱에서만 와요"` → **`"알림은 앱에서만 와요"`**(1줄 고정).
+     - **E6 `DueDateSheet`:** `panelLit` 시트(위 곡률 9 `radii.infoCard`), 입력 칸 `paper` + 1px `seamHairline` + 곡률 9, `"저장"` 무광 판 주 버튼(`actionColors().primary`, `radii.control`).
+     - **E7 `"빌린 책"`/`"지난 대출"` 세그먼트 탭:** 곡률 9 유리판 세그먼트(선택 탭 `panelLit`, 1줄 고정).
+     - **E8 반납 확인 창 및 T11 권한 거부 배너:** `panelLit` 무광 카드(`radii.infoCard` 9).
    - **`book-search.md` LIB-3 N10 (`LoanPlansSection`):**
-     - 빌릴 예정 카드·빈 상자 `colors.paper`, `radii.card`(18) → `cardSurface(theme, { onPanel: true })`(곡률 9 `radii.infoCard`), `"빼기"`·`"빌렸어요"`는 후보 A 선택 시 줄눈 텍스트 행동, 후보 B·C 선택 시 평면 보조 버튼(`actionColors().secondary`).
-   - **`my-collection.md` MY-1 Y-O1 · Y-O2 · Y-O3 · Y-O4:**
-     - Y-O1 `ProfileHeader`: 배경 `C.bg` → `panelFrosted`(정할 것 2 후보 B 선택 시 `panelLit`), 닉네임 `17 굵게` → `type.title`(22/400 `inkSoft`) + 계기판 표찰, `"프로필 수정"` 테두리 `divider` → `actionColors().secondary`(`panelFrosted` + 1px `seamHairline`).
-     - Y-O2 `CollectionTabs`: 배경 `C.bg`·테두리 `divider` → `panelFrosted` + 1px `seamHairline` (후보 B 선택 시 `panelLit` + 영문·한글 2단 표찰 + 세로 줄눈).
-     - Y-O3 빈 상태(`empty-*`) 및 비로그인: 빈 탭의 원형 아이콘(56, `surface2`) 제거 + 안내 제목 `type.title`(22/400 `inkSoft`) + `"가까운 도서관 둘러보기"` 버튼 색을 `inkStrong` 채움에서 평면 보조 버튼(`actionColors().secondary`)으로, 비로그인 `"로그인"` 버튼 색을 `inkStrong` 채움에서 무광 판 주 버튼(`actionColors().primary`)으로 개정.
-     - Y4 (정할 것 2 후보 C 선택 시에만): `MyCollectionScreen`의 각 `PostCard` 래퍼 아래에 `library_name` + `collected_at`(`type.gauge`) 출처 한 줄 표시 허용.
-     - Y-O4 흐린 카드 `"취소함"` 태그 및 하단 되돌리기 안내 바: `inkStrong` 채움 → 무광 판(`panelLit` + 1px `seamHairline` + 2px 받침, 곡률 9).
+     - 빌릴 예정 카드·빈 상자 `cardSurface(theme, { onPanel: true })`(곡률 9 `radii.infoCard`), 카드 아래 줄눈 행동은 왼쪽 `"빼기"` · 오른쪽 `"빌렸어요->"`(1줄 고정).
+   - **`my-collection.md` MY-1 Y-O1 · Y-O2 · Y-O3 · Y-O4 (정할 것 2 후보 A 채택 반영):**
+     - **Y-O1 `ProfileHeader`:** 배경 `C.bg` → `panelFrosted`, 닉네임 `17/500` → `type.title`(22/400 `inkSoft`) + 위 `MEMBER · PROFILE`(`type.gauge`), 아바타(64) 무광 판 원, `"프로필 수정"`·`⚙`는 평면 보조 버튼(`actionColors().secondary`, 1줄 고정).
+     - **Y-O2 `CollectionTabs`:** 배경 `C.bg`·테두리 `divider` → `panelFrosted` + 1px `seamHairline` + 선택 탭 아래 2px `inkStrong` 밑줄(1줄 고정).
+     - **Y-O3 빈 상태(`empty-*`) 및 비로그인:** 빈 탭의 원형 아이콘(56, `surface2`) 제거 + 안내 제목 `type.title`(22/400 `inkSoft`) + `"가까운 도서관 둘러보기"` 버튼을 평면 보조 버튼(`actionColors().secondary`)으로, 비로그인 `"로그인"` 버튼을 무광 판 주 버튼(`actionColors().primary`)으로 개정.
+     - **Y-O4 흐린 카드 `"취소함"` 태그 및 하단 되돌리기 안내 바:** `inkStrong` 채움 → 무광 판(`panelLit` + 1px `seamHairline` + 2px 받침, 곡률 9).

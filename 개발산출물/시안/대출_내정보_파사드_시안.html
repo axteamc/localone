@@ -58,31 +58,33 @@
   .hd .rvl, .hd .rvr { position:absolute; top:50%; width:3.5px; height:3.5px; margin-top:-1.75px; border-radius:2px; background:var(--rivet); }
   .hd .rvl { left:5px; } .hd .rvr { right:5px; }
 
-  .scr { flex:1; overflow-y:auto; overflow-x:hidden; position:relative; background:var(--panel-frosted); display:flex; flex-direction:column; }
+  .scr { flex:1; overflow-y:auto; overflow-x:hidden; position:relative; background:var(--panel-frosted); display:flex; flex-direction:column; scrollbar-width:none; }
+  .scr::-webkit-scrollbar { width:0; height:0; display:none; }
   .hide { display:none !important; }
 
   /* 하단 탭 바 (유리판 + 칸 사이 줄눈 + 위 2px 눈금) */
   .tbar { flex:none; height:42px; background:var(--panel-frosted); border-top:1px solid var(--seam); display:flex; position:relative; z-index:4; }
-  .tbar span { flex:1; display:flex; align-items:center; justify-content:center; font-size:10.5px; color:var(--ink-muted); position:relative; }
+  .tbar span { flex:1; display:flex; align-items:center; justify-content:center; font-size:10.5px; color:var(--ink-muted); position:relative; white-space:nowrap; }
   .tbar span + span { border-left:1px solid var(--seam); }
   .tbar span.on { color:var(--ink-strong); font-weight:500; }
   .tbar span.on::before { content:""; position:absolute; top:0; width:24px; height:2px; background:var(--ink-strong); }
 
-  /* 계기판 목소리 (type.gauge) */
-  .gauge { font-size:8.5px; font-weight:500; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-muted); line-height:1.3; }
+  /* 계기판 목소리 (type.gauge) — 한 줄 유지 원칙 */
+  .gauge { font-size:8.5px; font-weight:500; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-muted); line-height:1.3; white-space:nowrap; }
   /* 화면/칸 제목 (type.pageTitle 24/400, type.title 22/400 -> 시안 축소 18~20/400) */
-  .t-page { font-size:19px; font-weight:400; letter-spacing:-.02em; color:var(--ink-soft); line-height:1.3; margin:0; }
-  .t-sec { font-size:17px; font-weight:400; letter-spacing:-.02em; color:var(--ink-soft); line-height:1.3; margin:0; }
+  .t-page { font-size:19px; font-weight:400; letter-spacing:-.02em; color:var(--ink-soft); line-height:1.3; margin:0; white-space:nowrap; }
+  .t-sec { font-size:17px; font-weight:400; letter-spacing:-.02em; color:var(--ink-soft); line-height:1.3; margin:0; white-space:nowrap; }
   /* 이름/본문 (type.name 14/500 -> 시안 12.5/500) */
-  .t-name { font-size:12.5px; font-weight:500; color:var(--text); line-height:1.35; }
-  .t-sub { font-size:11px; font-weight:400; color:var(--ink-muted); line-height:1.35; }
+  .t-name { font-size:12.5px; font-weight:500; color:var(--text); line-height:1.35; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .t-sub { font-size:11px; font-weight:400; color:var(--ink-muted); line-height:1.35; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .t-sub.wrap { white-space:normal; overflow:visible; }
 
-  /* 무광 판 주 버튼 & 평면 보조 버튼 (L1 actionColors 기준) */
+  /* 무광 판 주 버튼 & 평면 보조 버튼 (L1 actionColors 기준 — 모두 1줄 고정) */
   .btn-pri {
     background:var(--panel-lit); color:var(--ink-strong);
     border:1px solid var(--seam); border-radius:var(--r-pill);
     box-shadow:0 2px 0 var(--relief-mid);
-    font:inherit; font-size:12px; font-weight:500;
+    font:inherit; font-size:12px; font-weight:500; white-space:nowrap; flex:none;
     height:36px; padding:0 14px; display:inline-flex; align-items:center; justify-content:center;
     cursor:pointer; transition:transform .08s, box-shadow .08s;
   }
@@ -90,13 +92,13 @@
   .btn-sec {
     background:var(--panel-frosted); color:var(--text);
     border:1px solid var(--seam); border-radius:var(--r-pill);
-    font:inherit; font-size:11px; font-weight:500;
+    font:inherit; font-size:11px; font-weight:500; white-space:nowrap; flex:none;
     height:30px; padding:0 11px; display:inline-flex; align-items:center; justify-content:center;
     cursor:pointer;
   }
   .btn-link {
     background:none; border:0; padding:2px 0; font:inherit; font-size:11px; font-weight:500;
-    color:var(--ink-strong); cursor:pointer;
+    color:var(--ink-strong); cursor:pointer; white-space:nowrap; flex:none;
   }
 
   /* 무광 정보·목록 카드 (바탕이 panelFrosted일 때 panelLit + 1px seam + 아래 2px reliefBottomMid, 곡률 9) */
@@ -116,47 +118,52 @@
   .cov.c2 { background:var(--fill2); color:var(--ink-strong); }
   .cov.c3 { background:var(--fill3); color:var(--ink-strong); }
   .cov::before { content:""; position:absolute; left:2.5px; top:0; bottom:0; width:1px; background:var(--seam-hi); opacity:.55; }
-  .cov .ct { font-size:7.5px; font-weight:500; line-height:1.15; word-break:keep-all; position:relative; z-index:1; }
+  .cov .ct { font-size:7px; font-weight:500; line-height:1.15; word-break:keep-all; position:relative; z-index:1; }
 
   /* ---------- 대출·반납 공통 부품 ---------- */
   .l-pad { padding:12px 12px 24px; display:flex; flex-direction:column; gap:10px; }
-  .sec-head { display:flex; justify-content:space-between; align-items:baseline; gap:6px; }
+  .sec-head { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:nowrap; }
 
-  /* 빌린 책 / 지난 대출 전환 바 (검정 채움 알약 대신 유리판/무광 판 세그먼트) */
+  /* 빌린 책 / 지난 대출 전환 바 (1줄 고정, 검정 채움 알약 대신 유리판/무광 판 세그먼트) */
   .l-seg {
     display:inline-flex; background:var(--panel-frosted); border:1px solid var(--seam);
-    border-radius:var(--r-info); padding:2px; gap:2px; align-self:flex-start;
+    border-radius:var(--r-info); padding:2px; gap:2px; flex:none; white-space:nowrap;
   }
   .l-seg button {
     border:1px solid transparent; background:none; font:inherit; font-size:11px; color:var(--ink-muted);
-    padding:3px 10px; border-radius:6px; cursor:pointer;
+    padding:3px 9px; border-radius:6px; cursor:pointer; white-space:nowrap; flex:none;
   }
   .l-seg button.on {
     background:var(--panel-lit); color:var(--ink-strong); font-weight:500;
     border-color:var(--seam); box-shadow:0 1px 0 var(--relief-mid);
   }
 
-  /* 후보 A: 전면 계기판 숫자판 + 상태 점 (색 알약 없음) + 아래 줄눈 텍스트 행동 줄 */
+  /* 후보 A: 전면 계기판 숫자판 + 상태 점 + 우측 하단 '수정' + 아래 줄눈 '반납->' */
   .lc-A { display:flex; flex-direction:column; gap:7px; }
-  .lc-A .top-row { display:flex; align-items:flex-start; gap:9px; }
-  .lc-A .mid { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+  .lc-A .top-row { display:flex; align-items:stretch; gap:9px; }
+  .lc-A .mid { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:2px; }
   .lc-A .dday-box {
     flex:none; text-align:right; display:flex; flex-direction:column; align-items:flex-end; justify-content:center;
-    padding-left:6px; border-left:1px solid var(--seam); min-width:58px;
+    padding-left:8px; border-left:1px solid var(--seam); min-width:60px; gap:2px; white-space:nowrap;
   }
-  .lc-A .dday-num { font-size:13px; font-weight:500; letter-spacing:.08em; color:var(--ink-strong); line-height:1.15; }
+  .lc-A .dday-num { font-size:13px; font-weight:500; letter-spacing:.06em; color:var(--ink-strong); line-height:1.1; white-space:nowrap; }
   .lc-A .dday-num.over { color:var(--loan-out); }
   .lc-A .dday-num.norm { color:var(--ink-soft); }
-  .lc-A .dday-st { display:inline-flex; align-items:center; gap:3.5px; font-size:9.5px; font-weight:500; color:var(--ink-muted); margin-top:2px; }
+  .lc-A .dday-st { display:inline-flex; align-items:center; gap:3.5px; font-size:9.5px; font-weight:500; color:var(--ink-muted); line-height:1.2; white-space:nowrap; }
+  .lc-A .dday-edit {
+    background:none; border:0; padding:1px 0 0; margin:0;
+    font:inherit; font-size:9.5px; font-weight:500; color:var(--ink-strong);
+    line-height:1.2; cursor:pointer; white-space:nowrap;
+  }
   .lc-A .dot { width:6px; height:6px; border-radius:50%; background:var(--surface3); flex:none; }
   .lc-A .dot.over { background:var(--loan-out); }
   .lc-A .dot.urg { background:var(--ink-strong); }
   .lc-A .dot.soon { background:var(--fill1); border:1px solid var(--seam); }
   .lc-A .act-bar {
-    display:flex; justify-content:space-between; align-items:center;
-    padding-top:6px; border-top:1px solid var(--seam);
+    display:flex; justify-content:space-between; align-items:center; gap:8px;
+    padding-top:6px; border-top:1px solid var(--seam); flex-wrap:nowrap; white-space:nowrap;
   }
-  .lc-A .act-links { display:flex; gap:12px; align-items:center; }
+  .lc-A .act-links { display:flex; gap:10px; align-items:center; flex:none; white-space:nowrap; }
 
   /* 후보 B: 연체·당일만 작은 상태 칩(곡률 9), D-2·D-8은 순수 계기판 + 평면 보조 버튼 */
   .lc-B { display:flex; flex-direction:column; gap:7px; }
@@ -164,28 +171,28 @@
   .lc-B .mid { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
   .lc-B .chip-over {
     background:var(--loan-out); color:var(--paper); border-radius:var(--r-info);
-    padding:3px 7px; font-size:9.5px; font-weight:500; letter-spacing:.04em; flex:none;
+    padding:3px 7px; font-size:9.5px; font-weight:500; letter-spacing:.04em; flex:none; white-space:nowrap;
   }
   .lc-B .chip-urg {
     background:var(--ink-strong); color:var(--paper); border-radius:var(--r-info);
-    padding:3px 7px; font-size:9.5px; font-weight:500; letter-spacing:.04em; flex:none;
+    padding:3px 7px; font-size:9.5px; font-weight:500; letter-spacing:.04em; flex:none; white-space:nowrap;
   }
   .lc-B .gauge-dday {
     flex:none; text-align:right; padding:3px 6px; border:1px solid var(--seam);
-    border-radius:var(--r-info); background:var(--panel-frosted);
+    border-radius:var(--r-info); background:var(--panel-frosted); white-space:nowrap;
   }
-  .lc-B .act-row { display:flex; justify-content:flex-end; gap:6px; }
+  .lc-B .act-row { display:flex; justify-content:flex-end; gap:6px; white-space:nowrap; }
 
   /* 후보 C: 계약 M8·M9 4단계 알약 그대로 + 무광 카드(곡률 9)·계기판 날짜 줄 */
   .lc-C { display:flex; flex-direction:column; gap:7px; }
   .lc-C .top-row { display:flex; align-items:center; gap:9px; }
   .lc-C .mid { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
-  .lc-C .pill { border-radius:var(--r-pill); padding:3px 9px; font-size:10px; font-weight:500; flex:none; }
+  .lc-C .pill { border-radius:var(--r-pill); padding:3px 9px; font-size:10px; font-weight:500; flex:none; white-space:nowrap; }
   .lc-C .pill.over { background:var(--loan-out); color:var(--paper); }
   .lc-C .pill.urg { background:var(--ink-strong); color:var(--paper); }
   .lc-C .pill.soon { background:var(--fill1); color:var(--text); }
   .lc-C .pill.norm { background:var(--surface2); color:var(--text); }
-  .lc-C .act-row { display:flex; justify-content:flex-end; gap:6px; }
+  .lc-C .act-row { display:flex; justify-content:flex-end; gap:6px; white-space:nowrap; }
 
   /* 하단 시트·다이얼로그 오버레이 */
   .sheet-dim { position:absolute; inset:0; background:var(--shadow-soft); display:flex; flex-direction:column; justify-content:flex-end; z-index:10; }
@@ -355,11 +362,11 @@
 </section>
 
 <!-- ===== ② 중심 요소 1: 대출·반납 반납일 계기판 표시와 카드 구성 ===== -->
-<section class="element" id="el-loans-dday" data-chosen="">
-  <h2>정할 것 1. 대출·반납(<code>/loans</code>)에서 반납일·D-day를 계기판 목소리로 어디까지 바꿀까 <span class="status">결정 전</span></h2>
+<section class="element" id="el-loans-dday" data-chosen="A">
+  <h2>정할 것 1. 대출·반납(<code>/loans</code>)에서 반납일·D-day를 계기판 목소리로 어디까지 바꿀까 <span class="status">확인 — 후보 A (압축·1줄 고정)</span></h2>
   <div class="flow">
     <b>정해진 것.</b> 유리판 바탕(<code>panelFrosted</code>), 구역 제목 <code>내 대출</code>·<code>빌릴 예정</code>(<code>type.title</code> 22/400 <code>inkSoft</code>), 무광 카드(<code>panelLit</code> + 1px 줄눈 + 2px 받침, 곡률 9), 그리고 <code>"빌린 책"</code>/<code>"지난 대출"</code> 전환 탭에서 진한 검정 채움(<code>inkStrong</code>)을 빼는 것은 레시피 그대로예요.<br>
-    <b>정할 것.</b> 카드 오른쪽의 <b>남은 날(<code>연체 2일</code> · <code>오늘 반납</code> · <code>D-2</code> · <code>D-8</code>)과 대출·예정 날짜 줄</b>을 계기판 목소리(<code>type.gauge</code>)로 어디까지 바꿀지 세 후보를 비교해 주세요.
+    <b>채택(D 결정): 후보 A 압축형</b> — ① 상단 안내 <code>알림은 앱에서만 와요</code> 1줄 ② 오른쪽 세로 줄눈 칸의 <code>● 연체 2일</code>(상태 줄) 바로 밑에 같은 글자 크기·두께(500)로 <code>수정</code> 배치 ③ 아래 줄눈 행동은 <code>반납-&gt;</code>로 압축 ④ 기존에 한 줄이던 모든 버튼·섹션·날짜·상태는 2줄 줄바꿈 금지(1줄 고정). 아래 선택 상자로 다른 후보도 다시 볼 수 있어요.
   </div>
   <div class="state-bar" id="loansStateBar">
     <span>화면 상태 함께 바꿔 보기:</span>
@@ -368,15 +375,15 @@
     <button type="button" aria-pressed="false" data-lstate="sheet">기한 수정 시트 열림</button>
   </div>
   <div class="pick">다시 보기: <select data-for="el-loans-dday">
-    <option value="A">후보 A — 전면 계기판 숫자판 + 상태 점(색 알약 없음) + 줄눈 텍스트 행동 (추천)</option>
+    <option value="A">후보 A — 전면 계기판 숫자판 + 상태 점 밑 '수정' + 줄눈 '반납-&gt;' (채택)</option>
     <option value="B">후보 B — 연체·당일만 작은 상태 칩(곡률 9), D-2·D-8은 계기판 글자 + 보조 버튼</option>
     <option value="C">후보 C — 기존 4단계 색 알약 유지 + 무광 카드(곡률 9)·계기판 날짜 줄만 적용</option>
   </select></div>
 
   <div class="cands">
-    <!-- 후보 A (추천) -->
+    <!-- 후보 A (추천·채택) -->
     <article class="cand recommended" data-id="A">
-      <h3>후보 A — 전면 계기판 숫자판 + 상태 점 + 줄눈 행동 <span class="badge">추천</span> <span class="badge-prop">계약 M8·M9 제안</span></h3>
+      <h3>후보 A — 전면 계기판 숫자판 + 상태 점 밑 '수정' + 줄눈 '반납-&gt;' <span class="badge">추천</span> <span class="badge-prop">계약 M8·M9·E6~E8·T9 제안</span></h3>
       <div class="phone">
         <div class="hd"><span class="rvl"></span><span class="en">LOANS</span><span class="rvr"></span></div>
         <!-- 빌린 책 화면 -->
@@ -389,7 +396,7 @@
                 <button type="button" data-open="returned">지난 대출</button>
               </div>
             </div>
-            <div class="gauge">MOBILE REMINDERS ONLY · 알림은 휴대폰 앱에서만 와요</div>
+            <div class="gauge">알림은 앱에서만 와요</div>
 
             <!-- 1. 연체 -->
             <div class="m-card lc-A">
@@ -403,13 +410,13 @@
                 <div class="dday-box">
                   <span class="dday-num over">+02D</span>
                   <span class="dday-st"><i class="dot over"></i>연체 2일</span>
+                  <button type="button" class="dday-edit" data-open="sheet">수정</button>
                 </div>
               </div>
               <div class="act-bar">
                 <span class="gauge">OVERDUE · 기한 지남</span>
                 <div class="act-links">
-                  <button type="button" class="btn-link" data-open="sheet">기한 수정</button>
-                  <button type="button" class="btn-link" data-show="dlg-A">반납했어요 →</button>
+                  <button type="button" class="btn-link" data-show="dlg-A">반납-&gt;</button>
                 </div>
               </div>
             </div>
@@ -426,13 +433,13 @@
                 <div class="dday-box">
                   <span class="dday-num">D-DAY</span>
                   <span class="dday-st"><i class="dot urg"></i>오늘 반납</span>
+                  <button type="button" class="dday-edit" data-open="sheet">수정</button>
                 </div>
               </div>
               <div class="act-bar">
                 <span class="gauge">ASSUMED +14D</span>
                 <div class="act-links">
-                  <button type="button" class="btn-link" data-open="sheet">기한 수정</button>
-                  <button type="button" class="btn-link" data-show="dlg-A">반납했어요 →</button>
+                  <button type="button" class="btn-link" data-show="dlg-A">반납-&gt;</button>
                 </div>
               </div>
             </div>
@@ -449,13 +456,13 @@
                 <div class="dday-box">
                   <span class="dday-num">D-02</span>
                   <span class="dday-st"><i class="dot soon"></i>임박</span>
+                  <button type="button" class="dday-edit" data-open="sheet">수정</button>
                 </div>
               </div>
               <div class="act-bar">
                 <span class="gauge">ASSUMED +14D</span>
                 <div class="act-links">
-                  <button type="button" class="btn-link" data-open="sheet">기한 수정</button>
-                  <button type="button" class="btn-link" data-show="dlg-A">반납했어요 →</button>
+                  <button type="button" class="btn-link" data-show="dlg-A">반납-&gt;</button>
                 </div>
               </div>
             </div>
@@ -472,13 +479,13 @@
                 <div class="dday-box">
                   <span class="dday-num norm">D-08</span>
                   <span class="dday-st"><i class="dot"></i>여유</span>
+                  <button type="button" class="dday-edit" data-open="sheet">수정</button>
                 </div>
               </div>
               <div class="act-bar">
                 <span class="gauge">ASSUMED +14D</span>
                 <div class="act-links">
-                  <button type="button" class="btn-link" data-open="sheet">기한 수정</button>
-                  <button type="button" class="btn-link" data-show="dlg-A">반납했어요 →</button>
+                  <button type="button" class="btn-link" data-show="dlg-A">반납-&gt;</button>
                 </div>
               </div>
             </div>
@@ -498,7 +505,7 @@
               </div>
               <div class="act-bar">
                 <button type="button" class="btn-link" style="color:var(--ink-muted)">빼기</button>
-                <button type="button" class="btn-link">빌렸어요 →</button>
+                <button type="button" class="btn-link">빌렸어요-&gt;</button>
               </div>
             </div>
           </div>
@@ -508,7 +515,7 @@
             <div class="dlg-box">
               <div class="gauge">CONFIRM RETURN</div>
               <div class="t-sec">이 책을 반납했나요?</div>
-              <div class="t-sub" style="color:var(--text)">소년이 온다을 지난 대출로 옮길게요.</div>
+              <div class="t-sub wrap" style="color:var(--text)">소년이 온다을 지난 대출로 옮길게요.</div>
               <div style="display:flex;justify-content:flex-end;gap:6px;margin-top:4px">
                 <button type="button" class="btn-sec" data-close="dlg-A">취소</button>
                 <button type="button" class="btn-pri" data-close="dlg-A" style="height:30px">반납했어요</button>
@@ -573,16 +580,16 @@
 
         <div class="tbar"><span>홈</span><span class="on">대출·반납</span><span>내 정보</span></div>
       </div>
-      <p>노랑(<code>fill1</code>)·남색(<code>inkStrong</code>) 배경 채움 알약을 모두 걷어내고, 오른쪽 세로 줄눈 칸에 <b>계기판 숫자(<code>+02D</code> · <code>D-DAY</code> · <code>D-02</code> · <code>D-08</code>) + 작은 상태 점(소장 카드와 같은 6px 원) + 한글 보조 표기(<code>연체 2일</code> · <code>오늘 반납</code>)</b>를 뒀어요. 카드 안 행동도 레시피대로 아래 줄눈 텍스트 링크(<code>기한 수정</code> · <code>반납했어요 →</code>)예요.</p>
+      <p>노랑(<code>fill1</code>)·남색(<code>inkStrong</code>) 배경 채움 알약을 모두 걷어내고, 오른쪽 세로 줄눈 칸에 <b>계기판 숫자(<code>+02D</code> · <code>D-DAY</code> · <code>D-02</code> · <code>D-08</code>) + 상태 점(<code>● 연체 2일</code> · <code>● 오늘 반납</code>) + 그 바로 밑에 같은 크기·두께(500)의 <code>수정</code> 버튼</b>을 뒀어요. 아래 줄눈에는 왼쪽 상태 표찰과 오른쪽 <code>반납-&gt;</code>만 한 줄로 깔끔하게 놓여요.</p>
       <span class="lbl">누르면 이렇게 이어져요</span>
-      <p>카드 아래 <code>기한 수정</code>을 누르면 곡률 9 무광 시트(<code>DueDateSheet</code>)가 올라오고, <code>반납했어요 →</code>를 누르면 반납 확인 창이 떠서 <code>지난 대출</code> 탭으로 옮겨요.</p>
+      <p>오른쪽 칸의 <code>수정</code>을 누르면 곡률 9 무광 시트(<code>DueDateSheet</code>)가 올라오고, 아래 줄눈의 <code>반납-&gt;</code>를 누르면 반납 확인 창이 떠서 <code>지난 대출</code> 탭으로 옮겨요.</p>
       <span class="lbl">화면을 열어야 보이는 것</span>
       <ul>
-        <li>배경 채움 알약이 0개라 규칙 5(색은 창 안에만)·규칙 7(무거운 표식은 하나만)을 완벽히 지킴</li>
-        <li>날짜 줄(<code>2026.11.04 — 11.18 · 추정</code>)이 계기판 목소리라 390 폭에서도 두 줄로 깨지지 않고 한 줄에 들어감</li>
+        <li><code>수정</code>이 오른쪽 D-day 칸 아래로 올라가고 아래는 <code>반납-&gt;</code>로 줄어 모든 버튼·섹션·날짜가 1줄로 유지됨</li>
+        <li>상단 안내는 <code>알림은 앱에서만 와요</code>로 압축돼 390 폭에서도 1줄 고정</li>
       </ul>
       <span class="lbl">얻는 것 / 포기하는 것</span>
-      <p>노랑·검정 알약 덩어리가 사라져 책 상세 소장 카드·홈 파사드와 한 벌의 계기판 인상이 돼요. / 계약 <code>loan-assistant.md</code> M8·M9의 <code>ddayColors</code>(배경 채움 알약) 설명을 점+계기판 표기로 개정해야 해요(제안).</p>
+      <p>노랑·검정 알약 덩어리가 사라지고 2줄 줄바꿈 없이 한 줄로 정돈돼요. / 계약 <code>loan-assistant.md</code> M8·M9·E6·E8·T9 문구(<code>알림은 앱에서만 와요</code>, <code>수정</code>, <code>반납-&gt;</code>)를 함께 맞춰야 해요(제안).</p>
       <span class="lbl">표준 근거</span>
       <p>표준 근거: P-32 줄 목록(썸네일 + 두 줄 글자) (iOS 메일, 당근 목록)</p>
       <p><b>추천 이유:</b> DESIGN.md 규칙 4(날짜·남은 날은 계기판 목소리)·규칙 5(버튼·배지에 <code>fill1</code> 노랑 채움 금지)·레시피(카드 안 행동은 텍스트 링크) 세 가지를 한 번에 가장 순수하게 만족해요.</p>
@@ -878,11 +885,11 @@
 </section>
 
 <!-- ===== ③ 중심 요소 2: 내 정보 칸 제목·프로필 머리·목록 구성 ===== -->
-<section class="element" id="el-me-layout" data-chosen="">
-  <h2>정할 것 2. 내 정보(<code>/me</code>)의 위쪽 프로필·3탭 머리 구성과 게시물 모음 목록 표현 <span class="status">결정 전</span></h2>
+<section class="element" id="el-me-layout" data-chosen="A">
+  <h2>정할 것 2. 내 정보(<code>/me</code>)의 위쪽 프로필·3탭 머리 구성과 게시물 모음 목록 표현 <span class="status">확인 — 후보 A</span></h2>
   <div class="flow">
     <b>정해진 것.</b> MY-1에서 확정된 큰 틀(위 왼쪽 프로필 사진 + 옆에 이름·소개·<code>프로필 수정</code>, 오른쪽 위 <code>⚙</code> 설정, 아래로 내리면 프로필은 올라가고 <code>내 게시물</code>·<code>좋아요</code>·<code>북마크</code> 3탭 바가 맨 위에 붙음, 2열 메이슨리 게시물 카드, 길게 누르기/<code>⋯</code> 메뉴에서 취소 시 4초 흐림 + <code>되돌리기</code>)은 그대로 유지해요.<br>
-    <b>정할 것.</b> 지금 어두운 <code>bg</code>로 분리돼 있는 <b>위쪽 프로필·3탭 바의 재질·표찰 구성과 아래 수집 카드 목록의 표현</b>을 세 후보로 비교해 주세요. (휴대폰 안의 <code>좋아요</code> 탭이나 카드 위 <code>⋯</code> 버튼을 눌러 4초 흐림·되돌리기도 확인해 보세요.)
+    <b>채택(D 결정): 후보 A 유리판 일체형</b> — 프로필과 3탭 바의 배경을 <code>panelFrosted</code> 유리판으로 통일하고, 닉네임 <code>22/400 inkSoft</code> + 위 <code>MEMBER · PROFILE</code> 계기판, 아래는 순수 이미지 <code>PostCard</code>(곡률 18) 2열로 보여 줘요. 아래 선택 상자로 다른 후보도 다시 볼 수 있어요.
   </div>
   <div class="state-bar" id="meStateBar">
     <span>내 정보 상태 함께 바꿔 보기:</span>
@@ -890,7 +897,7 @@
     <button type="button" aria-pressed="false" data-mstate="sticky">아래로 내렸을 때 (3탭 바 상단 고정 + 취소 흐림·되돌리기)</button>
   </div>
   <div class="pick">다시 보기: <select data-for="el-me-layout">
-    <option value="A">후보 A — 유리판 일체형(panelFrosted 통일 + 22/400 이름·계기판 + 순수 이미지 2열) (추천)</option>
+    <option value="A">후보 A — 유리판 일체형(panelFrosted 통일 + 22/400 이름·계기판 + 순수 이미지 2열) (채택)</option>
     <option value="B">후보 B — 상단 밝은 무광 판(panelLit) 도크 + 3탭 영문·한글 2단 표찰(POSTS·LIKES·SAVED)</option>
     <option value="C">후보 C — 유리판 머리 + 수집 카드 아래마다 계기판 출처 줄(도서관 · 날짜) 덧붙이기</option>
   </select></div>
@@ -1290,23 +1297,23 @@
       <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
       <tr data-el="el-loans-dday">
         <td>1. 대출·반납 반납일·D-day 계기판 표시와 카드 구성</td>
-        <td>— (추천: 후보 A 전면 계기판 숫자판 + 상태 점 + 아래 줄눈 텍스트 행동)</td>
-        <td>—</td>
-        <td>—</td>
-        <td>(받기 전)</td>
-        <td>무광 카드(<code>panelLit</code> + 1px <code>seamHairline</code> + 아래 2px <code>reliefBottomMid</code>, 곡률 9 <code>radii.infoCard</code>). 오른쪽 세로 줄눈 칸에 계기판 숫자(<code>+02D</code>·<code>D-DAY</code>·<code>D-02</code>·<code>D-08</code>) + 6px 상태 점(<code>loanOut</code>·<code>inkStrong</code>·<code>fill1</code>·<code>surface3</code>) + 한글 상태(<code>연체 N일</code>·<code>오늘 반납</code>), 날짜는 <code>type.gauge</code> 분리, 아래 줄눈에 텍스트 행동(<code>기한 수정</code> · <code>반납했어요 →</code>)</td>
-        <td><code>/loans</code> 진입 → 빌린 책 / 지난 대출 전환 → <code>기한 수정</code> 시트 또는 <code>반납했어요</code> 확인창</td>
-        <td><span class="st">결정 전</span></td>
+        <td>후보 A (압축·1줄 고정) — 전면 계기판 숫자판 + 상태 점 밑 <code>수정</code> + 아래 줄눈 <code>반납-&gt;</code> + 상단 <code>알림은 앱에서만 와요</code></td>
+        <td>없음(받지 않음)</td>
+        <td>후보 B(연체·당일만 칩), 후보 C(기존 4단계 색 알약)</td>
+        <td>D 결정: "1 - A (내용만 정리 압축하자)", "MOBILE REMINDERS ONLY · 알림은 휴대폰 앱에서만 와요 -> 알림은 앱에서만 와요", "기한 수정 -> 수정 (+o 연체 2일 여기 밑에 "수정"만 넣고 글자 크기 맞추고 두께만 지금처럼 해서 시안 보여줘)", "반납했어요 -> 반납->", "기존에 한 줄 처리되던 버튼, 섹션은 어떻게 하든 한 줄로 표기되도록 한다. 첨부파일처럼 2줄로 보이기 금지"</td>
+        <td>무광 카드(<code>panelLit</code> + 1px <code>seamHairline</code> + 아래 2px <code>reliefBottomMid</code>, 곡률 9 <code>radii.infoCard</code>). 오른쪽 세로 줄눈 칸에 계기판 숫자(<code>+02D</code>·<code>D-DAY</code>·<code>D-02</code>·<code>D-08</code>) + 6px 상태 점과 한글 상태(<code>연체 N일</code>·<code>오늘 반납</code>·<code>임박</code>·<code>여유</code>, 9.5/500) + 바로 밑 같은 크기·두께(500, <code>inkStrong</code>)로 <code>수정</code> 버튼. 날짜는 <code>type.gauge</code> 1줄 고정, 아래 줄눈 왼쪽에 상태 계기판·오른쪽에 <code>반납-&gt;</code>(예정 카드는 <code>빼기</code> · <code>빌렸어요-&gt;</code>). 모든 버튼·섹션 머리·날짜 줄 2줄 줄바꿈 금지(1줄 고정)</td>
+        <td><code>/loans</code> 진입 → 빌린 책 / 지난 대출 전환 → 오른쪽 칸 <code>수정</code>으로 기한 수정 시트 또는 아래 <code>반납-&gt;</code>로 반납 확인창</td>
+        <td><span class="st">확인</span></td>
       </tr>
       <tr data-el="el-me-layout">
         <td>2. 내 정보 프로필·3탭 머리 구성과 수집 목록 표현</td>
-        <td>— (추천: 후보 A 유리판 일체형 <code>panelFrosted</code> 통일 + 22/400 이름·계기판 + 순수 이미지 2열)</td>
-        <td>—</td>
-        <td>—</td>
-        <td>(받기 전)</td>
+        <td>후보 A — 유리판 일체형(<code>panelFrosted</code> 통일 + 22/400 이름·계기판 + 순수 이미지 2열)</td>
+        <td>없음(받지 않음)</td>
+        <td>후보 B(상단 밝은 무광 판 도크 + 2단 탭), 후보 C(카드 아래 도서관·날짜 캡션 줄)</td>
+        <td>D 결정: "2 - A"</td>
         <td><code>ProfileHeader</code>·<code>CollectionTabs</code> 배경을 <code>C.bg</code>에서 <code>panelFrosted</code>로 통일, 닉네임 <code>type.title</code>(22/400 <code>inkSoft</code>) + 위 <code>MEMBER · PROFILE</code>(<code>type.gauge</code>), 아바타 64 무광 판 원, <code>프로필 수정</code>·<code>⚙</code>는 평면 보조 버튼(<code>actionColors().secondary</code>), 3탭 바는 1px <code>seamHairline</code> + 2px <code>inkStrong</code> 밑줄, 아래는 <code>PostCard</code>(곡률 18) 2열 메이슨리</td>
         <td><code>/me</code> 진입 → 위 프로필 + 3탭 전환 → 스크롤 시 3탭 상단 고정 → 카드 누르면 상세 / 길게 누르면 메뉴·4초 흐림 되돌리기</td>
-        <td><span class="st">결정 전</span></td>
+        <td><span class="st">확인</span></td>
       </tr>
       <tr>
         <td><code>/loans</code> 세그먼트 탭 (<code>빌린 책</code> / <code>지난 대출</code>)</td>
