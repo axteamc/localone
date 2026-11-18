@@ -209,18 +209,18 @@
 <main>
 
 <!-- ===== 중심 요소 1: 넓은 화면 ===== -->
-<section class="element" id="el-wide" data-chosen="AC">
+<section class="element" id="el-wide" data-chosen="A">
   <h2>정할 것 1. 넓은 화면(노트북 웹 시연)에서 파사드를 어떻게 둘까 <span class="status">확인</span></h2>
   <div class="flow"><b>지금.</b> 판은 화면 폭을 다 쓰고, 격자 4칸과 블록(폭 44%)이 같이 늘어나요. 2400px 화면에서는 블록 하나가 1000px가 넘어요. 아래 세 화면은 모두 1280×624 웹 화면을 줄여 그렸어요(머리·탭은 정할 것 2의 추천안 A로 임시 표시).</div>
   <div class="pick">다시 보기: <select data-for="el-wide">
-    <option value="AC">채택 — A+C 벽 격자에 걸린 앱</option>
+    <option value="AC">탈락 — A+C</option>
     <option value="A">후보 A — 앱 폭 480 칼럼</option>
     <option value="B">후보 B — 판 폭 상한 960</option>
     <option value="C">후보 C — 격자 칸 반복(블록 폭 고정)</option>
   </select></div>
   <div class="cands wide">
     <article class="cand" data-id="AC">
-      <h3>채택 — A+C: 같은 격자가 화면을 채우고, 패널만 A만큼</h3>
+      <h3>탈락 — A+C 2차: 같은 격자가 화면을 채우고, 패널만 A만큼</h3>
       <div class="bwrap"><div class="browser"><div class="vp" data-wide="AC"></div></div></div>
       <p>파사드 격자(칸 120×120, 리벳 포함)와 룰러가 C처럼 <b>화면 전체를 같은 질감으로</b> 채워요. 벽과 파사드 구간의 구분이 없어요. 블록·머리·검색·아래 창·탭만 A처럼 <b>폭 480 안에만</b> 있어요.</p>
       <ul><li>경계: 패널(머리+검색 띠, 아래 창+탭)에만 1px 줄눈 + 아주 옅은 그림자(`rgba(28,30,36,.09)`, 6px 아래 18px 번짐). 후보 A(.22, 30px)보다 옅게</li>
@@ -492,7 +492,7 @@
   <h2>명세</h2>
   <div class="wide"><table>
     <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
-    <tr data-el="el-wide"><td>1. 넓은 화면</td><td>A+C 벽 격자에 걸린 앱</td><td>없음</td><td>A 단독(벽과 앱이 따로), B 판 폭 960, C 단독(판 전체 폭)</td><td>"A+C : 앱과 외부 격자의 경계를 더 구분감 없게 하고 색감도 조금 더 비슷하게 맞춰서 격자 어딘가에 걸려있는 걸 보는 느낌으로" → 2차: "C처럼 동일한 격자가 다 채워졌는데 나머지 섹션과 파사드가 존재하는 구간은 A만큼만 존재 … 앱과 외부 격자는 원래 후보 A처럼 약간의 그림자만 주는데, 조금 더 옅게"</td><td>파사드 격자 칸 120×120(리벳 포함)이 화면 전체에 같은 질감으로(가운데 줄눈 정렬), 룰러 화면 끝까지. 블록·패널(머리+검색, 아래 창+탭)은 폭 480 = 격자 4칸. 패널 경계 1px `seamHairline` + 그림자 `rgba(28,30,36,.09)` 0 6px 18px. 480 이하는 지금과 같음</td><td>휴대폰과 같음</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-wide"><td>1. 넓은 화면</td><td>A 앱 폭 480 칼럼(바깥 옅은 줄눈 격자, 리벳 없음)</td><td>없음</td><td>A+C 1차·2차(리벳 격자가 화면 전체 — "너무 공격적이고 차갑게 느껴져"), B 판 폭 960, C 단독</td><td>"A+C : 앱과 외부 격자의 경계를 더 구분감 없게 하고 색감도 조금 더 비슷하게 맞춰서 격자 어딘가에 걸려있는 걸 보는 느낌으로" → 2차: "C처럼 동일한 격자가 다 채워졌는데 나머지 섹션과 파사드가 존재하는 구간은 A만큼만 존재 … 앱과 외부 격자는 원래 후보 A처럼 약간의 그림자만 주는데, 조금 더 옅게"</td><td>파사드 격자 칸 120×120(리벳 포함)이 화면 전체에 같은 질감으로(가운데 줄눈 정렬), 룰러 화면 끝까지. 블록·패널(머리+검색, 아래 창+탭)은 폭 480 = 격자 4칸. 패널 경계 1px `seamHairline` + 그림자 `rgba(28,30,36,.09)` 0 6px 18px. 480 이하는 지금과 같음</td><td>휴대폰과 같음</td><td><span class="st">확인</span></td></tr>
     <tr data-el="el-frame"><td>2. 머리·검색·탭 재질</td><td>A 같은 유리판 + 줄눈</td><td>없음</td><td>B 머리 없이 판이 위까지, C 진한 받침 띠</td><td>"후보 A로 하고 머리 띠 글자를 도형화 혹은 영어로 작성"</td><td>띠 바탕 `panelFrosted` #E9EAE9, 경계 1px `seamHairline` #C8C9C8 + 밝은 선 `seamHighlight`, 지금 탭 2px `inkStrong`, 아래 창 `panelLit` 곡률 3, 다른 화면 바탕 줄눈 격자 옅게</td><td>탭 → 같은 재질 화면</td><td><span class="st">확인</span></td></tr>
     <tr data-el="el-label"><td>2-1. 머리 띠 표찰</td><td>① 영어 표찰(HOME · LOANS · MY, 뒤로가기 화면은 BOOK · LIBRARY)</td><td>없음</td><td>② 도형만, ③ 도형 + 영어</td><td>"후보 1 영어만"</td><td>① 10px 자간 +32% 500 `inkMuted` · ② 아치·책등 도형 14×18, 1.5px `inkStrong` · ③ 둘 다, 띠 양 끝 리벳</td><td>탭 → 표찰만 바뀜</td><td><span class="st">확인</span></td></tr>
     <tr data-el="el-tweight"><td>3-1. 제목 굵기</td><td>400</td><td>없음</td><td>300, 350, 500</td><td>"글자 2단계 : 400"</td><td>제목 400(Regular), 크기 20~22·`inkSoft` 그대로, 한 줄 같은 굵기</td><td>—</td><td><span class="st">확인</span></td></tr>
