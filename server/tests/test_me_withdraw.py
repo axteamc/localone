@@ -306,3 +306,185 @@ def test_write_committed_before_withdraw_is_cleaned(auth, db_engine, book):
                 tx.commit()
             assert future.result(timeout=5)["status"] == "withdrawn"
     assert _plans(db_engine, A) == 0
+
+
+# ── M2-0-P5: M2 표(core.md M2-0 Z10·P5 세부) — 0012 방명록 D+B, 0012 모임 D+C, 0011·0015 D ──
+
+USER_C_ID = "00000000-0000-4000-8000-00000000000c"
+
+
+def _one(engine: Engine, sql: str, **params: Any) -> Any:
+    with engine.begin() as conn:
+        return conn.execute(text(sql), params).scalar_one()
+
+
+def _guestbook(engine: Engine, user: UUID, status: str = "published") -> str:
+    return str(_one(engine, "INSERT INTO guestbook_entries (user_id, library_id, body, status, client_request_id) "
+                            "VALUES (:u, 101, '다녀가요', :s, gen_random_uuid()) RETURNING id", u=user, s=status))
+
+
+def _club(engine: Engine, host: UUID, status: str = "open", starts: str | None = None) -> str:
+    """starts: SQL 식(예: "now() + interval '1 day'"), None이면 시작 미정."""
+    return str(_one(
+        engine,
+        "INSERT INTO clubs (library_id, host_id, name, status, cancel_reason, starts_at, client_request_id) "
+        f"VALUES (101, :h, '정독 북클럽', :s, :cr, {starts or 'NULL'}, gen_random_uuid()) RETURNING id",
+        h=host, s=status, cr="먼저 취소" if status == "canceled" else None))
+
+
+def _join(engine: Engine, club_id: str, user: UUID, state: str = "joined") -> None:
+    with engine.begin() as conn:
+        conn.execute(text("INSERT INTO club_participations (club_id, user_id, state) VALUES (:c, :u, :s)"),
+                     {"c": club_id, "u": user, "s": state})
+
+
+def _comment(engine: Engine, club_id: str, user: UUID, status: str = "published") -> str:
+    return str(_one(engine, "INSERT INTO club_comments (club_id, user_id, body, status, client_request_id) "
+                            "VALUES (:c, :u, '댓글', :s, gen_random_uuid()) RETURNING id",
+                    c=club_id, u=user, s=status))
+
+
+def _club_row(engine: Engine, club_id: str) -> tuple[str, str | None]:
+    with engine.connect() as conn:
+        row = conn.execute(text("SELECT status, cancel_reason FROM clubs WHERE id = :c"), {"c": club_id}).one()
+    return row[0], row[1]
+
+
+def _state(engine: Engine, club_id: str, user: UUID) -> str:
+    return scalar(engine, "SELECT state FROM club_participations WHERE club_id = :c AND user_id = :u",
+                  c=club_id, u=user)
+
+
+def _inbox(engine: Engine, user: UUID) -> list[tuple[str, dict]]:
+    with engine.connect() as conn:
+        rows = conn.execute(
+            text("SELECT kind, target FROM inbox_items WHERE recipient_id = :u ORDER BY created_at, id"),
+            {"u": user}).all()
+    return [(r[0], r[1]) for r in rows]
+
+
+def test_withdraw_steps_follow_z10_order():
+    """순서 기본값(core P5 세부): ① 공개 철회(posts → 방명록 → 참가 → 댓글 → 모임) ② 개인 삭제
+    (반응·북마크 → 대출 → 예정 → 알림함 → 설정) ③ 프로필. 알림함 삭제는 모임 취소 안내 뒤."""
+    names = [step.__name__ for step in me_router.WITHDRAWAL_STEPS]
+    assert names == [
+        "_withdraw_published_posts",
+        "_withdraw_published_guestbook",
+        "_leave_joined_clubs",
+        "_delete_published_club_comments",
+        "_cancel_unstarted_hosted_clubs",
+        "_delete_own_reactions_and_bookmarks",
+        "_delete_own_loans",
+        "_delete_own_loan_plans",
+        "_delete_own_inbox_items",
+        "_delete_own_user_settings",
+        "_anonymize_profile",
+    ]
+
+
+def test_withdraw_cleans_m2_tables_in_order(client, auth, db_engine, public_reference_data):
+    """P5 필수: Z10 표마다 기대 상태. reading_log_id NULL 단언은 LOCAL-3·READ-1 머지 뒤 P5 후속."""
+    gb_mine, gb_theirs = _guestbook(db_engine, A), _guestbook(db_engine, B)
+    theirs_club = _club(db_engine, B, starts="now() + interval '1 day'")
+    _join(db_engine, theirs_club, A)
+    _join(db_engine, theirs_club, B)
+    cm_mine, cm_theirs = _comment(db_engine, theirs_club, A), _comment(db_engine, theirs_club, B)
+    my_club = _club(db_engine, A, starts="now() + interval '1 day'")
+    _join(db_engine, my_club, A)
+    _join(db_engine, my_club, B)
+    with db_engine.begin() as conn:
+        conn.execute(text("INSERT INTO inbox_items (recipient_id, kind, target, dedupe_key, title) VALUES "
+                          "(:a, 'club_next', '{}'::jsonb, 'k-a', 't'), (:b, 'club_next', '{}'::jsonb, 'k-b', 't')"),
+                     {"a": A, "b": B})
+        conn.execute(text("INSERT INTO user_settings (user_id, return_stats_consent) VALUES (:a, true), (:b, true)"),
+                     {"a": A, "b": B})
+
+    assert client.delete("/api/v1/me", headers=auth["A"]).status_code == 200
+
+    # 방명록 withdrawn, 남의 것 그대로
+    assert scalar(db_engine, "SELECT status FROM guestbook_entries WHERE id = :g", g=gb_mine) == "withdrawn"
+    assert scalar(db_engine, "SELECT status FROM guestbook_entries WHERE id = :g", g=gb_theirs) == "published"
+    # 참가 left, 남의 참가 그대로
+    assert _state(db_engine, theirs_club, A) == "left"
+    assert _state(db_engine, theirs_club, B) == "joined"
+    assert _state(db_engine, my_club, A) == "left"
+    # 댓글 deleted, 남의 댓글 그대로
+    assert scalar(db_engine, "SELECT status FROM club_comments WHERE id = :c", c=cm_mine) == "deleted"
+    assert scalar(db_engine, "SELECT status FROM club_comments WHERE id = :c", c=cm_theirs) == "published"
+    # 시작 전 만든 모임 canceled(사유 필수), 남의 모임 그대로
+    assert _club_row(db_engine, my_club) == ("canceled", "만든 사람이 탈퇴했어요")
+    assert _club_row(db_engine, theirs_club) == ("open", None)
+    # 알림함: 내 것 삭제. B에게는 원래 것 + 내 모임 취소 안내 1
+    assert _inbox(db_engine, A) == []
+    assert _inbox(db_engine, B) == [("club_next", {}), ("club_canceled", {"club_id": my_club})]
+    # 설정: 내 행만 삭제
+    assert scalar(db_engine, "SELECT count(*) FROM user_settings WHERE user_id = :u", u=A) == 0
+    assert scalar(db_engine, "SELECT count(*) FROM user_settings WHERE user_id = :u", u=B) == 1
+
+
+def test_withdraw_keeps_hidden_and_removed_m2_rows(client, auth, db_engine, public_reference_data):
+    """운영 숨김·내보냄은 기록이라 그대로(posts의 hidden과 같은 규칙)."""
+    gb_hidden = _guestbook(db_engine, A, "hidden")
+    club = _club(db_engine, B, starts="now() + interval '1 day'")
+    _join(db_engine, club, A, "removed")
+    cm_hidden = _comment(db_engine, club, A, "hidden")
+    assert client.delete("/api/v1/me", headers=auth["A"]).status_code == 200
+    assert scalar(db_engine, "SELECT status FROM guestbook_entries WHERE id = :g", g=gb_hidden) == "hidden"
+    assert _state(db_engine, club, A) == "removed"
+    assert scalar(db_engine, "SELECT status FROM club_comments WHERE id = :c", c=cm_hidden) == "hidden"
+
+
+def test_withdraw_cancels_only_unstarted_open_or_closed_hosted_clubs(client, auth, db_engine, public_reference_data):
+    undecided = _club(db_engine, A)  # 시작 미정 = 시작 전
+    closed_future = _club(db_engine, A, "closed", "now() + interval '1 day'")
+    started = _club(db_engine, A, starts="now() - interval '1 hour'")
+    hidden = _club(db_engine, A, "hidden", "now() + interval '1 day'")
+    canceled = _club(db_engine, A, "canceled", "now() + interval '1 day'")
+    for club in (undecided, started):
+        _join(db_engine, club, B)
+    assert client.delete("/api/v1/me", headers=auth["A"]).status_code == 200
+    assert _club_row(db_engine, undecided) == ("canceled", "만든 사람이 탈퇴했어요")
+    assert _club_row(db_engine, closed_future) == ("canceled", "만든 사람이 탈퇴했어요")
+    assert _club_row(db_engine, started) == ("open", None)  # 시작한 모임은 기록으로 남음
+    assert _club_row(db_engine, hidden) == ("hidden", None)
+    assert _club_row(db_engine, canceled) == ("canceled", "먼저 취소")
+    # 취소 안내는 실제로 취소된 모임의 남은 참가자에게만(시작한 모임 참가자 B에게 그 모임 안내 없음)
+    assert _inbox(db_engine, B) == [("club_canceled", {"club_id": undecided})]
+
+
+def test_withdraw_cancel_notice_skips_left_and_removed(client, auth, db_engine, public_reference_data, make_token):
+    h = {"Authorization": f"Bearer {make_token(sub=USER_C_ID)}"}
+    assert client.post("/api/v1/auth/session", headers=h).status_code == 200
+    club = _club(db_engine, A, starts="now() + interval '1 day'")
+    _join(db_engine, club, A)
+    _join(db_engine, club, B, "left")
+    _join(db_engine, club, UUID(USER_C_ID), "removed")
+    assert client.delete("/api/v1/me", headers=auth["A"]).status_code == 200
+    assert _club_row(db_engine, club)[0] == "canceled"
+    assert scalar(db_engine, "SELECT count(*) FROM inbox_items") == 0  # 남은 참가자 없음 → 안내 0
+
+
+def test_withdraw_keeps_operation_records(client, auth, db_engine, public_reference_data):
+    """신고·댓글 운영 요청·참가 제한·운영 기록·운영자 행은 남긴다(Z10). 탈퇴한 운영자는 /ops 404."""
+    club = _club(db_engine, B, starts="now() + interval '1 day'")
+    comment = _comment(db_engine, club, B)
+    with db_engine.begin() as conn:
+        p = {"a": A, "c": club, "m": comment}
+        conn.execute(text("INSERT INTO operators (user_id) VALUES (:a)"), p)
+        conn.execute(text("INSERT INTO reports (reporter_id, target_kind, target_id, reason) "
+                          "VALUES (:a, 'club', :c, 'spam')"), p)
+        conn.execute(text("INSERT INTO club_comment_requests (comment_id, requester_id, reason) "
+                          "VALUES (:m, :a, '부적절')"), p)
+        conn.execute(text("INSERT INTO participation_restrictions (user_id, reason_kind, source_id, reason_text) "
+                          "VALUES (:a, 'no_show', :c, '불참')"), p)
+        conn.execute(text("INSERT INTO moderation_actions (actor_id, action, target_kind, target_id, reason) "
+                          "VALUES (:a, 'hide', 'club', :c, '사유')"), p)
+    assert client.get("/api/v1/ops/reports", headers=auth["A"]).status_code == 200
+    assert client.delete("/api/v1/me", headers=auth["A"]).status_code == 200
+    for sql in ("SELECT count(*) FROM operators WHERE user_id = :u",
+                "SELECT count(*) FROM reports WHERE reporter_id = :u AND status = 'open'",
+                "SELECT count(*) FROM club_comment_requests WHERE requester_id = :u AND status = 'pending'",
+                "SELECT count(*) FROM participation_restrictions WHERE user_id = :u AND lifted_at IS NULL",
+                "SELECT count(*) FROM moderation_actions WHERE actor_id = :u"):
+        assert scalar(db_engine, sql, u=A) == 1, sql
+    assert err(client.get("/api/v1/ops/reports", headers=auth["A"])) == (404, "NOT_FOUND")
