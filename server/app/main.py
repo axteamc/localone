@@ -148,6 +148,9 @@ def create_app(
     from app.routers.inbox import router as inbox_router  # M2-0-P1 알림함 #47~#49
 
     app.include_router(inbox_router)
+    from app.routers.ops import router as ops_router  # M2-0-P2 운영 경로 /ops/*
+
+    app.include_router(ops_router)
     # ── [/m2-core-D] ──
 
     return app
