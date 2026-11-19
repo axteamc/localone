@@ -33,7 +33,7 @@ import {
 } from "./direction";
 import { formatDistance } from "./format";
 import { HERO_MENU_TEXT } from "./heroText";
-import { cubeNames } from "./shortName";
+import { cubeNames, type CubeName } from "./shortName";
 import { snapOffsets } from "./useHomeSheet";
 
 const { colors: C, radii: R } = theme;
@@ -94,8 +94,8 @@ function hoursOf(lib: LibrarySummary): string {
 const TOP_LINE = 92;
 const TOP_LS = 1;
 /**
- * 윗면 이름 글자 크기·줄 수(큐브 기본 좌표). name은 줄인 이름(shortName.ts cubeNames, L6 D 결정 "핵심 이름만").
- * 줄인 뒤에도 7자 이상이면 두 줄로 나누고, 한 줄이 윗면 안에 들어오게 글자를 줄인다 — 기본값(Claude)
+ * 윗면 큰 글자 크기·줄 수(큐브 기본 좌표). name은 큰 글자(shortName.ts cubeNames v2). 글자 수는 큰 글자만 센다(D 결정 §7.5).
+ * 7자 이상이면 두 줄로 나누고, 한 줄이 윗면 안에 들어오게 글자를 줄인다 — 기본값(Claude)
  */
 export function topFont(name: string, role: CubeRole, scale: number): { fontSize: number; lines: 1 | 2; width: number } {
   const len = Math.max(1, [...name].length);
@@ -110,8 +110,8 @@ type Anim = { cx: Animated.Value; cy: Animated.Value; scale: Animated.Value };
 
 type CubeProps = {
   item: FacadeItem;
-  /** 윗면에 보일 줄인 이름 */
-  title: string;
+  /** 윗면에 보일 이름(큰 글자 + 작은 글자) */
+  title: CubeName;
   tone: SpineTone;
   place: CubePlace;
   anim: Anim;
@@ -125,7 +125,8 @@ function IsoCube({ item, title, tone, place, anim, onPress, onLongPress }: CubeP
   const fill = toneColor(tone);
   const hero = place.role === "hero";
   const label = hero ? `${lib.name} ${formatDistance(item.distanceM)}` : `${lib.name} 크게 보기`;
-  const fs = topFont(title, place.role, place.scale);
+  const fs = topFont(title.big, place.role, place.scale);
+  const ink = mix(fill, C.inkStrong, 0.4);
   const quiet = hero ? null : styles.quiet;
   return (
     <Animated.View
@@ -180,12 +181,20 @@ function IsoCube({ item, title, tone, place, anim, onPress, onLongPress }: CubeP
         </View>
         <View style={[styles.faceTop, { backgroundColor: fill }]} />
         <View style={styles.topTextWrap} pointerEvents="none">
-          <Text
-            numberOfLines={fs.lines}
-            style={[styles.topText, { fontSize: fs.fontSize, lineHeight: fs.fontSize * 1.2, width: fs.width, color: mix(fill, C.inkStrong, 0.4) }]}
-          >
-            {title}
-          </Text>
+          <View style={{ width: fs.width }}>
+            {title.small ? (
+              // 작은 글자: 큰 글자 왼쪽 위 머리글자(D 그림 §7.6). 자리·크기 개편은 홈큐브 디자인 세션
+              <Text numberOfLines={1} style={[styles.topSmall, { fontSize: Math.max(6, fs.fontSize * 0.5), color: ink }]}>
+                {title.small}
+              </Text>
+            ) : null}
+            <Text
+              numberOfLines={fs.lines}
+              style={[styles.topText, { fontSize: fs.fontSize, lineHeight: fs.fontSize * 1.2, width: fs.width, color: ink }]}
+            >
+              {title.big}
+            </Text>
+          </View>
         </View>
       </Pressable>
     </Animated.View>
@@ -335,7 +344,7 @@ export function FacadeHome(props: FacadeHomeProps) {
             <IsoCube
               key={c.id}
               item={it}
-              title={titles.get(c.id) ?? it.lib.name}
+              title={titles.get(c.id) ?? { big: it.lib.name, small: null }}
               tone={tones.get(c.id) ?? "fill1"}
               place={c}
               anim={anims.get(c.id) as Anim}
@@ -442,6 +451,7 @@ const styles = StyleSheet.create({
     transform: [{ rotate: "-30deg" }, { skewX: "30deg" }, { scaleY: 0.866 }],
   },
   topText: { fontWeight: "500", letterSpacing: TOP_LS, textAlign: "center" },
+  topSmall: { fontWeight: "500", textAlign: "left", opacity: 0.85 },
   // 왼쪽 면: (14,67.4) 기준 96×78, skewY(30°)
   faceLeft: {
     position: "absolute",
