@@ -101,6 +101,13 @@
   .bsheet .row2 { display:flex; justify-content:space-between; align-items:center; }
   .bsheet .warn { color:var(--sub); font-size:8px; min-height:10px; }
   .gb.newone { outline:2px solid var(--fill1); }
+  .gb { position:relative; }
+  .gbmore { position:absolute; right:4px; top:3px; background:none; border:0; font:inherit; font-size:10px; cursor:pointer; color:inherit; padding:0 3px; }
+  .gb.strip { grid-column:1 / -1; padding:6px 22px 6px 9px; }
+  .gb.strip .one { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .gb.note { background:var(--fill2); color:var(--on-fill); padding:9px 9px 8px; }
+  .gb.note .big { font-size:11.5px; line-height:1.35; }
+  .gb.note .meta { color:var(--on-fill); opacity:.7; }
   .hide { display:none !important; }
 
   /* ---- 표 ---- */
@@ -188,7 +195,7 @@
   <h2>정할 것 2. 방명록은 어디를 눌러서 쓰기 시작할까 <span class="status">확인</span></h2>
   <div class="flow"><b>이미 정해져 있어요.</b> 방명록은 이 도서관에 남기는 짧은 한마디예요. 따로 된 화면이 없고, 올리면 피드에 게시물과 섞여 카드로 나와요. 쓰려면 로그인해야 해요. 오른쪽 아래 "+"는 지금처럼 게시물 글쓰기 버튼이에요. 쓰는 칸(140자까지, "올리기")은 세 후보 모두 같아요.<br>
     <b>정할 것</b>은 방명록을 쓰러 <b>어디를 눌러 들어가느냐</b>예요. 휴대폰 안을 눌러 직접 한마디를 올려 보세요.</div>
-  <div class="decided"><b>고른 것: 후보 A — "+"를 누르면 게시물/방명록 고르기.</b> "A가 좋아요. 하나로 다 쓸수 있어서요" · 차선 없음 · 불편한 점: (받는 중)</div>
+  <div class="decided"><b>고른 것: 후보 A — "+"를 누르면 게시물/방명록 고르기.</b> "A가 좋아요. 하나로 다 쓸수 있어서요" · 차선 없음 · 불편한 점: 없음(사용자) — "불편한점 없어요" → (사진 게시물을 자주 올리는 사람을 짚어 다시 물음) "네 없어요"</div>
   <div class="pick">다시 보기: <select data-for="el-gb-entry">
     <option value="A">후보 A — "+"를 누르면 게시물/방명록 고르기</option>
     <option value="B">후보 B — 피드 맨 위 한 줄 입력 칸</option>
@@ -238,7 +245,59 @@
   </div>
 </section>
 
-<!-- 중심 요소 3(방명록 카드 모양)은 2가 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
+<!-- ===== 중심 요소 3 ===== -->
+<section class="element" id="el-gb-card" data-chosen="">
+  <h2>정할 것 3. 피드에서 방명록 카드는 어떻게 생겼을까 <span class="status">결정 전</span></h2>
+  <div class="flow"><b>이미 정해져 있어요.</b> 방명록 카드는 게시물(사진·표지 카드) 사이에 섞여 나와요. 카드 위에는 작은 점과 "방명록" 글자가 붙고, 모서리는 정보 카드처럼 살짝만 둥글어요. 내 글에만 ⋯가 있어서 지울 수 있어요. 세 후보 모두 같은 글 3개(짧은 글 2개, 140자에 가까운 내 글 1개)예요.<br>
+    <b>정할 것</b>은 방명록 카드가 피드에서 <b>어떤 모양·크기로 보이느냐</b>예요. 피드를 내려 보고, 내 글의 ⋯를 눌러 지워 보거나 "+"로 새로 올려 보세요.</div>
+  <div class="pick">다시 보기: <select data-for="el-gb-card">
+    <option value="A">후보 A — 한 칸짜리 글 카드</option>
+    <option value="B">후보 B — 두 칸을 가로지르는 한 줄 띠</option>
+    <option value="C">후보 C — 색 쪽지 카드</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 한 칸짜리 글 카드 <span class="badge">추천</span></h3>
+      <div class="phone" data-order="read,pop,theme" data-entry="fab" data-card="A"></div>
+      <p>게시물처럼 한 칸을 차지하는 밝은 글 카드예요. 글은 다 보이고, 아래에 작게 닉네임 · 언제.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>피드를 내림 → 사진 카드 사이에 글 카드가 섞여 보임 → 내 카드의 ⋯ → "지우기" → 확인 → 피드에서 사라짐.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>긴 글은 카드가 세로로 길어져요(140자면 사진 카드 하나쯤)</li>
+        <li>사진 카드와 같은 폭이라 피드 줄 맞춤이 그대로예요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>피드 흐름이 그대로이고 글을 끝까지 읽을 수 있어요. / 사진 카드보다 눈에 덜 띄어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-30 2열 메이슨리 — 한 칸 카드</p>
+      <p><b>추천 이유:</b> 피드는 이미 2열 카드로 정해져 있어서, 같은 한 칸에 들어가면 게시물과 자연스럽게 섞여요. 긴 글도 잘리지 않고, 모양이 정보 카드 규칙(밝은 판, 살짝 둥근 모서리)과 같아요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 두 칸을 가로지르는 한 줄 띠</h3>
+      <div class="phone" data-order="read,pop,theme" data-entry="fab" data-card="B"></div>
+      <p>사진 카드 줄 사이에 피드 폭 전체로 얇은 띠가 끼어요. 글은 한 줄만 보이고 넘치면 "…"로 잘려요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>피드를 내림 → 사진 카드 줄 사이에 한 줄 띠 → 내 띠의 ⋯ → "지우기" → 확인 → 사라짐.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>띠가 낮아서 방명록이 많아도 사진 카드가 잘 보여요</li>
+        <li>긴 글은 앞부분만 보여요(끝까지 읽을 곳이 없음)</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>방명록이 사진을 덜 가리고 한눈에 구분돼요. / 긴 한마디를 끝까지 못 읽고, 2열 흐름이 띠마다 끊겨요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-32 줄 목록(글자 줄)</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 색 쪽지 카드</h3>
+      <div class="phone" data-order="read,pop,theme" data-entry="fab" data-card="C"></div>
+      <p>한 칸 카드인데 색 판 위에 글자가 크게 있어서 사진 카드처럼 눈에 띄어요. 쪽지를 붙여 둔 느낌이에요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>피드를 내림 → 색 쪽지가 사진 사이에서 먼저 눈에 들어옴 → 내 쪽지의 ⋯ → "지우기" → 확인 → 사라짐.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>글자가 커서 긴 글은 카드가 많이 길어져요</li>
+        <li>색 판이라 사진 카드와 헷갈릴 수 있어요(점 + "방명록" 글자로만 구분)</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>방명록이 가장 눈에 띄어서 많이 남겨질 수 있어요. / 피드가 글로 무거워지고, 사진 게시물이 덜 돋보여요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: 새 패턴 — 글이 주인공인 카드를 사진 카드처럼 색 판으로(목록에 글 전용 색 카드가 없어서)</p>
+    </article>
+  </div>
+</section>
 
 <!-- ===== 잘 안 될 때 (예외 네 장면, 1B 3단계) ===== -->
 <section id="except">
@@ -275,8 +334,8 @@
   <div class="wide"><table>
     <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
     <tr data-el="el-shelf-order"><td>1. 책장 첫 장·넘기는 순서</td><td>A 요즘 사람들이 읽은 책 → 인기 도서 → 테마</td><td>없음</td><td>B 인기 도서 먼저, C 테마 먼저</td><td>"A가 좋아. 최근 사람들이 찾은 책들을 먼저 보여줘서" · 불편한 점: 없음(사용자)</td><td>빈 묶음은 빼고 남은 순서 그대로. 처음엔 늘 첫 장</td><td>방문 페이지 → 책장 첫 장 → 옆으로 밀기 → 책 누르면 책 화면</td><td><span class="st">확인</span></td></tr>
-    <tr data-el="el-gb-entry"><td>2. 방명록 쓰는 입구</td><td>A 오른쪽 아래 + → 게시물/방명록 고르기</td><td>없음</td><td>B 피드 맨 위 한 줄 입력 칸, C 머리 ⋯ 메뉴 안</td><td>"A가 좋아요. 하나로 다 쓸수 있어서요" · 불편한 점: (받는 중)</td><td>쓰는 칸 140자, 글자 수 표시, "올리기"·"닫기"</td><td>+ → 고르기 창 → 방명록 남기기 → 쓰는 칸 → 올리기 → 피드 맨 위 내 카드</td><td><span class="st">확인</span></td></tr>
-    <tr><td>3. 방명록 카드 모양</td><td>—</td><td>—</td><td>—</td><td>(2 다음에 물음)</td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-gb-entry"><td>2. 방명록 쓰는 입구</td><td>A 오른쪽 아래 + → 게시물/방명록 고르기</td><td>없음</td><td>B 피드 맨 위 한 줄 입력 칸, C 머리 ⋯ 메뉴 안</td><td>"A가 좋아요. 하나로 다 쓸수 있어서요" · 불편한 점: 없음(사용자)</td><td>쓰는 칸 140자, 글자 수 표시, "올리기"·"닫기"</td><td>+ → 고르기 창 → 방명록 남기기 → 쓰는 칸 → 올리기 → 피드 맨 위 내 카드</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-gb-card"><td>3. 방명록 카드 모양</td><td>— (추천: 후보 A 한 칸짜리 글 카드)</td><td>—</td><td>—</td><td>(받기 전)</td><td>태그 점 + 방명록(70%), 곡률 --r-info, 내 글만 ⋯</td><td>피드에 섞여 보임 → 내 카드 ⋯ → 지우기 → 확인창</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>넘김 표시</td><td>점(묶음 수만큼, 지금 장만 진하게), 점을 눌러도 넘어감</td><td>—</td><td>숫자 "1/3"</td><td>묻지 않음</td><td>점 6(앱 8), 간격 4</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>책장 머리 글자</td><td>묶음 제목(왼쪽) + 기준(오른쪽, 작게). 예 "최근 30일 · 이 도서관"</td><td>—</td><td>—</td><td>묻지 않음</td><td>제목 13(앱 16)·500, 기준 10(앱 12) <code>--sub</code>, 한 줄 고정</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>표지가 없는 책</td><td>제목·저자 글자 표지, 바탕 <code>paper</code>(책장 바탕 <code>surface2</code>와 같은 색이면 책이 묻혀서)</td><td>—</td><td>—</td><td>묻지 않음</td><td>표지 104×150, 곡률 <code>--r-book</code></td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
@@ -365,8 +424,7 @@
     if (!txt) { ph.querySelector('[data-warn]').textContent = '한 글자 이상 써 주세요'; return; }
     var btn = ph.querySelector('[data-gbpost]'); if (btn.disabled) return; btn.disabled = true;
     closeLayers(ph);
-    var col = ph.querySelector('[data-feed] .col');
-    col.insertAdjacentHTML('afterbegin', '<div class="gb newone"><div class="tag"><i></i>방명록</div>' + txt.replace(/</g, '&lt;') + '<div class="meta">나 · 방금</div></div>');
+    gbInsert(ph, txt);
     ph.querySelector('[data-feed]').scrollTop = 0;
     toast(ph, '방명록을 남겼어요 (카드 모양은 정할 것 3에서)');
   }
@@ -392,6 +450,49 @@
   document.querySelectorAll('#el-gb-entry .phone').forEach(function (ph) {
     setupPhone(ph);
     if (ph.dataset.entry === 'inline') ph.querySelector('[data-feed]').insertAdjacentHTML('afterbegin', '<button class="gbline" data-gbopen>✎ 정독도서관에 한마디 남기기…</button>');
+  });
+
+  // ---- 정할 것 3: 방명록 카드 모양 (세 후보 같은 글 3개) ----
+  var GBS = [
+    { body:'2층 창가 자리 오늘 햇살 좋아요', who:'책읽는고양이', when:'2시간 전', mine:false },
+    { body:'처음 와 봤는데 어린이 열람실이 생각보다 넓네요. 주말 오전에는 조용해서 아이랑 같이 그림책 읽기 좋아요. 반납함은 정문 오른쪽에 있어요. 다음에는 북토크도 와 볼게요!', who:'나', when:'어제', mine:true },
+    { body:'여기 신간 코너 자주 바뀌어요', who:'동네주민', when:'3일 전', mine:false }
+  ];
+  function gbHTML(mode, g) {
+    var menu = g.mine ? '<button class="gbmore" data-gbmenu>⋯</button>' : '';
+    var meta = '<div class="meta">' + g.who + ' · ' + g.when + '</div>';
+    var tag = '<div class="tag"><i></i>방명록</div>';
+    if (mode === 'B') return '<div class="gb strip" data-gb>' + menu + '<div class="tag"><i></i>방명록 · ' + g.who + ' · ' + g.when + '</div><div class="one">' + g.body + '</div></div>';
+    if (mode === 'C') return '<div class="gb note" data-gb>' + menu + tag + '<div class="big">' + g.body + '</div>' + meta + '</div>';
+    return '<div class="gb" data-gb>' + menu + tag + g.body + meta + '</div>';
+  }
+  function cardFeed(mode) {
+    var P = function (c, h, t) { return '<div class="pc ' + c + '" style="height:' + h + 'px">' + t + '</div>'; };
+    if (mode === 'B') return '<div class="col">' + P('f1', 90, '오늘 처음 와 본 열람실') + '</div><div class="col">' + P('f2', 70, '소년이 온다 다 읽음') + '</div>' +
+      gbHTML('B', GBS[0]) + gbHTML('B', GBS[1]) +
+      '<div class="col">' + P('s3', 70, '책 사진') + P('f3', 80, '반납하고 한 권 더') + '</div><div class="col">' + P('f3', 96, '창가 자리') + '</div>' + gbHTML('B', GBS[2]);
+    return '<div class="col">' + P('f1', 90, '오늘 처음 와 본 열람실') + gbHTML(mode, GBS[1]) + P('s3', 70, '책 사진') + '</div>' +
+           '<div class="col">' + gbHTML(mode, GBS[0]) + P('f2', 70, '소년이 온다 다 읽음') + gbHTML(mode, GBS[2]) + P('f3', 96, '창가 자리') + '</div>';
+  }
+  function gbInsert(ph, txt) {
+    var mode = ph.dataset.card, g = { body:txt.replace(/</g, '&lt;'), who:'나', when:'방금', mine:true };
+    var feed = ph.querySelector('[data-feed]');
+    if (!mode) { feed.querySelector('.col').insertAdjacentHTML('afterbegin', '<div class="gb newone"><div class="tag"><i></i>방명록</div>' + g.body + '<div class="meta">나 · 방금</div></div>'); return; }
+    if (mode === 'B') feed.insertAdjacentHTML('afterbegin', gbHTML('B', g));
+    else feed.querySelector('.col').insertAdjacentHTML('afterbegin', gbHTML(mode, g));
+    feed.firstElementChild && (mode === 'B' ? feed.firstElementChild : feed.querySelector('.col').firstElementChild).classList.add('newone');
+  }
+  document.querySelectorAll('#el-gb-card .phone').forEach(function (ph) {
+    setupPhone(ph);
+    ph.querySelector('[data-feed]').innerHTML = cardFeed(ph.dataset.card);
+    ph.addEventListener('click', function (e) {
+      var m = e.target.closest('[data-gbmenu]');
+      if (m) { closeLayers(ph); ph._target = m.closest('[data-gb]');
+        sheet(ph, '<b>내 방명록</b><div class="choice"><button data-gbdel>지우기<span>피드에서 내려요</span></button></div><button class="tlink" data-closex>닫기</button>'); return; }
+      if (e.target.closest('[data-gbdel]')) {
+        sheet(ph, '<b>이 방명록을 지울까요?</b><span class="sub">지우면 피드에서 사라지고 되돌릴 수 없어요.</span><div class="row2"><button class="tlink" data-closex>취소</button><button class="pbtn" data-gbdelok>지우기</button></div>'); return; }
+      if (e.target.closest('[data-gbdelok]')) { closeLayers(ph); if (ph._target) ph._target.remove(); ph._target = null; toast(ph, '방명록을 지웠어요'); }
+    });
   });
 
   document.querySelectorAll('#el-shelf-order .phone').forEach(function (ph) {
