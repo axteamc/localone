@@ -133,6 +133,9 @@ def create_app(
     from app.routers.reactions import router as reactions_router
 
     app.include_router(reactions_router)
+    from app.routers.guestbook import router as guestbook_router
+
+    app.include_router(guestbook_router)
     # ── [/local-feed-B] ──
 
     # ── [book-search-C] ──

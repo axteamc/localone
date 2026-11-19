@@ -121,8 +121,8 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 (대기/진행/검토요청/완료) | 구현 근거 (`파일:줄`) 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| VISIT-3-P1 | `feat/local-feed-VISIT-3` | - | 대기 | - | - |
+| VISIT-3-P1 | `feat/local-feed-VISIT-3` | (Draft) | 완료 | `server/app/routers/guestbook.py:70-108`(#33·#34), `server/app/routers/feed.py:212-305`(#32), `server/migrations/versions/0016_guestbook_constraints.py`(C5 CHECK), `server/app/main.py` `[local-feed-B]` · 테스트 `server/tests/test_guestbook.py`·`test_feed_items.py` 25+2개 통과, 서버 전체 567 passed · 가드 제거 7건 모두 실패 확인 | to:D #230(카드 색 공식 sRGB) |
 | VISIT-3-P2 | 같은 브랜치 | - | 대기 | - | - |
 | VISIT-3-P3 | 같은 브랜치 | - | 대기 | - | - |
 
-- **다음 세션 이어하기 메모**: 기획·계약 수정본 제출 완료(검토 대기). 두 PR의 의견만 처리하고 다음 세부 기획은 시작하지 않는다.
+- **다음 세션 이어하기 메모**: 구현 중(이슈 #229). 첫 커밋에 명세·시안·계약 수정본 D 결정 반영. P1 완료 → P2(책장) 진행. 로컬 시험 DB는 5433이 다른 프로젝트에 잡혀 있어 `localone-test-db`(5434) 안 `localone_v3` DB를 썼다(`DATABASE_URL` 덮어씀).
