@@ -1,6 +1,7 @@
 // 반납 알림 계획과 맞추기(loan-assistant.md LOAN-3 T1~T7·T10, C6 T-#1~#5).
 // 알림은 앱이 기기에 직접 예약한다(서버 없음). 날짜는 서버가 준 today·due_on(서울 날짜)으로 셈한다(T5).
 // 플랫폼 일은 notifications.platform.ts가 맡는다(여기서는 플랫폼 분기·알림 모듈을 직접 쓰지 않는다, C4).
+import { registerSignOutCleanup } from "../../auth/AuthProvider";
 import { addDays } from "./DueDateSheet";
 import { listLoans, type Loan, type LoanPage } from "./api";
 import {
@@ -104,4 +105,6 @@ export function clearLoanReminders(): Promise<void> {
   return next;
 }
 
-// TODO(연결): D(AUTH-2) — registerSignOutCleanup(clearLoanReminders). origin/main에 아직 없다(계약 C7).
+// 로그아웃·탈퇴 때 이 기기의 반납 알림을 모두 지운다(T6, auth.md AUTH-2 G5·C7).
+// 대출 화면을 열지 않은 세션에서도 지워야 하므로 화면이 아니라 모듈을 읽을 때 한 번 등록하고 해제하지 않는다.
+registerSignOutCleanup(clearLoanReminders);
