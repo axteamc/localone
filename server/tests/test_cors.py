@@ -68,3 +68,20 @@ def test_production_has_no_cors():
         r = preflight(c, WEB_DEV_ORIGIN)
         assert ALLOW not in r.headers
         assert ALLOW not in c.get("/api/v1/nope", headers={"Origin": WEB_DEV_ORIGIN}).headers
+
+
+def test_production_allows_configured_cors_origins_only():
+    settings = Settings(
+        app_env="production",
+        database_url=DB,
+        supabase_url="https://auth.example.test",
+        supabase_service_role_key="test-service-role-key",
+        cors_allowed_origins="https://web.example.test, https://app.example.test ",
+    )
+    with TestClient(create_app(settings), raise_server_exceptions=False) as c:
+        ok = preflight(c, "https://web.example.test")
+        assert ok.status_code == 200
+        assert ok.headers[ALLOW] == "https://web.example.test"
+        bad = preflight(c, WEB_DEV_ORIGIN)
+        assert bad.status_code == 400
+        assert ALLOW not in bad.headers

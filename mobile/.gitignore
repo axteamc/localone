@@ -1,1 +1,4 @@
 e2e/output/
+
+# 웹 배포용 빌드 결과
+dist-web/
