@@ -35,6 +35,8 @@ class Settings(BaseSettings):
     # 시험 DB(postgres:17)에는 auth 스키마가 없어 local·test 기본값은 꺼 둔다.
     # 값을 주지 않으면 production은 켜고, production에서 명시적으로 끄면 시작하지 않는다.
     auth_session_check: bool | None = None  # 아래 검사에서 True/False로 정해진다
+    # 배포 웹 프런트엔드 출처(쉼표 구분). 비어 있으면 production에서 CORS를 켜지 않는다.
+    cors_allowed_origins: str = ""
 
     @model_validator(mode="after")
     def _check_database_url(self) -> "Settings":
