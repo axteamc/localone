@@ -829,10 +829,10 @@ async def library_feed(request, library_id: int, sort: str = "latest", cursor: s
 
 | # | 열린 칸 | D 추천(참고) | 채택 결정 | 상태 | 근거(명세 ID) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| V3-O1 | 책장 페이지 순서·처음 보이는 페이지·넘김 표시(점·숫자) | ① → ② → ③, 점 3개 | `recent_reads` → `popular` → `theme` 순서. 처음 열 때(도서관을 바꿀 때 포함) 늘 첫 장. 서버가 뺀 장은 건너뛰고 남은 순서 그대로(① 빔 → 첫 장 `popular`). 넘김 표시는 점(받은 장 수만큼 1~3개, 지금 장만 `inkStrong`, 나머지 `surface3`, 점을 눌러도 그 장으로 넘어감). 장이 1개면 점을 그리지 않음. 책장 머리는 왼쪽 `title`, 오른쪽 `basis_label`(없으면 비움), 한 줄 고정 | 순서·첫 장: 확인(사용자) / 점 모양·머리: 기본값(Claude) | `specs/local-feed/세부/VISIT-3.md` 결정 1, 시안 `#el-shelf-order` |
+| V3-O1 | 책장 페이지 순서·처음 보이는 페이지·넘김 표시(점·숫자) | ① → ② → ③, 점 3개 | (2026-11-19 D 결정 변경, 이전: `recent_reads` → `popular` → `theme`) `recent_reads` → `theme` → `popular` 순서. 처음 열 때(도서관을 바꿀 때 포함) 늘 첫 장. 서버가 뺀 장은 건너뛰고 남은 순서 그대로(① 빔 → 첫 장 `theme`, ③ 빔 → ① 다음 `popular`). 넘김 표시는 점(받은 장 수만큼 1~3개, 지금 장만 `inkStrong`, 나머지 `surface3`, 점을 눌러도 그 장으로 넘어감). 장이 1개면 점을 그리지 않음. 책장 머리는 왼쪽 `title`, 오른쪽 `basis_label`(없으면 비움), 한 줄 고정 | 첫 장: 확인(사용자) / 순서: 확인(D 변경 2026-11-19 — 인기 도서는 시리즈 책이 많아 맨 뒤) / 점 모양·머리: 기본값(Claude) | `specs/local-feed/세부/VISIT-3.md` 결정 1, 시안 `#el-shelf-order`, PR #221 D 확정 의견 |
 | V3-O2 | 책장 페이지가 하나도 없을 때(①②③ 모두 빔) 책장 자리 | 책장 자리 유지 + 한 줄 안내 | 책장 자리(높이 224·선반)는 그대로 두고 책 자리에 두 줄 안내(C3 "책장 페이지 없음"). 점·머리는 그리지 않음. 버튼 없음 | 기본값(Claude), 예외 화면 사용자 확인("다 괜찮아요") | `specs/local-feed/세부/VISIT-3.md` 예외 #2 |
 | V3-O3 | 방명록 쓰는 입구 위치(`+` 버튼을 누르면 게시물/방명록 고르기 · 피드 맨 위 입력 줄 · 그 밖) | `+` 버튼 → 고르기 | 방문 페이지의 기존 `+`(LOCAL-1 결정 1)를 누르면 아래에서 고르기 창: "게시물 올리기"(→ 기존 `/posts/new`) / "방명록 남기기"(→ 쓰는 창). 로그인 확인은 고른 뒤: 비로그인이 "방명록 남기기"를 고르면 방명록 로그인 창, "게시물 올리기"는 기존 글쓰기 로그인 창(`VISIT_TEXT.loginNeeded`). 쓰는 창: 여러 줄 입력 1칸 + 글자 수 `n/140` + "닫기"·"올리기". `+` 자리는 책장(224) 바로 위 오른쪽(책장 위 12) | 입구: 확인(사용자) / `+` 자리·쓰는 창 모양: 기본값(Claude) | `specs/local-feed/세부/VISIT-3.md` 결정 2, 시안 `#el-gb-entry` |
-| V3-O4 | 방명록 카드 모양(글자 크기·작성자 표시·날짜 표시·메뉴 자리) | 글 15 + 닉네임·날짜 작게 | 2열 메이슨리의 **한 칸**짜리 글 카드(게시물 카드와 같은 폭, 높이는 글 길이만큼). 바탕 `paper`, 곡률 `radii.infoCard`, 위에 태그 점 + "방명록"(투명도 70%, V3-10), 글 15 전부(자르지 않음), 아래 `author_nickname · 언제` 11 `inkMuted`. "언제"는 1분 안 "방금" · 1시간 안 "n분 전" · 오늘 "n시간 전" · 어제 "어제" · 2~6일 "n일 전" · 그 밖 `YYYY.MM.DD`(KST). `mine=true`일 때만 오른쪽 위 ⋯. 카드 자체를 눌러도 다른 화면으로 가지 않음 | 모양: 확인(사용자) / 크기·날짜 표시: 기본값(Claude) | `specs/local-feed/세부/VISIT-3.md` 결정 3, 시안 `#el-gb-card` |
+| V3-O4 | 방명록 카드 모양(글자 크기·작성자 표시·날짜 표시·메뉴 자리) | 글 15 + 닉네임·날짜 작게 | 2열 메이슨리의 **한 칸**짜리 글 카드(게시물 카드와 같은 폭, 높이는 글 길이만큼). 바탕은 카드 색 후보 PANTONE 11-0602 · 11-0701 · 12-4302 중 하나(2026-11-19 D 결정, 이전 임시 값 `paper`) — 확정 전 기본은 첫 후보 11-0602, `GuestbookCard.tsx` 안 상수 하나로 고르며 구현 후 D가 화면에서 확인해 확정. 곡률 `radii.infoCard`, 위에 태그 점 + "방명록"(투명도 70%, V3-10), 글 15 전부(자르지 않음), 아래 `author_nickname · 언제` 11 `inkMuted`. "언제"는 1분 안 "방금" · 1시간 안 "n분 전" · 오늘 "n시간 전" · 어제 "어제" · 2~6일 "n일 전" · 그 밖 `YYYY.MM.DD`(KST). `mine=true`일 때만 오른쪽 위 ⋯. 카드 자체를 눌러도 다른 화면으로 가지 않음 | 모양: 확인(사용자) / 바탕 색: 미확인(임시: 11-0602, D 확인 대기) / 크기·날짜 표시: 기본값(Claude) | `specs/local-feed/세부/VISIT-3.md` 결정 3, 시안 `#el-gb-card`, PR #221 D 확정 의견 |
 | V3-O5 | 방명록 글 길이 상한(글자 수) | 140 | 140자(앞뒤 공백 뺀 `char_length`). 앱 입력 칸 `maxLength=140`, 서버 `422 detail="body"`, DB CHECK(C5) | 기본값(Claude) | `specs/local-feed/세부/VISIT-3.md` 0절 기본값 |
 | V3-O6 | 내 방명록 철회 방법(카드 메뉴 → 확인창 / 되돌리기 안내) | 확인창 | 내 카드 ⋯ → 아래 창 "지우기" → 확인창(C3 문구) → "지우기"를 누르면 `#34` 후 피드에서 그 카드를 뺀다. 되돌리기 없음(LOCAL-1 결정 4와 같은 길) | 기본값(Claude), 예외 화면 사용자 확인 | `specs/local-feed/세부/VISIT-3.md` 0절 기본값·결정 3 유저 플로우 |
 | V3-O7 | 책 표지가 없을 때 책장의 책 모양 | 제목 글자 표지(`surface2`) | `cover_url=null`이면 같은 크기(104×150·책 표지 곡률)의 글자 표지: 위 저자, 아래 제목. 바탕 `paper`(D 추천 `surface2`는 책장 바탕 `surface2`와 같아 책이 묻혀서 바꿈) | 기본값(Claude) | `specs/local-feed/세부/VISIT-3.md` 0절 기본값, 검토 메모 |
@@ -970,6 +970,7 @@ ALTER TABLE guestbook_entries ENABLE ROW LEVEL SECURITY;  -- 정책 0개
 | `VISIT-3-P1` 방명록·혼합 피드 서버 | `feat/local-feed-VISIT-3` (Step 하나 = 브랜치 하나, 파트는 커밋) | `server/migrations/versions/NNNN_guestbook_constraints.py`(**표는 D가 먼저 만듦(`0012_m2_targets.py`, core M2-0-P2, 2026-11-19 D 결정) — B 마이그레이션은 아래 열린 제약 ALTER만**), `server/app/routers/guestbook.py`, `server/app/routers/feed.py`(`#32` 추가만, 기존 경로 무변경), `server/app/main.py`(`[local-feed-B]` 블록), `server/tests/test_guestbook.py`, `server/tests/test_feed_items.py` | V3-6·V3-8·V3-9, C6 전부(서버) |
 | `VISIT-3-P2` 책장 | 같은 브랜치 | `mobile/src/features/local-feed/Bookshelf.tsx`, `mobile/src/features/local-feed/VisitScreen.tsx`, `mobile/src/features/local-feed/api.ts`, `mobile/src/features/local-feed/__fakes__/shelf.ts`, `mobile/src/features/local-feed/__tests__/bookshelf.test.tsx` | V3-1~V3-5, V3-O1·V3-O2·V3-O7 |
 | `VISIT-3-P3` 방명록 카드·쓰기 | 같은 브랜치 | `mobile/src/features/local-feed/FeedItemCard.tsx`, `mobile/src/features/local-feed/GuestbookCard.tsx`, `mobile/src/features/local-feed/GuestbookComposer.tsx`, `mobile/src/features/local-feed/LibraryFeed.tsx`, `mobile/src/features/local-feed/api.ts`, `mobile/src/features/local-feed/__tests__/guestbook.test.tsx` | V3-6~V3-10, V3-O3~V3-O6 |
+| `VISIT-3-P3` 추가 파일 (2026-11-19 D 승인) | 같은 브랜치 | `mobile/src/features/local-feed/VisitScreen.tsx` — `+` → 고르기 창(`ComposeChooser`)·방명록 로그인 창·쓰는 창 띄우기, 피드 첫 묶음·다음 쪽 불러오기를 `#26`에서 `#32` `fetchLibraryFeedItems`로 바꾸기(기존 `feedRunner` 자리). `LibraryFeed.tsx`는 받은 목록만 그린다 | V3-O3, V3-8, C6 끊김·빈 결과 |
 
 ##### 파트 머리말 — VISIT-3-P1 · P2 · P3 (공통)
 
@@ -1037,6 +1038,7 @@ async def library_feed_items(library_id: int, cursor: str | None = None, limit: 
 
 ```ts
 // LibraryFeed.tsx — 도서관이 바뀌면 앞 요청 폐기
+// (2026-11-19 D 승인 정정) 불러오기 위치는 VisitScreen.tsx(기존 feedRunner 자리)다. LibraryFeed.tsx는 받은 목록만 그린다. 아래 규칙은 그대로.
 const runner = useMemo(() => createLatestRunner(), []);
 async function loadFirst(libraryId: number) {
   const r = await runner.run((s) => fetchLibraryFeedItems(libraryId, { cursor: null }, s));
@@ -1088,8 +1090,8 @@ async function submit() {
 | VISIT-3-P3 | `signed out guestbook write shows login prompt` | 비로그인 | 입구 누름 | 로그인 안내, `postGuestbook` 0번 | C6 비로그인 |
 | VISIT-3-P1 | `guestbook body blank or over 140 is 422 body` | 로그인 | `#33` body `"   "` / 141자 / 정확히 140자 | 앞 둘 `422 VALIDATION_ERROR` `detail="body"`·행 0, 140자는 `201` | V3-O5 길이 검사·C5 CHECK 누락 |
 | VISIT-3-P1 | `withdraw twice stays withdrawn and leaves feed` | 내 글 1개 | `#34` 두 번 → `#32` | 둘 다 `200`, 행 `withdrawn` 1개, 피드에 없음 | 철회 멱등·R10 |
-| VISIT-3-P2 | `shelf shows recent reads then popular then theme` | `#31` 가짜 값 세 장(순서를 섞어 줌) | 렌더 → 점 2번째·3번째 누름 | 첫 장 제목 `"요즘 사람들이 읽은 책"`, 다음 `"인기 도서"`, 그다음 테마 제목, 점 3개 | V3-O1 순서(서버 순서 그대로 그리면 실패) |
-| VISIT-3-P2 | `shelf without recent reads starts at popular` | `#31` `popular`·`theme` 두 장 | 렌더 | 첫 장 `"인기 도서"`, 점 2개 | V3-O1·V3-2 빈 장 건너뛰기 |
+| VISIT-3-P2 | `shelf shows recent reads then theme then popular` | `#31` 가짜 값 세 장(순서를 섞어 줌) | 렌더 → 점 2번째·3번째 누름 | 첫 장 제목 `"요즘 사람들이 읽은 책"`, 다음 테마 제목, 그다음 `"인기 도서"`, 점 3개 | V3-O1 순서(서버 순서 그대로 그리면 실패) |
+| VISIT-3-P2 | `shelf without recent reads starts at theme` | `#31` `popular`·`theme` 두 장(이 순서로 줌) | 렌더 → 점 2번째 누름 | 첫 장 테마 제목, 다음 `"인기 도서"`, 점 2개 | V3-O1·V3-2 빈 장 건너뛰기 |
 | VISIT-3-P2 | `empty shelf keeps shelf area with message` | `#31` `pages: []` | 렌더 | 책장 자리 있음, `"아직 이 도서관 책장이 비어 있어요"`, 점 없음, 피드 정상 | V3-O2(책장을 숨기면 실패) |
 | VISIT-3-P2 | `shelf retry reloads only shelf` | `#31` 첫 호출 503, 두 번째 성공 | `"다시 해 보기"` 누름 | `fetchShelf` 2번, 피드 불러오기 1번 그대로, 책 3권 보임 | C6 끊김(전체 새로고침이면 실패) |
 | VISIT-3-P3 | `plus opens chooser and guestbook option opens composer` | 로그인 | `+` → `"방명록 남기기"` | 고르기 창 두 항목, 쓰는 창 열림, `/posts/new` 이동 0번 / `"게시물 올리기"`는 `/posts/new` 1번 | V3-O3 |
