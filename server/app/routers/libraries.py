@@ -1,15 +1,20 @@
-"""06 #10·#11. 공공 참조 DB만 읽고 요청 좌표는 저장하지 않는다."""
+"""06 #10·#11·#31. 공공 참조 DB만 읽고 요청 좌표는 저장하지 않는다.
+
+#11 `look`·#31 책장은 core 계약 M2-0-P3(Z6·Z8). #11은 룩이 아직 없으면 그 자리에서 자동 배정해 저장한다.
+"""
 import re
 from datetime import date, timedelta
 from typing import Any
 
 from fastapi import APIRouter, Path, Query, Request
+from sqlalchemy.engine import Connection
 
 from app import policy
 from app.common import ApiError, today_kst
 from app.db import run_db
+from app.services.looks import TITLE_POPULAR, SHELF_BOOKS, assign_look, recent_reads_page, shelf_book, theme_page
 from app.services.provider_engine import (
-    LibraryRow, get_library, libraries_by_name, libraries_in_region, libraries_nearby,
+    LibraryRow, ProviderEngine, get_library, libraries_by_name, libraries_in_region, libraries_nearby,
 )
 
 router = APIRouter(prefix="/api/v1/libraries")
@@ -153,10 +158,51 @@ async def list_libraries(
     return {"mode": mode, "radius_km": radius, "dtl_region": dtl_region, "q": q, "items": items}
 
 
+def not_found() -> ApiError:
+    return ApiError(404, "NOT_FOUND", "찾을 수 없어요.")
+
+
 @router.get("/{library_id}")
 async def library_detail(request: Request, library_id: int = Path(ge=1, le=BIGINT_MAX)) -> Any:
-    lib = await run_db(request.app.state.engine, lambda c: get_library(c, library_id))
-    if lib is None:
-        raise ApiError(404, "NOT_FOUND", "찾을 수 없어요.")
+    def tx(c: Connection) -> tuple[LibraryRow, str] | None:
+        lib = get_library(c, library_id)
+        return None if lib is None else (lib, assign_look(c, library_id))
+
+    found = await run_db(request.app.state.engine, tx)
+    if found is None:
+        raise not_found()
+    lib, look = found
     return {**library_summary(lib, None), "tel": lib.tel, "homepage": lib.homepage,
-            "operating_time_text": lib.operating_time_text, "closed_text": lib.closed_text}
+            "operating_time_text": lib.operating_time_text, "closed_text": lib.closed_text, "look": look}
+
+
+async def popular_page(engine: ProviderEngine, lib: LibraryRow) -> dict[str, Any] | None:
+    """LIB-0 도서관별 인기 캐시 상위 3권(외부 조회는 엔진, 트랜잭션 밖). 도서관 데이터가 없어 전국으로 대체되거나
+    받지 못하면 페이지를 뺀다(책장은 "이 도서관"). Q-42 실측 전 임시."""
+    try:
+        result = await engine.popular_books(lib)
+    except ApiError:
+        return None
+    if result.scope != "library" or not result.books:
+        return None
+    return {"kind": "popular", "title": TITLE_POPULAR, "basis_label": result.period_label,
+            "books": [shelf_book(b) for b in result.books[:SHELF_BOOKS]]}
+
+
+@router.get("/{library_id}/shelf")
+async def library_shelf(request: Request, library_id: int = Path(ge=1, le=BIGINT_MAX)) -> Any:
+    """#31 책장 페이지(Z8): ① recent_reads ② popular ③ theme 순, 빈 페이지는 뺀다."""
+    today = today_kst()
+
+    def tx(c: Connection) -> tuple[LibraryRow, dict[str, Any] | None, dict[str, Any] | None] | None:
+        lib = get_library(c, library_id)
+        if lib is None:
+            return None
+        return lib, recent_reads_page(c, library_id, today), theme_page(c, library_id, today)
+
+    found = await run_db(request.app.state.engine, tx)
+    if found is None:
+        raise not_found()
+    lib, recent, theme = found
+    popular = await popular_page(request.app.state.provider_engine, lib)
+    return {"pages": [page for page in (recent, popular, theme) if page is not None]}

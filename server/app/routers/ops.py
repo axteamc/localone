@@ -6,16 +6,16 @@
   이미 그 상태면 아무것도 바꾸지 않고 `200`(멱등 — 기록 행도 늘지 않는다).
 - 숨기면 작성자에게 `moderation` 안내(Z5). 신고자에게는 결과를 알리지 않는다.
 - 응답에 독서 기록·대출·비공개 스탬프·북마크·좋아요·신고자를 넣지 않는다(① 격리).
-- 도서관 룩 재배정·서가 테마(`/ops/libraries/*`·`/ops/shelf-themes*`)는 M2-0-P3.
+- 도서관 룩 재배정·서가 테마(`/ops/libraries/*`·`/ops/shelf-themes*`)는 M2-0-P3(아래 마지막 두 절).
 """
 
-from datetime import datetime
+from datetime import date, datetime
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Path, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ConfigDict, StringConstraints, model_validator
+from pydantic import BaseModel, ConfigDict, Field, StringConstraints, field_validator, model_validator
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
@@ -23,6 +23,8 @@ from app.auth import CurrentUser, get_current_user
 from app.common import ApiError, now_kst
 from app.db import run_db
 from app.services.inbox import add_inbox_items
+from app.services.looks import set_look_by_operator, shelf_book
+from app.services.provider_engine import isbn13_is_valid
 
 REASON_MAX = 500  # 기본값(Claude)
 LIST_MAX = 100  # 목록은 커서 없이 오래된 순 최대 100(C2 "목록 —")
@@ -373,5 +375,161 @@ async def lift_restriction(request: Request, restriction_id: UUID, body: ReasonB
                   {"op": op.id, "id": restriction_id})
         record(c, op.id, "lift", "participation_restriction", restriction_id, body.reason)
         return restriction_out(select_restriction(c, restriction_id))
+
+    return await run_db(request.app.state.engine, tx)
+
+
+# ─────────── 도서관 룩 (M2-0-P3, Z6) ───────────
+
+BIGINT_MAX = 2**63 - 1
+
+
+class LookBody(BaseModel):
+    """`modern` = 운영자 지정, `auto` = 지금 주변 기준으로 다시 자동 배정. 다른 팔레트를 직접 고르지 못한다(Z6)."""
+    model_config = ConfigDict(extra="forbid")
+    look: Literal["modern", "auto"]
+    reason: Reason
+
+
+@router.put("/libraries/{library_id}/look")
+async def put_library_look(request: Request, body: LookBody, library_id: int = Path(ge=1, le=BIGINT_MAX),
+                           op: CurrentUser = Depends(get_operator)) -> dict[str, Any]:
+    def tx(c: Connection) -> dict[str, Any]:
+        if not c.execute(text("SELECT EXISTS (SELECT 1 FROM libraries WHERE id = :id)"), {"id": library_id}).scalar_one():
+            raise not_found()
+        look, by, changed = set_look_by_operator(c, library_id, body.look)
+        if changed:  # 같은 결과면 무변경(멱등, 기록 행도 늘지 않음)
+            record(c, op.id, "look_assign", "library", library_id, body.reason)
+        return {"library_id": library_id, "look": look, "look_assigned_by": by}
+
+    return await run_db(request.app.state.engine, tx)
+
+
+# ─────────── 서가 테마 (M2-0-P3, Z7 — Q-47 임시) ───────────
+
+THEME_TITLE_MAX = 40  # 기본값(Claude): 책장 페이지 제목 한 줄
+THEME_LOCK_KEY = "shelf_themes"
+
+
+class ThemeBody(BaseModel):
+    """`library_id` = null이면 전체 공통. 책은 ISBN 1~3권(순서 = 책장 순서). PUT은 전체를 바꾼다."""
+    model_config = ConfigDict(extra="forbid")
+    library_id: int | None = Field(ge=1, le=BIGINT_MAX)
+    title: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=THEME_TITLE_MAX)]
+    starts_on: date
+    ends_on: date
+    isbn13s: list[str] = Field(min_length=1, max_length=3)
+    reason: Reason
+
+    @field_validator("isbn13s")
+    @classmethod
+    def _isbns(cls, value: list[str]) -> list[str]:
+        if len(set(value)) != len(value) or not all(isbn13_is_valid(v) for v in value):
+            raise ValueError("isbn13s는 서로 다른 올바른 ISBN-13")
+        return value
+
+    @model_validator(mode="after")
+    def _period(self) -> "ThemeBody":
+        if self.ends_on < self.starts_on:
+            raise ValueError("ends_on은 starts_on과 같거나 뒤")
+        return self
+
+
+def theme_overlap() -> ApiError:
+    return ApiError(409, "THEME_OVERLAP", "같은 범위에 기간이 겹치는 테마가 있어요.")
+
+
+async def fetch_theme_books(request: Request, isbns: list[str]) -> list[int]:
+    """쓰기 트랜잭션 전에 서지를 확보한다(외부 조회는 엔진, 없으면 404·제공자 오류는 엔진 그대로)."""
+    engine = request.app.state.provider_engine
+    return [(await engine.get_book(isbn)).id for isbn in isbns]
+
+
+def theme_state(c: Connection, theme_id: Any) -> tuple[Any, ...]:
+    row = c.execute(text("SELECT library_id, title, starts_on, ends_on FROM shelf_themes WHERE id = :t"),
+                    {"t": theme_id}).one()
+    books = c.execute(text("SELECT book_id FROM shelf_theme_books WHERE theme_id = :t ORDER BY position"),
+                      {"t": theme_id}).scalars().all()
+    return (row.library_id, row.title, row.starts_on, row.ends_on, tuple(books))
+
+
+def overlapping(c: Connection, body: ThemeBody, exclude: Any = None) -> list[Any]:
+    return c.execute(text(
+        "SELECT id FROM shelf_themes WHERE library_id IS NOT DISTINCT FROM :lid "
+        "AND starts_on <= :e AND ends_on >= :s AND id IS DISTINCT FROM :x"),
+        {"lid": body.library_id, "s": body.starts_on, "e": body.ends_on, "x": exclude}).scalars().all()
+
+
+def write_theme_books(c: Connection, theme_id: Any, book_ids: list[int]) -> None:
+    c.execute(text("DELETE FROM shelf_theme_books WHERE theme_id = :t"), {"t": theme_id})
+    for position, book_id in enumerate(book_ids, start=1):
+        c.execute(text("INSERT INTO shelf_theme_books (theme_id, book_id, position) VALUES (:t, :b, :p)"),
+                  {"t": theme_id, "b": book_id, "p": position})
+
+
+def theme_out(c: Connection, theme_id: Any) -> dict[str, Any]:
+    row = c.execute(text("SELECT id, library_id, title, starts_on, ends_on FROM shelf_themes WHERE id = :t"),
+                    {"t": theme_id}).one()
+    books = c.execute(text(
+        "SELECT b.isbn13, b.title, b.author, b.cover_url FROM shelf_theme_books t JOIN books b ON b.id = t.book_id "
+        "WHERE t.theme_id = :t ORDER BY t.position"), {"t": theme_id}).all()
+    return {"id": str(row.id), "library_id": row.library_id, "title": row.title,
+            "starts_on": row.starts_on.isoformat(), "ends_on": row.ends_on.isoformat(),
+            "books": [shelf_book(b) for b in books]}
+
+
+def lock_themes(c: Connection, library_id: int | None) -> None:
+    # 겹침 검사 → 쓰기를 줄 세운다(Q-47 결정 전에는 DB 제약 대신 서버 검사, C5 주석)
+    c.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"), {"k": THEME_LOCK_KEY})
+    if library_id is not None and not c.execute(
+            text("SELECT EXISTS (SELECT 1 FROM libraries WHERE id = :id)"), {"id": library_id}).scalar_one():
+        raise not_found()
+
+
+@router.post("/shelf-themes")
+async def create_shelf_theme(request: Request, body: ThemeBody,
+                             op: CurrentUser = Depends(get_operator)) -> JSONResponse:
+    book_ids = await fetch_theme_books(request, body.isbn13s)
+    wanted = (body.library_id, body.title, body.starts_on, body.ends_on, tuple(book_ids))
+
+    def tx(c: Connection) -> tuple[dict[str, Any], bool]:
+        lock_themes(c, body.library_id)
+        clash = overlapping(c, body)
+        if clash:
+            # 같은 내용을 다시 보낸 것(연타)이면 그 테마를 그대로 돌려준다
+            if len(clash) == 1 and theme_state(c, clash[0]) == wanted:
+                return theme_out(c, clash[0]), False
+            raise theme_overlap()
+        theme_id = c.execute(text(
+            "INSERT INTO shelf_themes (library_id, title, starts_on, ends_on) VALUES (:l, :t, :s, :e) RETURNING id"),
+            {"l": body.library_id, "t": body.title, "s": body.starts_on, "e": body.ends_on}).scalar_one()
+        write_theme_books(c, theme_id, book_ids)
+        record(c, op.id, "theme_edit", "shelf_theme", theme_id, body.reason)
+        return theme_out(c, theme_id), True
+
+    out, created = await run_db(request.app.state.engine, tx)
+    return JSONResponse(status_code=201 if created else 200, content=out)
+
+
+@router.put("/shelf-themes/{theme_id}")
+async def put_shelf_theme(request: Request, theme_id: UUID, body: ThemeBody,
+                          op: CurrentUser = Depends(get_operator)) -> dict[str, Any]:
+    book_ids = await fetch_theme_books(request, body.isbn13s)
+    wanted = (body.library_id, body.title, body.starts_on, body.ends_on, tuple(book_ids))
+
+    def tx(c: Connection) -> dict[str, Any]:
+        lock_themes(c, body.library_id)
+        if c.execute(text("SELECT id FROM shelf_themes WHERE id = :t FOR UPDATE"), {"t": theme_id}).first() is None:
+            raise not_found()
+        if theme_state(c, theme_id) == wanted:
+            return theme_out(c, theme_id)  # 같은 내용: 무변경
+        if overlapping(c, body, exclude=theme_id):
+            raise theme_overlap()
+        c.execute(text("UPDATE shelf_themes SET library_id = :l, title = :t, starts_on = :s, ends_on = :e "
+                       "WHERE id = :id"),
+                  {"l": body.library_id, "t": body.title, "s": body.starts_on, "e": body.ends_on, "id": theme_id})
+        write_theme_books(c, theme_id, book_ids)
+        record(c, op.id, "theme_edit", "shelf_theme", theme_id, body.reason)
+        return theme_out(c, theme_id)
 
     return await run_db(request.app.state.engine, tx)
