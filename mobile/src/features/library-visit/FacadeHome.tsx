@@ -1,5 +1,5 @@
-// 홈 파사드 — 등각 큐브(C2) + 주인공 포커스·가장자리 걸침 (VISIT-1 V3·V18, 2026-11-18 D 결정 "홈 큐브 배치").
-// 기준 시안: 개발산출물/시안/홈_파사드_큐브_시안.html "3. 실제 배치 미리보기 v2". 지도는 쓰지 않는다. 색·곡률은 theme 토큰만.
+// 홈 파사드 — 등각 큐브(C2) + 주인공 포커스·모서리 이웃 (VISIT-1 V3·V18, 2026-11-18 "홈 큐브 배치" · 2026-11-19 홈 큐브 개편 E1-A·E2-2·E3-2).
+// 기준 시안: 개발산출물/시안/홈_큐브_개편_시안.html(배열·주인공 크기·이름), 큐브 모양은 홈_파사드_큐브_시안.html. 지도는 쓰지 않는다. 색·곡률은 theme 토큰만.
 // 세 플랫폼 같은 코드: 큐브 면은 View + transform(rotate·skewY·scale), 끌기는 PanResponder, 움직임은 Animated(useNativeDriver: false — 웹과 같게).
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -21,11 +21,10 @@ import {
   facadeItems,
   heroScene,
   initialHeroId,
-  pickByDrag,
+  pickByDragScene,
   ringScene,
   shownItems,
   type CubePlace,
-  type CubeRole,
   type FacadeItem,
   type FacadeScene,
   type HeroRule,
@@ -90,20 +89,31 @@ function hoursOf(lib: LibrarySummary): string {
   return lib.today.hours_text ?? "";
 }
 
-/** 윗면 이름 한 줄 길이(큐브 기본 좌표). 윗면 마름모 가운데 줄 110.8에서 양옆 여백을 뺀 값 */
-const TOP_LINE = 92;
-const TOP_LS = 1;
+/** 윗면 이름 상자(큐브 기본 좌표): 110.85×110.85 정사각형을 등각 변환하면 윗면 마름모에 정확히 포개진다(시안 .face-top-box) */
+const TOP_BOX = 110.85;
+const TOP_LS = 0.3;
+/** E3-2(2026-11-19 D 채택): 기준(`ewm` 비율) 대비 -10% */
+const FONT_F = 0.9;
+/** 큰 글자가 이 글자 수 이상이면 두 줄 — 기본값(Claude) */
+export const TWO_LINE_FROM = 6;
+/** 작은 글자 = 큰 글자의 0.38배(최소 9) */
+export const SMALL_RATIO = 0.38;
+
 /**
- * 윗면 큰 글자 크기·줄 수(큐브 기본 좌표). name은 큰 글자(shortName.ts cubeNames v2). 글자 수는 큰 글자만 센다(D 결정 §7.5).
- * 7자 이상이면 두 줄로 나누고, 한 줄이 윗면 안에 들어오게 글자를 줄인다 — 기본값(Claude)
+ * 윗면 이름 크기·줄(큐브 기본 좌표, 화면에서는 × 큐브 배율). 시안 calcFont(E3-2) 그대로: 글자 수는 큰 글자만 센다(D 결정 §7.5).
+ * 한 줄 최대 30.6 · 두 줄 최대 19.8, 윗면 사용 폭(90)과 목표 폭(67.5)에 맞춰 줄이고 최소 10.
+ * 두 줄이면 앞쪽에 반 넘게(올림) 두고 나눈다. 역할(주인공·이웃·전체 보기)과 상관없이 같은 기본 크기다.
  */
-export function topFont(name: string, role: CubeRole, scale: number): { fontSize: number; lines: 1 | 2; width: number } {
-  const len = Math.max(1, [...name].length);
-  const lines = len > 6 ? 2 : 1;
-  const per = Math.ceil(len / lines);
-  const want = role === "hero" ? 16 : 12.5 / scale; // 걸침·전체 보기는 화면에서 약 12.5px
-  const fontSize = Math.max(6, Math.min(want, TOP_LINE / per - TOP_LS));
-  return { fontSize, lines, width: Math.ceil(per * (fontSize + TOP_LS)) + 2 };
+export function topFont(big: string, small: string | null = null) {
+  const chars = [...big];
+  const len = Math.max(1, chars.length);
+  const lines: 1 | 2 = len >= TWO_LINE_FROM ? 2 : 1;
+  const per = lines === 2 ? Math.ceil(len / 2) + (len === 7 ? 0.6 : 0.3) : len;
+  const byWidth = Math.min(90 / per, (75 * FONT_F) / Math.max(1.5, per * 0.92));
+  const fontSize = Math.max(10, Math.min(lines === 1 ? 34 * FONT_F : 22 * FONT_F, byWidth));
+  const cut = Math.ceil(len / 2);
+  const text = lines === 2 ? `${chars.slice(0, cut).join("")}\n${chars.slice(cut).join("")}` : big;
+  return { fontSize, lineHeight: fontSize * 1.08, lines, text, smallSize: small ? Math.max(9, fontSize * SMALL_RATIO) : 0 };
 }
 
 type Anim = { cx: Animated.Value; cy: Animated.Value; scale: Animated.Value };
@@ -125,7 +135,7 @@ function IsoCube({ item, title, tone, place, anim, onPress, onLongPress }: CubeP
   const fill = toneColor(tone);
   const hero = place.role === "hero";
   const label = hero ? `${lib.name} ${formatDistance(item.distanceM)}` : `${lib.name} 크게 보기`;
-  const fs = topFont(title.big, place.role, place.scale);
+  const fs = topFont(title.big, title.small);
   const ink = mix(fill, C.inkStrong, 0.4);
   const quiet = hero ? null : styles.quiet;
   return (
@@ -180,21 +190,16 @@ function IsoCube({ item, title, tone, place, anim, onPress, onLongPress }: CubeP
           </View>
         </View>
         <View style={[styles.faceTop, { backgroundColor: fill }]} />
-        <View style={styles.topTextWrap} pointerEvents="none">
-          <View style={{ width: fs.width }}>
-            {title.small ? (
-              // 작은 글자: 큰 글자 왼쪽 위 머리글자(D 그림 §7.6). 자리·크기 개편은 홈큐브 디자인 세션
-              <Text numberOfLines={1} style={[styles.topSmall, { fontSize: Math.max(6, fs.fontSize * 0.5), color: ink }]}>
-                {title.small}
-              </Text>
-            ) : null}
-            <Text
-              numberOfLines={fs.lines}
-              style={[styles.topText, { fontSize: fs.fontSize, lineHeight: fs.fontSize * 1.2, width: fs.width, color: ink }]}
-            >
-              {title.big}
+        {/* E3-2: 이름은 윗면 왼쪽 아래, 작은 글자는 큰 글자 왼쪽 위 */}
+        <View style={styles.topBox} pointerEvents="none" testID="facade-top-name">
+          {title.small ? (
+            <Text numberOfLines={1} style={[styles.topSmall, { fontSize: fs.smallSize, lineHeight: fs.smallSize * 1.1, color: ink }]}>
+              {title.small}
             </Text>
-          </View>
+          ) : null}
+          <Text numberOfLines={fs.lines} style={[styles.topText, { fontSize: fs.fontSize, lineHeight: fs.lineHeight, color: ink }]}>
+            {fs.text}
+          </Text>
         </View>
       </Pressable>
     </Animated.View>
@@ -298,8 +303,8 @@ export function FacadeHome(props: FacadeHomeProps) {
   }, [scene, anims, origin]);
 
   // 빈 판 끌기(주인공 모드만): 지도처럼 끈 반대 방향의 도서관이 주인공. 40px 미만이면 제자리로
-  const live = useRef({ shown, heroId, ring });
-  live.current = { shown, heroId, ring };
+  const live = useRef({ shown, heroId, ring, scene });
+  live.current = { shown, heroId, ring, scene };
   const responder = useMemo(
     () =>
       PanResponder.create({
@@ -310,7 +315,8 @@ export function FacadeHome(props: FacadeHomeProps) {
         onPanResponderMove: (_, g) => pan.setValue({ x: g.dx, y: g.dy }),
         onPanResponderRelease: (_, g) => {
           Animated.timing(pan, { toValue: { x: 0, y: 0 }, duration: MOVE_MS, easing: EASE, useNativeDriver: false }).start();
-          const pick = pickByDrag(live.current.shown, live.current.heroId, g.dx, g.dy);
+          const { scene: sc, shown: sh, heroId: hid } = live.current;
+          const pick = pickByDragScene(sc, sh, hid, g.dx, g.dy);
           if (pick != null) setChosen(pick);
         },
         onPanResponderTerminate: () => {
@@ -440,18 +446,23 @@ const styles = StyleSheet.create({
     borderColor: C.seamHairline,
     transform: [{ scaleY: 110.8 / 192 }, { rotate: "45deg" }],
   },
-  topTextWrap: {
+  topBox: {
     position: "absolute",
-    left: 14,
-    top: 67.4 - 30,
-    width: 192,
-    height: 60,
-    alignItems: "center",
-    justifyContent: "center",
+    left: 110 - TOP_BOX / 2,
+    top: 67.4 - TOP_BOX / 2,
+    width: TOP_BOX,
+    height: TOP_BOX,
+    paddingTop: 8,
+    paddingRight: 8,
+    paddingBottom: 8,
+    paddingLeft: 9,
+    alignItems: "flex-start",
+    justifyContent: "flex-end",
+    overflow: "hidden",
     transform: [{ rotate: "-30deg" }, { skewX: "30deg" }, { scaleY: 0.866 }],
   },
-  topText: { fontWeight: "500", letterSpacing: TOP_LS, textAlign: "center" },
-  topSmall: { fontWeight: "500", textAlign: "left", opacity: 0.85 },
+  topText: { fontWeight: "500", letterSpacing: TOP_LS, textAlign: "left" },
+  topSmall: { fontWeight: "500", textAlign: "left", opacity: 0.86, marginBottom: 1, maxWidth: TOP_BOX - 17 },
   // 왼쪽 면: (14,67.4) 기준 96×78, skewY(30°)
   faceLeft: {
     position: "absolute",
@@ -488,7 +499,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   faceHero: { borderColor: C.inkStrong },
-  quiet: { opacity: 0.5 },
+  // 이웃·전체 보기 큐브 옆면 글자(E3 기본값(Claude): 잘려도 구조는 남기고 흐리게)
+  quiet: { opacity: 0.38 },
   leftTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   badge: { flexDirection: "row", alignItems: "center", gap: 3 },
   dot: { width: 5, height: 5, borderRadius: 2.5 },
