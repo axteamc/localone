@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 짝 문서: 세부/<STEP>.md 이면 이 줄을 지워도 된다(같은 이름으로 찾는다). 다른 곳이면 상대 경로를 적는다. -->
+<meta name="명세" content="READ-1.md">
+<title>독서 기록 READ-1 시안</title>
+<!--
+  시안 템플릿 (../team/prompts/1_기획.md 1B 2단계 시안 사이클). 복사해서 specs/<기능>/세부/<STEP>_시안.html 로 쓴다.
+  아래 내용은 "검색창을 누르면 보이는 화면"의 예시다. 내용은 전부 바꿔 쓰되 **부품(아래 목록)은 그대로 가져다 쓴다.**
+
+  검사: sh ../team/tools/check_mockup.sh <이 파일>   (훅이 저장할 때마다·차례 끝에 자동으로 돌린다. 통과해야 끝낼 수 있다)
+
+  지킬 것 (검사기 번호)
+  - 정할 중심 요소 하나 = <section class="element" id="el-…"> 하나(M10·M11). 후보 화면 3개, 연속값이면 data-kind="continuous" + 기준·3단계 4개(M12).
+  - 후보 = <article class="cand" data-id="…">. 안에: 휴대폰 틀 .phone(M17), 눌러 볼 수 있는 것 하나 이상(M18),
+    "누르면 이렇게 이어져요"·"화면을 열어야 보이는 것"·"얻는 것 / 포기하는 것"·"표준 근거: P-번호"(M15·M16).
+  - 표준 근거는 ../team/docs/앱_표준_패턴.md 의 번호. 후보 3개는 서로 다른 패턴. 목록 밖은 "새 패턴 — 이유", 한 요소에 하나까지.
+  - 추천은 후보 하나에만 class="cand recommended" + "추천 이유"(M13).
+  - 채택 후: data-chosen="<후보 id>", 상태 "확인", 명세 패널 이유 칸에 사용자 말 그대로(M20·M32). 후보는 지우지 않는다 — 선택 상자로 다시 본다(M21).
+  - 명세 패널 #spec: 요소마다 <tr data-el="el-…">(M31), 머리 칸 채택안·차선·탈락안·이유·값·유저 플로우·상태(M30).
+  - 세부 시안은 #except(예외 4장면, M40)·#fullflow(M41). 명세서 확인 목록의 '확인' 행은 "시안 #el-…"를 적는다(X10).
+  - 색·곡률은 :root 토큰(var(--이름))만(M03). 외부 연결 없음(M02).
+
+  부품 목록 (class) — 휴대폰 화면은 이것만 조립해도 된다
+  - .phone 휴대폰 틀 240×430 · .scr 화면 한 장(data-screen="이름", 첫 장 말고는 class="scr hide")
+  - .search 맨 위 검색창 / .field 검색 화면의 입력 칸 / .tabbar 하단 탭 바 / .vhead + .back 머리와 "‹"
+  - .map·.pin·.me 지도·핀·내 위치 / .chip 떠 있는 작은 버튼 / .btn·.btn.ghost 버튼 / .switch 스위치 / .seg 세그먼트
+  - .sheet 아래에서 올라오는 카드 / .menu ⋯ 메뉴 / .toast 아래 한 줄 안내 / .note-card 버튼 없는 작은 카드
+  - .covers 책 표지 줄 / .li 목록 한 줄 / .two-col 두 칸 / .vbody 아직 안 그린 자리(점선)
+  동작 (data-…) — 스크립트를 새로 쓰지 않아도 된다
+  - data-open="화면이름"   같은 .phone 안의 그 화면만 보이기
+  - data-toast="id"        그 안내를 2초 보이기 / data-menu="id" 메뉴 열고 닫기 / data-close="id" 닫기 / data-show="id" 다시 띄우기
+  - data-swap="켜기 글자|끄기 글자"  누를 때마다 글자 바꾸기 / .switch 는 누르면 켜짐·꺼짐
+  - <select data-for="el-…"> 채택안·탈락안 다시 보기 (옵션 값 = 후보 data-id)
+-->
+<style>
+  :root {
+    /* 개발산출물/디자인_기준.md 토큰 (warm, M1 기본). 새 색이 필요하면 여기에 이름을 붙여 더한다 */
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+    --cream:#EFEFE7; --paper:#EFF1F1; --ink-strong:#2E333F; --text:#1D1D1F; --sub:#71716F;
+    --me-dot:#3B7BDB; --on-dark-sub:#CFD2D8;
+    --r-card:18px; --r-pill:18px;
+    /* 도서관마다 고유 색 (결정 4, 00 제안 "도서관마다 고유 색"). 임시 값 — 팔레트 색 목록은 D가 정한다(MY-3 M3-O4와 같은 방식). 이름만 쓰고 값은 여기 한 곳 */
+    --lib-1:#C7D3E3; --lib-2:#E6C8CF; --lib-3:#C9DDBF;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; line-height:1.5; }
+  header.page, main { max-width:1280px; margin:0 auto; padding:0 16px; }
+  header.page { padding-top:20px; }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:17px; margin:0 0 4px; } h3 { font-size:15px; margin:0 0 8px; }
+  .how, .flow, .decided { background:var(--cream); border-radius:var(--r-card); padding:12px 16px; margin:10px 0 0; }
+  .decided { border-left:5px solid var(--ink-strong); }
+  section.element { margin-top:32px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:var(--r-pill); background:var(--surface2); margin-left:6px; font-weight:400; }
+  .pick { margin:8px 0 0; font-size:14px; }
+  .pick select { font:inherit; padding:4px 8px; border-radius:10px; border:1px solid var(--surface3); background:var(--paper); }
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-card); padding:14px; border:3px solid transparent; }
+  .cand.recommended { border-color:var(--fill1); } .cand.chosen { border-color:var(--ink-strong); }
+  .badge { display:inline-block; font-size:12px; font-weight:700; padding:1px 9px; border-radius:var(--r-pill); background:var(--fill1); margin-left:6px; }
+  .badge.adopted { background:var(--ink-strong); color:var(--paper); }
+  .cand p, .cand li { font-size:13.5px; margin:6px 0; } .cand ul { padding-left:18px; margin:4px 0; }
+  .lbl { font-weight:700; font-size:12.5px; color:var(--sub); margin-top:10px; display:block; }
+  /* ---- 휴대폰 부품 ---- */
+  .phone { width:240px; height:430px; margin:0 auto 10px; background:var(--bg); border-radius:26px; border:5px solid var(--ink-strong); position:relative; overflow:hidden; font-size:11px; }
+  .scr { position:absolute; inset:0; padding:12px 10px; background:var(--paper); overflow:hidden; }
+  .scr.dark { background:var(--ink-strong); color:var(--paper); }
+  .map { position:absolute; inset:0; background:
+      linear-gradient(115deg, transparent 47%, var(--cream) 47%, var(--cream) 51%, transparent 51%),
+      linear-gradient(20deg, transparent 60%, var(--cream) 60%, var(--cream) 63%, transparent 63%), var(--bg); }
+  .pin { position:absolute; display:flex; flex-direction:column; align-items:center; transform:translateX(-50%); cursor:pointer; background:none; border:0; padding:0; font:inherit; color:inherit; }
+  .pin i { width:16px; height:16px; border-radius:50% 50% 50% 0; background:var(--fill1); transform:rotate(-45deg); border:2px solid var(--ink-strong); display:block; }
+  .pin b { margin-top:5px; font-size:10px; } .pin span { font-size:9px; color:var(--sub); }
+  .me { position:absolute; width:12px; height:12px; border-radius:50%; background:var(--me-dot); border:2px solid var(--paper); }
+  .search { position:absolute; left:10px; right:10px; top:12px; height:34px; border-radius:var(--r-pill); background:var(--paper); display:flex; align-items:center; padding:0 12px; gap:6px; box-shadow:0 1px 4px rgba(0,0,0,.15); cursor:pointer; }
+  .search .ph { flex:1; color:var(--sub); }
+  .field { height:34px; border-radius:var(--r-pill); display:flex; align-items:center; padding:0 12px; gap:6px; background:var(--cream); color:var(--sub); }
+  .scr.dark .field { background:var(--paper); color:var(--text); }
+  .tabbar { position:absolute; left:0; right:0; bottom:0; height:38px; background:var(--paper); display:flex; justify-content:space-around; align-items:center; font-size:9px; color:var(--sub); }
+  .tabbar b { color:var(--text); }
+  .btn { border:0; font:inherit; cursor:pointer; border-radius:var(--r-pill); padding:4px 10px; background:var(--ink-strong); color:var(--paper); }
+  .btn.ghost { background:var(--surface2); color:var(--text); }
+  .chip { position:absolute; border:0; cursor:pointer; font:inherit; border-radius:var(--r-pill); padding:5px 10px; background:var(--paper); box-shadow:0 1px 4px rgba(0,0,0,.18); font-size:10px; }
+  .vhead { padding:4px 2px 8px; } .row { display:flex; align-items:center; gap:6px; }
+  .back { font-size:24px; font-weight:800; line-height:1; background:none; border:0; cursor:pointer; text-shadow:0 1px 3px rgba(0,0,0,.2); padding:0 6px 0 0; color:inherit; }
+  .vname { font-size:14px; font-weight:700; } .vsub { color:var(--sub); font-size:10px; }
+  .vbody { margin:8px 2px; height:200px; border-radius:var(--r-card); border:2px dashed var(--surface3); display:flex; align-items:center; justify-content:center; text-align:center; color:var(--sub); padding:10px; }
+  .sheet { position:absolute; left:8px; right:8px; bottom:46px; background:var(--paper); border-radius:16px; padding:10px 12px; box-shadow:0 2px 10px rgba(0,0,0,.2); }
+  .menu { position:absolute; right:10px; top:40px; background:var(--paper); border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.2); padding:4px 0; width:150px; display:none; z-index:2; }
+  .menu.on { display:block; } .menu div { padding:7px 12px; cursor:pointer; }
+  .toast { position:absolute; left:14px; right:14px; bottom:48px; background:var(--ink-strong); color:var(--paper); border-radius:12px; padding:7px 10px; font-size:10px; display:none; }
+  .toast.on { display:block; }
+  .note-card { position:absolute; left:50%; bottom:46px; transform:translate(-50%,6px); background:var(--paper); border-radius:14px; padding:6px 12px; box-shadow:0 2px 10px rgba(0,0,0,.2); font-size:10px; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .3s, transform .3s; }
+  .note-card.on { opacity:1; transform:translate(-50%,0); }
+  .switch { width:30px; height:17px; border-radius:9px; background:var(--surface3); position:relative; border:0; cursor:pointer; flex:none; }
+  .switch::after { content:""; position:absolute; left:2px; top:2px; width:13px; height:13px; border-radius:50%; background:var(--paper); transition:left .15s; }
+  .switch.on { background:var(--ink-strong); } .switch.on::after { left:15px; }
+  .seg { display:flex; background:var(--surface2); border-radius:var(--r-pill); padding:2px; width:max-content; }
+  .seg button { border:0; font:inherit; border-radius:var(--r-pill); padding:3px 9px; background:none; cursor:pointer; color:inherit; }
+  .seg button.on { background:var(--ink-strong); color:var(--paper); }
+  .covers { display:flex; gap:6px; margin-top:6px; overflow:hidden; }
+  .covers i { width:40px; height:56px; border-radius:5px 9px 9px 5px; background:var(--fill2); display:block; flex:none; }
+  .covers i:nth-child(3n+2){ background:var(--fill3); } .covers i:nth-child(3n){ background:var(--fill1); }
+  .li { padding:7px 2px; border-bottom:1px solid var(--surface2); } .scr.dark .li { border-color:rgba(255,255,255,.18); }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .sec { font-weight:700; font-size:10.5px; margin-top:10px; }
+  .hide { display:none !important; }
+  /* ---- 표 ---- */
+  table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-card); overflow:hidden; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--surface2); }
+  th { background:var(--surface2); }
+  .st { font-size:12px; padding:1px 8px; border-radius:var(--r-pill); background:var(--surface2); white-space:nowrap; }
+  #spec, #except, #fullflow { margin-top:32px; }
+  .state button { font:inherit; border:0; border-radius:var(--r-pill); padding:4px 12px; background:var(--surface2); cursor:pointer; margin:2px; }
+  .state button[aria-pressed="true"] { background:var(--ink-strong); color:var(--paper); }
+  .wide { overflow-x:auto; }
+  .fab { position:absolute; right:12px; bottom:50px; width:38px; height:38px; border-radius:50%; border:0; background:var(--ink-strong); color:var(--paper); font-size:22px; line-height:1; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.3); }
+  .hplus { border:0; background:none; font-size:20px; font-weight:700; cursor:pointer; color:inherit; margin-left:auto; padding:0 4px; }
+  .bigadd { margin:6px 0 4px; padding:10px; border-radius:14px; border:2px dashed var(--surface3); background:var(--cream); cursor:pointer; width:100%; font:inherit; text-align:left; }
+  .log { display:flex; gap:8px; align-items:center; padding:6px 2px; border-bottom:1px solid var(--surface2); }
+  .log i { width:28px; height:40px; border-radius:3px 6px 6px 3px; background:var(--fill2); flex:none; display:block; }
+  .log:nth-child(3n) i { background:var(--fill3); } .log:nth-child(3n+1) i { background:var(--fill1); }
+  .log small { display:block; color:var(--sub); font-size:9px; }
+  .stats { display:flex; gap:6px; margin:6px 0; }
+  .stats button { flex:1; border:0; font:inherit; background:var(--cream); border-radius:12px; padding:6px 2px; cursor:pointer; color:inherit; }
+  .stats b { display:block; font-size:16px; }
+  .shelf { display:flex; align-items:flex-end; gap:3px; padding:0 6px; height:92px; border-bottom:6px solid var(--surface3); margin-top:6px; }
+  .shelf button { border:0; cursor:pointer; width:16px; border-radius:2px; background:var(--fill2); font-size:7px; writing-mode:vertical-rl; padding:3px 0; color:var(--text); }
+  .shelf button:nth-child(3n) { background:var(--fill3); } .shelf button:nth-child(3n+1) { background:var(--fill1); }
+  .fold { margin-top:8px; padding:6px 8px; border-radius:10px; background:var(--cream); cursor:pointer; border:0; font:inherit; width:100%; text-align:left; color:inherit; }
+  .pop { position:absolute; left:14px; right:14px; top:70px; background:var(--paper); border-radius:16px; padding:10px; box-shadow:0 4px 16px rgba(0,0,0,.3); z-index:3; text-align:center; }
+  .pop i { width:46px; height:64px; margin:4px auto; display:block; border-radius:4px 8px 8px 4px; background:var(--fill3); }
+  .pop .x { position:absolute; right:8px; top:4px; border:0; background:none; font-size:16px; cursor:pointer; }
+  .shelfname { font-size:9px; color:var(--sub); margin-top:6px; }
+  /* ---- 결정 3·4 반영(2026-11-19): 표지 면 책장 ---- */
+  .scroll { position:absolute; top:58px; bottom:38px; left:10px; right:10px; overflow-y:auto; scrollbar-width:none; }
+  .topr { margin-left:auto; display:flex; gap:4px; }
+  .topr .btn { font-size:9.5px; padding:3px 8px; }
+  .m { display:block; font-size:9px; font-weight:700; color:var(--sub); letter-spacing:.12em; margin-top:8px; }
+  .cvrow { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:3px 4px 0; border-bottom:5px solid var(--surface3); }
+  .cvrow button, .hrow button { border:0; cursor:pointer; aspect-ratio:3/4; border-radius:3px 6px 6px 3px; background:var(--fill2); font:inherit; font-size:8px; color:var(--text); display:flex; align-items:flex-end; justify-content:center; padding:0 2px 4px; }
+  .cvrow button:nth-child(3n+2), .hrow button:nth-child(3n+2) { background:var(--fill3); } .cvrow button:nth-child(3n), .hrow button:nth-child(3n) { background:var(--fill1); }
+  .hrow { display:flex; gap:6px; overflow-x:auto; padding:3px 0 0; border-bottom:5px solid var(--lib-c); scrollbar-width:none; }
+  .hrow button { flex:none; width:62px; height:83px; aspect-ratio:auto; }
+  .libtag { display:inline-block; font:inherit; font-size:9px; padding:1px 8px; border-radius:var(--r-pill); background:var(--lib-c); margin-top:9px; border:0; cursor:pointer; color:var(--text); }
+  .oldnote { font-size:9px; color:var(--sub); margin-top:4px; }
+  /* ---- READ-1 ---- */
+  .stars { display:flex; gap:3px; margin:6px 2px 2px; }
+  .stars button { border:0; background:none; font-size:17px; line-height:1; cursor:pointer; padding:0; color:var(--surface3); }
+  .stars button.on { color:var(--ink-strong); }
+  .stars.sm button { font-size:11px; }
+  .wf { height:auto; min-height:28px; align-items:flex-start; padding-top:7px; margin-top:5px; }
+  .fold2 { margin-top:5px; padding:6px 10px; border-radius:var(--r-pill); background:var(--cream); border:1px dashed var(--surface3); cursor:pointer; font:inherit; font-size:10px; color:var(--sub); width:100%; text-align:left; }
+  .exnote { font-size:12.5px; color:var(--sub); margin:6px 0 0; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>독서 기록 · READ-1 시안 — 나만 보는 독서 기록 쓰기·보기·고치기·지우기</h1>
+  <div class="how"><b>보는 법.</b> 화면 3개를 비교해 보세요. 휴대폰 안의 <b>별을 눌러 보고, "저장"을 눌러 보세요</b> — 책장으로 돌아가고, 꽂힌 "소년이 온다"를 누르면 책장 위에 카드가 떠요. 노란 테두리가 <b>추천</b>이에요. 고르는 건 직접 해 주세요.</div>
+  <div class="flow"><b>큰 틀에서 정해진 것.</b> 오른쪽 아래 + → 한 화면에 다 같이 쓰는 쓰기 화면(책 고르기는 검색 화면) → 저장하면 책장 맨 위·왼쪽에 꽂혀요. 책장은 표지 면, 한 줄 3권, 한 달 한 줄. 책을 누르면 책장 위에 카드(표지·제목·저자·읽은 날·읽은 도서관). 기록은 나만 봐요.</div>
+</header>
+<main>
+
+<!-- ===== 중심 요소 1 ===== -->
+<section class="element" id="el-rate" data-chosen="A">
+  <h2>정할 것 1. 책을 내가 평가하는 칸을 어떻게 둘까 <span class="status">확인</span></h2>
+  <div class="flow"><b>정해진 것.</b> 쓰기 화면에는 책 칸, 감상, 좋았던 문장, 읽은 날, 도서관, 대출 연결이 있어요(책만 꼭, 나머지는 비워도 돼요). 처음에 "책을 누르면 책 작가와 내가 평가할 수 있는 칸"이 있으면 좋겠다고 했어요. 정할 것은 <b>그 평가를 어떤 칸으로, 어디에</b> 두느냐예요.</div>
+  <div class="pick">다시 보기: <select data-for="el-rate">
+    <option value="A">후보 A — 별 5개, 책 바로 아래</option>
+    <option value="B">후보 B — 따로 칸 없이 감상으로</option>
+    <option value="C">후보 C — 접힌 칸 "별점·한 줄 평"</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 별 5개, 책 바로 아래 <span class="badge">추천</span></h3>
+      <div class="phone">
+        <div class="scr" data-screen="w"><div class="row"><button class="back">✕</button><span class="vname">기록 쓰기</span><button class="btn" style="margin-left:auto" data-open="s">저장</button></div>
+          <div class="log" style="border:0"><i></i><div>소년이 온다<small>한강 · 눌러서 바꾸기</small></div></div>
+          <div class="row" style="margin-top:4px"><span class="vsub">내 평가</span><div class="stars" style="margin:0"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div></div>
+          <div class="field wf" style="height:64px">감상 (비워도 돼요)</div><div class="field wf">좋았던 문장</div>
+          <div class="li">읽은 날 · 11월 19일</div><div class="li">도서관 · 마포중앙도서관</div><div class="li">대출 연결 · 고르지 않음</div></div>
+        <div class="scr hide" data-screen="s"><div class="row"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="vsub">전체 3 · 올해 3 · 이번 달 3</div>
+          <div class="scroll"><span class="m">Nov</span><div class="cvrow"><button data-show="pa1">소년이 온다</button><button>작별하지 않는다</button><button>흰</button></div></div>
+          <button class="fab" data-open="w">+</button>
+          <div class="pop hide" id="pa1"><button class="x" data-close="pa1">✕</button><i></i><b>소년이 온다</b><div class="vsub">한강</div><div class="stars sm" style="justify-content:center"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div><div class="li">읽은 날 · 11월 19일</div><div class="li">어디서 · 마포중앙도서관</div><button class="btn ghost" style="margin-top:6px">기록 자세히 보기</button></div><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+      </div>
+      <p>고른 책 바로 아래에 별 5개가 늘 보여요. 별을 눌러 매기고, 책장 카드에도 별이 보여요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>+ → 쓰기 화면 → 책 고르기 → 별 누르기(안 눌러도 저장 가능) → 저장 → 책장 → 책 누르면 카드에 별 4개.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>별은 1~5개, 안 누르면 "평가 안 함"(카드에 별 줄이 안 보임)</li><li>마지막으로 칠한 별을 한 번 더 누르면 다 지워짐</li><li>쓰기 화면 칸이 한 줄 늘어남</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>한 번 눌러 평가하고, 책장 카드에서 바로 보여요. / 감상과 별이 따로라 칸이 하나 더 많아요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: 새 패턴 — 별점 칸은 표준 목록에 없어서(보내 준 책인아웃 독서카드의 별점과 같은 모양)</p>
+      <p><b>추천 이유:</b> 처음 한 줄 설명에 "내가 평가할 수 있는 칸"이 있었고, 보내 준 책인아웃도 카드에 별점을 둬요. 한 번 누르면 끝이라 감상을 안 쓰는 날에도 남길 수 있어요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 따로 칸 없이 감상으로</h3>
+      <div class="phone">
+        <div class="scr" data-screen="w"><div class="row"><button class="back">✕</button><span class="vname">기록 쓰기</span><button class="btn" style="margin-left:auto" data-open="s">저장</button></div>
+          <div class="log" style="border:0"><i></i><div>소년이 온다<small>한강 · 눌러서 바꾸기</small></div></div>
+          
+          <div class="field wf" style="height:64px">어땠어요? 감상으로 평가해요 (비워도 돼요)</div><div class="field wf">좋았던 문장</div>
+          <div class="li">읽은 날 · 11월 19일</div><div class="li">도서관 · 마포중앙도서관</div><div class="li">대출 연결 · 고르지 않음</div></div>
+        <div class="scr hide" data-screen="s"><div class="row"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="vsub">전체 3 · 올해 3 · 이번 달 3</div>
+          <div class="scroll"><span class="m">Nov</span><div class="cvrow"><button data-show="pb1">소년이 온다</button><button>작별하지 않는다</button><button>흰</button></div></div>
+          <button class="fab" data-open="w">+</button>
+          <div class="pop hide" id="pb1"><button class="x" data-close="pb1">✕</button><i></i><b>소년이 온다</b><div class="vsub">한강</div><div class="vsub" style="margin-top:2px">"끝까지 읽고 한참 앉아 있었다…"</div><div class="li">읽은 날 · 11월 19일</div><div class="li">어디서 · 마포중앙도서관</div><button class="btn ghost" style="margin-top:6px">기록 자세히 보기</button></div><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+      </div>
+      <p>평가만 하는 칸은 없어요. 감상 칸에 글로 적고, 책장 카드에는 감상 첫 줄이 보여요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>+ → 쓰기 화면 → 책 고르기 → 감상에 "어땠는지" 쓰기 → 저장 → 책장 → 책 누르면 카드에 감상 첫 줄.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>쓰기 화면이 가장 짧음</li><li>감상을 안 쓰면 카드에 평가가 아무것도 안 보임</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>칸이 적어 깔끔해요. / 책끼리 얼마나 좋았는지 한눈에 비교가 안 돼요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-71 한 화면에 칸을 모두 두고 "올리기" (당근 글쓰기)</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 접힌 칸 "별점·한 줄 평"</h3>
+      <div class="phone">
+        <div class="scr" data-screen="w"><div class="row"><button class="back">✕</button><span class="vname">기록 쓰기</span><button class="btn" style="margin-left:auto" data-open="s">저장</button></div>
+          <div class="log" style="border:0"><i></i><div>소년이 온다<small>한강 · 눌러서 바꾸기</small></div></div>
+          <button class="fold2" data-open="w2">＋ 별점·한 줄 평 남기기 (안 써도 돼요)</button>
+          <div class="field wf" style="height:64px">감상 (먼저 써도 돼요)</div><div class="field wf">좋았던 문장</div>
+          <div class="li">읽은 날 · 11월 19일</div><div class="li">도서관 · 마포중앙도서관</div><div class="li">대출 연결 · 고르지 않음</div></div>
+        <div class="scr hide" data-screen="w2"><div class="row"><button class="back">✕</button><span class="vname">기록 쓰기</span><button class="btn" style="margin-left:auto" data-open="s">저장</button></div>
+          <div class="log" style="border:0"><i></i><div>소년이 온다<small>한강 · 눌러서 바꾸기</small></div></div>
+          <div style="background:var(--cream);border-radius:12px;padding:4px 8px;margin-top:4px"><div class="row"><div class="stars" style="margin:0"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div><button class="back" style="margin-left:auto;font-size:13px" data-open="w">접기 ⌃</button></div><div class="field wf" style="background:var(--paper)">한 줄 평</div></div>
+          <div class="field wf" style="height:48px">감상 (먼저 써도 돼요)</div><div class="field wf">좋았던 문장</div>
+          <div class="li">읽은 날 · 11월 19일</div><div class="li">도서관 · 마포중앙도서관</div><div class="li">대출 연결 · 고르지 않음</div></div>
+        <div class="scr hide" data-screen="s"><div class="row"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="vsub">전체 3 · 올해 3 · 이번 달 3</div>
+          <div class="scroll"><span class="m">Nov</span><div class="cvrow"><button data-show="pc1">소년이 온다</button><button>작별하지 않는다</button><button>흰</button></div></div>
+          <button class="fab" data-open="w">+</button>
+          <div class="pop hide" id="pc1"><button class="x" data-close="pc1">✕</button><i></i><b>소년이 온다</b><div class="vsub">한강</div><div class="stars sm" style="justify-content:center"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div><div class="vsub">"오래 남을 책"</div><div class="li">읽은 날 · 11월 19일</div><div class="li">어디서 · 마포중앙도서관</div><button class="btn ghost" style="margin-top:6px">기록 자세히 보기</button></div><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+      </div>
+      <p>책 아래에 "＋ 별점·한 줄 평 남기기"가 접혀 있어요. 눌러 보세요 — 별 5개와 한 줄 평 칸이 펼쳐져요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>+ → 쓰기 화면 → 책 고르기 → (원하면) "별점·한 줄 평" 펼쳐 별·한 줄 쓰기 → 저장 → 책장 → 카드에 별과 한 줄 평.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>접혀 있으면 쓰기 화면이 짧고, 펼치면 칸 2개(별·한 줄 평)가 늘어남</li><li>한 줄 평은 감상과 다른 짧은 칸(카드에 보이는 말)</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>평가하고 싶은 날만 펼쳐서 써요. / 한 번 더 눌러야 하고, 접혀 있으면 있는 줄 모를 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-73 접힌 선택 칸("+ 감상 쓰기")</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 중심 요소 2 ===== -->
+<section class="element" id="el-more" data-chosen="C">
+  <h2>정할 것 2. 읽은 날·도서관·대출 연결 칸을 어떻게 둘까 <span class="status">확인</span></h2>
+  <div class="flow"><b>정해진 것.</b> 별·감상·좋았던 문장 아래에 <b>읽은 날·도서관·대출 연결</b>이 있어요. 셋 다 비워도 돼요. 대출을 연결하면 그 대출의 도서관이 같이 채워지고(바꿀 수 있음), 연결은 <b>내가 고를 때만</b> 돼요. 정할 것은 <b>이 세 칸을 어떤 모양으로, 언제</b> 보여 주느냐예요. 세 화면 모두 같은 책·같은 대출(마포중앙 11월 3일)이에요.</div>
+  <div class="pick">다시 보기: <select data-for="el-more">
+    <option value="A">후보 A — 줄마다 누르면 아래에서 고르기</option>
+    <option value="B">후보 B — 접힌 칸 "더 적기"</option>
+    <option value="C">후보 C — 같은 책 대출을 먼저 묻는 카드</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 줄마다 누르면 아래에서 고르기 <span class="badge">추천</span></h3>
+      <div class="phone">
+        <div class="scr" data-screen="a1"><div class="row"><button class="back">✕</button><span class="vname">기록 쓰기</span><button class="btn" style="margin-left:auto">저장</button></div><div class="log" style="border:0"><i></i><div>소년이 온다<small>한강 · 눌러서 바꾸기</small></div></div><div class="row" style="margin-top:4px"><span class="vsub">내 평가</span><div class="stars" style="margin:0"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div></div><div class="field wf" style="height:46px">감상 (비워도 돼요)</div><div class="field wf">좋았던 문장</div>
+          <div class="li" data-show="ma-d" style="cursor:pointer">읽은 날 · 11월 19일 ›</div><div class="li" data-show="ma-l" style="cursor:pointer">도서관 · 고르지 않음 ›</div><div class="li" data-show="ma-n" style="cursor:pointer">대출 연결 · 고르지 않음 ›</div>
+          <div class="sheet hide" id="ma-d" style="bottom:10px;z-index:3"><b>언제 다 읽었어요?</b><div class="li">오늘 · 11월 19일</div><div class="li">어제 · 11월 18일</div><div class="li">날짜 고르기…</div><button class="btn ghost" data-close="ma-d" style="margin-top:4px">닫기</button></div>
+          <div class="sheet hide" id="ma-l" style="bottom:10px;z-index:3"><b>어디서 읽었어요?</b><div class="li">마포중앙도서관</div><div class="li">서대문도서관</div><div class="li">도서관 없이 (집·카페)</div><button class="btn ghost" data-close="ma-l" style="margin-top:4px">닫기</button></div>
+          <div class="sheet hide" id="ma-n" style="bottom:10px;z-index:3"><b>어떤 대출과 연결할까요?</b><div class="vsub" style="margin-top:4px">같은 책 대출이 위에 있어요</div><div class="li"><b>소년이 온다</b> · 마포중앙도서관 · 11월 3일 빌림</div><div class="li">흰 · 서대문도서관 · 10월 20일 빌림</div><button class="btn" data-open="a2" style="margin-top:4px">마포중앙 대출 연결</button></div></div>
+        <div class="scr hide" data-screen="a2"><div class="row"><button class="back">✕</button><span class="vname">기록 쓰기</span><button class="btn" style="margin-left:auto">저장</button></div><div class="log" style="border:0"><i></i><div>소년이 온다<small>한강 · 눌러서 바꾸기</small></div></div><div class="row" style="margin-top:4px"><span class="vsub">내 평가</span><div class="stars" style="margin:0"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div></div><div class="field wf" style="height:46px">감상 (비워도 돼요)</div><div class="field wf">좋았던 문장</div>
+          <div class="li">읽은 날 · 11월 19일 ›</div><div class="li"><b>도서관 · 마포중앙도서관 ›</b> <span class="vsub">(대출에서 채움)</span></div><div class="li"><b>대출 연결 · 11월 3일 빌림 ›</b></div>
+          <button class="btn ghost" data-open="a1" style="margin-top:6px">처음으로</button></div>
+      </div>
+      <p>세 칸이 늘 한 줄씩 보여요. 줄을 누르면 아래에서 고르는 카드가 올라와요. "대출 연결" 줄을 눌러 보세요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>쓰기 화면 → "대출 연결" 줄 → 아래 카드에서 같은 책 대출 고르기 → 도서관 줄이 마포중앙으로 채워짐 → 저장.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>읽은 날은 처음부터 오늘로 채워져 있음(바꿀 수 있음)</li><li>대출 목록은 같은 책 대출이 맨 위</li><li>"도서관 없이 (집·카페)"를 고를 수 있음</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>무엇을 비웠는지 한눈에 보이고 한 번 눌러 고쳐요. / 쓰기 화면이 길어져요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-04 아래에서 올라오는 시트 (iOS 공유 시트, 카카오맵 장소 카드)</p>
+      <p><b>추천 이유:</b> 고를 게 세 개뿐이고 모두 선택이라, 늘 보이게 두되 고르는 건 잠깐 올라오는 카드로 하는 게 P-04의 "가리지 않고 하나를 고름"과 맞아요. 대출을 "내가 고를 때만" 연결한다는 규칙도 그대로예요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 접힌 칸 "더 적기"</h3>
+      <div class="phone">
+        <div class="scr" data-screen="b1"><div class="row"><button class="back">✕</button><span class="vname">기록 쓰기</span><button class="btn" style="margin-left:auto">저장</button></div><div class="log" style="border:0"><i></i><div>소년이 온다<small>한강 · 눌러서 바꾸기</small></div></div><div class="row" style="margin-top:4px"><span class="vsub">내 평가</span><div class="stars" style="margin:0"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div></div><div class="field wf" style="height:46px">감상 (비워도 돼요)</div><div class="field wf">좋았던 문장</div>
+          <button class="fold2" data-open="b2" style="margin-top:8px">＋ 읽은 날·도서관·대출 더 적기</button>
+          <div class="vsub" style="margin-top:4px">안 펼치면 읽은 날은 오늘, 도서관·대출은 비워요</div></div>
+        <div class="scr hide" data-screen="b2"><div class="row"><button class="back">✕</button><span class="vname">기록 쓰기</span><button class="btn" style="margin-left:auto">저장</button></div><div class="log" style="border:0"><i></i><div>소년이 온다<small>한강 · 눌러서 바꾸기</small></div></div><div class="row" style="margin-top:4px"><span class="vsub">내 평가</span><div class="stars" style="margin:0"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div></div><div class="field wf" style="height:46px">감상 (비워도 돼요)</div><div class="field wf">좋았던 문장</div>
+          <div style="background:var(--cream);border-radius:12px;padding:2px 8px;margin-top:5px"><div class="row"><span class="vsub">더 적기</span><button class="back" style="margin-left:auto;font-size:12px" data-open="b1">접기 ⌃</button></div>
+          <div class="li" data-show="mb-n" style="cursor:pointer">읽은 날 · 11월 19일 ›</div><div class="li" data-show="mb-n" style="cursor:pointer">도서관 · 고르지 않음 ›</div><div class="li" data-show="mb-n" style="cursor:pointer">대출 연결 · 고르지 않음 ›</div></div>
+          <div class="sheet hide" id="mb-n" style="bottom:10px;z-index:3"><b>어떤 대출과 연결할까요?</b><div class="vsub" style="margin-top:4px">같은 책 대출이 위에 있어요</div><div class="li"><b>소년이 온다</b> · 마포중앙도서관 · 11월 3일 빌림</div><div class="li">흰 · 서대문도서관 · 10월 20일 빌림</div><button class="btn" data-open="b3" style="margin-top:4px">마포중앙 대출 연결</button></div></div>
+        <div class="scr hide" data-screen="b3"><div class="row"><button class="back">✕</button><span class="vname">기록 쓰기</span><button class="btn" style="margin-left:auto">저장</button></div><div class="log" style="border:0"><i></i><div>소년이 온다<small>한강 · 눌러서 바꾸기</small></div></div><div class="row" style="margin-top:4px"><span class="vsub">내 평가</span><div class="stars" style="margin:0"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div></div><div class="field wf" style="height:46px">감상 (비워도 돼요)</div><div class="field wf">좋았던 문장</div>
+          <div style="background:var(--cream);border-radius:12px;padding:2px 8px;margin-top:5px"><div class="li">읽은 날 · 11월 19일 ›</div><div class="li"><b>도서관 · 마포중앙도서관 ›</b></div><div class="li"><b>대출 연결 · 11월 3일 빌림 ›</b></div></div>
+          <button class="btn ghost" data-open="b1" style="margin-top:6px">처음으로</button></div>
+      </div>
+      <p>세 칸이 "＋ 읽은 날·도서관·대출 더 적기"에 접혀 있어요. 눌러서 펼친 다음 줄을 눌러 보세요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>쓰기 화면 → "더 적기" 펼치기 → 줄 누르고 아래 카드에서 고르기 → 저장. 안 펼치면 읽은 날은 오늘, 나머지는 비어서 저장.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>접혀 있으면 쓰기 화면이 가장 짧음</li><li>펼치기 전에는 도서관·대출을 안 고른 줄 모를 수 있음</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>별·감상에 집중하는 깔끔한 화면. / 도서관을 넣으려면 한 번 더 눌러야 하고, 도서관별 책장에 안 들어가는 기록이 늘 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-73 접힌 선택 칸("+ 감상 쓰기")</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 같은 책 대출을 먼저 묻는 카드</h3>
+      <div class="phone">
+        <div class="scr" data-screen="c1"><div class="row"><button class="back">✕</button><span class="vname">기록 쓰기</span><button class="btn" style="margin-left:auto">저장</button></div><div class="log" style="border:0"><i></i><div>소년이 온다<small>한강 · 눌러서 바꾸기</small></div></div><div class="row" style="margin-top:4px"><span class="vsub">내 평가</span><div class="stars" style="margin:0"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div></div><div class="field wf" style="height:46px">감상 (비워도 돼요)</div><div class="field wf">좋았던 문장</div>
+          <div class="li" data-show="mc-d1" style="cursor:pointer">읽은 날 · 11월 19일 ›</div><div class="li" data-show="mc-l1" style="cursor:pointer">도서관 · 고르지 않음 ›</div><div class="li" data-show="mc-n1" style="cursor:pointer">대출 연결 · 고르지 않음 ›</div><div class="sheet hide" id="mc-d1" style="bottom:10px;z-index:3"><b>언제 다 읽었어요?</b><div class="li">오늘 · 11월 19일</div><div class="li">어제 · 11월 18일</div><div class="li">날짜 고르기…</div><button class="btn ghost" data-close="mc-d1" style="margin-top:4px">닫기</button></div><div class="sheet hide" id="mc-l1" style="bottom:10px;z-index:3"><b>어디서 읽었어요?</b><div class="li">마포중앙도서관</div><div class="li">서대문도서관</div><div class="li">도서관 없이 (집·카페)</div><button class="btn ghost" data-close="mc-l1" style="margin-top:4px">닫기</button></div><div class="sheet hide" id="mc-n1" style="bottom:10px;z-index:3"><b>어떤 대출과 연결할까요?</b><div class="vsub" style="margin-top:4px">같은 책 대출이 위에 있어요</div><div class="li"><b>소년이 온다</b> · 마포중앙도서관 · 11월 3일 빌림</div><div class="li">흰 · 서대문도서관 · 10월 20일 빌림</div><button class="btn" data-open="c2" style="margin-top:4px">마포중앙 대출 연결</button></div>
+          <div class="sheet" style="bottom:10px"><b>마포중앙도서관에서 11월 3일에 빌린 책이에요</b><div class="vsub">이 대출과 연결할까요? 도서관도 같이 채워요.</div><div class="row" style="margin-top:6px"><button class="btn" data-open="c2">연결하기</button><button class="btn ghost" data-open="c3">아니요</button></div></div></div>
+        <div class="scr hide" data-screen="c2"><div class="row"><button class="back">✕</button><span class="vname">기록 쓰기</span><button class="btn" style="margin-left:auto">저장</button></div><div class="log" style="border:0"><i></i><div>소년이 온다<small>한강 · 눌러서 바꾸기</small></div></div><div class="row" style="margin-top:4px"><span class="vsub">내 평가</span><div class="stars" style="margin:0"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div></div><div class="field wf" style="height:46px">감상 (비워도 돼요)</div><div class="field wf">좋았던 문장</div>
+          <div class="li">읽은 날 · 11월 19일 ›</div><div class="li"><b>도서관 · 마포중앙도서관 ›</b></div><div class="li"><b>대출 연결 · 11월 3일 빌림 ›</b></div>
+          <button class="btn ghost" data-open="c1" style="margin-top:6px">처음으로</button></div>
+        <div class="scr hide" data-screen="c3"><div class="row"><button class="back">✕</button><span class="vname">기록 쓰기</span><button class="btn" style="margin-left:auto">저장</button></div><div class="log" style="border:0"><i></i><div>소년이 온다<small>한강 · 눌러서 바꾸기</small></div></div><div class="row" style="margin-top:4px"><span class="vsub">내 평가</span><div class="stars" style="margin:0"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div></div><div class="field wf" style="height:46px">감상 (비워도 돼요)</div><div class="field wf">좋았던 문장</div>
+          <div class="li" data-show="mc-d3" style="cursor:pointer">읽은 날 · 11월 19일 ›</div><div class="li" data-show="mc-l3" style="cursor:pointer">도서관 · 고르지 않음 ›</div><div class="li" data-show="mc-n3" style="cursor:pointer">대출 연결 · 고르지 않음 ›</div><div class="sheet hide" id="mc-d3" style="bottom:10px;z-index:3"><b>언제 다 읽었어요?</b><div class="li">오늘 · 11월 19일</div><div class="li">어제 · 11월 18일</div><div class="li">날짜 고르기…</div><button class="btn ghost" data-close="mc-d3" style="margin-top:4px">닫기</button></div><div class="sheet hide" id="mc-l3" style="bottom:10px;z-index:3"><b>어디서 읽었어요?</b><div class="li">마포중앙도서관</div><div class="li">서대문도서관</div><div class="li">도서관 없이 (집·카페)</div><button class="btn ghost" data-close="mc-l3" style="margin-top:4px">닫기</button></div><div class="sheet hide" id="mc-n3" style="bottom:10px;z-index:3"><b>어떤 대출과 연결할까요?</b><div class="vsub" style="margin-top:4px">같은 책 대출이 위에 있어요</div><div class="li"><b>소년이 온다</b> · 마포중앙도서관 · 11월 3일 빌림</div><div class="li">흰 · 서대문도서관 · 10월 20일 빌림</div><button class="btn" data-open="c2" style="margin-top:4px">마포중앙 대출 연결</button></div>
+          <div class="vsub" style="margin-top:6px">연결 안 함 — 나중에 대출 연결 줄을 눌러 고를 수 있어요</div><button class="btn ghost" data-open="c1" style="margin-top:6px">처음으로</button></div>
+      </div>
+      <p>책을 골랐을 때 그 책을 빌린 적이 있으면 아래에 "이 대출과 연결할까요?" 카드가 한 번 떠요. "연결하기"나 "아니요"를 눌러 보세요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>책 고르기 → (빌린 책이면) 카드 → "연결하기" 한 번에 대출·도서관이 채워짐 → 저장. "아니요"면 그대로, 줄을 눌러 나중에 고를 수 있음.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>빌린 적 없는 책이면 카드가 안 뜨고 후보 A처럼 줄만 보임</li><li>세 줄은 후보 A와 똑같이 눌러서 고름(도서관 없이 집·카페도 고를 수 있음). "아니요"를 누른 뒤 줄을 눌러 보세요</li><li>카드는 묻기만 하고, 누르기 전에는 연결하지 않음</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>도서관에서 빌린 책이면 한 번에 다 채워져요. / 별·감상을 쓰려는데 카드가 먼저 떠서 한 번 닫아야 해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-12 사용 중 알맞은 순간에 한 번 묻는 카드 (지도 "집으로 저장할까요?")</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 중심 요소 3 ===== -->
+<section class="element" id="el-detail" data-chosen="A">
+  <h2>정할 것 3. 책장 카드에서 기록을 열고 고치고 지우는 길 <span class="status">확인</span></h2>
+  <div class="flow"><b>정해진 것.</b> 책장에서 책을 누르면 책장 위에 카드가 떠요(큰 틀). 기록 화면에는 별·읽은 날·도서관·대출·감상·좋았던 문장이 보이고, <b>고치기·지우기·"게시물로 올리기"</b>가 있어야 해요. 책은 바꿀 수 없어요(바꾸려면 새 기록). 지우기는 "지울까요?"로 한 번 물어요. 정할 것은 <b>카드에서 기록 화면으로 가는 길과, 세 버튼을 어디에</b> 두느냐예요. 세 화면 모두 "소년이 온다" 카드부터 시작해요.</div>
+  <div class="pick">다시 보기: <select data-for="el-detail">
+    <option value="A">후보 A — 기록 화면 + 오른쪽 위 ⋯ 메뉴</option>
+    <option value="B">후보 B — 카드를 끌어 올리면 펼쳐지고 아래 버튼 줄</option>
+    <option value="C">후보 C — 기록 화면이 곧 쓰기 화면</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 기록 화면 + 오른쪽 위 ⋯ 메뉴 <span class="badge">추천</span></h3>
+      <div class="phone">
+        <div class="scr" data-screen="sh"><div class="row"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="vsub">전체 3 · 올해 3 · 이번 달 3</div>
+          <div class="scroll"><span class="m">Nov</span><div class="cvrow"><button data-show="popa">소년이 온다</button><button>작별하지 않는다</button><button>흰</button></div></div><button class="fab">+</button>
+          <div class="pop hide" id="popa"><button class="x" data-close="popa">✕</button><i></i><b>소년이 온다</b><div class="vsub">한강</div><div class="stars sm"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div><div class="li">읽은 날 · 11월 19일</div><div class="li">어디서 · 마포중앙도서관</div><button class="btn ghost" style="margin-top:6px" data-open="dt">기록 자세히 보기</button></div><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+        <div class="scr hide" data-screen="gone"><div class="row"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="vsub">전체 2 · 올해 2 · 이번 달 2</div>
+          <div class="scroll"><span class="m">Nov</span><div class="cvrow"><button>작별하지 않는다</button><button>흰</button></div></div><div class="toast on">기록을 지웠어요</div><button class="btn ghost" data-open="sh" style="position:absolute;left:10px;bottom:90px">처음으로</button><button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+        <div class="scr hide" data-screen="dt"><div class="row"><button class="back" data-open="sh">‹</button><span class="vname">내 기록</span><button class="hplus" data-menu="mna" style="font-size:16px">⋯</button></div>
+          <div class="menu" id="mna"><div data-open="ed">수정</div><div data-show="cfa">지우기</div></div>
+          <div class="row"><i style="width:40px;height:56px;border-radius:3px 6px 6px 3px;background:var(--fill3);display:block"></i><div><b>소년이 온다</b><div class="vsub">한강</div><div class="stars sm"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div></div></div>
+          <div class="li">읽은 날 · 11월 19일</div><div class="li">어디서 · 마포중앙도서관</div><div class="li">대출 · 11월 3일 빌림</div><div class="sec">감상</div><div style="font-size:10px">끝까지 읽고 한참 앉아 있었다.</div><div class="sec">좋았던 문장</div><div style="font-size:10px">"당신이 죽은 뒤 장례식을 치르지 못해…"</div>
+          <button class="btn" style="position:absolute;left:10px;right:10px;bottom:12px;padding:8px" data-toast="tpa">게시물로 올리기</button><div class="toast" id="tpa">게시물 쓰기 화면으로 넘어가요(감상·문장이 채워진 채로)</div><div class="pop hide" id="cfa" style="top:120px"><b>이 기록을 지울까요?</b><div class="vsub">지우면 되돌릴 수 없어요.</div><div class="row" style="justify-content:center;margin-top:8px"><button class="btn ghost" data-close="cfa">취소</button><button class="btn" data-open="gone">지우기</button></div></div></div>
+        <div class="scr hide" data-screen="ed"><div class="row"><button class="back" data-open="dt">✕</button><span class="vname">기록 수정</span><button class="btn" style="margin-left:auto" data-open="dt">저장</button></div>
+          <div class="log" style="border:0"><i></i><div>소년이 온다<small>한강 · 책은 바꿀 수 없어요</small></div></div>
+          <div class="row" style="margin-top:4px"><span class="vsub">내 평가</span><div class="stars" style="margin:0"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div></div>
+          <div class="field wf" style="height:46px;color:var(--text)">끝까지 읽고 한참 앉아 있었다.</div><div class="field wf">좋았던 문장</div>
+          <div class="li">읽은 날 · 11월 19일 ›</div><div class="li">도서관 · 마포중앙도서관 ›</div><div class="li">대출 연결 · 11월 3일 빌림 ›</div></div>
+      </div>
+      <p>카드의 "기록 자세히 보기"를 누르면 기록 화면이 옆에서 밀려 들어와요. 수정·지우기는 오른쪽 위 ⋯ 안에, "게시물로 올리기"는 맨 아래 큰 버튼이에요. 눌러 보세요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>책 → 카드 → "기록 자세히 보기" → 기록 화면 → ⋯ → 수정(쓰기 화면과 같은 모양) / 지우기(지울까요? → 책장에서 빠짐) / 아래 "게시물로 올리기".</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>읽는 화면에는 버튼이 하나(게시물로 올리기)만 보임</li><li>수정·지우기는 ⋯를 눌러야 보임</li><li>이미 올린 기록이면 아래 버튼이 "올린 게시물 보기"로 바뀜</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>읽을 때는 깔끔하고 잘못 지울 일이 적어요. / 수정하려면 ⋯를 한 번 더 눌러야 해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-11 머리 오른쪽 ⋯(더 보기) 메뉴 안 항목 (iOS·Android 앱 상단 ⋯)</p>
+      <p><b>추천 이유:</b> 기록은 쓰고 나면 주로 다시 읽는 것이고 고치기·지우기는 가끔이라, P-11의 "가끔 쓰는 행동, 화면을 깔끔하게"와 맞아요. 지우기가 한 번 더 숨어 있어 실수로 누를 일도 줄어요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 카드를 끌어 올리면 펼쳐지고 아래 버튼 줄</h3>
+      <div class="phone">
+        <div class="scr" data-screen="sh"><div class="row"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="vsub">전체 3 · 올해 3 · 이번 달 3</div>
+          <div class="scroll"><span class="m">Nov</span><div class="cvrow"><button data-show="popb">소년이 온다</button><button>작별하지 않는다</button><button>흰</button></div></div><button class="fab">+</button>
+          <div class="pop hide" id="popb"><button class="x" data-close="popb">✕</button><i></i><b>소년이 온다</b><div class="vsub">한강</div><div class="stars sm"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div><div class="li">읽은 날 · 11월 19일</div><div class="li">어디서 · 마포중앙도서관</div><button class="btn ghost" style="margin-top:6px" data-open="dt">⌃ 끌어 올려 자세히</button></div><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+        <div class="scr hide" data-screen="gone"><div class="row"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="vsub">전체 2 · 올해 2 · 이번 달 2</div>
+          <div class="scroll"><span class="m">Nov</span><div class="cvrow"><button>작별하지 않는다</button><button>흰</button></div></div><div class="toast on">기록을 지웠어요</div><button class="btn ghost" data-open="sh" style="position:absolute;left:10px;bottom:90px">처음으로</button><button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+        <div class="scr hide" data-screen="dt"><div style="width:30px;height:4px;border-radius:2px;background:var(--surface3);margin:0 auto 6px"></div>
+          <div class="row"><i style="width:40px;height:56px;border-radius:3px 6px 6px 3px;background:var(--fill3);display:block"></i><div><b>소년이 온다</b><div class="vsub">한강</div><div class="stars sm"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div></div><button class="back" data-open="sh" style="margin-left:auto;font-size:14px">⌄</button></div>
+          <div class="li">읽은 날 · 11월 19일</div><div class="li">어디서 · 마포중앙도서관</div><div class="li">대출 · 11월 3일 빌림</div><div class="sec">감상</div><div style="font-size:10px">끝까지 읽고 한참 앉아 있었다.</div><div class="sec">좋았던 문장</div><div style="font-size:10px">"당신이 죽은 뒤 장례식을 치르지 못해…"</div>
+          <div class="row" style="position:absolute;left:10px;right:10px;bottom:12px;justify-content:space-between"><button class="btn ghost" data-open="ed">고치기</button><button class="btn ghost" data-show="cfb">지우기</button><button class="btn" data-toast="tpb">게시물로 올리기</button></div><div class="toast" id="tpb">게시물 쓰기 화면으로 넘어가요(감상·문장이 채워진 채로)</div><div class="pop hide" id="cfb" style="top:120px"><b>이 기록을 지울까요?</b><div class="vsub">지우면 되돌릴 수 없어요.</div><div class="row" style="justify-content:center;margin-top:8px"><button class="btn ghost" data-close="cfb">취소</button><button class="btn" data-open="gone">지우기</button></div></div></div>
+        <div class="scr hide" data-screen="ed"><div class="row"><button class="back" data-open="dt">✕</button><span class="vname">기록 고치기</span><button class="btn" style="margin-left:auto" data-open="dt">저장</button></div>
+          <div class="log" style="border:0"><i></i><div>소년이 온다<small>한강 · 책은 바꿀 수 없어요</small></div></div>
+          <div class="row" style="margin-top:4px"><span class="vsub">내 평가</span><div class="stars" style="margin:0"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div></div>
+          <div class="field wf" style="height:46px;color:var(--text)">끝까지 읽고 한참 앉아 있었다.</div><div class="field wf">좋았던 문장</div>
+          <div class="li">읽은 날 · 11월 19일 ›</div><div class="li">도서관 · 마포중앙도서관 ›</div><div class="li">대출 연결 · 11월 3일 빌림 ›</div></div>
+      </div>
+      <p>책장 위 카드를 위로 끌어 올리면 그 자리에서 기록 전체가 펼쳐져요. 아래에 고치기·지우기·게시물로 올리기 버튼이 나란히 있어요. "⌃ 끌어 올려 자세히"를 눌러 보세요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>책 → 카드 → 끌어 올리기 → 펼쳐진 기록 → 아래 버튼 줄에서 고치기 / 지우기 / 게시물로 올리기. ⌄로 내리면 책장.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>화면이 바뀌지 않고 카드가 커지는 느낌</li><li>세 버튼이 늘 보여 한 번에 누름</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>책장을 떠나지 않고 바로 고쳐요. / 버튼이 셋 다 보여 지우기를 잘못 누를 수 있어요(확인창은 떠요).</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-04 아래에서 올라오는 시트(반쯤 → 끌어 올리면 전체) (카카오맵 장소 카드)</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 기록 화면이 곧 쓰기 화면</h3>
+      <div class="phone">
+        <div class="scr" data-screen="sh"><div class="row"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="vsub">전체 3 · 올해 3 · 이번 달 3</div>
+          <div class="scroll"><span class="m">Nov</span><div class="cvrow"><button data-show="popc">소년이 온다</button><button>작별하지 않는다</button><button>흰</button></div></div><button class="fab">+</button>
+          <div class="pop hide" id="popc"><button class="x" data-close="popc">✕</button><i></i><b>소년이 온다</b><div class="vsub">한강</div><div class="stars sm"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div><div class="li">읽은 날 · 11월 19일</div><div class="li">어디서 · 마포중앙도서관</div><button class="btn ghost" style="margin-top:6px" data-open="dt">기록 열기</button></div><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+        <div class="scr hide" data-screen="gone"><div class="row"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="vsub">전체 2 · 올해 2 · 이번 달 2</div>
+          <div class="scroll"><span class="m">Nov</span><div class="cvrow"><button>작별하지 않는다</button><button>흰</button></div></div><div class="toast on">기록을 지웠어요</div><button class="btn ghost" data-open="sh" style="position:absolute;left:10px;bottom:90px">처음으로</button><button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+        <div class="scr hide" data-screen="dt"><div class="row"><button class="back" data-open="sh">‹</button><span class="vname">내 기록</span><button class="btn ghost" style="margin-left:auto" data-toast="tsc">저장</button></div>
+          <div class="log" style="border:0"><i></i><div>소년이 온다<small>한강</small></div></div>
+          <div class="row" style="margin-top:4px"><span class="vsub">내 평가</span><div class="stars" style="margin:0"><button class="on">★</button><button class="on">★</button><button class="on">★</button><button class="on">★</button><button>★</button></div></div>
+          <div class="field wf" style="height:46px;color:var(--text)">끝까지 읽고 한참 앉아 있었다.</div><div class="field wf">좋았던 문장</div>
+          <div class="li">읽은 날 · 11월 19일 ›</div><div class="li">도서관 · 마포중앙도서관 ›</div><div class="li">대출 연결 · 11월 3일 빌림 ›</div>
+          <div class="row" style="position:absolute;left:10px;right:10px;bottom:12px;justify-content:space-between"><button class="btn ghost" data-show="cfc">이 기록 지우기</button><button class="btn" data-toast="tpc">게시물로 올리기</button></div>
+          <div class="toast" id="tsc">고친 곳이 있을 때만 저장이 진하게 바뀌어요</div><div class="toast" id="tpc">게시물 쓰기 화면으로 넘어가요(감상·문장이 채워진 채로)</div><div class="pop hide" id="cfc" style="top:120px"><b>이 기록을 지울까요?</b><div class="vsub">지우면 되돌릴 수 없어요.</div><div class="row" style="justify-content:center;margin-top:8px"><button class="btn ghost" data-close="cfc">취소</button><button class="btn" data-open="gone">지우기</button></div></div></div>
+      </div>
+      <p>"기록 열기"를 누르면 쓰기 화면과 같은 모양으로 열려요. 따로 "고치기"가 없고, 칸을 눌러 바로 고친 뒤 저장해요. 아래에 지우기·게시물로 올리기가 있어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>책 → 카드 → "기록 열기" → 별·칸을 바로 고침 → 저장 / 아래 "이 기록 지우기" / "게시물로 올리기".</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>읽는 화면과 고치는 화면이 하나</li><li>고친 곳이 있을 때만 저장 버튼이 진해짐(저장 눌러 보기)</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>고치기가 가장 빨라요. / 다시 읽기만 하려다 별이나 글을 건드려 바뀔 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-02 밀려 들어오는 다음 화면 + 왼쪽 위 뒤로 (목록 → 상세)</p>
+    </article>
+  </div>
+</section>
+
+
+
+<!-- ===== 잘 안 될 때 (예외 네 장면) ===== -->
+<section id="except">
+  <h2>잘 안 될 때 보이는 화면</h2>
+  <div class="state" id="exTabs">
+    <button aria-pressed="true" data-ex="x0">인터넷이 끊김</button><button aria-pressed="false" data-ex="x1">하나도 없음</button><button aria-pressed="false" data-ex="x2">두 번 빠르게 누름</button><button aria-pressed="false" data-ex="x3">로그인 안 함</button>
+  </div>
+  <p class="exnote" id="exNote"></p>
+  <div class="phone" id="exPhone" style="margin:8px 0 0">
+    <div class="scr" data-ex-screen="x0"><div class="row"><button class="back">✕</button><span class="vname">기록 쓰기</span><button class="btn" style="margin-left:auto">저장</button></div>
+      <div class="log" style="border:0"><i></i><div>소년이 온다<small>한강</small></div></div>
+      <div class="field wf" style="height:64px;color:var(--text)">끝까지 읽고 한참 앉아 있었다.</div><div class="field wf">좋았던 문장</div>
+      <div class="li">읽은 날 · 11월 19일</div><div class="li">도서관 · 마포중앙도서관</div>
+      <div class="sheet" style="bottom:12px"><b>저장하지 못했어요</b><div class="vsub">인터넷 연결을 확인해 주세요. 쓴 내용은 그대로 있어요.</div><button class="btn" style="margin-top:6px">다시 저장하기</button></div></div>
+    <div class="scr hide" data-ex-screen="x1"><div class="row"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="vsub">전체 0 · 올해 0 · 이번 달 0</div>
+      <div class="vbody" style="height:150px;margin-top:14px">아직 꽂힌 책이 없어요.<br>오른쪽 아래 +를 눌러 첫 책을 꽂아 보세요.</div>
+      <button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+    <div class="scr hide" data-ex-screen="x2"><div class="row"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="vsub">전체 3 · 올해 3 · 이번 달 3</div>
+      <div class="scroll"><span class="m">Nov</span><div class="cvrow"><button>소년이 온다</button><button>작별하지 않는다</button><button>흰</button></div></div>
+      <div class="toast on">저장했어요</div><button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+    <div class="scr hide" data-ex-screen="x3"><div class="vname">독서 기록</div>
+      <div class="vbody" style="height:150px;margin-top:14px">로그인하면 나만 보는 독서 기록을 남길 수 있어요.</div>
+      <button class="btn" style="background:var(--fill1);color:var(--text);width:100%;padding:8px">로그인하기</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+  </div>
+</section>
+
+<!-- ===== 처음부터 끝까지 (세부 명세서 2. 유저 플로우와 같게) ===== -->
+<section id="fullflow">
+  <h2>처음부터 끝까지 이렇게 써요</h2>
+  <ol>
+    <li>사용자가 하단 "독서 기록" 탭을 누르면 동네한권이 내 책장(표지 면, 최근 읽은 책이 위·왼쪽)을 보여 준다.</li>
+    <li>사용자가 오른쪽 아래 +를 누르면 동네한권이 쓰기 화면을 연다.</li>
+    <li>사용자가 책 칸을 누르면 동네한권이 책 검색 화면을 열고, 사용자가 책을 고르면 동네한권이 쓰기 화면으로 돌아와 책 칸을 채운다.</li>
+    <li>사용자가 책 바로 아래 별을 누르면 동네한권이 누른 별까지 칠한다(안 눌러도 저장할 수 있다). 사용자가 감상·좋았던 문장·읽은 날·도서관을 원하는 만큼 채운다.</li>
+    <li>사용자가 고른 책을 전에 빌린 적이 있으면 동네한권이 "이 대출과 연결할까요?" 카드를 한 번 띄운다. 사용자가 "연결하기"를 누르면 동네한권이 대출과 그 도서관을 채우고, "아니요"를 누르면 아무것도 채우지 않는다.</li>
+    <li>사용자가 읽은 날·도서관·대출 연결 줄을 누르면 동네한권이 아래에서 고르는 카드를 올린다(도서관은 "도서관 없이 (집·카페)"도 고를 수 있다).</li>
+    <li>사용자가 저장을 누르면 동네한권이 기록을 저장하고 책장 맨 위·왼쪽에 그 책을 꽂는다.</li>
+    <li>사용자가 책장의 책을 누르면 동네한권이 책장 위에 카드(표지·제목·저자·별·읽은 날·읽은 도서관)를 띄운다.</li>
+    <li>사용자가 카드의 "기록 자세히 보기"를 누르면 동네한권이 기록 화면(별·읽은 날·도서관·대출·감상·좋았던 문장)을 연다.</li>
+    <li>사용자가 오른쪽 위 ⋯ → "수정"을 누르면 동네한권이 쓰기 화면과 같은 모양의 수정 화면을 열고(책은 바꿀 수 없다), 사용자가 저장하면 동네한권이 기록 화면에 고친 내용을 보여 준다.</li>
+    <li>사용자가 ⋯ → "지우기"를 누르면 동네한권이 "이 기록을 지울까요?"를 묻고, 사용자가 "지우기"를 누르면 동네한권이 기록을 지우고 책장에서 그 책을 뺀다.</li>
+    <li>사용자가 아래 "게시물로 올리기"를 누르면 동네한권이 게시물 쓰기 화면으로 넘긴다(이미 올린 기록이면 "올린 게시물 보기"로 그 게시물을 연다).</li>
+  </ol>
+</section>
+
+<!-- ===== 명세 패널 ===== -->
+<section id="spec">
+  <h2>명세</h2>
+  <div class="wide"><table>
+    <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
+    <tr data-el="el-rate"><td>1. 평가 칸</td><td>후보 A 별 5개, 책 바로 아래</td><td>차선은 없음</td><td>B 따로 칸 없이 감상으로, C 접힌 칸 "별점·한 줄 평"</td><td>"나만의 별점넣는 기능으로 내 판단중 하나가 더 들어갈수있고 감상문은 내가 그떄 읽었던 내용 곱씹을수 있으며 좋았던문장보고 그랬지라며 할수있는 기능이라생각해"</td><td>별 1~5, 안 누르면 평가 안 함, 별 17px(카드 11px). 감상 칸 안내 글자 "감상 (비워도 돼요)"</td><td>+ → 쓰기 → 책 고르기 → 별 누르기(안 눌러도 됨) → 저장 → 책장 → 책 누르면 카드에 별</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-more"><td>2. 읽은 날·도서관·대출 칸</td><td>후보 C — 후보 A의 줄 3개(누르면 아래에서 고르기, 도서관 없이 집·카페 포함) + 같은 책 대출이 있으면 연결할까요? 카드로 묻고 채움</td><td>차선은 없음</td><td>A 줄만(대출 카드 없음), B 접힌 칸 "더 적기"</td><td>"A기능에 C에있는 대출했던 기록있으면 넣어주는 시스템들어가면 좋겠어" / "묻고 채워주는게 좋을거같아 C가 제일 좋다생각해 편리성 추가한 느낌이라"</td><td>줄 3개, 읽은 날 기본 오늘, 대출 목록은 같은 책 대출이 위, 카드는 같은 책 대출이 있을 때 책을 고른 직후 한 번, 누르기 전에는 연결 안 함</td><td>책 고르기 → (빌린 책이면) 카드 → 연결하기면 대출·도서관 채움 / 아니요면 그대로 → 줄을 눌러 언제든 바꿈 → 저장</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-detail"><td>3. 기록 열기·고치기·지우기</td><td>후보 A 기록 화면 + 오른쪽 위 ⋯ 메뉴, 글자는 수정</td><td>차선은 없음</td><td>B 끌어 올려 펼치기 + 아래 버튼 줄, C 기록 화면이 곧 쓰기 화면</td><td>"A로 하는게 좋은데 고치기말고 수정 으로 바꾸면 좋겠어" / "눌렀을떄 가장 깔끔하고 책 감상문 적어놓은 정리화면이 보기좋았어"</td><td>⋯ 메뉴 2줄(수정·지우기), 수정 화면 제목 기록 수정, 아래 큰 버튼 1개(게시물로 올리기, 이미 올렸으면 올린 게시물 보기)</td><td>책 → 카드 → 기록 자세히 보기 → 기록 화면 → ⋯ → 수정/지우기, 아래 게시물로 올리기</td><td><span class="st">확인</span></td></tr>
+    <tr><td>감상·좋았던 문장 길이</td><td>감상 2000자, 좋았던 문장 300자</td><td>—</td><td>—</td><td>묻지 않음</td><td>계약 R1-O3 D 추천값 그대로</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>저장 안 하고 나갈 때</td><td>확인창 "쓰던 기록을 버릴까요?" [계속 쓰기] [버리기]</td><td>—</td><td>—</td><td>묻지 않음</td><td>아무 칸도 안 썼으면 바로 닫힘</td><td>✕ → 확인창 → 버리기면 책장</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>지우기 확인</td><td>확인창 "이 기록을 지울까요? 지우면 되돌릴 수 없어요." [취소] [지우기]</td><td>—</td><td>—</td><td>묻지 않음</td><td>이미 올린 게시물은 남는다는 한 줄 더함</td><td>지우기 → 확인창 → 책장에서 빠짐</td><td><span class="st">기본값(Claude)</span></td></tr>
+  </table></div>
+</section>
+</main>
+<script>
+  function mark(el, id) {
+    el.querySelectorAll('.cand').forEach(function (c) {
+      c.classList.toggle('chosen', c.dataset.id === id);
+      var old = c.querySelector('.badge.adopted'); if (old) old.remove();
+      if (id && c.dataset.id === el.dataset.chosen) { var s = document.createElement('span'); s.className = 'badge adopted'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+    });
+    var sel = el.querySelector('select[data-for]'); if (sel && id) sel.value = id;
+  }
+  document.querySelectorAll('section.element').forEach(function (el) {
+    mark(el, el.dataset.chosen || '');
+    var sel = el.querySelector('select[data-for]');
+    if (sel) { if (!el.dataset.chosen) sel.insertAdjacentHTML('afterbegin', '<option value="" selected>(아직 고르지 않음)</option>');
+      sel.addEventListener('change', function () { mark(el, sel.value || el.dataset.chosen); }); }
+  });
+  document.addEventListener('click', function (e) {
+    var st = e.target.closest('.stars:not(.sm) button');
+    if (st) { var bs = Array.prototype.slice.call(st.parentNode.children), i = bs.indexOf(st), clear = st.classList.contains('on') && !(bs[i + 1] && bs[i + 1].classList.contains('on'));
+      bs.forEach(function (b, k) { b.classList.toggle('on', !clear && k <= i); }); return; }
+    var t = e.target.closest('[data-open],[data-toast],[data-menu],[data-close],[data-show],[data-swap],.switch'); if (!t) return;
+    if (t.classList.contains('switch')) t.classList.toggle('on');
+    if (t.dataset.open) { var ph = t.closest('.phone'); ph.querySelectorAll('.scr[data-screen]').forEach(function (s) { s.classList.toggle('hide', s.dataset.screen !== t.dataset.open); }); ph.querySelectorAll('.pop, .sheet[id]').forEach(function (p) { p.classList.add('hide'); }); }
+    if (t.dataset.menu) { document.getElementById(t.dataset.menu).classList.toggle('on'); return; }
+    if (t.dataset.show) { document.getElementById(t.dataset.show).classList.remove('hide'); }
+    if (t.dataset.swap) { var w = t.dataset.swap.split('|'); t.textContent = t.textContent === w[0] ? w[1] : w[0]; }
+    if (t.dataset.close) { var c = document.getElementById(t.dataset.close); c.classList.remove('on'); if (c.classList.contains('sheet') || c.classList.contains('pop')) c.classList.add('hide'); }
+    if (t.dataset.toast) { var m = document.getElementById(t.dataset.toast); m.classList.add('on'); clearTimeout(m._t); m._t = setTimeout(function () { m.classList.remove('on'); }, 2000); }
+  });
+  // 예외 화면 전환 — 탭마다 실제 화면이 바뀐다
+  var exNote = { x0: '저장을 눌렀는데 인터넷이 끊겼을 때: 쓰던 화면과 글은 그대로, 아래 카드만 바뀌어요. "다시 저장하기"를 누르면 저장돼요.',
+                 x1: '기록이 하나도 없는 첫날: 통계는 0, 책장 자리에 한 줄 안내, + 버튼은 그대로예요.',
+                 x2: '저장을 빠르게 두 번 눌러도 책장에는 한 권만 꽂히고 "저장했어요"가 한 번 떠요.',
+                 x3: '로그인 안 하고 탭을 열면: 책장 대신 안내 한 줄과 로그인 버튼. 남의 기록은 볼 길이 없어요(주소로 열어도 "찾을 수 없는 기록이에요").' };
+  function showEx(id) {
+    document.querySelectorAll('#exTabs button').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.ex === id); });
+    document.querySelectorAll('#exPhone [data-ex-screen]').forEach(function (s) { s.classList.toggle('hide', s.dataset.exScreen !== id); });
+    document.getElementById('exNote').textContent = exNote[id];
+  }
+  document.querySelectorAll('#exTabs button').forEach(function (b) { b.addEventListener('click', function () { showEx(b.dataset.ex); }); });
+  showEx('x0');
+</script>
+</body>
+</html>
