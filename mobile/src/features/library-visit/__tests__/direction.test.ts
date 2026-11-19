@@ -1,4 +1,4 @@
-// 홈 방위·큐브 배치 계산 (VISIT-1 V3·V18, 2026-11-18 "홈 큐브 배치")
+// 홈 방위·큐브 배치 계산 (VISIT-1 V3·V18, 2026-11-18 "홈 큐브 배치" · 2026-11-19 홈 큐브 개편 E1-A·E2-2·E3-2)
 import { describe, expect, test } from "@jest/globals";
 import {
   assignSpineTones,
@@ -6,12 +6,16 @@ import {
   computeDistanceMeters,
   CUBE_H,
   CUBE_W,
+  HERO_W_F,
   MAX_CUBES,
+  PEEK_MAX,
+  PEEK_RATIO,
   facadeItems,
   formatCompassCode,
   heroScene,
   initialHeroId,
   pickByDrag,
+  pickByDragScene,
   ringScale,
   ringScene,
   sectorOf,
@@ -132,67 +136,104 @@ const box = (c: { cx: number; cy: number; scale: number }) => ({
   t: c.cy - (CUBE_H * c.scale) / 2,
   b: c.cy + (CUBE_H * c.scale) / 2,
 });
-// 하단 창 위로 보이는 판: 390×844 웹 · 360×640 · 844×412 가로
-const SIZES: [number, number][] = [
+// 하단 창 위로 보이는 판: 390×844 웹(390×325) · 375×667(375×220) · 844×412 가로(844×120)
+const HERO_SIZES: [number, number][] = [
   [390, 325],
-  [360, 220],
-  [844, 200],
+  [375, 220],
+  [844, 120],
 ];
+/** 큐브 상자가 보이는 판(0..W × 0..H) 밖으로 나간 넓이 비율 */
+const clippedShare = (c: CubePlace, W: number, H: number) => {
+  const b = box(c);
+  const vis = Math.max(0, Math.min(W, b.r) - Math.max(0, b.l)) * Math.max(0, Math.min(H, b.b) - Math.max(0, b.t));
+  return 1 - vis / ((b.r - b.l) * (b.b - b.t));
+};
 
 describe("cube layout", () => {
-  test.each(SIZES)("hero north pushes the origin to the far side and grows big (%ix%i)", (W, H) => {
+  test.each(HERO_SIZES)("E2-2: hero is 77%% of the width unless the height (94%%) limits it (%ix%i)", (W, H) => {
     const s = heroScene(around(), 1, W, H);
-    const h = box(heroOf(s));
-    if (sectorOf(0, W, H) === "N") {
-      expect(s.origin).toEqual({ x: W / 2, y: H * 0.88 });
-      expect(h.b).toBeLessThanOrEqual(s.origin.y - 22);
-    } else {
-      // 가로 화면: 북쪽도 동쪽 칸
-      expect(s.origin.x).toBeCloseTo(W * 0.12);
-      expect(h.l).toBeGreaterThanOrEqual(s.origin.x + 29);
-    }
-    expect(h.l).toBeGreaterThanOrEqual(6 - 0.01);
-    expect(h.r).toBeLessThanOrEqual(W - 6 + 0.01);
-    expect(h.t).toBeGreaterThanOrEqual(6 - 0.01);
-    expect(heroOf(s).scale).toBeLessThanOrEqual(1.7);
+    const hero = heroOf(s);
+    const want = Math.max(0.55, Math.min((W * HERO_W_F) / CUBE_W, (H * 0.94) / CUBE_H, 1.7));
+    expect(hero.scale).toBeCloseTo(want);
+    expect(hero.scale).toBeLessThanOrEqual(1.7);
+    // 기점 받침(58×44)은 판 안에 다 보인다
+    expect(s.origin.x - 29).toBeGreaterThanOrEqual(0);
+    expect(s.origin.x + 29).toBeLessThanOrEqual(W);
+    expect(s.origin.y - 22).toBeGreaterThanOrEqual(0);
+    expect(s.origin.y + 22).toBeLessThanOrEqual(H);
   });
 
-  test("hero east pushes the origin left and the hero fills the right", () => {
-    const s = heroScene(around(), 2, 390, 325);
-    expect(s.origin).toEqual({ x: 390 * 0.12, y: 325 / 2 });
-    expect(box(heroOf(s)).l).toBeGreaterThan(s.origin.x + 29);
-    expect(heroOf(s).scale).toBeGreaterThan(1.1); // 390 화면에서 폭 240px 넘게
+  test("E2-2 at 390x325: scale 1.36, 299px wide (77% of the board)", () => {
+    const hero = heroOf(heroScene(around(), 1, 390, 325));
+    expect(hero.scale).toBeCloseTo(1.365, 2);
+    expect(Math.round(CUBE_W * hero.scale)).toBe(300);
+    expect(heroOf(heroScene(around(), 1, 375, 220)).scale).toBeCloseTo((220 * 0.94) / CUBE_H);
   });
 
-  test("hero west and south mirror it", () => {
-    expect(heroScene(around(), 4, 390, 325).origin).toEqual({ x: 390 * 0.88, y: 325 / 2 });
-    expect(heroScene(around(), 3, 390, 325).origin).toEqual({ x: 195, y: 325 * 0.12 });
+  test("hero leans toward its direction and the origin sits in the opposite corner", () => {
+    const north = heroScene(around(), 1, 390, 325);
+    expect(north.origin.y).toBeGreaterThan(heroOf(north).cy);
+    expect(north.origin.y).toBeCloseTo(325 * 0.92 - 4);
+    const east = heroScene(around(), 2, 390, 325);
+    expect(east.origin.x).toBeCloseTo(390 * 0.08 + 16);
+    expect(heroOf(east).cx).toBeGreaterThan(195);
+    const west = heroScene(around(), 4, 390, 325);
+    expect(west.origin.x).toBeCloseTo(390 * 0.92 - 16);
+    expect(heroOf(west).cx).toBeLessThan(195);
+    const south = heroScene(around(), 3, 390, 325);
+    expect(south.origin.y).toBeLessThan(heroOf(south).cy);
   });
 
-  // 360×220은 가로 판(가로 > 세로×1.6)이라 북쪽 주인공도 동쪽 칸 → 주인공이 오른쪽을 채워 동쪽 도서관의 오른쪽 자리가 막힌다.
-  // PR 191 리뷰 수정(D 결정 "엄격"): 그때는 가장자리를 따라(아랫변으로 넘어가) 가장 가까운 빈자리로 간다.
-  test.each([
-    [390, 325, "right"],
-    [360, 220, "bottom"],
-    [844, 200, "right"],
-  ] as const)("other libraries perch on the edge with the name inside (%ix%i)", (W, H, eastEdge) => {
+  test.each(HERO_SIZES)("E1-A: three neighbors at 0.88x the hero, in three different corners, mostly off the board (%ix%i)", (W, H) => {
     const s = heroScene(around(), 1, W, H);
+    const hero = heroOf(s);
     const peeks = s.cubes.filter((c) => c.role === "peek");
-    expect(peeks).toHaveLength(4);
+    expect(peeks).toHaveLength(PEEK_MAX);
+    expect(new Set(peeks.map((p) => p.id)).size).toBe(PEEK_MAX);
+    const corners = new Set(peeks.map((p) => `${p.cx < W / 2 ? "L" : "R"}${p.cy < H / 2 ? "T" : "B"}`));
+    expect(corners.size).toBe(PEEK_MAX);
     for (const p of peeks) {
-      // 이름 자리 = 윗면 가운데(큐브 몸 가운데보다 35.6×배율 위), V3: 판 안 24px
-      const ny = p.cy - 35.6 * p.scale;
-      expect(p.cx).toBeGreaterThanOrEqual(24 - 0.01);
-      expect(p.cx).toBeLessThanOrEqual(W - 24 + 0.01);
-      expect(ny).toBeGreaterThanOrEqual(24 - 0.01);
-      expect(ny).toBeLessThanOrEqual(H - 24 + 0.01);
-      expect(p.scale).toBeGreaterThanOrEqual(0.45);
-      expect(p.scale).toBeLessThanOrEqual(0.62);
+      expect(p.scale).toBeCloseTo(hero.scale * PEEK_RATIO);
+      // 시안 E1-A 자리 그대로(상자 넓이 기준): 위 모서리는 약 67~69%, 아래 모서리는 윗면 위쪽 끝만 보여 약 86% 잘린다
+      const cut = clippedShare(p, W, H);
+      if (p.cy < H / 2) {
+        expect(cut).toBeGreaterThanOrEqual(0.6);
+        expect(cut).toBeLessThanOrEqual(0.72);
+      } else {
+        expect(cut).toBeGreaterThanOrEqual(0.8);
+        expect(cut).toBeLessThanOrEqual(0.9);
+      }
     }
-    const east = s.cubes.find((c) => c.id === 2)!;
-    if (eastEdge === "right") expect(east.cx).toBeGreaterThan(W / 2); // 동쪽은 오른쪽 가장자리
-    else expect(east.cy - 35.6 * east.scale).toBeCloseTo(H - 24); // 오른쪽이 막혀 아랫변을 따라 비킴
-    expect(s.cubes.find((c) => c.id === 4)!.cx).toBeLessThan(W / 2); // 서쪽은 왼쪽 가장자리
+    // 이웃끼리는 누르는 영역(판 안)이 겹치지 않는다
+    for (let i = 0; i < peeks.length; i++)
+      for (let j = i + 1; j < peeks.length; j++) {
+        const a = box(peeks[i]!);
+        const b = box(peeks[j]!);
+        const o =
+          Math.max(0, Math.min(a.r, b.r, W) - Math.max(a.l, b.l, 0)) * Math.max(0, Math.min(a.b, b.b, H) - Math.max(a.t, b.t, 0));
+        expect(o).toBe(0);
+      }
+  });
+
+  test("E1-A: the corner nearest the origin stays empty and each corner takes the library closest to its direction", () => {
+    // 북쪽 주인공: 기점은 왼쪽 아래 → 그 모서리는 비우고, 오른쪽 위 = 북동(5), 왼쪽 위 = 서(4), 오른쪽 아래 = 동(2)
+    const s = heroScene(around(), 1, 390, 325);
+    const at = (id: number) => s.cubes.find((c) => c.id === id);
+    expect(s.origin.x).toBeLessThan(195);
+    expect(at(5)!.cx).toBeGreaterThan(195);
+    expect(at(5)!.cy).toBeLessThan(162.5);
+    expect(at(4)!.cx).toBeLessThan(195);
+    expect(at(4)!.cy).toBeLessThan(162.5);
+    expect(at(2)!.cx).toBeGreaterThan(195);
+    expect(at(2)!.cy).toBeGreaterThan(162.5);
+    expect(at(3)).toBeUndefined(); // 7곳 중 나머지는 전체 보기에서
+  });
+
+  test("fewer libraries: as many neighbors as there are, none when alone", () => {
+    const two = around().slice(0, 2);
+    expect(heroScene(two, 1, 390, 325).cubes.filter((c) => c.role === "peek")).toHaveLength(1);
+    expect(heroScene(two.slice(0, 1), 1, 390, 325).cubes).toHaveLength(1);
+    expect(heroScene([], 1, 390, 325).cubes).toHaveLength(0);
   });
 
   test("overview puts the origin in the middle and every cube the same size, about 46% of the width", () => {
@@ -219,155 +260,119 @@ describe("cube layout", () => {
     expect(pickByDrag(items, 1, -30, 0)).toBeNull(); // 덜 끌면 제자리
     expect(pickByDrag(items, 2, 0, 60)).toBe(1); // 아래로 끌면 북쪽, 주인공(2)은 빼고
   });
+
+  test("hero mode drag brings in the neighbor shown on the screen side first, real bearing otherwise", () => {
+    const items = around();
+    const s = heroScene(items, 1, 390, 325);
+    // 왼쪽으로 끌면 오른쪽 위 모서리의 북동(5)이 온다(실제 방위만 보면 동쪽 2)
+    expect(pickByDrag(items, 1, -60, 0)).toBe(2);
+    expect(pickByDragScene(s, items, 1, -60, 0)).toBe(5);
+    // 위로 끌면 오른쪽 아래 모서리의 동(2)
+    expect(pickByDragScene(s, items, 1, 0, -60)).toBe(2);
+    // 덜 끌면 제자리
+    expect(pickByDragScene(s, items, 1, -30, 0)).toBeNull();
+    // 걸친 이웃이 없으면 실제 방위
+    const alone = { origin: s.origin, cubes: s.cubes.filter((c) => c.role === "hero") };
+    expect(pickByDragScene(alone, items, 1, 0, -60)).toBe(3);
+  });
 });
 
-// ── PR 191 리뷰 수정: 같은 방향 여러 곳의 겹침(2026-11-18, D 결정 "엄격 + 7곳 보류") ─────────────
+// ── 전체 보기: 같은 방향 여러 곳의 겹침(PR 191 리뷰 수정, 2026-11-18 D 결정 "엄격 + 7곳 보류") ─────────────
 // 영역 크기는 FacadeHome.tsx가 실제로 그리는 크기에서 가져온다.
-// - 누르는 영역: IsoCube의 Pressable(styles.cubeHit = CUBE_W×CUBE_H = 220×206)을 Animated.View의 transform scale로
-//   가운데 기준 확대·축소(FacadeHome.tsx styles.cube·cubeHit, left/top = cx−110, cy−103). 판(styles.board)은 overflow hidden이고
-//   하단 창이 판 아래(H 밖)를 덮으므로 보이는 판 0..W × 0..H로 자른다. 주인공은 zIndex가 높아 겹친 곳을 가져간다.
-// - 기점: styles.plinthWrap 58×44(FacadeHome.tsx PLINTH_W·PLINTH_H), 가운데 = origin.
-// - 이름 영역: topTextWrap(192×60, 가운데 = 큐브 좌표 (110, 67.4) = 윗면 가운데) 안의 글자 상자
-//   topFont(name, role, scale)의 width × (lines × fontSize × 1.2 lineHeight)를 transform
-//   rotate(−30°)·skewX(30°)·scaleY(0.866)로 기울인 것. 이 변환은 글자 가로축을 (0.866, −0.5), 세로축을 (0.866, 0.5)로
-//   보내므로 바깥 상자 = 0.866(w+h) × 0.5(w+h)(큐브 좌표), 화면에서는 × scale. 가운데 = (cx, cy − 35.6 × scale).
+// - 누르는 영역: IsoCube의 Pressable(220×206)을 가운데 기준 scale, 보이는 판 0..W × 0..H로 자른 것.
+// - 기점: 58×44, 가운데 = origin.
+// - 이름(2026-11-19 E3-2: 윗면 왼쪽 아래)은 윗면 마름모 안(overflow hidden)이라 누르는 영역끼리 겹치지 않으면 가리지 않는다.
+// 주인공 모드(E1-A)는 이웃이 모서리에 크게 잘려 걸치고 주인공이 위에 그려지므로 이 검사를 하지 않는다(위 "cube layout").
 const PLINTH = { w: 58, h: 44 };
 type Box = { l: number; t: number; r: number; b: number };
 const clipTo = (W: number, H: number, x: Box): Box => ({ l: Math.max(0, x.l), t: Math.max(0, x.t), r: Math.min(W, x.r), b: Math.min(H, x.b) });
 const overlap = (a: Box, b: Box) => Math.max(0, Math.min(a.r, b.r) - Math.max(a.l, b.l)) * Math.max(0, Math.min(a.b, b.b) - Math.max(a.t, b.t));
-const pressBox = (c: CubePlace, W: number, H: number) => clipTo(W, H, box(c));
-const nameBox = (c: CubePlace, name: string, W: number, H: number): Box => {
-  const fs = topFont(name, c.role, c.scale);
-  const k = fs.width + fs.lines * fs.fontSize * 1.2;
-  const hw = (0.866 * k * c.scale) / 2;
-  const hh = (0.5 * k * c.scale) / 2;
-  const y = c.cy - 35.6 * c.scale;
-  return clipTo(W, H, { l: c.cx - hw, t: y - hh, r: c.cx + hw, b: y + hh });
-};
 const plinthBox = (s: FacadeScene): Box => ({
   l: s.origin.x - PLINTH.w / 2,
   t: s.origin.y - PLINTH.h / 2,
   r: s.origin.x + PLINTH.w / 2,
   b: s.origin.y + PLINTH.h / 2,
 });
-/** 같은 방위(동쪽 90°)에 100m 간격으로 n곳. 이름은 실제처럼 길이가 다르게 */
+/** 같은 방위(동쪽 90°)에 100m 간격으로 n곳 */
 const sameWay = (n: number) =>
   facadeItems(
     C,
-    Array.from({ length: n }, (_, i) =>
-      lib(i + 1, C.lat, C.lng + 0.0009 * (i + 1), { distance_m: 100 * (i + 1), name: ["정독도서관", "종로", "어린이도서관", "남산도서관", "서울특별시교육청도서관", "삼청", "용산꿈나무도서관"][i]! })
-    )
+    Array.from({ length: n }, (_, i) => lib(i + 1, C.lat, C.lng + 0.0009 * (i + 1), { distance_m: 100 * (i + 1) }))
   );
 /** 겹치는 쌍을 사람이 읽을 수 있게 모은다(빈 배열이면 통과) */
-function collisions(s: FacadeScene, items: ReturnType<typeof sameWay>, W: number, H: number): string[] {
-  const nameOf = new Map(items.map((it) => [it.lib.id, it.lib.name]));
-  const press = s.cubes.map((c) => ({ id: `${c.role}#${c.id}`, box: pressBox(c, W, H) }));
-  const all = [...press, { id: "origin", box: plinthBox(s) }];
+function collisions(s: FacadeScene, W: number, H: number): string[] {
+  const all = [...s.cubes.map((c) => ({ id: `${c.role}#${c.id}`, box: clipTo(W, H, box(c)) })), { id: "origin", box: plinthBox(s) }];
   const out: string[] = [];
   for (let i = 0; i < all.length; i++)
     for (let j = i + 1; j < all.length; j++) {
       const o = overlap(all[i]!.box, all[j]!.box);
       if (o > 1e-6) out.push(`press ${all[i]!.id} × ${all[j]!.id} = ${o.toFixed(1)}px²`);
     }
-  for (const c of s.cubes) {
-    if (c.role === "hero") continue;
-    const nb = nameBox(c, nameOf.get(c.id)!, W, H);
-    for (const other of all) {
-      if (other.id === `${c.role}#${c.id}`) continue;
-      const o = overlap(nb, other.box);
-      if (o > 1e-6) out.push(`name ${c.role}#${c.id} × ${other.id} = ${o.toFixed(1)}px²`);
-    }
-  }
   return out;
 }
-// 844×412 가로 화면: 하단 창 평소 높이 위로 보이는 판이 약 120px(V18, 진행_L2_홈큐브.md)
-const STRICT_CASES: [string, number, number, number][] = [
-  ["hero", 390, 325, 3],
-  ["hero", 844, 120, 3],
-  ["hero", 844, 120, 7],
-  ["ring", 390, 325, 3],
-  ["ring", 390, 325, 4],
-  ["ring", 844, 120, 3],
-  ["ring", 844, 120, 6],
-];
-// 판에 7곳이 무겹침으로 다 들어가지 않는 경우(2026-11-18 D 결정 확정: 지금대로 유지):
-// 들어가는 앞부분(fit개)은 이름·누름·기점이 겹치지 않고, 초과 큐브도 포개지 않고 최소 겹침으로 분산하며(중심 거리 >= minDist),
-// 모든 큐브가 이름(24px)·가장자리 걸침 규칙을 지킨다.
-const OVERFLOW_CASES: [string, number, number, number, number, number][] = [
-  ["hero", 390, 325, 7, 3, 120],
-  ["ring", 390, 325, 7, 4, 35],
-  ["ring", 844, 120, 7, 6, 100],
-];
-const sceneOf = (mode: string, items: ReturnType<typeof sameWay>, W: number, H: number) =>
-  mode === "hero" ? heroScene(items, items[0]!.lib.id, W, H) : ringScene(items, W, H);
-
-function assertInsideAndClipped(s: FacadeScene, W: number, H: number) {
+function assertNameInside(s: FacadeScene, W: number, H: number) {
   for (const c of s.cubes) {
-    if (c.role === "hero") continue;
-    // V3: 이름(윗면 가운데)은 판 안 24px
+    // V3: 전체 보기 큐브의 윗면 가운데는 판 안 24px
     expect(c.cx).toBeGreaterThanOrEqual(24 - 1e-6);
     expect(c.cx).toBeLessThanOrEqual(W - 24 + 1e-6);
     expect(c.cy - 35.6 * c.scale).toBeGreaterThanOrEqual(24 - 1e-6);
     expect(c.cy - 35.6 * c.scale).toBeLessThanOrEqual(H - 24 + 1e-6);
-    // V3: 걸친 큐브는 가장자리에서 잘린다(큐브 상자가 보이는 판 밖으로 나간다)
-    if (c.role === "peek") {
-      const b = box(c);
-      expect(b.l < 0 || b.t < 0 || b.r > W || b.b > H).toBe(true);
-    }
   }
 }
 
-describe("same-direction libraries do not overlap (review fix)", () => {
-  test.each(STRICT_CASES)("%s %ix%i, %i libraries due east: names and press areas clear of each other, the hero and the origin", (mode, W, H, n) => {
-    const items = sameWay(n);
-    const s = sceneOf(mode, items, W, H);
+describe("overview: same-direction libraries do not overlap (review fix)", () => {
+  test.each([
+    [390, 325, 3],
+    [390, 325, 4],
+    [844, 120, 3],
+    [844, 120, 6],
+  ])("ring %ix%i, %i libraries due east: press areas clear of each other and the origin", (W, H, n) => {
+    const s = ringScene(sameWay(n), W, H);
     expect(s.cubes).toHaveLength(n);
-    expect(collisions(s, items, W, H)).toEqual([]);
-    assertInsideAndClipped(s, W, H);
+    expect(collisions(s, W, H)).toEqual([]);
+    assertNameInside(s, W, H);
   });
 
-  test.each(OVERFLOW_CASES)(
-    "%s %ix%i, %i libraries due east (overflow): first %i clear, all keep 24px inset and >= %ipx center gap",
-    (mode, W, H, n, fit, minDist) => {
-      const items = sameWay(n);
-      const s = sceneOf(mode, items, W, H);
-      expect(s.cubes).toHaveLength(n);
-      assertInsideAndClipped(s, W, H);
-      // 들어가는 앞부분(fit개)은 이름·누름·기점 무겹침
-      expect(collisions({ origin: s.origin, cubes: s.cubes.slice(0, fit) }, items.slice(0, fit), W, H)).toEqual([]);
-      // 주인공 모드에서는 걸친 큐브끼리도·기점과도 겹치지 않는다
-      if (mode === "hero") {
-        expect(collisions({ origin: s.origin, cubes: s.cubes.filter((c) => c.role === "peek") }, items.slice(1), W, H)).toEqual([]);
+  test.each([
+    [390, 325, 7, 4, 35],
+    [844, 120, 7, 6, 100],
+  ])("ring %ix%i, %i due east (overflow): first %i clear, all keep 24px inset and >= %ipx center gap", (W, H, n, fit, minDist) => {
+    const s = ringScene(sameWay(n), W, H);
+    expect(s.cubes).toHaveLength(n);
+    assertNameInside(s, W, H);
+    expect(collisions({ origin: s.origin, cubes: s.cubes.slice(0, fit) }, W, H)).toEqual([]);
+    for (let i = 0; i < s.cubes.length; i++)
+      for (let j = i + 1; j < s.cubes.length; j++) {
+        const a = s.cubes[i]!;
+        const b = s.cubes[j]!;
+        expect(Math.hypot(a.cx - b.cx, a.cy - b.cy)).toBeGreaterThanOrEqual(minDist);
       }
-      // 어떤 두 큐브도 같은 자리에 포개지지 않는다(중심 거리 >= minDist)
-      for (let i = 0; i < s.cubes.length; i++) {
-        for (let j = i + 1; j < s.cubes.length; j++) {
-          const a = s.cubes[i]!;
-          const b = s.cubes[j]!;
-          expect(Math.hypot(a.cx - b.cx, a.cy - b.cy)).toBeGreaterThanOrEqual(minDist);
-        }
-      }
-    }
-  );
+  });
+});
 
-  test("three due east at 390x325: the nearest stays on the east edge when its spot is free", () => {
-    // 주인공 북쪽(북쪽 0.1km 하나 + 동쪽 둘): 동쪽 둘은 오른쪽 가장자리 아래 구석과 그 둘레를 따라 놓인다
-    const items = facadeItems(C, [
-      lib(1, C.lat + 0.0009, C.lng, { distance_m: 100 }),
-      lib(2, C.lat, C.lng + 0.0018, { distance_m: 200 }),
-      lib(3, C.lat, C.lng + 0.0027, { distance_m: 300 }),
-    ]);
-    const s = heroScene(items, 1, 390, 325);
-    expect(collisions(s, items, 390, 325)).toEqual([]);
-    expect(s.cubes.find((c) => c.id === 2)!.cx).toBeCloseTo(390 - 24); // 가장 가까운 동쪽은 오른쪽 가장자리 그대로
+// ── 윗면 이름 크기(2026-11-19 E3-2, 기준 ewm 대비 -10%) ─────────────────────
+describe("top name size (E3-2)", () => {
+  test("two letters: 30.6 base, small letters 0.38x (min 9)", () => {
+    const f = topFont("사직", "어린이");
+    expect(f.fontSize).toBeCloseTo(30.6);
+    expect(f.lines).toBe(1);
+    expect(f.text).toBe("사직");
+    expect(f.smallSize).toBeCloseTo(30.6 * 0.38);
+    expect(f.lineHeight).toBeCloseTo(30.6 * 1.08);
+    expect(topFont("사직").smallSize).toBe(0);
   });
 
-  test("three due east at 390x325 with east hero: peeks wrap cleanly to the opposite edge without collision (D accepted)", () => {
-    const items = sameWay(3);
-    const s = heroScene(items, 1, 390, 325);
-    expect(collisions(s, items, 390, 325)).toEqual([]);
-    for (const p of s.cubes.filter((c) => c.role === "peek")) {
-      expect(p.cx).toBeLessThan(390 / 2); // 오른쪽 가장자리가 막혀 서쪽 가장자리 위·아래 구석으로 이동
-    }
+  test("longer names shrink to fit; 6 letters or more go to two lines split front-heavy", () => {
+    expect(topFont("푸른길").fontSize).toBeCloseTo(67.5 / 2.76);
+    expect(topFont("효천어울림").fontSize).toBeCloseTo(67.5 / 4.6);
+    const six = topFont("학생독립운동");
+    expect(six.lines).toBe(2);
+    expect(six.text).toBe("학생독\n립운동");
+    expect(six.fontSize).toBeCloseTo(19.8);
+    const seven = topFont("어린이생태학습");
+    expect(seven.text).toBe("어린이생\n태학습");
+    expect(seven.fontSize).toBeCloseTo(67.5 / (4.6 * 0.92));
+    expect(topFont("가나다라마바사아자차카타파하").fontSize).toBeGreaterThanOrEqual(10);
+    expect(topFont("가", "작은").smallSize).toBe(Math.max(9, topFont("가").fontSize * 0.38));
   });
 });
