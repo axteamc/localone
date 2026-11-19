@@ -12,7 +12,8 @@ import {
   View,
   type LayoutChangeEvent,
 } from "react-native";
-import { mix, onFill, theme, type as T } from "../../theme";
+import { contrastRatio, mix, onFill, theme, type as T } from "../../theme";
+import { CUBE_PALETTE, ON_FILL_LIGHT } from "../../theme/tokens";
 import type { LatLng, LibrarySummary } from "./deps";
 import {
   CUBE_H,
@@ -75,7 +76,19 @@ const TEXT = {
 };
 
 function toneColor(tone: SpineTone): string {
-  return tone === "closed" ? C.pinClosed : C[tone];
+  return tone === "closed" ? C.pinClosed : (CUBE_PALETTE[tone] ?? CUBE_PALETTE[0]).hex;
+}
+
+/**
+ * 윗면 글자(H6): 채움색이 섞인 글자. 밝은 색 위는 채움 40% + `inkStrong`, 어두운 색 위는 흰색 82% + 채움에서
+ * 시작해 대비 4.5가 될 때까지 채움 비율을 5%씩 줄인다(주황·울트라마린 같은 중간 밝기에서도 읽히게).
+ */
+export function topInk(fill: string): string {
+  const light = onFill(fill) === ON_FILL_LIGHT;
+  const at = (w: number) => (light ? mix(ON_FILL_LIGHT, fill, 1 - w) : mix(fill, C.inkStrong, w));
+  let w = light ? 0.18 : 0.4;
+  while (w > 0 && contrastRatio(fill, at(w)) < 4.5) w = Math.max(0, w - 0.05);
+  return at(w);
 }
 
 function statusOf(lib: LibrarySummary): string {
@@ -136,7 +149,7 @@ function IsoCube({ item, title, tone, place, anim, onPress, onLongPress }: CubeP
   const hero = place.role === "hero";
   const label = hero ? `${lib.name} ${formatDistance(item.distanceM)}` : `${lib.name} 크게 보기`;
   const fs = topFont(title.big, title.small);
-  const ink = mix(fill, C.inkStrong, 0.4);
+  const ink = topInk(fill);
   const quiet = hero ? null : styles.quiet;
   return (
     <Animated.View
@@ -234,7 +247,7 @@ export function FacadeHome(props: FacadeHomeProps) {
   const recentId = props.recentId ?? null;
 
   const items = useMemo(() => facadeItems(center, libraries), [center, libraries]);
-  const tones = useMemo(() => assignSpineTones(items), [items]);
+  const tones = useMemo(() => assignSpineTones(items, CUBE_PALETTE.length), [items]);
 
   const [boardH, setBoardH] = useState(0);
   const [boardW, setBoardW] = useState(0);
@@ -351,7 +364,7 @@ export function FacadeHome(props: FacadeHomeProps) {
               key={c.id}
               item={it}
               title={titles.get(c.id) ?? { big: it.lib.name, small: null }}
-              tone={tones.get(c.id) ?? "fill1"}
+              tone={tones.get(c.id) ?? 0}
               place={c}
               anim={anims.get(c.id) as Anim}
               onPress={c.role === "hero" ? open : focus}

@@ -353,3 +353,13 @@ describe("VISIT-1 first-hero setting changed on the visit page (L6)", () => {
     heroHas(/종로/);
   });
 });
+
+describe("H6 cube palette text", () => {
+  test("top-face name stays readable on every palette color (contrast 3+ for large text)", () => {
+    const { topInk } = require("../FacadeHome") as typeof import("../FacadeHome");
+    const { contrastRatio } = require("../../../theme") as typeof import("../../../theme");
+    const { CUBE_PALETTE } = require("../../../theme/tokens") as typeof import("../../../theme/tokens");
+    expect(CUBE_PALETTE.length).toBeGreaterThanOrEqual(12);
+    for (const { hex } of CUBE_PALETTE) expect(contrastRatio(hex, topInk(hex))).toBeGreaterThanOrEqual(3);
+  });
+});

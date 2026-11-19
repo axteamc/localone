@@ -2,6 +2,7 @@
 import { describe, expect, test } from "@jest/globals";
 import {
   assignSpineTones,
+  paletteIndexOf,
   computeBearingDeg,
   computeDistanceMeters,
   CUBE_H,
@@ -78,15 +79,25 @@ describe("direction", () => {
     expect(facadeItems(C, [lib(1, C.lat + 0.01, C.lng, { distance_m: -5 })])[0]!.distanceM).toBeGreaterThan(1100);
   });
 
-  test("tones: closed always, nearest open is fill1, then fill2 and fill3 alternate", () => {
-    const items = facadeItems(C, [
-      lib(1, C.lat + 0.01, C.lng + 0.01, { distance_m: 500, today: { date: "d", is_closed: true, hours_text: null, holiday_unchecked: false } }),
-      lib(2, C.lat + 0.01, C.lng - 0.01, { distance_m: 900 }),
-      lib(3, C.lat - 0.01, C.lng + 0.01, { distance_m: 1200 }),
-      lib(4, C.lat - 0.01, C.lng - 0.01, { distance_m: 1800 }),
-    ]);
-    const t = assignSpineTones(items);
-    expect([t.get(1), t.get(2), t.get(3), t.get(4)]).toEqual(["closed", "fill1", "fill2", "fill3"]);
+  test("tones: closed always, open ones get a fixed palette color by id, no repeats on the board", () => {
+    const closed = { date: "d", is_closed: true, hours_text: null, holiday_unchecked: false };
+    const libs = [lib(1, C.lat + 0.01, C.lng + 0.01, { distance_m: 500, today: closed })];
+    for (let id = 2; id <= 8; id++) libs.push(lib(id, C.lat + 0.001 * id, C.lng, { distance_m: 300 * id }));
+    const t = assignSpineTones(facadeItems(C, libs), 20);
+    expect(t.get(1)).toBe("closed");
+    const open = [2, 3, 4, 5, 6, 7, 8].map((id) => t.get(id) as number);
+    expect(open.every((v) => Number.isInteger(v) && v >= 0 && v < 20)).toBe(true);
+    expect(new Set(open).size).toBe(7);
+    // 같은 도서관은 다시 불러도 같은 색(맨 앞이라 해시 그대로)
+    expect(t.get(2)).toBe(paletteIndexOf(2, 20));
+    expect(assignSpineTones(facadeItems(C, libs), 20)).toEqual(t);
+  });
+
+  test("tones: more libraries than colors reuse the palette instead of looping forever", () => {
+    const libs = [1, 2, 3, 4, 5].map((id) => lib(id, C.lat + 0.001 * id, C.lng, { distance_m: 100 * id }));
+    const t = assignSpineTones(facadeItems(C, libs), 3);
+    expect([...t.values()].every((v) => typeof v === "number" && v < 3)).toBe(true);
+    expect(new Set([1, 2, 3].map((id) => t.get(id))).size).toBe(3);
   });
 
   test("first hero is the nearest by default, recent visit only when set and on the board", () => {
