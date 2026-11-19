@@ -1,7 +1,10 @@
-"""방문 페이지 피드(#26)·게시물 상세(#27)·같은 책 이어 읽기(#28). local-feed LOCAL-2-P1."""
+"""방문 페이지 피드(#26)·게시물 상세(#27)·같은 책 이어 읽기(#28). local-feed LOCAL-2-P1.
+
+혼합 피드(#32, 게시물+방명록)는 VISIT-3-P1에서 맨 아래에 더했다(기존 경로 무변경)."""
 
 import base64
 import binascii
+import json
 from datetime import datetime
 from typing import Any
 from uuid import UUID
@@ -13,6 +16,7 @@ from sqlalchemy.engine import Connection
 from app.auth import CurrentUser, get_optional_user
 from app.common import ApiError, now_kst
 from app.db import run_db
+from app.routers.guestbook import GUESTBOOK_COLUMNS, GUESTBOOK_JOINS, guestbook_item
 from app.routers.posts import (
     MSG_NOT_FOUND,
     POST_COLUMNS,
@@ -206,3 +210,96 @@ async def post_detail(
         my_reaction=row.id in reacted,
         my_bookmark=row.id in saved,
     )
+
+
+# ─────────── #32 혼합 피드 (VISIT-3-P1, 계약 VISIT-3 V3-8·P4) ───────────
+# 정렬: 모든 종류를 합쳐 published_at DESC, kind ASC, id DESC. 커서는 base64url JSON [published_at, kind, id].
+# `#26`(게시물만, 홈 하단 창)은 바꾸지 않는다.
+
+FEED_ITEM_KINDS = ("guestbook", "post")  # kind ASC 순서. VISIT-4 stamp, CLUB-1 club이 더한다
+
+
+def encode_items_cursor(published_at: datetime, kind: str, item_id: Any) -> str:
+    raw = json.dumps([published_at.isoformat(), kind, str(item_id)]).encode()
+    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+
+def decode_items_cursor(cursor: str | None) -> tuple[datetime, str, UUID] | None:
+    if cursor is None or cursor == "":
+        return None
+    try:
+        raw = json.loads(base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)).decode())
+        if not isinstance(raw, list) or len(raw) != 3 or not all(isinstance(v, str) for v in raw):
+            raise ValueError("cursor shape")
+        at_text, kind, id_text = raw
+        at = datetime.fromisoformat(at_text)
+        if at.tzinfo is None or kind not in FEED_ITEM_KINDS:
+            raise ValueError("cursor value")
+        return at, kind, UUID(id_text)
+    except (ValueError, UnicodeDecodeError, binascii.Error) as exc:
+        raise validation_error("cursor") from exc
+
+
+def after_clause(alias: str, kind: str, after: tuple[datetime, str, UUID] | None) -> tuple[str, dict[str, Any]]:
+    """(published_at, kind, id) 튜플 비교를 이 종류에 맞게 풀어 쓴 "커서 뒤" 조건."""
+    if after is None:
+        return "", {}
+    at, after_kind, after_id = after
+    if kind > after_kind:  # 같은 시각이면 뒤 종류는 모두 뒤
+        return f" AND {alias}.published_at <= :after_at", {"after_at": at}
+    if kind < after_kind:  # 같은 시각이면 앞 종류는 이미 지나감
+        return f" AND {alias}.published_at < :after_at", {"after_at": at}
+    return f" AND ({alias}.published_at, {alias}.id) < (:after_at, :after_id)", {"after_at": at, "after_id": after_id}
+
+
+def select_posts_page(c: Connection, library_id: int, after: tuple[datetime, str, UUID] | None,
+                      n: int) -> list[Any]:
+    cond, args = after_clause("p", "post", after)
+    sql = (f"SELECT {POST_COLUMNS} {POST_JOINS} WHERE p.status = 'published' AND p.library_id = :lib{cond} "
+           "ORDER BY p.published_at DESC, p.id DESC LIMIT :n")
+    return c.execute(text(sql), dict(args, lib=library_id, n=n)).all()
+
+
+def select_guestbook_page(c: Connection, library_id: int, after: tuple[datetime, str, UUID] | None,
+                          n: int) -> list[Any]:
+    cond, args = after_clause("g", "guestbook", after)
+    sql = (f"SELECT {GUESTBOOK_COLUMNS} {GUESTBOOK_JOINS} WHERE g.status = 'published' AND g.library_id = :lib"
+           f"{cond} ORDER BY g.published_at DESC, g.id DESC LIMIT :n")
+    return c.execute(text(sql), dict(args, lib=library_id, n=n)).all()
+
+
+@router.get("/libraries/{library_id}/feed")
+async def library_feed_items(
+    request: Request,
+    library_id: int,
+    cursor: str | None = None,
+    limit: int = LimitQuery,
+    viewer: CurrentUser | None = Depends(get_optional_user),
+) -> dict[str, Any]:
+    after = decode_items_cursor(cursor)
+
+    def tx(c: Connection) -> tuple[list[tuple[str, Any]], bool, tuple[set[Any], set[Any]]]:
+        if not c.execute(text("SELECT 1 FROM libraries WHERE id = :id"), {"id": library_id}).first():
+            raise ApiError(404, "NOT_FOUND", MSG_NOT_FOUND, "library_id")
+        merged = [("post", r) for r in select_posts_page(c, library_id, after, limit + 1)]
+        merged += [("guestbook", r) for r in select_guestbook_page(c, library_id, after, limit + 1)]
+        # 안정 정렬을 뒤 기준부터: id DESC → kind ASC → published_at DESC
+        merged.sort(key=lambda kv: kv[1].id, reverse=True)
+        merged.sort(key=lambda kv: kv[0])
+        merged.sort(key=lambda kv: kv[1].published_at, reverse=True)
+        page = merged[:limit]
+        post_ids = [r.id for kind, r in page if kind == "post"]
+        return page, len(merged) > limit, my_flags(c, viewer, post_ids)
+
+    page, more, flags = await run_db(request.app.state.engine, tx)
+    items: list[dict[str, Any]] = []
+    for kind, row in page:
+        if kind == "post":
+            items.append({"kind": "post", "post": feed_post(request, row, *flags)})
+        else:
+            items.append({"kind": "guestbook", "guestbook": guestbook_item(row, viewer)})
+    next_cursor = None
+    if more:
+        last_kind, last = page[-1]
+        next_cursor = encode_items_cursor(last.published_at, last_kind, last.id)
+    return {"items": items, "next_cursor": next_cursor}

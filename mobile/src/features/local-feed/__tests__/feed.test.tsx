@@ -29,12 +29,21 @@ jest.mock("../../../lib/publicApi", () => ({
   fetchLibrary: jest.fn(),
 }));
 jest.mock("../../../lib/visits", () => ({ recordVisit: jest.fn(), getDefaultLibrary: jest.fn() }));
-jest.mock("../api", () => ({
-  ...jest.requireActual<object>("../api"),
-  fetchLibraryPosts: jest.fn(),
-  setReaction: jest.fn(),
-  setBookmark: jest.fn(),
-}));
+jest.mock("../api", () => {
+  const posts = jest.fn<(...a: unknown[]) => Promise<{ items: unknown[]; next_cursor: string | null }>>();
+  return {
+    ...jest.requireActual<object>("../api"),
+    fetchLibraryPosts: posts,
+    // VISIT-3: 방문 페이지 기본 피드는 #32. 같은 인자로 #26 가짜를 불러 post 항목으로 감싼다(이 파일의 단언은 그대로)
+    fetchLibraryFeedItems: jest.fn(async (...a: unknown[]) => {
+      const page = await posts(...a);
+      return { items: page.items.map((post) => ({ kind: "post", post })), next_cursor: page.next_cursor };
+    }),
+    fetchShelf: jest.fn(async () => ({ pages: [] })), // VISIT-3 책장(#31): 이 파일은 책장을 보지 않는다
+    setReaction: jest.fn(),
+    setBookmark: jest.fn(),
+  };
+});
 
 const fetchLibrary = jest.mocked(publicApi.fetchLibrary);
 const fetchLibraryPosts = jest.mocked(api.fetchLibraryPosts);
