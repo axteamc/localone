@@ -42,7 +42,7 @@ jest.mock("expo-router", () => {
   };
 });
 
-jest.mock("../../../auth/AuthProvider", () => ({ useAuth: jest.fn() }));
+jest.mock("../../../auth/AuthProvider", () => ({ useAuth: jest.fn(), registerSignOutCleanup: jest.fn(() => () => undefined) }));
 
 jest.mock("../../../lib/platform", () => {
   const actual = jest.requireActual<typeof import("../../../lib/platform")>("../../../lib/platform");

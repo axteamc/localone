@@ -8,6 +8,7 @@ import * as api from "../api";
 import type { Loan, LoanPage } from "../api";
 import { LoansSection, REMINDERS_DENIED, WEB_NO_REMINDERS } from "../LoansSection";
 import * as platform from "../notifications.platform";
+import { registerSignOutCleanup } from "../../../auth/AuthProvider";
 import { REMINDER_TITLE, clearLoanReminders, fetchAllOnLoan, reminderPlan, syncLoanReminders } from "../reminders";
 
 // @types/node 없이 쓰는 최소 타입(소스 검사용, search.test.tsx와 같은 방식)
@@ -17,6 +18,11 @@ const fs = require("fs") as {
   readFileSync(p: string, enc: "utf8"): string;
 };
 const path = require("path") as { join(...parts: string[]): string };
+
+// reminders.ts가 모듈을 읽을 때 등록한 로그아웃 정화 함수(beforeEach의 clearAllMocks 전에 붙잡아 둔다)
+const signOutCleanupsAtImport = (
+  registerSignOutCleanup as unknown as jest.Mock<(fn: () => void | Promise<void>) => () => void>
+).mock.calls.map(([fn]) => fn);
 
 const mockPush = jest.fn();
 // 기기 예약 저장소 흉내: 식별자 → 예약
@@ -44,6 +50,8 @@ jest.mock("expo-router", () => {
 jest.mock("../../../auth/AuthProvider", () => ({
   AuthProvider: ({ children }: { children: React.ReactNode }) => children,
   useAuth: () => ({ status: "signedIn", userId: "user-a" }),
+  // reminders.ts가 모듈을 읽을 때 등록한다(import보다 먼저 만들어져야 해서 jest.fn으로 둔다)
+  registerSignOutCleanup: jest.fn(() => () => undefined),
 }));
 
 jest.mock("../notifications.platform", () => ({
@@ -269,6 +277,15 @@ describe("LOAN-3-P1", () => {
     await clearLoanReminders();
     expect(cancelAllLoan).toHaveBeenCalled();
     expect([...mockDevice.scheduled.keys()]).toEqual(["other:keep"]);
+  });
+
+  test("clearLoanReminders is registered as a sign-out cleanup (T6, AUTH-2 G5)", async () => {
+    expect(signOutCleanupsAtImport).toContain(clearLoanReminders);
+    await syncLoanReminders([loan("a")], "2026-11-16", EARLY);
+    expect(mockDevice.scheduled.size).toBeGreaterThan(0);
+    // AuthProvider가 로그아웃·탈퇴 때 등록된 함수를 모두 부르는 것과 같다
+    await Promise.all(signOutCleanupsAtImport.map((fn) => fn()));
+    expect([...mockDevice.scheduled.keys()].filter((k) => k.startsWith("loan:"))).toEqual([]);
   });
 });
 
