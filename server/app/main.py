@@ -68,6 +68,15 @@ def create_app(
             allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
             allow_headers=["Authorization", "Content-Type"],
         )
+    else:
+        allowed_origins = [o.strip() for o in settings.cors_allowed_origins.split(",") if o.strip()]
+        if allowed_origins:
+            app.add_middleware(
+                CORSMiddleware,
+                allow_origins=allowed_origins,
+                allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],
+                allow_headers=["Authorization", "Content-Type"],
+            )
 
     def _ping() -> None:
         with engine.connect() as conn:
