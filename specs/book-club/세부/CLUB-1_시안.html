@@ -430,7 +430,7 @@
     <tr><td>참가 취소·모임 취소 물어보기</td><td>확인창 두 버튼("참가를 취소할까요?" / 모임 취소는 이유 칸 + "모임 취소")</td><td>—</td><td>—</td><td>묻지 않음</td><td>—</td><td>"참가 취소" → 확인창 → 명단에서 빠짐</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>내 댓글 지우기</td><td>내 댓글 ⋯ → "지우기" → 확인창</td><td>—</td><td>—</td><td>묻지 않음</td><td>—</td><td>⋯ → 지우기 → 사라짐</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>글자 수</td><td>이름 40 · 소개 500 · 장소 100 · 댓글 300 · 취소 이유 200</td><td>—</td><td>—</td><td>묻지 않음</td><td>칸 아래 "n/40"</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
-    <tr><td>버튼·표시 문구</td><td>"모임에 참가" / "참가 취소" / "날짜 미정"·"장소 미정" / "모집 마감"·"자리가 다 찼어요"·"취소된 모임"·"끝난 모임"</td><td>—</td><td>—</td><td>묻지 않음("모임에 참가"·"들어가기 →"는 이미 정해짐)</td><td>—</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>버튼·표시 문구</td><td>"모임에 참가" / "참가 취소" / "날짜 미정"·"장소 미정" / "모집 마감"·"자리가 다 찼어요"·"취소된 모임"(카드는 "취소됨")·"끝난 모임"</td><td>—</td><td>—</td><td>묻지 않음("모임에 참가"·"들어가기 →"는 이미 정해짐)</td><td>—</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
   </table></div>
 </section>
 </main>
@@ -539,7 +539,7 @@
     canceled: { html: HEAD + '<div class="cs">' + info('취소된 모임 · 만든 사람 책읽는곰') +
         '<button class="main-btn" disabled>취소된 모임</button>' +
         '<div class="msg"><b>취소 이유</b><br>사정이 생겨 이번 모임은 쉬어요. 다음에 다시 열게요.</div>' + WHO + CMS + '</div><div class="cin">댓글 쓰기</div>',
-      note: '만든 사람이 취소한 모임이에요. 피드 카드에도 "취소된 모임"이 보이고, 모임 화면에는 취소 이유가 남아요. 참가했던 사람은 알림함에서 취소 안내를 받아요.' }
+      note: '만든 사람이 취소한 모임이에요. 피드 카드 날짜 아래에 "취소됨"이 보이고, 모임 화면에는 취소 이유가 남아요. 참가했던 사람은 알림함에서 취소 안내를 받아요.' }
   };
   var exScr = document.querySelector('#exPhone [data-screen="ex"]'), exNote = document.getElementById('exNote');
   function showEx(k) {
