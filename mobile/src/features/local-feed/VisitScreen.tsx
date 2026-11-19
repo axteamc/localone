@@ -17,8 +17,9 @@ import { getDefaultLibrary, recordVisit } from "../../lib/visits";
 import { actionColors, cardSurface, panel, theme, type as T } from "../../theme";
 import { FOLD_AT, VisitHeader, VisitHeaderFolded } from "./VisitHeader";
 import { AskDefaultCard } from "./AskDefaultCard";
-import { fetchLibraryPosts, type FeedPost, type ShelfResponse } from "./api";
+import { feedItemKey, fetchLibraryFeedItems, type FeedItem, type GuestbookItem, type ShelfResponse } from "./api";
 import { Bookshelf, SHELF_FADE_HEIGHT, SHELF_HEIGHT } from "./Bookshelf";
+import { ComposeChooser, GUESTBOOK_TEXT, GuestbookComposer, GuestbookLoginSheet } from "./GuestbookComposer";
 import { LibraryFeed } from "./LibraryFeed";
 import { VisitMenu } from "./VisitMenu";
 import { pickVisitMent } from "./visitMent";
@@ -45,7 +46,7 @@ export const VISIT_TEXT = {
   close: "닫기",
 } as const;
 
-/** 피드 불러오기(#26). cursor가 있으면 다음 묶음(LOCAL-2 H2·H13) */
+/** 피드 불러오기(VISIT-3부터 #32 혼합 피드). cursor가 있으면 다음 묶음(LOCAL-2 H2·H13) */
 export type FeedLoader = (
   libraryId: number,
   signal: AbortSignal,
@@ -53,7 +54,11 @@ export type FeedLoader = (
 ) => Promise<{ items: unknown[]; next_cursor?: string | null }>;
 
 const defaultLoadFeed: FeedLoader = (libraryId, signal, cursor) =>
-  fetchLibraryPosts(libraryId, { cursor: cursor ?? null }, signal);
+  fetchLibraryFeedItems(libraryId, { cursor: cursor ?? null }, signal);
+
+/** 같은 항목 판별(혼합 피드는 종류+id, 바꿔 끼운 피드는 id) */
+const itemKey = (item: unknown): string | undefined =>
+  feedItemKey(item as FeedItem) ?? (item as { id?: string }).id;
 
 const END_REACHED_PX = 600; // 바닥에서 이만큼 남으면 다음 묶음
 const FAB_SIZE = 64;
@@ -75,7 +80,7 @@ type FeedState =
 export type VisitScreenProps = {
   libraryId: number | null;
   distanceM: number | null;
-  loadFeed?: FeedLoader; // 기본: fetchLibraryPosts(#26)
+  loadFeed?: FeedLoader; // 기본: fetchLibraryFeedItems(#32, VISIT-3)
   renderFeed?: (items: unknown[]) => React.ReactNode; // 기본: LibraryFeed(2열 메이슨리)
   more?: (lib: LibraryDetail) => React.ReactNode; // 기본: VisitMenu (시험에서 바꿔 끼움)
   askCard?: (lib: LibraryDetail, close: () => void) => React.ReactNode; // 기본: AskDefaultCard
@@ -103,6 +108,9 @@ export function VisitScreen({
   const [ment, setMent] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
   const [loginSheet, setLoginSheet] = useState(false);
+  const [chooser, setChooser] = useState(false); // VISIT-3 V3-O3: "+" → 게시물/방명록 고르기
+  const [composer, setComposer] = useState(false);
+  const [gbLogin, setGbLogin] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const libRunner = useRef(createLatestRunner()).current;
@@ -234,8 +242,8 @@ export function VisitScreen({
     }
     setFeed((prev) => {
       if (prev.kind !== "items" || prev.nextCursor !== cursor) return prev;
-      const seen = new Set(prev.items.map((p) => (p as { id?: string }).id));
-      const added = res.value.items.filter((p) => !seen.has((p as { id?: string }).id));
+      const seen = new Set(prev.items.map(itemKey));
+      const added = res.value.items.filter((p) => !seen.has(itemKey(p)));
       return { kind: "items", items: [...prev.items, ...added], nextCursor: res.value.next_cursor ?? null };
     });
   }, [feedRunner, libraryId, loadFeed, showNotice]);
@@ -257,6 +265,9 @@ export function VisitScreen({
     setMent(null);
     setAsking(false);
     setLoginSheet(false);
+    setChooser(false);
+    setComposer(false);
+    setGbLogin(false);
     if (libraryId === null) {
       setLib({ kind: "notFound" });
       setFeed({ kind: "empty" }); // 없는 도서관: 피드를 부르지 않는다
@@ -292,6 +303,29 @@ export function VisitScreen({
       return;
     }
     router.push({ pathname: "/posts/new", params: { libraryId: String(libraryId) } });
+  };
+
+  // 고르기 창에서 "방명록 남기기": 로그인 확인은 고른 뒤(V3-O3, 예외 #4)
+  const openGuestbook = () => {
+    setChooser(false);
+    if (status !== "signedIn") {
+      setGbLogin(true); // 서버에 묻지 않는다
+      return;
+    }
+    setComposer(true);
+  };
+
+  // 올린 방명록은 피드 맨 앞에. 같은 글이 이미 있으면 하나만(V3-9·예외 #3)
+  const onGuestbookPosted = (item: GuestbookItem) => {
+    setComposer(false);
+    showNotice(GUESTBOOK_TEXT.posted);
+    const mine: FeedItem = { kind: "guestbook", guestbook: item };
+    const key = itemKey(mine);
+    setFeed((prev) => {
+      const rest = prev.kind === "items" ? prev.items.filter((p) => itemKey(p) !== key) : [];
+      const nextCursor = prev.kind === "items" ? prev.nextCursor : null;
+      return { kind: "items", items: [mine, ...rest], nextCursor };
+    });
   };
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -390,7 +424,13 @@ export function VisitScreen({
               </Pressable>
             </View>
           ) : (
-            renderFeed?.(feed.items) ?? <LibraryFeed items={feed.items as FeedPost[]} onNotice={showNotice} />
+            renderFeed?.(feed.items) ?? (
+              <LibraryFeed
+                items={feed.items as FeedItem[]}
+                onNotice={showNotice}
+                onReload={() => libraryId !== null && void refreshFeed(libraryId)}
+              />
+            )
           )}
         </View>
       </ScrollView>
@@ -409,7 +449,7 @@ export function VisitScreen({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="글쓰기"
-        onPress={openCompose}
+        onPress={() => setChooser(true)}
         style={({ pressed }) => [styles.fab, pressed && ACT.primaryPressed]}
       >
         <Text style={styles.fabText}>+</Text>
@@ -427,6 +467,26 @@ export function VisitScreen({
         <View style={styles.ment} pointerEvents="none" testID="visit-notice" accessibilityLiveRegion="polite">
           <Text style={styles.mentText}>{notice}</Text>
         </View>
+      ) : null}
+
+      <ComposeChooser
+        visible={chooser}
+        onClose={() => setChooser(false)}
+        onPost={() => {
+          setChooser(false);
+          openCompose();
+        }}
+        onGuestbook={openGuestbook}
+      />
+      <GuestbookLoginSheet visible={gbLogin} onClose={() => setGbLogin(false)} />
+      {libraryId !== null ? (
+        <GuestbookComposer
+          libraryId={libraryId}
+          libraryName={name}
+          visible={composer}
+          onClose={() => setComposer(false)}
+          onPosted={onGuestbookPosted}
+        />
       ) : null}
 
       {loginSheet ? (

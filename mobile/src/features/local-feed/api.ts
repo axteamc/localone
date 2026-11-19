@@ -204,3 +204,62 @@ export type ShelfResponse = { pages: ShelfPage[] };
 export function fetchShelf(libraryId: number, signal?: AbortSignal): Promise<ShelfResponse> {
   return send<ShelfResponse>(`libraries/${libraryId}/shelf`, { method: "GET" }, signal);
 }
+
+// ─────────── VISIT-3 방명록·혼합 피드(contracts/local-feed.md VISIT-3 C2·C3) ───────────
+
+export const GUESTBOOK_MAX = 140; // V3-O5
+
+export type GuestbookItem = {
+  id: string;
+  library_id: number;
+  body: string;
+  author_nickname: string;
+  published_at: string;
+  mine: boolean;
+};
+
+/** #32 항목. VISIT-4 `stamp`, CLUB-1 `club`이 종류를 더한다 — 모르는 종류는 그리지 않는다 */
+export type FeedItem =
+  | { kind: "post"; post: FeedPost }
+  | { kind: "guestbook"; guestbook: GuestbookItem }
+  | { kind: string; [key: string]: unknown };
+
+export type FeedItemPage = { items: FeedItem[]; next_cursor: string | null };
+
+export function isPostItem(item: FeedItem): item is { kind: "post"; post: FeedPost } {
+  return item.kind === "post" && typeof item.post === "object" && item.post !== null;
+}
+
+export function isGuestbookItem(item: FeedItem): item is { kind: "guestbook"; guestbook: GuestbookItem } {
+  return item.kind === "guestbook" && typeof item.guestbook === "object" && item.guestbook !== null;
+}
+
+/** 같은 항목 판별용 열쇠(종류 + id). 모르는 종류는 null */
+export function feedItemKey(item: FeedItem): string | null {
+  if (isPostItem(item)) return `post:${item.post.id}`;
+  if (isGuestbookItem(item)) return `guestbook:${item.guestbook.id}`;
+  return null;
+}
+
+/** #32 `GET /api/v1/libraries/{library_id}/feed` — 게시물·방명록 혼합, 최신순(V3-8) */
+export function fetchLibraryFeedItems(
+  libraryId: number,
+  page: { cursor: string | null; limit?: number },
+  signal?: AbortSignal
+): Promise<FeedItemPage> {
+  return send<FeedItemPage>(`libraries/${libraryId}/feed${pageQuery(page)}`, { method: "GET" }, signal);
+}
+
+/** #33 `POST /api/v1/libraries/{library_id}/guestbook` — 같은 clientRequestId면 같은 글(200, V3-9) */
+export function postGuestbook(libraryId: number, body: string, clientRequestId: string): Promise<GuestbookItem> {
+  return send<GuestbookItem>(`libraries/${libraryId}/guestbook`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body, client_request_id: clientRequestId }),
+  });
+}
+
+/** #34 `POST /api/v1/guestbook/{entry_id}/withdraw` — 이미 지운 글도 200 */
+export async function withdrawGuestbook(entryId: string): Promise<void> {
+  await send<{ ok: boolean }>(`guestbook/${encodeURIComponent(entryId)}/withdraw`, { method: "POST" });
+}
