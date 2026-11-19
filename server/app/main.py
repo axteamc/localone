@@ -144,6 +144,12 @@ def create_app(
     app.include_router(my_collection_router)
     # ── [/my-collection-A] ──
 
+    # ── [m2-core-D] ──
+    from app.routers.inbox import router as inbox_router  # M2-0-P1 알림함 #47~#49
+
+    app.include_router(inbox_router)
+    # ── [/m2-core-D] ──
+
     return app
 
 
