@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>book-club · CLUB-1 시안 — 모임 카드·만들기·모임 화면</title>
+<!--
+  짝 문서: specs/book-club/세부/CLUB-1.md
+  기준: ../team/contracts/book-club.md CLUB-1(D 기준선) · specs/book-club/명세서.md 결정 1~4 · 개발산출물/디자인_기준.md §3(모임 카드 아치 위 70·아래 18, 모임 태그 알약)·§4(피드 2열)
+  휴대폰 틀 240×430 = 390×844 화면을 약 0.615배로 줄인 그림. 모임 카드 아치 70/18 → 43/11.
+  모양 비교용 가짜 값은 세 후보 모두 같은 모임 하나("소년이 온다 같이 읽기")를 쓴다. 바뀌는 것은 카드에서 먼저 보이는 것뿐이다.
+  방문 페이지의 다른 부분(책장·게시물·방명록)은 이 시안에서 정하지 않는다. 회색 사진 칸은 자리만 보여 준다.
+-->
+<style>
+  :root {
+    /* 개발산출물/디자인_기준.md 토큰 (warm, M1 기본) */
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+    --cream:#EFEFE7; --paper:#EFF1F1; --ink-strong:#2E333F; --text:#1D1D1F; --sub:#71716F;
+    --on-fill:#1D1D1F;
+    /* 파생 (디자인_기준 §2 mix 식, warm) */
+    --panel-lit:#EEF0EF; --panel-frosted:#E9EAE8; --seam:#D1D2D0; --relief-bottom:#B9B9B6;
+    /* 형태 토큰 (아치 계열, 0.615배) */
+    --r-card:18px; --r-pill:9999px; --r-info:9px; --r-book:5px 9px 9px 5px;
+    --r-club:43px 43px 11px 11px;   /* 모임 카드 아치 위 70 · 아래 18 (앱 값) */
+    /* 그림자·덮개·유리 알약 (룩과 무관한 고정값) */
+    --shadow-soft:rgba(0,0,0,.15); --shadow-mid:rgba(0,0,0,.22); --dim:rgba(0,0,0,.35);
+    --pill-glass:rgba(255,255,255,.55);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; line-height:1.5; }
+  header.page, main { max-width:1280px; margin:0 auto; padding:0 16px; }
+  header.page { padding-top:20px; }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:17px; margin:0 0 4px; } h3 { font-size:15px; margin:0 0 8px; }
+  .how, .flow, .decided { background:var(--cream); border-radius:var(--r-card); padding:12px 16px; margin:10px 0 0; }
+  .decided { border-left:5px solid var(--ink-strong); }
+  section.element { margin-top:32px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:var(--r-pill); background:var(--surface2); margin-left:6px; font-weight:400; }
+  .pick { margin:8px 0 0; font-size:14px; }
+  .pick select { font:inherit; padding:4px 8px; border-radius:10px; border:1px solid var(--surface3); background:var(--paper); }
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-card); padding:14px; border:3px solid transparent; }
+  .cand.recommended { border-color:var(--fill1); } .cand.chosen { border-color:var(--ink-strong); }
+  .badge { display:inline-block; font-size:12px; font-weight:700; padding:1px 9px; border-radius:var(--r-pill); background:var(--fill1); margin-left:6px; }
+  .badge.adopted { background:var(--ink-strong); color:var(--paper); }
+  .cand p, .cand li { font-size:13.5px; margin:6px 0; } .cand ul { padding-left:18px; margin:4px 0; }
+  .lbl { font-weight:700; font-size:12.5px; color:var(--sub); margin-top:10px; display:block; }
+  .tbtn { font:inherit; font-size:12.5px; border:1px solid var(--surface3); background:var(--cream); border-radius:var(--r-pill); padding:3px 10px; cursor:pointer; margin:2px 0; }
+  .tbtn[aria-pressed="true"] { background:var(--ink-strong); color:var(--paper); border-color:var(--ink-strong); }
+
+  /* ---- 휴대폰 ---- */
+  .phone { width:240px; height:430px; margin:0 auto 10px; background:var(--cream); border-radius:26px; border:5px solid var(--ink-strong); position:relative; overflow:hidden; font-size:11px; }
+  .scr { position:absolute; inset:0; background:var(--cream); overflow:hidden; }
+  .hd { position:absolute; left:0; right:0; top:0; height:50px; padding:8px 10px 0; background:var(--panel-frosted); border-bottom:1px solid var(--seam); z-index:5; }
+  .back { font-size:20px; font-weight:800; line-height:1; background:none; border:0; padding:0; color:inherit; cursor:pointer; }
+  .vname { font-size:13px; font-weight:500; }
+  .feed { position:absolute; left:0; right:0; top:50px; bottom:0; overflow-y:auto; padding:6px 8px 60px; display:grid; grid-template-columns:1fr 1fr; gap:6px; align-items:start; scrollbar-width:none; }
+  .feed::-webkit-scrollbar { display:none; }
+  .col { display:flex; flex-direction:column; gap:6px; }
+  .pc { border-radius:var(--r-card); background:var(--surface3); }
+  .fab { position:absolute; right:10px; bottom:14px; width:34px; height:34px; border-radius:var(--r-pill); background:var(--ink-strong); color:var(--paper); display:flex; align-items:center; justify-content:center; font-size:20px; z-index:16; box-shadow:0 2px 6px var(--shadow-mid); border:0; }
+
+  /* 모임 카드 (공통) */
+  .club { border-radius:var(--r-club); background:var(--fill2); color:var(--on-fill); padding:16px 9px 9px; cursor:pointer; display:flex; flex-direction:column; gap:3px; border:0; text-align:left; font:inherit; width:100%; }
+  .club .tag { align-self:flex-start; font-size:8px; padding:1px 7px; border-radius:var(--r-pill); background:var(--pill-glass); }
+  .club .go { font-size:9px; font-weight:500; margin-top:4px; }
+  .club .nm { font-size:10px; font-weight:500; line-height:1.3; }
+  .club .meta { font-size:8.5px; opacity:.8; line-height:1.35; }
+  .club .date { font-size:15px; line-height:1.1; }
+  .club .date small { display:block; font-size:9px; opacity:.85; margin-top:2px; }
+  .club .cover { height:64px; border-radius:var(--r-book); background:var(--fill1); display:flex; align-items:flex-end; padding:5px; font-size:8px; font-weight:500; box-shadow:0 2px 5px var(--shadow-soft); margin:2px 6px 4px; }
+  .club.wide { grid-column:1 / -1; flex-direction:row; align-items:center; gap:10px; padding:12px 12px; border-radius:var(--r-card); }
+  .club.wide .dblock { flex:none; width:52px; text-align:center; background:var(--pill-glass); border-radius:var(--r-info); padding:5px 0; }
+  .club.wide .dblock b { display:block; font-size:16px; font-weight:400; line-height:1.1; }
+  .club.wide .dblock span { font-size:8px; }
+  .club.wide .body { flex:1; display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .und-only { display:none; } .phone.und .und-only { display:block; } .phone.und .dec-only { display:none; }
+
+  /* 모임 화면 (큰 틀 결정 2: 약속 정보 → 참가 버튼 → 참가자 → 댓글) */
+  .cs { position:absolute; left:0; right:0; top:50px; bottom:0; overflow-y:auto; padding:8px 10px 50px; scrollbar-width:none; }
+  .cs::-webkit-scrollbar { display:none; }
+  .info { background:var(--paper); border-radius:var(--r-info); padding:9px; display:flex; gap:8px; }
+  .info .bk { flex:none; width:38px; height:54px; border-radius:var(--r-book); background:var(--fill1); }
+  .info .nm { font-size:12px; font-weight:500; line-height:1.3; }
+  .info .ln { font-size:9.5px; color:var(--sub); }
+  .info .ln b { color:var(--text); font-weight:500; }
+  .main-btn { display:block; width:100%; margin:8px 0 0; padding:8px 0; border-radius:var(--r-pill); background:var(--panel-lit); border:1px solid var(--seam); box-shadow:0 2px 0 var(--relief-bottom); font:inherit; font-size:11px; color:var(--ink-strong); cursor:pointer; }
+  .main-btn[disabled] { opacity:.55; cursor:default; }
+  .sub-btn { display:block; width:100%; margin:6px 0 0; padding:6px 0; border-radius:var(--r-pill); background:var(--panel-frosted); border:1px solid var(--seam); font:inherit; font-size:10px; color:var(--text); cursor:pointer; }
+  .sec { font-size:9px; color:var(--sub); margin:12px 0 4px; letter-spacing:.04em; }
+  .who { display:flex; flex-wrap:wrap; gap:4px; font-size:9.5px; }
+  .who span { background:var(--paper); border-radius:var(--r-pill); padding:1px 7px; }
+  .cm { background:var(--paper); border-radius:var(--r-info); padding:6px 8px; margin-bottom:4px; font-size:9.5px; }
+  .cm i { font-style:normal; color:var(--sub); font-size:8.5px; display:block; }
+  .cin { position:absolute; left:8px; right:8px; bottom:8px; height:28px; border-radius:var(--r-pill); background:var(--paper); border:1px solid var(--seam); display:flex; align-items:center; padding:0 10px; color:var(--sub); font-size:9.5px; z-index:6; }
+  .msg { font-size:9.5px; margin-top:6px; padding:6px 8px; border-radius:var(--r-info); background:var(--panel-frosted); }
+  .empty { font-size:9.5px; color:var(--sub); padding:6px 0; }
+  .sheet { position:absolute; left:0; right:0; bottom:0; background:var(--paper); border-radius:var(--r-card) var(--r-card) 0 0; padding:12px; box-shadow:0 -2px 10px var(--shadow-mid); z-index:20; }
+  .dimmer { position:absolute; inset:0; background:var(--dim); z-index:19; }
+  .toast { position:absolute; left:14px; right:14px; bottom:46px; background:var(--ink-strong); color:var(--paper); border-radius:12px; padding:7px 10px; font-size:10px; display:none; z-index:30; }
+  .toast.on { display:block; }
+  .hide { display:none !important; }
+  /* ---- 표 ---- */
+  table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-card); overflow:hidden; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--surface2); }
+  th { background:var(--surface2); }
+  .st { font-size:12px; padding:1px 8px; border-radius:var(--r-pill); background:var(--surface2); white-space:nowrap; }
+  #spec, #except, #fullflow { margin-top:32px; }
+  .state button { font:inherit; border:0; border-radius:var(--r-pill); padding:4px 12px; background:var(--surface2); cursor:pointer; margin:2px; }
+  .state button[aria-pressed="true"] { background:var(--ink-strong); color:var(--paper); }
+  .wide-t { overflow-x:auto; }
+  .exdesc { max-width:560px; font-size:13.5px; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>book-club · CLUB-1 시안 — 방문 페이지의 모임 카드</h1>
+  <div class="how"><b>보는 법.</b> 화면 3개를 비교해 보세요. 휴대폰 안의 <b>"들어가기 →"</b>를 누르면 모임 화면이 열리고, "‹"로 돌아와요. 화면 아래 <b>"일정 미정으로 보기"</b>를 누르면 날짜·장소가 아직 안 정해진 모임이 어떻게 보이는지 바뀌어요. 노란 테두리가 <b>추천</b>이에요. 고르는 건 직접 해 주세요.</div>
+  <div class="decided"><b>이미 정한 것.</b> 모임 카드는 방문 페이지 피드에 게시물 사이로 섞여 나와요. 위가 둥근 아치 모양, 위에 "모임" 알약, 아래 "들어가기 →". 누르면 모임 화면으로 가고, 모임 화면은 맨 위 약속 정보 → 바로 아래 "모임에 참가" → 참가자 → 댓글 순서예요(노트에 적어 둔 것).</div>
+</header>
+<main>
+
+<!-- ===== 중심 요소 1: 모임 카드에서 먼저 보이는 것 ===== -->
+<section class="element" id="el-card" data-chosen="">
+  <h2>정할 것 1. 피드의 모임 카드에서 제일 먼저 눈에 띄는 것 <span class="status">결정 전</span></h2>
+  <div class="flow"><b>왜 정하나.</b> 피드를 내리던 사람이 이 카드를 보고 "들어가 볼까?"를 정해요. 카드에서 무엇이 제일 크게 보이느냐에 따라 누가 들어오는지가 달라져요. 세 화면 모두 같은 모임이에요.</div>
+  <div class="pick">다시 보기: <select data-for="el-card">
+    <option value="A">후보 A — 날짜가 크게</option>
+    <option value="B">후보 B — 책 표지가 크게</option>
+    <option value="C">후보 C — 두 칸을 가로지르는 넓은 카드</option>
+  </select></div>
+  <div class="cands">
+
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 날짜가 크게 <span class="badge">추천</span></h3>
+      <div class="phone">
+        <div class="scr" data-screen="feed">
+          <div class="hd"><button class="back">‹</button> <span class="vname">반포도서관</span></div>
+          <div class="feed">
+            <div class="col">
+              <div class="pc" style="height:110px"></div>
+              <button class="club" data-open="club">
+                <span class="tag">모임</span>
+                <span class="date dec-only">11.28 토<small>오후 2:00 · 2층 세미나실</small></span>
+                <span class="date und-only">날짜 미정<small>댓글로 정해요</small></span>
+                <span class="nm">소년이 온다 같이 읽기</span>
+                <span class="meta">3/6명 참가</span>
+                <span class="go">들어가기 →</span>
+              </button>
+              <div class="pc" style="height:80px"></div>
+            </div>
+            <div class="col">
+              <div class="pc" style="height:70px"></div>
+              <div class="pc" style="height:130px"></div>
+              <div class="pc" style="height:90px"></div>
+            </div>
+          </div>
+          <div class="fab">+</div>
+        </div>
+        <div class="scr hide" data-screen="club"></div>
+      </div>
+      <button class="tbtn" data-und aria-pressed="false">일정 미정으로 보기</button>
+      <p>카드 맨 위에 날짜·시각이 제일 크게, 그 아래 모임 이름과 참가 인원이 작게 있어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>피드를 내림 → 큰 날짜가 먼저 눈에 들어옴 → "그날 시간 되나?" 보고 "들어가기 →" → 모임 화면에서 바로 "모임에 참가".</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>날짜가 미정이면 큰 글자 자리에 "날짜 미정 · 댓글로 정해요"</li><li>카드 높이는 게시물 사진 카드 하나와 비슷해요(한 칸)</li><li>책 이름은 카드에 없고 모임 화면에서 보여요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>시간이 맞는 사람이 바로 알아봐요. / 무슨 책인지는 들어가야 알아요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-30 2열 메이슨리 한 칸 (핀터레스트 홈) — 사진 카드와 같은 폭에 글자 정보를 얹음</p>
+      <p><b>추천 이유:</b> 보내 주신 당근마켓 모임 화면에서 "날짜 장소가 한눈에 보여요"라고 하셨고, 모임 화면도 날짜·장소를 먼저 두기로 해서 카드와 화면이 같은 순서가 돼요. 책이 먼저 궁금한 사람에게는 B가 더 나아요.</p>
+    </article>
+
+    <article class="cand" data-id="B">
+      <h3>후보 B — 책 표지가 크게</h3>
+      <div class="phone">
+        <div class="scr" data-screen="feed">
+          <div class="hd"><button class="back">‹</button> <span class="vname">반포도서관</span></div>
+          <div class="feed">
+            <div class="col">
+              <div class="pc" style="height:110px"></div>
+              <button class="club" data-open="club">
+                <span class="tag">모임</span>
+                <span class="cover">소년이 온다<br>한강</span>
+                <span class="nm">소년이 온다 같이 읽기</span>
+                <span class="meta dec-only">11.28 토 오후 2:00 · 3/6명</span>
+                <span class="meta und-only">날짜 미정 · 3/6명</span>
+                <span class="go">들어가기 →</span>
+              </button>
+              <div class="pc" style="height:80px"></div>
+            </div>
+            <div class="col">
+              <div class="pc" style="height:70px"></div>
+              <div class="pc" style="height:130px"></div>
+              <div class="pc" style="height:90px"></div>
+            </div>
+          </div>
+          <div class="fab">+</div>
+        </div>
+        <div class="scr hide" data-screen="club"></div>
+      </div>
+      <button class="tbtn" data-und aria-pressed="false">일정 미정으로 보기</button>
+      <p>아치 안에 함께 읽을 책 표지가 크게 있고, 날짜는 아래에 한 줄로 작게 있어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>피드를 내림 → 아는 책 표지가 먼저 눈에 들어옴 → "이 책 얘기 하는구나" 하고 "들어가기 →" → 모임 화면에서 날짜·장소를 보고 참가.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>날짜가 미정이면 작은 줄에 "날짜 미정"만 바뀌어요</li><li>책을 안 정한 모임은 표지 자리에 모임 이름 글자만 크게</li><li>카드가 A보다 길어요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>책으로 모이는 모임이라는 게 바로 보여요. / 날짜가 작아서 시간이 맞는지는 들어가서 알아요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-41 위 이미지 → 본문 (인스타그램 게시물) — 표지를 이미지 자리에</p>
+    </article>
+
+    <article class="cand" data-id="C">
+      <h3>후보 C — 두 칸을 가로지르는 넓은 카드</h3>
+      <div class="phone">
+        <div class="scr" data-screen="feed">
+          <div class="hd"><button class="back">‹</button> <span class="vname">반포도서관</span></div>
+          <div class="feed">
+            <div class="col"><div class="pc" style="height:110px"></div></div>
+            <div class="col"><div class="pc" style="height:70px"></div></div>
+            <button class="club wide" data-open="club">
+              <span class="dblock dec-only"><b>28</b><span>11월 토</span></span>
+              <span class="dblock und-only"><b>?</b><span>날짜 미정</span></span>
+              <span class="body">
+                <span class="tag">모임</span>
+                <span class="nm">소년이 온다 같이 읽기</span>
+                <span class="meta dec-only">오후 2:00 · 2층 세미나실 · 3/6명</span>
+                <span class="meta und-only">댓글로 정해요 · 3/6명</span>
+                <span class="go">들어가기 →</span>
+              </span>
+            </button>
+            <div class="col"><div class="pc" style="height:80px"></div></div>
+            <div class="col"><div class="pc" style="height:120px"></div></div>
+          </div>
+          <div class="fab">+</div>
+        </div>
+        <div class="scr hide" data-screen="club"></div>
+      </div>
+      <button class="tbtn" data-und aria-pressed="false">일정 미정으로 보기</button>
+      <p>피드 두 칸을 다 쓰는 가로 카드예요. 왼쪽에 달력 같은 날짜 칸, 오른쪽에 이름·시각·장소·인원이 한 번에 있어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>피드를 내림 → 사진 줄이 끊기고 넓은 모임 띠가 나타남 → 한눈에 날짜·장소·인원 확인 → "들어가기 →" → 모임 화면.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>이 카드가 나오는 자리에서 두 칸 줄이 한 번 끊겨요</li><li>날짜가 미정이면 날짜 칸에 "?"와 "날짜 미정"</li><li>위가 둥근 아치 대신 덜 둥근 모서리(넓어서 아치가 납작해 보임)</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>모임이 피드에서 가장 눈에 띄고 정보가 다 보여요. / 사진 사이에 섞이지 않고 흐름을 끊어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-31 1열 카드 피드 (인스타그램 홈) — 그 카드 한 장만 넓게</p>
+    </article>
+  </div>
+</section>
+
+<!-- 중심 요소 2(만들기 화면 칸 순서), 3(시작 시각이 바뀔 때 이미 참가한 사람)은 1이 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
+
+<!-- ===== 잘 안 될 때 (예외, 1B 3단계) — 모임 화면 기준 ===== -->
+<section id="except">
+  <h2>잘 안 될 때 보이는 화면</h2>
+  <p class="exdesc">모임 화면에서 생기는 일이에요. 버튼을 눌러 상태를 바꾸고, 휴대폰 안의 버튼도 눌러 보세요. 바뀌는 곳만 바뀌고 나머지(약속 정보)는 그대로 남아요. 문구는 제가 먼저 넣어 둔 거예요.</p>
+  <div class="state" id="exTabs">
+    <button aria-pressed="true" data-ex="net">인터넷이 끊김</button><button aria-pressed="false" data-ex="empty">하나도 없음</button><button aria-pressed="false" data-ex="dbl">두 번 빠르게 누름</button><button aria-pressed="false" data-ex="guest">로그인 안 함</button><button aria-pressed="false" data-ex="full">자리가 다 참</button><button aria-pressed="false" data-ex="canceled">취소된 모임</button>
+  </div>
+  <div class="phone" id="exPhone" style="margin:8px 0 0">
+    <div class="scr" data-screen="ex"></div>
+  </div>
+  <p class="exdesc" id="exNote"></p>
+</section>
+
+<!-- ===== 처음부터 끝까지 (세부 명세서 2. 유저 플로우와 같게) ===== -->
+<section id="fullflow">
+  <h2>처음부터 끝까지 이렇게 써요</h2>
+  <ol>
+    <li>사용자가 방문 페이지 피드를 내리면 동네한권이 게시물 사이에 모임 카드를 보여 준다. (카드에서 먼저 보이는 것: 정할 것 1)</li>
+    <li>사용자가 모임 카드의 "들어가기 →"를 누르면 동네한권이 모임 화면을 연다.</li>
+    <li>동네한권이 모임 화면 맨 위에 약속 정보(책·날짜·장소·인원)를, 바로 아래에 "모임에 참가" 버튼을 보여 준다.</li>
+    <li>사용자가 "모임에 참가"를 누르면 동네한권이 바로 참가자 명단에 사용자의 닉네임을 넣고 버튼을 "참가 취소"로 바꾼다.</li>
+    <li>(만들기 화면·시작 시각이 바뀔 때는 정할 것 2·3을 고른 뒤 이어서 쓴다)</li>
+  </ol>
+</section>
+
+<!-- ===== 명세 패널 (세부 명세서 확인 목록·결정 기록과 같게) ===== -->
+<section id="spec">
+  <h2>명세</h2>
+  <div class="wide-t"><table>
+    <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
+    <tr data-el="el-card"><td>1. 모임 카드에서 먼저 보이는 것</td><td>— (추천: 후보 A 날짜가 크게)</td><td>—</td><td>—</td><td>(받기 전)</td><td>아치 위 70·아래 18(앱), 바탕 fill2, 태그 알약 "모임", "들어가기 →" 굵게. A 날짜 24(앱)</td><td>피드 → 카드 "들어가기 →" → 모임 화면</td><td><span class="st">결정 전</span></td></tr>
+    <tr><td>2. 만들기 화면 칸 순서</td><td>(1이 정해진 뒤 시안으로 봄)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>방문 페이지 "+" → 모임 → 만들기 화면</td><td><span class="st">결정 전</span></td></tr>
+    <tr><td>3. 시작 시각이 바뀔 때 이미 참가한 사람</td><td>(2가 정해진 뒤 시안으로 봄)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>알림함 안내 → 모임 화면</td><td><span class="st">결정 전</span></td></tr>
+    <tr><td>모임 화면 순서</td><td>약속 정보 → "모임에 참가" → 참가자 → 댓글</td><td>—</td><td>댓글 먼저, 정보/댓글 두 칸</td><td>"약속 정보 먼저요, 날짜 장소 보고 바로 참가하려고" (노트 결정 2)</td><td>정보 카드 곡률 9, 주 버튼 무광 판</td><td>카드 → 모임 화면 → 참가</td><td><span class="st">확인</span></td></tr>
+    <tr><td>참가 취소·모임 취소 물어보기</td><td>확인창 두 버튼("참가를 취소할까요?" / 모임 취소는 이유 칸 + "모임 취소")</td><td>—</td><td>—</td><td>묻지 않음</td><td>—</td><td>"참가 취소" → 확인창 → 명단에서 빠짐</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>내 댓글 지우기</td><td>내 댓글 ⋯ → "지우기" → 확인창</td><td>—</td><td>—</td><td>묻지 않음</td><td>—</td><td>⋯ → 지우기 → 사라짐</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>글자 수</td><td>이름 40 · 소개 500 · 장소 100 · 댓글 300 · 취소 이유 200</td><td>—</td><td>—</td><td>묻지 않음</td><td>칸 아래 "n/40"</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>버튼·표시 문구</td><td>"모임에 참가" / "참가 취소" / "날짜 미정"·"장소 미정" / "모집 마감"·"자리가 다 찼어요"·"취소된 모임"·"끝난 모임"</td><td>—</td><td>—</td><td>묻지 않음("모임에 참가"·"들어가기 →"는 이미 정해짐)</td><td>—</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+  </table></div>
+</section>
+</main>
+
+<script>
+  // 모임 화면 (모든 후보 공통, 같은 가짜 값). und = 일정 미정
+  function clubScreen(und) {
+    return '<div class="hd"><button class="back" data-open="feed">‹</button> <span class="vname">모임</span></div>' +
+      '<div class="cs"><div class="info"><div class="bk"></div><div><div class="nm">소년이 온다 같이 읽기</div>' +
+      '<div class="ln">' + (und ? '<b>날짜 미정</b> · 댓글로 정해요' : '<b>11.28 토 오후 2:00</b> ~ 4:00') + '</div>' +
+      '<div class="ln">' + (und ? '장소 미정' : '2층 세미나실') + '</div><div class="ln">3/6명 · 만든 사람 책읽는곰</div></div></div>' +
+      '<button class="main-btn" data-swap="모임에 참가|참가 취소">모임에 참가</button>' +
+      '<div class="sec">참가자 3</div><div class="who"><span>책읽는곰</span><span>해바라기</span><span>민트</span></div>' +
+      '<div class="sec">댓글 2</div><div class="cm"><i>해바라기 · 어제</i>' + (und ? '토요일 오후 어때요?' : '2층 세미나실 맞죠?') + '</div>' +
+      '<div class="cm"><i>책읽는곰 · 3시간 전</i>' + (und ? '좋아요, 정해지면 바꿀게요' : '네, 엘리베이터 옆이에요') + '</div></div>' +
+      '<div class="cin">댓글 쓰기</div>';
+  }
+  document.querySelectorAll('.cand .phone').forEach(function (ph) {
+    ph.querySelector('[data-screen="club"]').innerHTML = clubScreen(false);
+  });
+  // 일정 미정으로 보기
+  document.querySelectorAll('[data-und]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var ph = b.closest('.cand').querySelector('.phone');
+      var on = !ph.classList.contains('und');
+      ph.classList.toggle('und', on);
+      b.setAttribute('aria-pressed', on);
+      b.textContent = on ? '날짜가 정해진 모임으로 보기' : '일정 미정으로 보기';
+      ph.querySelector('[data-screen="club"]').innerHTML = clubScreen(on);
+    });
+  });
+
+  // 채택안 표시
+  function mark(el, id) {
+    el.querySelectorAll('.cand').forEach(function (c) {
+      c.classList.toggle('chosen', c.dataset.id === id);
+      var old = c.querySelector('.badge.adopted'); if (old) old.remove();
+      if (id && c.dataset.id === el.dataset.chosen) { var s = document.createElement('span'); s.className = 'badge adopted'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+    });
+    var sel = el.querySelector('select[data-for]'); if (sel && id) sel.value = id;
+  }
+  document.querySelectorAll('section.element').forEach(function (el) {
+    mark(el, el.dataset.chosen || '');
+    var sel = el.querySelector('select[data-for]');
+    if (sel) { if (!el.dataset.chosen) sel.insertAdjacentHTML('afterbegin', '<option value="" selected>(아직 고르지 않음)</option>');
+      sel.addEventListener('change', function () { mark(el, sel.value || el.dataset.chosen);
+        var c = el.querySelector('.cand[data-id="' + sel.value + '"]'); if (c) c.scrollIntoView({ behavior:'smooth', block:'nearest' }); }); }
+  });
+
+  // 휴대폰 안 동작
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-open],[data-toast],[data-swap],[data-close],[data-show]'); if (!t) return;
+    var ph = t.closest('.phone');
+    if (t.dataset.open && ph) { ph.querySelectorAll('.scr[data-screen]').forEach(function (s) { s.classList.toggle('hide', s.dataset.screen !== t.dataset.open); }); }
+    if (t.dataset.swap) { var w = t.dataset.swap.split('|'); t.textContent = t.textContent === w[0] ? w[1] : w[0]; }
+    if (t.dataset.close) { document.getElementById(t.dataset.close).classList.add('hide'); }
+    if (t.dataset.show) { document.getElementById(t.dataset.show).classList.remove('hide'); }
+    if (t.dataset.toast) { var m = document.getElementById(t.dataset.toast); m.classList.add('on'); clearTimeout(m._t); m._t = setTimeout(function () { m.classList.remove('on'); }, 2000); }
+  });
+
+  // 예외 화면: 같은 모임 화면에서 바뀌는 곳만 바꾼다
+  var HEAD = '<div class="hd"><button class="back">‹</button> <span class="vname">모임</span></div>';
+  function info(extra) {
+    return '<div class="info"><div class="bk"></div><div><div class="nm">소년이 온다 같이 읽기</div>' +
+      '<div class="ln"><b>11.28 토 오후 2:00</b> ~ 4:00</div><div class="ln">2층 세미나실</div><div class="ln">' + (extra || '3/6명 · 만든 사람 책읽는곰') + '</div></div></div>';
+  }
+  var WHO = '<div class="sec">참가자 3</div><div class="who"><span>책읽는곰</span><span>해바라기</span><span>민트</span></div>';
+  var CMS = '<div class="sec">댓글 2</div><div class="cm"><i>해바라기 · 어제</i>2층 세미나실 맞죠?</div><div class="cm"><i>책읽는곰 · 3시간 전</i>네, 엘리베이터 옆이에요</div>';
+  var EX = {
+    net: { html: HEAD + '<div class="cs">' + info() +
+        '<button class="main-btn" data-show="netmsg">모임에 참가</button>' +
+        '<div class="msg hide" id="netmsg">참가하지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요. <button class="sub-btn" data-close="netmsg">다시 해 보기</button></div>' +
+        WHO + CMS + '</div><div class="cin">댓글 쓰기</div>',
+      note: '"모임에 참가"를 눌러 보세요(인터넷이 끊긴 상태). 버튼 아래에 안내와 "다시 해 보기"가 생기고, 약속 정보·참가자·댓글은 그대로예요. 참가자 명단에는 들어가지 않아요. 댓글을 못 올렸을 때도 같은 말투로 "댓글을 올리지 못했어요. 다시 해 주세요"(쓰던 글은 칸에 남음).' },
+    empty: { html: HEAD + '<div class="cs">' + info('0/6명 · 만든 사람 책읽는곰') +
+        '<button class="main-btn">모임에 참가</button>' +
+        '<div class="sec">참가자 0</div><div class="empty">아직 참가한 사람이 없어요. 첫 번째로 참가해 보세요.</div>' +
+        '<div class="sec">댓글 0</div><div class="empty">아직 댓글이 없어요. 시간·장소를 댓글로 의논해 보세요.</div></div><div class="cin">댓글 쓰기</div>',
+      note: '방금 만든 모임이에요. 참가자·댓글 자리는 남겨 두고 한 줄 안내만 보여요. (만든 사람은 명단에 따로 세지 않아요 — 만든 사람 이름은 약속 정보에 있어요.)' },
+    dbl: { html: HEAD + '<div class="cs">' + info() +
+        '<button class="main-btn" id="dblbtn">모임에 참가</button>' +
+        '<div class="sec" id="dblcnt">참가자 3</div><div class="who" id="dblwho"><span>책읽는곰</span><span>해바라기</span><span>민트</span></div>' + CMS + '</div><div class="cin">댓글 쓰기</div>',
+      note: '"모임에 참가"를 빠르게 여러 번 눌러 보세요. 첫 번째 누름 뒤 버튼이 잠깐 "참가하는 중…"으로 바뀌어 더 눌리지 않고, 명단에는 "나"가 한 번만 들어가요. 그 뒤 버튼은 "참가 취소"가 돼요.' },
+    guest: { html: HEAD + '<div class="cs">' + info() +
+        '<button class="main-btn" data-show="gsheet">로그인하고 참가하기</button>' + WHO + CMS + '</div>' +
+        '<div class="cin" data-show="gsheet" style="cursor:pointer">로그인하면 댓글을 쓸 수 있어요</div>' +
+        '<div class="hide" id="gsheet"><div class="dimmer" data-close="gsheet"></div><div class="sheet"><b style="font-size:12px">로그인이 필요해요</b>' +
+        '<p style="font-size:10px;margin:6px 0">모임에 참가하거나 댓글을 쓰려면 로그인해 주세요. 보던 모임으로 다시 돌아와요.</p>' +
+        '<button class="main-btn">로그인</button><button class="sub-btn" data-close="gsheet">닫기</button></div></div>',
+      note: '로그인 안 한 사람도 모임 정보·참가자·댓글은 다 볼 수 있어요. 버튼과 댓글 칸을 누르면 아래에서 로그인 창이 올라와요. 만든 사람만 쓰는 버튼(일정 바꾸기·마감·취소)은 다른 사람에게는 아예 보이지 않아요.' },
+    full: { html: HEAD + '<div class="cs">' + info('6/6명 · 만든 사람 책읽는곰') +
+        '<button class="main-btn" disabled>자리가 다 찼어요</button>' +
+        '<div class="msg">누가 참가를 취소하면 다시 참가할 수 있어요.</div>' +
+        '<div class="sec">참가자 6</div><div class="who"><span>책읽는곰</span><span>해바라기</span><span>민트</span><span>달</span><span>코코</span><span>밤</span></div>' + CMS + '</div><div class="cin">댓글 쓰기</div>',
+      note: '정원이 찼거나, 시작 시각이 지났거나, 만든 사람이 일찍 마감한 모임이에요. 참가 버튼 자리에 "자리가 다 찼어요"(마감이면 "모집 마감")가 흐리게 보이고 눌리지 않아요. 댓글은 그대로 쓸 수 있어요.' },
+    canceled: { html: HEAD + '<div class="cs">' + info('취소된 모임 · 만든 사람 책읽는곰') +
+        '<button class="main-btn" disabled>취소된 모임</button>' +
+        '<div class="msg"><b>취소 이유</b><br>사정이 생겨 이번 모임은 쉬어요. 다음에 다시 열게요.</div>' + WHO + CMS + '</div><div class="cin">댓글 쓰기</div>',
+      note: '만든 사람이 취소한 모임이에요. 피드 카드에도 "취소된 모임"이 보이고, 모임 화면에는 취소 이유가 남아요. 참가했던 사람은 알림함에서 취소 안내를 받아요.' }
+  };
+  var exScr = document.querySelector('#exPhone [data-screen="ex"]'), exNote = document.getElementById('exNote');
+  function showEx(k) {
+    exScr.innerHTML = EX[k].html; exNote.textContent = EX[k].note;
+    document.querySelectorAll('#exTabs button').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.ex === k); });
+    var b = document.getElementById('dblbtn');
+    if (b) b.addEventListener('click', function () {
+      if (b.disabled || b.textContent === '참가 취소') return;
+      b.disabled = true; b.textContent = '참가하는 중…';
+      setTimeout(function () {
+        b.disabled = false; b.textContent = '참가 취소';
+        document.getElementById('dblcnt').textContent = '참가자 4';
+        document.getElementById('dblwho').insertAdjacentHTML('beforeend', '<span><b>나</b></span>');
+      }, 1200);
+    });
+  }
+  document.querySelectorAll('#exTabs button').forEach(function (b) { b.addEventListener('click', function () { showEx(b.dataset.ex); }); });
+  showEx('net');
+</script>
+</body>
+</html>
