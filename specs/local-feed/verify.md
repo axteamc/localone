@@ -121,3 +121,41 @@
 - `routes.test.tsx`(D) `/posts/[postId]` 스텁 단언 → #129에 수정안 댓글
 - Android: 이 PC에 에뮬레이터·adb가 없어 미확인
 - 예스24 구매(M2), 인기순(Q-31), 북마크 모음(Q-56), 댓글(Q-57)
+
+## VISIT-3 (PR #231)
+
+- 기능: `local-feed` VISIT-3 오늘의 서가(책장)·방명록 카드 · 담당: B · 작성일: 2026-11-19
+- 기준: 02 VISIT-03·VISIT-04, AC-VISIT·AC-MOD·AC-RACE, 세부 명세 `세부/VISIT-3.md` 예외 #1~#4, 계약 수정본 VISIT-3 P5
+- 자동 시험은 서버(격리 로컬 DB `localone_v3`)와 앱(가짜 응답)으로 나눴다. "화면"은 Expo 웹 개발 서버를 실제로 띄워 주니어 브라우저로 연 것이다(P2: 운영 API 읽기 전용 중계, P3: 로컬 서버 + 연습용 데이터). Claude 쪽 화면 캡처 수단이 없어 픽셀 단위 겹침 점검은 하지 못했다.
+
+### 1. 수용 기준 전수 점검
+
+| 요구사항 ID | AC | 준비 | 행동 | 기대 | 실제 (출력·화면) | 증거 (`파일:줄`·캡처) | 웹 | Android | iOS (D) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| VISIT-04 | AC-VISIT | `#31` 세 장(순서 섞음) | 방문 페이지 열기·점 누르기 | 첫 장 요즘 읽은 책 → 테마 → 인기, 장마다 3권 | 시험 통과 | `bookshelf.test.tsx` `shelf shows recent reads then theme then popular` | 통과(시험) / 화면: 운영 #31(인기 도서 1장) 열어 보여 줌 | 미실행(에뮬레이터 없음) | 대기 |
+| VISIT-04 | AC-VISIT | ① 빔 | 렌더 | 테마가 첫 장 | 시험 통과 | `shelf without recent reads starts at theme` | 통과(시험) | 미실행 | 대기 |
+| VISIT-04 | AC-VISIT | `#31` 가짜 | 책 누름 ×2 | `/books/[isbn13]` 1번, "대출 가능"·"실시간" 없음 | 시험 통과 | `shelf book opens book detail`·`shelf hides missing pages…` | 통과(시험) | 미실행 | 대기 |
+| VISIT-03 | AC-VISIT | 게시물·방명록 섞인 #32 | 방문 페이지 피드 | 방명록이 같은 한 칸 카드로 섞임 | 시험 통과, 로컬 서버 화면에서 섞여 보임 | `guestbook.test.tsx` `visit feed loads #32…`, `server/tests/test_feed_items.py` | 통과 | 미실행 | 대기 |
+| VISIT-03 | AC-VISIT | 로그인 | `+` → 방명록 남기기 → 올리기 | 피드 맨 앞 내 카드 1개 | 시험 통과 | `guestbook double submit creates one card` | 통과(시험) / 실제 로그인 쓰기는 미실행(로컬에서 로그인 수단 없음) | 미실행 | 대기 |
+| VISIT-03 | AC-VISIT | 내 글 | ⋯ → 지우기 → 확인 | 피드에서 사라짐, 서버 `withdrawn` | 시험 통과 | `only my guestbook card has menu…`, `test_withdraw_twice_stays_withdrawn_and_leaves_feed` | 통과(시험) | 미실행 | 대기 |
+| VISIT-03 | AC-MOD | 숨김(`hidden`) 글 | #32 조회·#34 철회 | 피드에 없음, 철회 404·그대로 | 시험 통과 | `test_withdrawn_and_hidden_entries_never_appear_in_feed_items`, `test_withdraw_of_hidden_entry_is_404_and_stays_hidden` | 해당 없음(서버) | — | — |
+| VISIT-03 | AC-VISIT | 비로그인 | #32 조회 | `mine` 모두 false, `user_id` 없음 | 시험 통과 | `test_guestbook_response_has_no_user_id` | 해당 없음(서버) | — | — |
+| LIB-04 | AC-RACE | 101 피드·책장 늦게 | 102로 바꿈 | 102 화면이 101 결과로 덮이지 않음 | 시험 통과 | `library switch drops late feed response`, `library switch drops late shelf response…` | 통과(시험) | 미실행 | 대기 |
+
+### 2. 명세서 예외 상황 점검
+
+| 명세서 예외 # | 확인한 방법 | 화면 문구가 명세서와 같은가 | 기록이 안 바뀌었나(막는 동작) | 결과 |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 끊김 | 책장 503 → 책장 자리만 실패·다시 해 보기(#31만 다시) / 올리기 끊김 → 글 유지·같은 id 재시도 / 지우기 끊김 → 카드 유지 | 같음("책장을 불러오지 못했어요"·"다시 해 보기"·"방명록을 올리지 못했어요. 다시 해 주세요"·"방명록을 지우지 못했어요. 다시 해 주세요") | 재시도는 같은 `client_request_id`(서버 멱등) | 통과(`shelf failure only affects shelf`, `shelf retry reloads only shelf`, `guestbook failure keeps text…`, `withdraw failure keeps card…`) |
+| 2 없음 | 책장 `pages: []` / 피드 0개 | 같음("아직 이 도서관 책장이 비어 있어요"·"빌린 책을 반납하면 여기에 쌓여요", 빈 피드는 VISIT-2 그대로) | — | 통과(`empty shelf keeps shelf area with message`, `visit.test.tsx` 빈 피드) |
+| 3 연타 | 올리기 2번(응답 전) / 책 2번 / 지우기 2번(응답 전) / 같은 id 두 번 서버 | — | 행 1개(`test_guestbook_create_is_idempotent_by_client_request_id`), 앱 호출 1번 | 통과 |
+| 4 로그인·남의 것 | 비로그인 방명록 고르기 / 남의 카드 ⋯ / 남의 글 철회 직접 호출 | 같음("로그인하면 방명록을 남길 수 있어요") | 비로그인 401·행 0, 남의 글 404·`published` 그대로 | 통과(`signed out guestbook write shows login prompt`, `test_guestbook_write_requires_auth`, `test_withdraw_of_other_or_missing_entry_is_same_404`) |
+
+### 3. 명세서와 달라진 점
+
+- 없음(명세 결정 1은 2026-11-19 D 변경으로 명세서 자체를 고친 뒤 구현). 기본값 처리: 피드-책장 띠는 블러 없이 페이드만(블러 라이브러리 미승인), 쓰는 창은 화면 위쪽.
+
+### 4. 남은 문제
+
+- to:D #230 방명록 카드 색 PANTONE 공식 sRGB 대조(지금은 서드파티 값, 첫 후보 11-0602)
+- 미실행: Android 실기기·에뮬레이터 화면(이 PC에 없음), 실제 로그인 상태의 방명록 올리기·지우기 화면(로컬 로그인 수단 없음 — 자동 시험으로만 확인), 블러 성능 Q-46
