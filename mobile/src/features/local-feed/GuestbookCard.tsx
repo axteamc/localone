@@ -10,13 +10,13 @@ const ACT = actionColors(theme.colors);
 /**
  * 방명록 카드 바탕 색 후보(2026-11-19 D 결정, 구현 후 D가 화면에서 확인해 확정 — 명세 결정 3 `미확인(임시)`).
  * 바꿔 보려면 아래 GUESTBOOK_CARD_COLOR의 키 하나만 바꾼다.
- * sRGB 값은 Pantone 공식 변환값 대조 전(pantone.com 자동 조회 불가) — 서드파티 값: 11-0602·12-4302 hextoral.com,
- * 11-0701 colorxs.com·hexpot.com. 공식 값 확인은 이슈 #230(to:D).
+ * sRGB/HEX 값은 이슈 #230에서 Pantone TCX 공식 값으로 확인 완료(2026-11-19):
+ * 11-0602 #F2F0EB, 11-0701 #EDE6DB, 12-4302 #DFDDD7.
  */
 export const GUESTBOOK_CARD_COLORS = {
   "PANTONE 11-0602 TCX Snow White": "#F2F0EB",
   "PANTONE 11-0701 TCX Whisper White": "#EDE6DB",
-  "PANTONE 12-4302 TCX Vaporous Gray": "#E1E1DB",
+  "PANTONE 12-4302 TCX Vaporous Gray": "#DFDDD7",
 } as const;
 export const GUESTBOOK_CARD_COLOR = GUESTBOOK_CARD_COLORS["PANTONE 11-0602 TCX Snow White"]; // 확정 전 기본: 첫 후보
 
