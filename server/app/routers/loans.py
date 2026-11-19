@@ -283,7 +283,12 @@ def return_loan_tx(c: Connection, uid: UUID, loan_id: UUID, today: date) -> Any:
             text("UPDATE loans SET status = 'returned', returned_on = :r, updated_at = now() WHERE id = :id"),
             {"r": today, "id": loan_id},
         )
-    # 반납 집계(library_return_stats)에는 쓰지 않는다(E4, Q-49)
+        # ── [m2-core-D] ── core M2-0-P4 Z9: 동의·도서관 있음이면 반납 집계 +1(이 반납에서 한 번).
+        # RETURN_STATS_WRITE_ENABLED = False(Q-49 전)이면 아무것도 쓰지 않는다(E4 유지).
+        from app.routers.settings import record_return_stat
+
+        record_return_stat(c, uid, loan_id, today)
+        # ── [/m2-core-D] ──
     return select_loan(c, loan_id)
 
 

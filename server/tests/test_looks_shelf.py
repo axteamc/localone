@@ -331,4 +331,4 @@ def test_new_tables_have_rls_and_look_check(db_engine):
     for column, value in (("look", "neon"), ("look_assigned_by", "someone")):
         with db_engine.begin() as c, pytest.raises(IntegrityError):
             c.execute(text(f"UPDATE libraries SET {column} = :v WHERE id = 101"), {"v": value})
-    assert q(db_engine, "SELECT column_name FROM information_schema.columns WHERE table_name = 'user_settings'") == []
+    # user_settings는 M2-0-P4 `0015`가 만든다 — 표 시험은 test_return_stats.py

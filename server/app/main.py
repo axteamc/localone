@@ -151,6 +151,9 @@ def create_app(
     from app.routers.ops import router as ops_router  # M2-0-P2 운영 경로 /ops/*
 
     app.include_router(ops_router)
+    from app.routers.settings import router as settings_router  # M2-0-P4 반납 집계 동의
+
+    app.include_router(settings_router)
     # ── [/m2-core-D] ──
 
     return app
