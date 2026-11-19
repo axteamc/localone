@@ -1,0 +1,1246 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>홈 큐브 개편 시안 (H1) — 주변 큐브 배열 · 주인공 크기 · 이름 크기</title>
+<style>
+  :root {
+    /* warm (M1 기본) — mobile/src/theme/tokens.ts · index.ts 기준 */
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+    --cream:#EFEFE7; --paper:#EFF1F1; --ink-strong:#2E333F;
+    --text:#1D1D1F; --ink-soft:#4D4D4B; --ink-muted:#6B6B66;
+    --pin-closed:#78736C;
+    --panel-frosted:#E9EAE9; --panel-lit:#EFF0ED;
+    --seam:#C8C8C8; --seam-hi:rgba(255,255,255,.68);
+    --relief-mid:#B7B7B6; --relief-dark:#9B9B9B;
+    --left-face:#E6E7E5;
+    --shadow-ambient:rgba(28,30,36,.14);
+    --shadow-cast:rgba(28,30,36,.20);
+    --on-ink:#FFFFFF;
+    --cube-ink-1:#9E8D5C; --cube-ink-2:#A18D7E; --cube-ink-3:#7E8785; --cube-ink-closed:#595957;
+    --r-block:3px; --r-info:9px; --r-card:18px; --r-pill:9999px;
+  }
+  * { box-sizing:border-box; }
+  body {
+    margin:0; background:var(--bg); color:var(--text);
+    font-family:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+    line-height:1.5;
+  }
+  header.page, main { max-width:1420px; margin:0 auto; padding:0 18px 56px; }
+  header.page { padding-top:22px; padding-bottom:0; }
+  h1 { font-size:22px; font-weight:400; margin:0 0 6px; color:var(--ink-strong); letter-spacing:-.01em; }
+  h2 { font-size:18px; font-weight:500; margin:0 0 6px; color:var(--ink-strong); }
+  h3 { font-size:14.5px; font-weight:500; margin:0 0 6px; color:var(--text); }
+  .how, .flow {
+    background:var(--panel-lit); border:1px solid var(--seam);
+    border-radius:var(--r-info); padding:12px 16px; margin:10px 0 0; font-size:13.5px;
+  }
+  .flow { background:var(--cream); }
+  .global-bar {
+    position:sticky; top:0; z-index:40; margin:14px 0 0;
+    background:var(--panel-lit); border:1px solid var(--seam); border-bottom:2px solid var(--relief-mid);
+    border-radius:var(--r-info); padding:10px 14px;
+    display:flex; flex-wrap:wrap; gap:12px; align-items:center; font-size:13px;
+    box-shadow:0 6px 18px var(--shadow-ambient);
+  }
+  .global-bar label { display:inline-flex; align-items:center; gap:6px; font-weight:500; color:var(--ink-soft); }
+  select, button.ctrl-btn {
+    font:inherit; font-size:12.5px; padding:5px 10px; border-radius:var(--r-info);
+    border:1px solid var(--seam); background:var(--paper); color:var(--text); cursor:pointer;
+  }
+  button.ctrl-btn.on { background:var(--ink-strong); color:var(--on-ink); border-color:var(--ink-strong); }
+  .seg { display:inline-flex; background:var(--surface2); border-radius:var(--r-info); padding:2px; gap:2px; }
+  .seg button {
+    border:0; background:transparent; color:var(--ink-soft); font:inherit; font-size:12px;
+    padding:4px 10px; border-radius:7px; cursor:pointer; font-weight:500;
+  }
+  .seg button.on { background:var(--panel-lit); color:var(--ink-strong); box-shadow:0 1px 0 var(--relief-mid); }
+
+  section.element { margin-top:34px; padding-top:8px; }
+  .status {
+    display:inline-block; font-size:11.5px; font-weight:500; padding:2px 10px;
+    border-radius:var(--r-pill); background:var(--surface2); color:var(--ink-soft); margin-left:8px; vertical-align:middle;
+  }
+  .pick { margin:10px 0 0; font-size:13px; color:var(--ink-soft); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .cands { display:grid; grid-template-columns:repeat(auto-fit, minmax(335px, 1fr)); gap:16px; margin-top:12px; }
+  .cands.cols-4 { grid-template-columns:repeat(auto-fit, minmax(305px, 1fr)); }
+  .cand {
+    background:var(--panel-lit); border-radius:var(--r-info); padding:14px;
+    border:1px solid var(--seam); border-bottom:2px solid var(--relief-mid);
+    display:flex; flex-direction:column; gap:8px;
+  }
+  .cand.recommended { border:2px solid var(--fill1); }
+  .cand.chosen { border:2px solid var(--ink-strong); }
+  .badge {
+    display:inline-block; font-size:11px; font-weight:500; padding:1px 8px;
+    border-radius:var(--r-pill); background:var(--fill1); color:var(--text); margin-left:6px;
+  }
+  .badge.alt { background:var(--surface2); color:var(--ink-soft); }
+  .metrics {
+    display:grid; grid-template-columns:repeat(2, 1fr); gap:4px 8px;
+    background:var(--panel-frosted); border:1px solid var(--seam); border-radius:var(--r-info);
+    padding:7px 9px; font-size:11.5px;
+  }
+  .metrics b { color:var(--ink-muted); font-weight:500; font-size:10.5px; display:block; }
+  .metrics span { color:var(--ink-strong); font-weight:500; }
+
+  /* 휴대폰 프레임 (실제 390×844 / 375×667 축척 표시) */
+  .phone-slot { display:flex; flex-direction:column; align-items:center; gap:6px; }
+  .phone-outer { position:relative; overflow:hidden; flex:none; }
+  .phone {
+    position:relative; width:390px; height:520px;
+    border-radius:28px; border:5px solid var(--ink-strong);
+    background:var(--panel-frosted); overflow:hidden;
+    transform-origin:top left;
+    box-shadow:0 12px 26px var(--shadow-cast);
+    user-select:none;
+  }
+  .phone-bar {
+    display:flex; flex-wrap:wrap; gap:6px; align-items:center; justify-content:space-between;
+    width:100%; font-size:11.5px; color:var(--ink-soft);
+  }
+  .phone-bar .mini-btn {
+    font:inherit; font-size:11px; padding:3px 8px; border-radius:var(--r-pill);
+    border:1px solid var(--seam); background:var(--paper); color:var(--ink-strong); cursor:pointer;
+  }
+  .phone-bar .mini-btn.on { background:var(--ink-strong); color:var(--on-ink); border-color:var(--ink-strong); }
+
+  /* 앱 내부 Chrome (HomeScreen + _layout + HomeSheet 실제 비율) */
+  .app-scr { position:absolute; inset:0; display:flex; flex-direction:column; background:var(--panel-frosted); }
+  .app-hd {
+    flex:none; height:38px; display:flex; align-items:center; justify-content:space-between;
+    padding:0 14px; border-bottom:1px solid var(--seam); background:var(--panel-frosted);
+  }
+  .app-hd .hlbl { font-size:11px; font-weight:500; letter-spacing:3.2px; color:var(--ink-muted); }
+  .app-hd .hrivet { font-size:10px; color:var(--ink-muted); letter-spacing:1px; }
+  .app-sb {
+    flex:none; margin:8px 10px; padding:5px 6px 5px 12px;
+    border:1px solid var(--seam); border-radius:var(--r-info); background:var(--paper);
+    display:flex; align-items:center; justify-content:space-between; gap:6px;
+  }
+  .app-sb .ph { font-size:13px; color:var(--ink-muted); }
+  .app-sb .fbtn {
+    padding:4px 10px; border-radius:var(--r-pill); font-size:11.5px; font-weight:500;
+    background:var(--panel-lit); border:1px solid var(--seam); border-bottom:2px solid var(--relief-mid);
+    color:var(--ink-strong);
+  }
+  .board {
+    flex:none; position:relative; width:100%; overflow:hidden; background:var(--panel-frosted);
+    cursor:grab;
+  }
+  .board:active { cursor:grabbing; }
+  .grid-layer { position:absolute; left:0; top:0; width:0; height:0; pointer-events:none; opacity:.8; }
+  .grid-v { position:absolute; width:1px; background:var(--seam); }
+  .grid-h { position:absolute; height:1px; background:var(--seam); }
+  .pan-layer { position:absolute; inset:0; transition:transform .8s cubic-bezier(.22,1,.36,1); }
+  .pan-layer.dragging { transition:none; }
+
+  /* 기점 받침 (58×44, FacadeHome.tsx 그대로) */
+  .plinth {
+    position:absolute; width:58px; height:44px; z-index:6;
+    margin-left:-29px; margin-top:-22px;
+    border-radius:var(--r-block); background:var(--ink-strong); color:var(--on-ink);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    box-shadow:4px 6px 0 var(--relief-dark); border:0; cursor:pointer; padding:0; font:inherit;
+    transition:left .8s cubic-bezier(.22,1,.36,1), top .8s cubic-bezier(.22,1,.36,1);
+  }
+  .plinth .plus { font-size:13px; line-height:13px; }
+  .plinth .pt { font-size:8.5px; font-weight:500; line-height:1.15; }
+  .plinth .ps { font-size:7px; letter-spacing:1px; opacity:.85; font-weight:500; }
+
+  /* IsoCube (220×206 기본 좌표계 — FacadeHome.tsx 1:1 재현) */
+  .iso-cube {
+    position:absolute; width:220px; height:206px; margin-left:-110px; margin-top:-103px;
+    transform-origin:110px 103px; cursor:pointer;
+    transition:left .8s cubic-bezier(.22,1,.36,1), top .8s cubic-bezier(.22,1,.36,1),
+               transform .8s cubic-bezier(.22,1,.36,1), opacity .4s ease;
+  }
+  .iso-cube.is-hero { z-index:4; }
+  .iso-cube.is-ring { z-index:3; }
+  .iso-cube.is-peek { z-index:2; opacity:.95; }
+  .iso-cube .ground {
+    position:absolute; left:50.12px; top:82.12px; width:135.76px; height:135.76px;
+    background:var(--shadow-ambient); transform:scaleY(0.577) rotate(45deg);
+    pointer-events:none;
+  }
+  .iso-cube .face-top {
+    position:absolute; left:42.12px; top:-0.48px; width:135.76px; height:135.76px;
+    border:1px solid var(--seam); transform:scaleY(0.577) rotate(45deg);
+    box-shadow:inset 1px 1px 0 var(--seam-hi);
+  }
+  .iso-cube.tone-fill1 .face-top { background:var(--fill1); }
+  .iso-cube.tone-fill2 .face-top { background:var(--fill2); }
+  .iso-cube.tone-fill3 .face-top { background:var(--fill3); }
+  .iso-cube.tone-closed .face-top { background:var(--pin-closed); }
+
+  /* 윗면 이름 상자: 110.85×110.85 정사각형이 등각 변환으로 마름모 (14,67.4)-(110,12)-(206,67.4)-(110,122.8)에 정확히 포개짐 */
+  .iso-cube .face-top-box {
+    position:absolute; left:54.57px; top:11.97px; width:110.85px; height:110.85px;
+    transform:rotate(-30deg) skewX(30deg) scaleY(.866);
+    display:flex; flex-direction:column; align-items:flex-start; justify-content:flex-end;
+    padding:8px 8px 8px 9px; pointer-events:none; overflow:hidden;
+  }
+  .iso-cube .top-small {
+    font-weight:500; line-height:1.1; opacity:.86; text-align:left;
+    white-space:nowrap; max-width:100%; overflow:hidden; text-overflow:ellipsis;
+    margin-bottom:1px;
+  }
+  .iso-cube .top-big {
+    font-weight:500; text-align:left; word-break:keep-all; letter-spacing:0.3px;
+  }
+  .iso-cube.tone-fill1 .top-small, .iso-cube.tone-fill1 .top-big { color:var(--cube-ink-1); }
+  .iso-cube.tone-fill2 .top-small, .iso-cube.tone-fill2 .top-big { color:var(--cube-ink-2); }
+  .iso-cube.tone-fill3 .top-small, .iso-cube.tone-fill3 .top-big { color:var(--cube-ink-3); }
+  .iso-cube.tone-closed .top-small, .iso-cube.tone-closed .top-big { color:var(--cube-ink-closed); }
+
+  .iso-cube .face-left {
+    position:absolute; left:14px; top:67.4px; width:96px; height:78px;
+    transform-origin:left top; transform:skewY(30deg);
+    background:var(--left-face); border:1px solid var(--seam); border-right:0;
+    padding:6px 7px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden;
+  }
+  .iso-cube .face-right {
+    position:absolute; left:110px; top:122.8px; width:96px; height:78px;
+    transform-origin:left top; transform:skewY(-30deg);
+    background:var(--paper); border:1px solid var(--seam);
+    padding:6px 7px; display:flex; flex-direction:column; justify-content:space-between; overflow:hidden;
+  }
+  .iso-cube.is-hero .face-left, .iso-cube.is-hero .face-right { border-color:var(--ink-strong); }
+  .iso-cube .quiet { transition:opacity .3s; }
+  .iso-cube:not(.is-hero) .quiet { opacity:.38; }
+  .l-top { display:flex; justify-content:space-between; align-items:center; }
+  .badge-s { display:inline-flex; align-items:center; gap:3px; font-size:7.5px; font-weight:500; color:var(--ink-strong); }
+  .dot-s { width:5px; height:5px; border-radius:50%; display:inline-block; }
+  .iso-cube.tone-fill1 .dot-s { background:var(--fill1); }
+  .iso-cube.tone-fill2 .dot-s { background:var(--fill2); }
+  .iso-cube.tone-fill3 .dot-s { background:var(--fill3); }
+  .iso-cube.tone-closed .dot-s { background:var(--pin-closed); }
+  .dist-s { font-size:7.5px; font-weight:500; color:var(--ink-muted); }
+  .lbl-s { font-size:6px; font-weight:500; letter-spacing:.7px; color:var(--ink-muted); }
+  .addr-s { font-size:8px; line-height:1.25; font-weight:500; color:var(--ink-soft); word-break:keep-all; }
+  .hours-s { font-size:7.5px; line-height:1.25; font-weight:500; color:var(--ink-strong); }
+  .bear-wrap { border-top:1px solid var(--seam); padding-top:3px; }
+  .bear-s { font-size:8.5px; font-weight:500; letter-spacing:.8px; color:var(--ink-strong); }
+
+  /* 홈 하단 창 + 탭 바 (간략 재현 — 보이는 판 높이를 정확히 확보) */
+  .app-sheet {
+    flex:1; min-height:0; overflow:hidden; background:var(--panel-lit); border-top:1px solid var(--seam);
+    border-top-left-radius:var(--r-block); border-top-right-radius:var(--r-block);
+    padding:8px 14px; display:flex; flex-direction:column; gap:6px; z-index:10;
+    box-shadow:0 -4px 12px var(--shadow-ambient);
+  }
+  .grab { width:34px; height:3px; border-radius:2px; background:var(--surface3); margin:0 auto 2px; }
+  .sh-title { font-size:13px; font-weight:500; color:var(--ink-strong); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sh-sub { font-size:10px; color:var(--ink-muted); letter-spacing:.8px; }
+  .sh-books { display:flex; gap:8px; margin-top:2px; }
+  .sh-book { width:54px; height:76px; border-radius:4px 7px 7px 4px; background:var(--fill2); border:1px solid var(--seam); flex:none; }
+  .sh-book:nth-child(2) { background:var(--fill3); }
+  .sh-book:nth-child(3) { background:var(--fill1); }
+  .sh-book:nth-child(4) { background:var(--surface2); }
+  .app-tabs {
+    flex:none; height:42px; background:var(--panel-frosted); border-top:1px solid var(--seam);
+    display:grid; grid-template-columns:repeat(3,1fr); z-index:11;
+  }
+  .app-tab {
+    display:flex; align-items:center; justify-content:center; font-size:11.5px; color:var(--ink-muted);
+    border-left:1px solid var(--seam); position:relative;
+  }
+  .app-tab:first-child { border-left:0; }
+  .app-tab.on { color:var(--ink-strong); font-weight:500; }
+  .app-tab.on::before { content:""; position:absolute; top:0; width:26px; height:2px; background:var(--ink-strong); }
+
+  .toast-msg {
+    position:absolute; left:14px; right:14px; bottom:54px; z-index:20;
+    background:var(--panel-lit); border:1px solid var(--seam); border-radius:var(--r-info);
+    padding:7px 10px; font-size:11.5px; color:var(--ink-strong); text-align:center;
+    box-shadow:0 4px 12px var(--shadow-cast); display:none;
+  }
+  .toast-msg.on { display:block; }
+
+  /* 설명 칸 */
+  .lbl { font-weight:500; font-size:12px; color:var(--ink-muted); margin-top:4px; display:block; }
+  .cand p { margin:0; font-size:12.5px; color:var(--ink-soft); }
+  .cand .rec-why {
+    background:var(--cream); border-left:3px solid var(--fill1); padding:6px 9px;
+    border-radius:4px; font-size:12px; color:var(--text);
+  }
+  .std-ref { font-size:11.5px; color:var(--ink-muted); border-top:1px solid var(--seam); padding-top:6px; margin-top:2px; }
+
+  /* 명세 패널 */
+  #spec { margin-top:40px; }
+  .wide { overflow-x:auto; }
+  table {
+    border-collapse:collapse; width:100%; font-size:12.5px; background:var(--panel-lit);
+    border:1px solid var(--seam); border-radius:var(--r-info); overflow:hidden;
+  }
+  th, td { text-align:left; vertical-align:top; padding:9px 11px; border-bottom:1px solid var(--seam); }
+  th { background:var(--surface2); font-weight:500; color:var(--ink-strong); white-space:nowrap; }
+  .st { display:inline-block; font-size:11px; padding:1px 8px; border-radius:var(--r-pill); background:var(--surface2); white-space:nowrap; }
+  .st.def { background:var(--cream); border:1px solid var(--seam); }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>홈 큐브 디자인 개편 시안 (H1) — E1 주변 배열 · E2 주인공 크기 · E3 이름 크기</h1>
+  <div class="how">
+    <b>보는 법 (실제 광주 29곳 운영 데이터 · 큐브 이름 v2 <code>{big, small}</code> 적용).</b><br>
+    위 막대에서 <b>화면 크기(390×844 / 375×667)</b>와 <b>광주 시점(동구·남구·서구·북구·광산구)</b>을 바꿔 볼 수 있습니다.
+    각 휴대폰 안에서 <b>① 주변 큐브를 누르면</b> 그 도서관이 주인공으로 바뀌고(0.8초), <b>② <code>+ 현위치 3KM</code> 기점을 누르면</b> 전체 보기(방향성 확인)로 전환되며, <b>③ 빈 판을 끌면</b> 반대 방향 도서관으로 넘어갑니다.
+    노란 테두리가 <b>추천</b>이며, <b>E1 → E2 → E3</b> 순서로 하나씩 정합니다. (12색 확장은 마지막 단계 H6에서 별도 진행)
+  </div>
+
+  <div class="global-bar">
+    <label>화면 크기
+      <div class="seg" id="sizeSeg">
+        <button type="button" class="on" data-size="390x844">390×844 (기본)</button>
+        <button type="button" data-size="375x667">375×667 (작은 폰)</button>
+      </div>
+    </label>
+    <label>광주 시점
+      <select id="viewSelect">
+        <option value="donggu" selected>동구·남구 경계 (중앙/광주 주인공 · 배포화면 좌표 기준)</option>
+        <option value="namgu">남구 (사직 · 금호/평생교육관 · 문화정보/남구)</option>
+        <option value="seogu">서구 (학생독립운동/기념회관 · 어린이생태학습)</option>
+        <option value="bukgu">북구 (무등 · 최상준/분관 · 일곡)</option>
+        <option value="gwangsan">광산구 (운남/어린이 · 첨단 · 송정다가치문화)</option>
+      </select>
+    </label>
+    <span style="color:var(--ink-muted); font-size:12px;">※ 보이는 판 높이: 390×844 → <b>390×325</b> · 375×667 → <b>375×220</b></span>
+  </div>
+</header>
+
+<main>
+  <!-- ==================== E1: 주변 큐브 배열 ==================== -->
+  <section class="element" id="el-e1-neighbors" data-chosen="E1-A">
+    <h2>E1. 주변 큐브 배열 — 주변을 크게 · 수는 적게 "공간의 연속성" <span class="status">확인</span></h2>
+    <div class="flow">
+      <b>정해진 것(D).</b> 주변 큐브는 지금(0.45~0.62배, 최대 6곳)보다 <b>훨씬 크게 · 수는 적게</b> 놓아 화면 밖으로 잘리며 이어지는 <b>공간의 연속성</b>(<code>box.jpg</code> 밀도)을 만듭니다. 모든 도서관의 정확한 방향은 <code>+ 현위치</code> 기점을 눌러 <b>전체 보기(<code>ringScene</code>)</b>에서 봅니다.
+    </div>
+    <div class="pick">다시 보기 / 비교 전환:
+      <select data-for="el-e1-neighbors">
+        <option value="E1-A" selected>후보 E1-A — 등각 격자 이웃 3곳 크게 잘림 (채택 · 추천)</option>
+        <option value="E1-B">후보 E1-B — 사분면 가장자리 중대형 4곳 (탈락)</option>
+        <option value="E1-C">후보 E1-C — 주인공 최대 + 모서리 2곳만 (탈락)</option>
+      </select>
+    </div>
+
+    <div class="cands">
+      <!-- E1-A -->
+      <article class="cand recommended chosen" data-id="E1-A">
+        <h3>후보 E1-A — 등각 격자 이웃 3곳 크게 잘림 <span class="badge">추천</span> <span class="badge alt">채택</span></h3>
+        <div class="metrics">
+          <div><b>이웃 크기 배율</b><span>주인공의 0.88배 (scale ~1.19)</span></div>
+          <div><b>화면에 보이는 수</b><span>총 4곳 (주인공 1 + 주변 3)</span></div>
+          <div><b>잘리는 비율</b><span>면적의 60~72% 잘림 (끄트머리 28~40%)</span></div>
+          <div><b>방향 반영 정도</b><span>사분면/모서리 슬롯 스냅 (겹침 없음)</span></div>
+        </div>
+        <div class="phone-slot" data-phone-slot="el-e1-neighbors:E1-A"><div class="phone-outer"><div class="phone"></div></div></div>
+        <p>주인공과 거의 같은 덩치의 이웃 3곳이 화면 상하좌우 빈 모서리에서 크게 잘려 들어옵니다. <code>box.jpg</code>처럼 큰 상자들이 넉넉히 이어지는 공간감을 줍니다.</p>
+        <span class="lbl">누르면 이렇게 이어져요</span>
+        <p>걸친 이웃 큐브 모서리 클릭 → 0.8초 만에 그 큐브가 주인공으로 올라오고 나머지 3곳이 모서리로 재배치 → 주인공 클릭 시 방문 페이지로 이동 · 기점(<code>+ 현위치</code>) 클릭 시 7곳 전체 보기.</p>
+        <span class="lbl">화면을 열어야만 보이는 것</span>
+        <p>주변 3곳의 윗면 안쪽 모서리·이름 일부와 옆면이 화면 밖으로 60~72% 잘린 채 보이며, <code>+ 현위치</code>를 눌러 보면 7곳 전체 방향 보기로 바뀝니다.</p>
+        <span class="lbl">얻는 것 / 포기하는 것</span>
+        <p><b>얻는 것:</b> 주변 큐브가 곁다리 돌멩이처럼 작아지지 않고 묵직한 연속성과 읽히는 글자 크기를 얻습니다.<br><b>포기하는 것:</b> 한눈에 6개 이웃의 정밀한 각도·전체 이름은 보이지 않습니다(전체 보기가 대신 담당).</p>
+        <div class="rec-why"><b>추천 이유:</b> 참고 이미지 <code>box.jpg</code>의 밀도와 가장 닮았고, 3곳이라 390×325·375×220 어디서도 주인공과 겹치지 않으면서 윗면 이름 덩어리가 충분히 읽힙니다.</div>
+        <div class="std-ref">표준 근거: 새 패턴 — 등각 3D 블록이 화면 밖으로 크게 잘려 공간 연속성을 주는 전용 파사드 배열 (P-80 지도 핀 배열의 밀집 대체)</div>
+      </article>
+
+      <!-- E1-B -->
+      <article class="cand" data-id="E1-B">
+        <h3>후보 E1-B — 사분면 가장자리 중대형 4곳</h3>
+        <div class="metrics">
+          <div><b>이웃 크기 배율</b><span>주인공의 0.72배 (scale ~0.98)</span></div>
+          <div><b>화면에 보이는 수</b><span>총 5곳 (주인공 1 + 주변 4)</span></div>
+          <div><b>잘리는 비율</b><span>면적의 45~55% 잘림 (이름 판 안쪽 유지)</span></div>
+          <div><b>방향 반영 정도</b><span>실제 방위각 + 변당 최대 1곳</span></div>
+        </div>
+        <div class="phone-slot" data-phone-slot="el-e1-neighbors:E1-B"><div class="phone-outer"><div class="phone"></div></div></div>
+        <p>현행 <code>heroScene</code>처럼 실제 방위각 방향의 판 변에 붙이되, 한 변에 최대 1곳·총 4곳으로 줄여 큐브 크기를 주인공의 72%까지 키운 절충안입니다.</p>
+        <span class="lbl">누르면 이렇게 이어져요</span>
+        <p>가장자리 이웃 4곳 중 하나 클릭 → 0.8초 동안 주인공 자리로 이동 → 기점 클릭 시 전체 보기로 전환.</p>
+        <span class="lbl">화면을 열어야만 보이는 것</span>
+        <p>이웃 4곳의 이름이 판 안쪽에 비교적 온전히 남지만, 375×220 작은 화면에서는 이웃 4개가 주인공 주변을 꽤 촘촘히 둘러쌉니다.</p>
+        <span class="lbl">얻는 것 / 포기하는 것</span>
+        <p><b>얻는 것:</b> 홈 첫 화면에서도 이웃 4곳의 대략적 방위와 전체 이름을 더 많이 읽을 수 있습니다.<br><b>포기하는 것:</b> <code>box.jpg</code> 수준의 큰 스케일·시원한 여백·강한 끄트머리 잘림은 덜합니다.</p>
+        <div class="std-ref">표준 근거: P-80 핀 + 이름 글자 (핀 아래) — 변별 가능한 이름 보존형</div>
+      </article>
+
+      <!-- E1-C -->
+      <article class="cand" data-id="E1-C">
+        <h3>후보 E1-C — 주인공 최대 + 모서리 2곳만</h3>
+        <div class="metrics">
+          <div><b>이웃 크기 배율</b><span>주인공의 0.95배 (scale ~1.29)</span></div>
+          <div><b>화면에 보이는 수</b><span>총 3곳 (주인공 1 + 주변 2)</span></div>
+          <div><b>잘리는 비율</b><span>면적의 70~80% 잘림 (끄트머리만)</span></div>
+          <div><b>방향 반영 정도</b><span>좌우/대각 2개 코너만</span></div>
+        </div>
+        <div class="phone-slot" data-phone-slot="el-e1-neighbors:E1-C"><div class="phone-outer"><div class="phone"></div></div></div>
+        <p>가장 가까운 이웃 단 2곳만 주인공과 거의 같은 크기(95%)로 양쪽 대각선 모서리에 20~30%만 살짝 걸쳐 두고 주인공에 시선을 집중시킵니다.</p>
+        <span class="lbl">누르면 이렇게 이어져요</span>
+        <p>모서리에 걸친 2곳 중 하나 클릭 → 주인공으로 교체 → 다른 도서관은 빈 판 끌기나 기점 전체 보기로 선택.</p>
+        <span class="lbl">화면을 열어야만 보이는 것</span>
+        <p>화면 대부분이 주인공 큐브와 여백으로 채워지고 양쪽 끝에서만 다음 상자의 모서리가 살짝 엿보입니다.</p>
+        <span class="lbl">얻는 것 / 포기하는 것</span>
+        <p><b>얻는 것:</b> 가장 차분하고 압도적인 주인공 집중감과 거대한 이웃 스케일.<br><b>포기하는 것:</b> 주변 도서관이 있다는 인식이 2곳뿐이라 3~4번째 가까운 도서관을 바로 눌러 갈 수 없습니다.</p>
+        <div class="std-ref">표준 근거: P-82 내 위치 점 + 주변 최소 앵커</div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ==================== E2: 주인공 크기 (연속값) ==================== -->
+  <section class="element" id="el-e2-hero-size" data-kind="continuous" data-chosen="E2-2">
+    <h2>E2. 주인공 크기 — 기준(0%) + 3단계 (+10% / +20% / +30%) <span class="status">확인</span></h2>
+    <div class="flow">
+      <b>정해진 것.</b> 현재는 기점 받침(58×44) + 여백을 피한 남은 칸의 92% 안에 가두어 390×325에서 폭 약 244px(scale 1.11)로 제한됩니다. 아래 4단계는 판 폭 대비 주인공 크기를 키우고 그에 따라 기점 자리를 조정합니다(배열은 E1-A 추천 기준 적용, 위 E1 선택 시 연동 가능).
+    </div>
+    <div class="pick">단계 비교 선택:
+      <select data-for="el-e2-hero-size">
+        <option value="E2-0">기준 (0% · 현재 남은 칸 92% · 탈락)</option>
+        <option value="E2-1">단계 1 (+10% · 기점 가장자리 9% · 탈락)</option>
+        <option value="E2-2" selected>단계 2 (+20% · 모서리 구석 · 살짝 겹침 허용, 채택 · 추천)</option>
+        <option value="E2-3">단계 3 (+30% · 최대 크기 · 기점 코너 겹침 · 탈락)</option>
+      </select>
+    </div>
+
+    <div class="cands cols-4">
+      <article class="cand" data-id="E2-0">
+        <h3>기준 (0% · 현재)</h3>
+        <div class="metrics">
+          <div><b>390×325 크기</b><span>남/북 1.11(244px, 63%) · 동/서 1.25(274px, 70%)</span></div>
+          <div><b>기점 받침 자리</b><span>반대쪽 12% 안쪽 · 겹침 0px</span></div>
+        </div>
+        <div class="phone-slot" data-phone-slot="el-e2-hero-size:E2-0"><div class="phone-outer"><div class="phone"></div></div></div>
+        <p>기점 받침과 10px 간격을 뺀 남은 칸의 92% 안에 들어가, 기점과 절대 겹치지 않지만 좌우 여백이 많이 남습니다.</p>
+        <span class="lbl">누르면 이렇게 이어져요</span>
+        <p>주인공 클릭 → 방문 페이지 이동, 기점 클릭 → 전체 보기.</p>
+        <span class="lbl">화면을 열어야만 보이는 것</span>
+        <p>375×220에서는 세로가 좁아 주인공이 폭 154px(scale 0.70)까지 작아집니다.</p>
+        <span class="lbl">얻는 것 / 포기하는 것</span>
+        <p><b>얻는 것:</b> 기점과 큐브의 완전한 분리.<br><b>포기하는 것:</b> 큰 이름을 얹기엔 윗면 폭이 좁습니다.</p>
+        <div class="std-ref">표준 근거: P-80 핀 + 이름 글자 (기존 V3 기준)</div>
+      </article>
+
+      <article class="cand" data-id="E2-1">
+        <h3>단계 1 (+10%)</h3>
+        <div class="metrics">
+          <div><b>390×325 크기</b><span>scale 1.24 · 273×255px (폭 70%)</span></div>
+          <div><b>기점 받침 자리</b><span>가장자리 9% 구석 · 비겹침</span></div>
+        </div>
+        <div class="phone-slot" data-phone-slot="el-e2-hero-size:E2-1"><div class="phone-outer"><div class="phone"></div></div></div>
+        <p>기점 여백을 줄이고(4px) 가장자리 9%까지 밀어 주인공을 판 폭의 70% 수준으로 키웁니다.</p>
+        <span class="lbl">누르면 이렇게 이어져요</span>
+        <p>주인공 클릭 → 방문 페이지 이동, 기점 클릭 → 전체 보기.</p>
+        <span class="lbl">화면을 열어야만 보이는 것</span>
+        <p>기점과 큐브 모서리가 거의 닿을 듯 가깝지만 겹치진 않으며, 375×220에서도 폭 약 200px을 유지합니다.</p>
+        <span class="lbl">얻는 것 / 포기하는 것</span>
+        <p><b>얻는 것:</b> 겹침 없이 약 12% 커진 윗면.<br><b>포기하는 것:</b> 여전히 <code>box.jpg</code>만큼 화면을 꽉 채우는 덩치감은 부족합니다.</p>
+        <div class="std-ref">표준 근거: P-80 핀 + 이름 글자 (+10% 확장)</div>
+      </article>
+
+      <article class="cand recommended chosen" data-id="E2-2">
+        <h3>단계 2 (+20%) <span class="badge">추천</span> <span class="badge alt">채택</span></h3>
+        <div class="metrics">
+          <div><b>390×325 크기</b><span>scale 1.36 · 299×280px (폭 77%)</span></div>
+          <div><b>기점 받침 자리</b><span>모서리 8% · 바닥/모퉁이 ~14px 겹침 허용</span></div>
+        </div>
+        <div class="phone-slot" data-phone-slot="el-e2-hero-size:E2-2"><div class="phone-outer"><div class="phone"></div></div></div>
+        <p>주인공을 판 폭의 약 77%(~300px)까지 키우고, 기점은 반대쪽 구석(8% 안쪽)에 두되 큐브 그림자·아래 모퉁이와 살짝 겹침을 허용합니다.</p>
+        <span class="lbl">누르면 이렇게 이어져요</span>
+        <p>기점이 큐브 위 레이어(z-index 6)에 있어 누름이 겹쳐도 기점은 전체 보기, 큐브 몸은 방문 페이지로 정확히 동작합니다.</p>
+        <span class="lbl">화면을 열어야만 보이는 것</span>
+        <p>윗면 이름 폭이 크게 넓어지면서도 옆면 정보(주소·방위)와 이웃 큐브가 모두 여유 있게 숨 쉽니다.</p>
+        <span class="lbl">얻는 것 / 포기하는 것</span>
+        <p><b>얻는 것:</b> 큰 이름 표기를 충분히 받아내는 주인공 면적과 균형 잡힌 여백.<br><b>포기하는 것:</b> 세로가 낮은 375×220에서 기점이 큐브 바닥 귀퉁이를 살짝 스칩니다.</p>
+        <div class="rec-why"><b>추천 이유:</b> 390×844에서 폭 ~300px로 윗면 이름이 압도적으로 커지면서도 옆면 정보와 이웃 큐브 3곳이 서로 답답하게 부딪히지 않는 가장 안정적인 크기입니다.</div>
+        <div class="std-ref">표준 근거: P-80 핀 + 이름 글자 (+20% 확장)</div>
+      </article>
+
+      <article class="cand" data-id="E2-3">
+        <h3>단계 3 (+30%)</h3>
+        <div class="metrics">
+          <div><b>390×325 크기</b><span>scale 1.49 · 328×307px (폭 84%)</span></div>
+          <div><b>기점 받침 자리</b><span>판 모퉁이 7% · 큐브 코너 위 얹힘</span></div>
+        </div>
+        <div class="phone-slot" data-phone-slot="el-e2-hero-size:E2-3"><div class="phone-outer"><div class="phone"></div></div></div>
+        <p>주인공을 판 폭의 84%(328px)까지 키워 화면을 가득 채우고, 기점은 반대쪽 코너에 겹쳐 놓습니다.</p>
+        <span class="lbl">누르면 이렇게 이어져요</span>
+        <p>주인공·기점 클릭 동작 동일, 주변 큐브 3곳은 더 바깥 모서리로 밀립니다.</p>
+        <span class="lbl">화면을 열어야만 보이는 것</span>
+        <p>주인공 큐브 위아래 꼭짓점이 검색바·하단 시트 경계에 거의 닿아 375×220에서는 위아래가 살짝 잘릴 수 있습니다.</p>
+        <span class="lbl">얻는 것 / 포기하는 것</span>
+        <p><b>얻는 것:</b> 가장 거대한 주인공 윗면.<br><b>포기하는 것:</b> 작은 화면(375×667)에서 주인공 모서리 잘림과 기점 겹침이 커집니다.</p>
+        <div class="std-ref">표준 근거: P-80 핀 + 이름 글자 (+30% 확장)</div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ==================== E3: 이름 크기 (연속값) ==================== -->
+  <section class="element" id="el-e3-font-size" data-kind="continuous" data-chosen="E3-2">
+    <h2>E3. 이름 크기 — 윗면 왼쪽 아래 · <code>ewm</code> 비율 기준(0%) + 3단계 (-5% / -10% / -15%) <span class="status">확인</span></h2>
+    <div class="flow">
+      <b>정해진 것(D).</b> 이름은 윗면의 <b>왼쪽 아래</b>(<code>cube_re.png</code>, 윗면 기울기 따라 비스듬히)에 놓고, 작은 글자는 큰 글자 <b>왼쪽 위 머리글자</b>로 둡니다. 크기는 <code>fontsizePerBox.png</code>(<code>ewm</code>) 수준 ~ 조금 작게 맞추며, 큰 글자 1줄(<code>산수</code>)·2단 표기(<code>어린이</code>+<code>사직</code>, <code>평생교육관</code>+<code>금호</code>)·긴 이름(<code>어린이생태학습</code>)을 모두 확인합니다.
+    </div>
+    <div class="pick">
+      <span>단계 비교 선택:</span>
+      <select data-for="el-e3-font-size">
+        <option value="E3-0">기준 (0% · ewm 수준 — 2자 화면 46.2px · 탈락)</option>
+        <option value="E3-1">단계 1 (-5% — 2자 화면 43.9px · 탈락)</option>
+        <option value="E3-2" selected>단계 2 (-10% — 2자 화면 41.6px, 채택 · 추천)</option>
+        <option value="E3-3">단계 3 (-15% — 2자 화면 39.3px · 탈락)</option>
+      </select>
+      <span style="margin-left:8px;">이름 예시 전환:</span>
+      <div class="seg" id="nameSampleSeg">
+        <button type="button" class="on" data-sample="auto">현재 시점 실제 도서관</button>
+        <button type="button" data-sample="two">어린이 / 사직 (2단)</button>
+        <button type="button" data-sample="geumho">평생교육관 / 금호 (긴 작은글자)</button>
+        <button type="button" data-sample="long">어린이생태학습 (7자 2줄)</button>
+      </div>
+    </div>
+
+    <div class="cands cols-4">
+      <article class="cand" data-id="E3-0">
+        <h3>기준 (0% · <code>ewm</code> 수준)</h3>
+        <div class="metrics">
+          <div><b>큰 글자 (2자 / 4자 / 7자)</b><span>34 / 22.5 / 21.5px (화면 46.2 / 30.6 / 29.2px)</span></div>
+          <div><b>작은 글자 (0.38배)</b><span>12.9px (화면 17.5px · 이웃 ~15.4px)</span></div>
+        </div>
+        <div class="phone-slot" data-phone-slot="el-e3-font-size:E3-0"><div class="phone-outer"><div class="phone"></div></div></div>
+        <p><code>fontsizePerBox.png</code>처럼 2자 글자가 윗면 변의 약 68%를 채우는 최대 존재감 기준입니다.</p>
+        <span class="lbl">누르면 이렇게 이어져요</span>
+        <p>위 "이름 예시 전환" 버튼으로 한 줄·두 줄·긴 작은 글자가 윗면에 어떻게 들어가는지 바로 바꿔 봅니다.</p>
+        <span class="lbl">화면을 열어야만 보이는 것</span>
+        <p>2자(<code>산수</code>·<code>사직</code>)는 매우 시원하지만, 5~7자나 긴 작은 글자(<code>학생교육문화회관</code>)는 윗면 위아래 여백에 바짝 붙습니다.</p>
+        <span class="lbl">얻는 것 / 포기하는 것</span>
+        <p><b>얻는 것:</b> 시선을 바로 뺏는 포스터급 타이틀 존재감.<br><b>포기하는 것:</b> 긴 이름·2단 표기 시 여백이 빠듯합니다.</p>
+        <div class="std-ref">표준 근거: P-80 핀 + 이름 글자 (ewm 기준 비율 68%)</div>
+      </article>
+
+      <article class="cand" data-id="E3-1">
+        <h3>단계 1 (-5%)</h3>
+        <div class="metrics">
+          <div><b>큰 글자 (2자 / 4자 / 7자)</b><span>32.3 / 21.4 / 20.4px (화면 43.9 / 29.1 / 27.7px)</span></div>
+          <div><b>작은 글자 (0.38배)</b><span>12.3px (화면 16.7px · 이웃 ~14.7px)</span></div>
+        </div>
+        <div class="phone-slot" data-phone-slot="el-e3-font-size:E3-1"><div class="phone-outer"><div class="phone"></div></div></div>
+        <p><code>ewm</code> 기준보다 5% 줄여 모서리 여백을 1~2px 더 확보한 크기입니다.</p>
+        <span class="lbl">누르면 이렇게 이어져요</span>
+        <p>예시 전환 및 이웃 큐브 클릭으로 작은 글자 가독성을 함께 확인합니다.</p>
+        <span class="lbl">화면을 열어야만 보이는 것</span>
+        <p>2자는 거의 기준과 같아 보일 정도로 크며, 이웃 큐브에서도 작은 글자가 약 14.7px로 선명합니다.</p>
+        <span class="lbl">얻는 것 / 포기하는 것</span>
+        <p><b>얻는 것:</b> <code>ewm</code>에 가장 가까우면서 경계선 숨통을 튼 크기.<br><b>포기하는 것:</b> 6~7자 2줄 이름은 여전히 윗면을 꽉 채웁니다.</p>
+        <div class="std-ref">표준 근거: P-80 핀 + 이름 글자 (-5%)</div>
+      </article>
+
+      <article class="cand recommended chosen" data-id="E3-2">
+        <h3>단계 2 (-10%) <span class="badge">추천</span> <span class="badge alt">채택</span></h3>
+        <div class="metrics">
+          <div><b>큰 글자 (2자 / 4자 / 7자)</b><span>30.6 / 20.3 / 19.4px (화면 41.6 / 27.6 / 26.4px)</span></div>
+          <div><b>작은 글자 (0.38배)</b><span>11.6px (화면 15.8px · 이웃 ~13.9px)</span></div>
+        </div>
+        <div class="phone-slot" data-phone-slot="el-e3-font-size:E3-2"><div class="phone-outer"><div class="phone"></div></div></div>
+        <p>D가 요청한 "<code>ewm</code> 수준 ~ 아주 조금 더 작게"에 맞춘 -10% 단계입니다(기존 16px 대비 화면 기준 약 1.9배 확대).</p>
+        <span class="lbl">누르면 이렇게 이어져요</span>
+        <p>예시 전환으로 <code>어린이</code>/<code>사직</code>(2단), <code>평생교육관</code>/<code>금호</code>, <code>어린이생태학습</code>(2줄)을 눌러 비교합니다.</p>
+        <span class="lbl">화면을 열어야만 보이는 것</span>
+        <p>큰 글자와 작은 글자의 무게 차이가 확연하면서도, <code>학생교육문화회관</code> 같은 긴 작은 글자나 7자 2줄 이름도 마름모 경계와 부딪히지 않고 안정적인 여백을 남깁니다.</p>
+        <span class="lbl">얻는 것 / 포기하는 것</span>
+        <p><b>얻는 것:</b> 긴 이름·2단 이름·이웃 큐브(작은 글자 ~14px, 기존 6px 해소) 모두에서 균형 잡힌 조형감.<br><b>포기하는 것:</b> <code>box.jpg</code>처럼 모서리를 뚫을 듯 꽉 차는 극단적 크기는 조금 덜합니다.</p>
+        <div class="rec-why"><b>추천 이유:</b> "fontsizePerBox.png 수준 ~ 아주 조금 더 작게" 지시와 정확히 맞고, 광주 29곳 중 가장 긴 <code>어린이생태학습</code>·<code>송정다가치문화</code>·<code>학생교육문화회관</code>까지 한 공식으로 깨짐 없이 담깁니다.</div>
+        <div class="std-ref">표준 근거: P-80 핀 + 이름 글자 (-10%)</div>
+      </article>
+
+      <article class="cand" data-id="E3-3">
+        <h3>단계 3 (-15%)</h3>
+        <div class="metrics">
+          <div><b>큰 글자 (2자 / 4자 / 7자)</b><span>28.9 / 19.1 / 18.3px (화면 39.3 / 26.0 / 24.9px)</span></div>
+          <div><b>작은 글자 (0.38배)</b><span>11.0px (화면 15.0px · 이웃 ~13.2px)</span></div>
+        </div>
+        <div class="phone-slot" data-phone-slot="el-e3-font-size:E3-3"><div class="phone-outer"><div class="phone"></div></div></div>
+        <p>기준보다 15% 줄여 윗면 위쪽 빈 공간(여백)을 가장 넓게 남기는 보수적 크기입니다.</p>
+        <span class="lbl">누르면 이렇게 이어져요</span>
+        <p>예시 전환 및 이웃 클릭으로 여백 비율을 확인합니다.</p>
+        <span class="lbl">화면을 열어야만 보이는 것</span>
+        <p>기존(16px → 화면 17.8px)보다는 여전히 2배 넘게 크지만, 2자 이름에서 윗면 색면이 더 많이 비어 보입니다.</p>
+        <span class="lbl">얻는 것 / 포기하는 것</span>
+        <p><b>얻는 것:</b> 어떤 긴 이름이 와도 절대 붐비지 않는 여백.<br><b>포기하는 것:</b> 무게중심이 글자보다 윗면 색면으로 다시 조금 분산됩니다.</p>
+        <div class="std-ref">표준 근거: P-80 핀 + 이름 글자 (-15%)</div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ==================== 명세 패널 (#spec) ==================== -->
+  <section id="spec">
+    <h2>명세 패널 — 홈 큐브 개편 (H1 시안 기준)</h2>
+    <div class="wide">
+      <table>
+        <thead>
+          <tr>
+            <th>요소</th>
+            <th>채택</th>
+            <th>차선</th>
+            <th>탈락</th>
+            <th>이유(사용자 말)</th>
+            <th>값(배율 · px · 개수)</th>
+            <th>유저 플로우</th>
+            <th>상태</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr data-el="el-e1-neighbors">
+            <td><b>E1. 주변 큐브 배열</b></td>
+            <td>E1-A (등각 격자 이웃 3곳 크게 잘림)</td>
+            <td>없음</td>
+            <td>E1-B(사분면 4곳) · E1-C(모서리 2곳)</td>
+            <td>D 채택(시니어 위임, E1~E3 추천안 일괄 확정)</td>
+            <td>주변 3곳(총 4곳), 이웃 배율 0.88배, 잘림 60~72%, 사분면/모서리 스냅</td>
+            <td>걸친 이웃 클릭 → 0.8초 주인공 교체 / 기점 클릭 → 7곳 전체 보기(ringScene)</td>
+            <td><span class="st">확인</span></td>
+          </tr>
+          <tr data-el="el-e2-hero-size">
+            <td><b>E2. 주인공 크기</b></td>
+            <td>E2-2 (+20% · 모서리 구석 · 살짝 겹침 허용)</td>
+            <td>없음</td>
+            <td>E2-0(0%) · E2-1(+10%) · E2-3(+30%)</td>
+            <td>D 채택(시니어 위임, E1~E3 추천안 일괄 확정)</td>
+            <td>390×325 기준 scale 1.36(299×280px, 폭 77%), 375×220 높이 94% 내 최대, 기점 모서리 8%·최대 14px 겹침 허용</td>
+            <td>주인공 클릭 → 방문 페이지 / 꾹 누름(0.6초) → 처음 주인공 설정 메뉴</td>
+            <td><span class="st">확인</span></td>
+          </tr>
+          <tr data-el="el-e3-font-size">
+            <td><b>E3. 이름 크기</b></td>
+            <td>E3-2 (-10% · 윗면 왼쪽 아래)</td>
+            <td>없음</td>
+            <td>E3-0(0%) · E3-1(-5%) · E3-3(-15%)</td>
+            <td>D 채택(시니어 위임, E1~E3 추천안 일괄 확정)</td>
+            <td>자리 윗면 왼쪽 아래 · 작은 글자 왼쪽 위 0.38배(최소 9px base). -10%: 2자 base 30.6px(화면 41.6px) · 작은 11.6px(화면 15.8px)</td>
+            <td>윗면 이름은 줄인 <code>{big, small}</code> 표시, 접근성·방문 페이지는 원래 <code>name</code></td>
+            <td><span class="st">확인</span></td>
+          </tr>
+          <tr>
+            <td><b>옆면 글자 · 걸친 큐브 옆면</b></td>
+            <td>주인공 유지 · 걸친 큐브 흐림(0.38)</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>주인공 옆면 <code>opacity: 1</code>, 걸친 큐브 옆면 <code>opacity: 0.38</code> (잘려도 구조 유지)</td>
+            <td>주인공 옆면만 선명하게 정보(거리·주소·운영시간·방위) 노출</td>
+            <td><span class="st def">기본값(Claude)</span></td>
+          </tr>
+          <tr>
+            <td><b>긴 이름 줄임 규칙</b></td>
+            <td>6자 이상 2줄 · 폭 비례 축소</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td><code>len &gt;= 6</code>이면 2줄(기존 7자→6자), 사용 폭 92px 기준 비례 축소(하한 10px base), 작은 글자 1줄 말줄임/축소</td>
+            <td>110.85×110.85 등각 윗면 내부에 항상 수납</td>
+            <td><span class="st def">기본값(Claude)</span></td>
+          </tr>
+          <tr>
+            <td><b>휴관 색 · 전체 보기</b></td>
+            <td>현행 유지(H6 전)</td>
+            <td>—</td>
+            <td>—</td>
+            <td>—</td>
+            <td>휴관 <code>pinClosed</code>(#78736C), 전체 보기 <code>ringScene</code> 7곳·실제 방향·판 폭 46%</td>
+            <td>기점 클릭 시 정확한 방위·거리 확인</td>
+            <td><span class="st def">기본값(Claude)</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<script>
+// 실제 광주 29곳 운영 DB 데이터 + cubeNames v2({big, small})
+const GWANGJU_29 = [
+  {id:1,  name:"계림꿈나무도서관", big:"계림꿈나무", small:null, lat:35.1585312, lng:126.9196578, code:"24010", addr:"광주 동구 경양로247번길 26", hours:"화~일 09:00~18:00"},
+  {id:2,  name:"광주광역시립산수도서관", big:"산수", small:null, lat:35.1543981, lng:126.9284698, code:"24010", addr:"광주 동구 경양로 355", hours:"화~일 09:00~18:00"},
+  {id:3,  name:"전남광주통합특별시교육청중앙도서관", big:"중앙", small:"광주", lat:35.1485032, lng:126.9253348, code:"24010", addr:"광주 동구 장동로 23-16", hours:"화~일 09:00~18:00"},
+  {id:4,  name:"책정원도서관", big:"책정원", small:null, lat:35.0942815, lng:126.9392255, code:"24010", addr:"광주 동구 남계길 49", hours:"화~일 09:00~18:00"},
+  {id:5,  name:"광주 서구 문화의숲도서관", big:"문화의숲", small:null, lat:35.1308667, lng:126.8603824, code:"24020", addr:"광주 서구 마재로 3", hours:"화~일 09:00~18:00"},
+  {id:6,  name:"광주 서구 상록도서관", big:"상록", small:null, lat:35.1551865, lng:126.8889039, code:"24020", addr:"광주 서구 상무대로1171번길 11", hours:"화~일 09:00~18:00"},
+  {id:7,  name:"광주 서구 서빛마루도서관", big:"서빛마루", small:null, lat:35.1310521, lng:126.8805831, code:"24020", addr:"광주 서구 풍암공원로 30", hours:"화~일 09:00~18:00"},
+  {id:8,  name:"광주 서구 어린이생태학습도서관", big:"어린이생태학습", small:null, lat:35.1297987, lng:126.8818583, code:"24020", addr:"광주 서구 풍암공원로 8", hours:"화~일 09:00~18:00"},
+  {id:9,  name:"전남광주통합특별시교육청광주학생교육문화회관", big:"광주", small:"학생교육문화회관", lat:35.1570531, lng:126.858156, code:"24020", addr:"광주 서구 상무민주로 61", hours:"화~일 09:00~18:00"},
+  {id:10, name:"전남광주통합특별시교육청학생독립운동기념회관", big:"학생독립운동", small:"기념회관", lat:35.1416737, lng:126.8659601, code:"24020", addr:"광주 서구 학생독립로 30", hours:"화~일 09:00~18:00"},
+  {id:11, name:"광주광역시립사직도서관", big:"사직", small:null, lat:35.1395202, lng:126.9139332, code:"24030", addr:"광주 남구 제중로 56", hours:"화~일 09:00~18:00"},
+  {id:12, name:"광주남구문화정보도서관", big:"문화정보", small:"남구", lat:35.1220332, lng:126.9175553, code:"24030", addr:"광주 남구 봉선로 208", hours:"화~일 09:00~18:00"},
+  {id:13, name:"광주남구청소년도서관", big:"청소년", small:"남구", lat:35.1207747, lng:126.9071242, code:"24030", addr:"광주 남구 제석로 100", hours:"화~일 09:00~18:00"},
+  {id:14, name:"광주남구푸른길도서관", big:"푸른길", small:null, lat:35.1292558, lng:126.8951485, code:"24030", addr:"광주 남구 금당로 140", hours:"화~일 09:00~18:00"},
+  {id:15, name:"광주남구효천어울림도서관", big:"효천어울림", small:null, lat:35.1020219, lng:126.8944439, code:"24030", addr:"광주 남구 효우로 208", hours:"화~일 09:00~18:00"},
+  {id:16, name:"전남광주통합특별시교육청금호평생교육관", big:"금호", small:"평생교육관", lat:35.1453424, lng:126.9006562, code:"24030", addr:"광주 남구 중앙로 15", hours:"화~일 09:00~18:00"},
+  {id:17, name:"광주광역시립무등도서관", big:"무등", small:null, lat:35.1765283, lng:126.9253482, code:"24040", addr:"광주 북구 면앙로 130", hours:"화~일 09:00~18:00"},
+  {id:18, name:"전남광주통합특별시 북구 신용도서관", big:"신용", small:null, lat:35.2076447, lng:126.8617291, code:"24040", addr:"광주 북구 첨단연신로107번길 24", hours:"화~일 09:00~18:00"},
+  {id:19, name:"전남광주통합특별시 북구 양산도서관", big:"양산", small:null, lat:37.6036883, lng:127.0226004, code:"24040", addr:"광주 북구 하서로 299", hours:"화~일 09:00~18:00"},
+  {id:20, name:"전남광주통합특별시 북구 운암도서관", big:"운암", small:null, lat:35.1801822, lng:126.8753206, code:"24040", addr:"광주 북구 북문대로 118", hours:"화~일 09:00~18:00"},
+  {id:21, name:"전남광주통합특별시 북구 일곡도서관", big:"일곡", small:null, lat:35.208023, lng:126.895467, code:"24040", addr:"광주 북구 일곡로 55", hours:"화~일 09:00~18:00"},
+  {id:22, name:"전남광주통합특별시 북구 중흥도서관", big:"중흥", small:null, lat:35.169805, lng:126.9144483, code:"24040", addr:"광주 북구 당뫼로 39", hours:"화~일 09:00~18:00"},
+  {id:23, name:"전남광주통합특별시교육청중앙도서관 분관 최상준도서관", big:"최상준", small:"분관", lat:35.1876539, lng:126.897735, code:"24040", addr:"광주 북구 설죽로315번길 8", hours:"화~일 09:00~18:00"},
+  {id:24, name:"광산구립신가도서관", big:"신가", small:null, lat:35.1827519, lng:126.8285849, code:"24050", addr:"광주 광산구 신가로40번길 24", hours:"화~일 09:00~18:00"},
+  {id:25, name:"광산구립운남어린이도서관", big:"운남", small:"어린이", lat:35.1730207, lng:126.8219798, code:"24050", addr:"광주 광산구 목련로217번길 10", hours:"화~일 09:00~18:00"},
+  {id:26, name:"광산구립이야기꽃도서관", big:"이야기꽃", small:null, lat:35.1484289, lng:126.7798985, code:"24050", addr:"광주 광산구 선운중앙로67번길 6", hours:"화~일 09:00~18:00"},
+  {id:27, name:"광산구립장덕도서관", big:"장덕", small:null, lat:35.1910934, lng:126.8140936, code:"24050", addr:"광주 광산구 풍영로 179", hours:"화~일 09:00~18:00"},
+  {id:28, name:"광산구립첨단도서관", big:"첨단", small:null, lat:35.2167923, lng:126.832239, code:"24050", addr:"광주 광산구 임방울대로 673-12", hours:"화~일 09:00~18:00"},
+  {id:29, name:"전남광주통합특별시교육청송정다가치문화도서관", big:"송정다가치문화", small:null, lat:35.1453164, lng:126.7996039, code:"24050", addr:"광주 광산구 송정공원로 8-13", hours:"화~일 09:00~18:00"}
+];
+
+const VIEWPOINTS = {
+  donggu:   { lat: 35.1468, lng: 126.9276, label: "동구·남구 경계" },
+  namgu:    { lat: 35.1340, lng: 126.9120, label: "남구 사직 근처" },
+  seogu:    { lat: 35.1410, lng: 126.8720, label: "서구 풍암/상무" },
+  bukgu:    { lat: 35.1840, lng: 126.9050, label: "북구 중심" },
+  gwangsan: { lat: 35.1800, lng: 126.8200, label: "광산구 중심" }
+};
+
+const NAME_SAMPLES = {
+  two:    { big: "사직", small: "어린이" },
+  geumho: { big: "금호", small: "평생교육관" },
+  long:   { big: "어린이생태학습", small: null }
+};
+
+const state = {
+  size: "390x844",
+  view: "donggu",
+  nameSample: "auto"
+};
+
+const rad = d => d * Math.PI / 180;
+const deg = r => r * 180 / Math.PI;
+function bearing(from, to) {
+  const p1 = rad(from.lat), p2 = rad(to.lat), dl = rad(to.lng - from.lng);
+  const y = Math.sin(dl) * Math.cos(p2);
+  const x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+  return (deg(Math.atan2(y, x)) + 360) % 360;
+}
+function distM(from, to) {
+  const R = 6371000, dp = rad(to.lat - from.lat), dl = rad(to.lng - from.lng);
+  const a = Math.sin(dp/2)**2 + Math.cos(rad(from.lat)) * Math.cos(rad(to.lat)) * Math.sin(dl/2)**2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+const SECTORS = ["N","NE","E","SE","S","SW","W","NW"];
+function compass(b) {
+  const d = ((b % 360) + 360) % 360;
+  return `${SECTORS[Math.round(d/45)%8]} ${String(Math.round(d)%360).padStart(3,"0")}°`;
+}
+function fmtDist(m) {
+  return m < 1000 ? `${Math.round(m)}m` : `${(m/1000).toFixed(1)}km`;
+}
+const dirOf = b => [Math.sin(rad(b)), -Math.cos(rad(b))];
+function sectorOf(b) {
+  const d = ((b % 360) + 360) % 360;
+  return d >= 315 || d < 45 ? "N" : d < 135 ? "E" : d < 225 ? "S" : "W";
+}
+
+function itemsFor(viewKey) {
+  const c = VIEWPOINTS[viewKey];
+  const arr = GWANGJU_29.map(lib => {
+    const b = bearing(c, lib);
+    const d = distM(c, lib);
+    return { lib, bearingDeg: b, distanceM: d, code: compass(b) };
+  }).sort((a, b) => a.distanceM - b.distanceM || a.lib.id - b.lib.id);
+  arr.forEach((it, idx) => { it.tone = idx === 0 ? "fill1" : (idx % 2 === 1 ? "fill2" : "fill3"); });
+  return arr;
+}
+
+// E3 글자 크기 계산 (기준 ewm 비율 68% + 0/-5/-10/-15%)
+function calcFont(big, small, fontMode) {
+  const factor = fontMode === "E3-0" ? 1.0 : fontMode === "E3-1" ? 0.95 : fontMode === "E3-2" ? 0.90 : 0.85;
+  const chars = [...big].length;
+  const lines = chars >= 6 ? 2 : 1;
+  const per = chars >= 6 ? Math.ceil(chars / 2) + (chars === 7 ? 0.6 : 0.3) : chars;
+  // 110.85px 윗면 사각형 안 usable 폭 92px 기준
+  const maxOneLine = 34 * factor;
+  const maxTwoLine = 22 * factor;
+  const targetWidth = 75 * factor; // ewm 기준 110.85의 ~68%
+  const byWidth = Math.min(90 / per, targetWidth / Math.max(1.5, per * 0.92));
+  const fs = Math.max(10, Math.min(lines === 1 ? maxOneLine : maxTwoLine, byWidth));
+  const smallFs = small ? Math.max(9, fs * 0.38) : 0;
+  return { fontSize: fs, smallSize: smallFs, lines, lineHeight: fs * 1.08 };
+}
+
+// E2 주인공 크기 계산
+function calcHero(hItem, W, H, heroMode) {
+  const sec = sectorOf(hItem.bearingDeg);
+  const [hdx, hdy] = dirOf(hItem.bearingDeg);
+  const CW = 220, CH = 206;
+  let edgeF = 0.12, gap = 10, fillR = 0.92, widthTarget = 0;
+  if (heroMode === "E2-0") {
+    edgeF = 0.12; gap = 10; fillR = 0.92;
+  } else if (heroMode === "E2-1") {
+    edgeF = 0.09; gap = 4; fillR = 0.95; widthTarget = 0.70;
+  } else if (heroMode === "E2-2") {
+    edgeF = 0.08; gap = 0; fillR = 0.96; widthTarget = 0.77;
+  } else {
+    edgeF = 0.07; gap = 0; fillR = 0.98; widthTarget = 0.84;
+  }
+
+  let O, s, hx, hy;
+  if (heroMode === "E2-0") {
+    O = sec === "N" ? [W/2, H*(1-edgeF)] : sec === "S" ? [W/2, H*edgeF] : sec === "E" ? [W*edgeF, H/2] : [W*(1-edgeF), H/2];
+    const R = sec === "N" ? [6, 6, W-6, O[1]-22-gap] : sec === "S" ? [6, O[1]+22+gap, W-6, H-6]
+            : sec === "E" ? [O[0]+29+gap, 6, W-6, H-6] : [6, 6, O[0]-29-gap, H-6];
+    const rw = R[2]-R[0], rh = R[3]-R[1];
+    s = Math.max(0.4, Math.min(rw*fillR/CW, rh*fillR/CH, 1.7));
+    const cw = CW*s, ch = CH*s;
+    hx = R[0] + (rw - cw)/2 + ((sec === "N" || sec === "S") ? hdx*(rw-cw)/2 : 0);
+    hy = R[1] + (rh - ch)/2 + ((sec === "E" || sec === "W") ? hdy*(rh-ch)/2 : 0);
+    hx = Math.min(R[2]-cw, Math.max(R[0], hx));
+    hy = Math.min(R[3]-ch, Math.max(R[1], hy));
+  } else {
+    // 확장 단계: 기점을 반대쪽 모서리 구석으로 내리고 주인공은 판 높이와 목표 폭 비율 중 가능한 최대까지 키움
+    const targetS = (W * widthTarget) / CW;
+    const maxVerticalS = (H * (heroMode === "E2-3" ? 1.02 : 0.94)) / CH;
+    s = Math.max(0.55, Math.min(targetS, maxVerticalS, 1.7));
+    const cw = CW*s, ch = CH*s;
+    const shiftX = sec === "E" ? 1 : sec === "W" ? -1 : (hdx >= 0 ? 0.3 : -0.3);
+    const shiftY = sec === "S" ? 1 : sec === "N" ? -1 : (hdy >= 0 ? 0.2 : -0.2);
+    hx = (W - cw)/2 + shiftX * Math.min(24, (W - cw)*0.35);
+    hy = (H - ch)/2 + shiftY * Math.min(14, Math.max(0, (H - ch)*0.4));
+    // 기점은 주인공 반대쪽 모퉁이(8~9% 안쪽)
+    const ox = sec === "E" ? W*edgeF + 16 : sec === "W" ? W*(1-edgeF) - 16 : (hdx >= 0 ? W*0.18 : W*0.82);
+    const oy = sec === "S" ? H*edgeF + 12 : sec === "N" ? H*(1-edgeF) - 4 : H*(1-edgeF);
+    O = [Math.min(W-34, Math.max(34, ox)), Math.min(H-30, Math.max(28, oy))];
+  }
+  return { origin: O, scale: s, cx: hx + (CW*s)/2, cy: hy + (CH*s)/2 };
+}
+
+// E1 주변 큐브 배치 계산
+function calcScene(items, heroId, W, H, cfg) {
+  const hItem = items.find(it => it.lib.id === heroId) || items[0];
+  const hero = calcHero(hItem, W, H, cfg.heroMode);
+  const cubes = [{ item: hItem, role: "hero", cx: hero.cx, cy: hero.cy, scale: hero.scale }];
+
+  if (cfg.ring) {
+    // 전체 보기(ringScene): 가까운 7곳 실제 방향·비례 거리
+    const top7 = items.slice(0, 7);
+    const O = [W/2, H/2];
+    const q = Math.max(0.48, Math.min(0.95, (Math.min(W, H*1.1) * 0.46) / 220));
+    const cw = 220*q, ch = 206*q;
+    const dMax = Math.max(1, ...top7.map(it => it.distanceM));
+    const pts = top7.map(it => {
+      const [dx, dy] = dirOf(it.bearingDeg);
+      const f = 0.68 + 0.32 * (it.distanceM / dMax);
+      return { it, x: O[0] + dx*(W/2 - cw*0.2)*f, y: O[1] + dy*(H/2 - ch*0.15)*f };
+    });
+    for (let k = 0; k < 45; k++) {
+      for (let i = 0; i < pts.length; i++) for (let j = i+1; j < pts.length; j++) {
+        const A = pts[i], B = pts[j], dx = B.x - A.x, dy = B.y - A.y;
+        const ox = cw*0.76 - Math.abs(dx), oy = ch*0.70 - Math.abs(dy);
+        if (ox > 0 && oy > 0) {
+          if (ox/cw < oy/ch) { const m = ox/2*(dx>=0?1:-1); A.x -= m; B.x += m; }
+          else { const m = oy/2*(dy>=0?1:-1); A.y -= m; B.y += m; }
+        }
+      }
+      pts.forEach(p => {
+        const dx = p.x - O[0], dy = p.y - O[1], ox = cw*0.48 + 32 - Math.abs(dx), oy = ch*0.48 + 26 - Math.abs(dy);
+        if (ox > 0 && oy > 0) {
+          if (ox/cw < oy/ch) p.x += ox*(dx>=0?1:-1); else p.y += oy*(dy>=0?1:-1);
+        }
+        p.x = Math.min(W-28, Math.max(28, p.x));
+        p.y = Math.min(H-28, Math.max(28, p.y));
+      });
+    }
+    return {
+      origin: O,
+      cubes: pts.map(p => ({ item: p.it, role: "ring", cx: p.x, cy: p.y, scale: q }))
+    };
+  }
+
+  const others = items.filter(it => it.lib.id !== hItem.lib.id);
+  const ratio = cfg.arrMode === "E1-A" ? 0.88 : cfg.arrMode === "E1-B" ? 0.72 : 0.95;
+  const count = cfg.arrMode === "E1-A" ? 3 : cfg.arrMode === "E1-B" ? 4 : 2;
+  const pScale = hero.scale * ratio;
+  const pcw = 220 * pScale, pch = 206 * pScale;
+
+  if (cfg.arrMode === "E1-A" || cfg.arrMode === "E1-C") {
+    // 모서리/가장자리 등각 연속성 슬롯 — 윗면 색·이름 일부가 화면 안에 살짝 걸쳐 box.jpg 밀도감을 줌
+    const slots = cfg.arrMode === "E1-A"
+      ? [
+          { x: -pcw * 0.04, y: pch * 0.22, ang: 315 }, // 좌상 모서리 (윗면 오른쪽 아래 모서리 노출)
+          { x: W + pcw * 0.04, y: pch * 0.16, ang: 45 }, // 우상 모서리 (윗면 왼쪽 아래 모서리 노출)
+          { x: pcw * 0.02, y: H + pch * 0.22, ang: 225 }, // 좌하 모서리 (윗면 위쪽 모서리 노출)
+          { x: W - pcw * 0.02, y: H + pch * 0.24, ang: 135 } // 우하 모서리 (윗면 위쪽 모서리 노출)
+        ]
+      : [
+          { x: W + pcw * 0.08, y: pch * 0.12, ang: 45 },
+          { x: pcw * 0.00, y: H + pch * 0.24, ang: 225 },
+          { x: -pcw * 0.08, y: pch * 0.18, ang: 315 },
+          { x: W - pcw * 0.00, y: H + pch * 0.26, ang: 135 }
+        ];
+    // 기점·주인공과 가장 덜 겹치는 슬롯 선택 + 방위 순서에 맞게 이웃 매핑
+    const scoredSlots = slots.map(sl => {
+      const dHero = Math.hypot(sl.x - hero.cx, sl.y - hero.cy);
+      const dOrig = Math.hypot(sl.x - hero.origin[0], sl.y - hero.origin[1]);
+      return { ...sl, minD: Math.min(dHero * 0.8, dOrig) };
+    }).sort((a, b) => b.minD - a.minD).slice(0, count);
+
+    const used = new Set();
+    for (const sl of scoredSlots) {
+      let best = others[0], bestScore = -1e9;
+      for (const it of others) {
+        if (used.has(it.lib.id)) continue;
+        const diff = Math.abs(((it.bearingDeg - sl.ang + 540) % 360) - 180);
+        const sc = (180 - diff) - (it.distanceM / 250);
+        if (sc > bestScore) { bestScore = sc; best = it; }
+      }
+      if (best) {
+        used.add(best.lib.id);
+        cubes.push({ item: best, role: "peek", cx: sl.x, cy: sl.y, scale: pScale });
+      }
+    }
+  } else {
+    // E1-B: 실제 방향 변당 최대 1곳씩 4곳(이름 판 안쪽 ~36px 유지)
+    const sides = ["top", "right", "bottom", "left"];
+    const pickedSides = new Set();
+    for (const it of others) {
+      if (pickedSides.size >= 4) break;
+      const [dx, dy] = dirOf(it.bearingDeg);
+      const tx = dx > 1e-6 ? (W - hero.origin[0]) / dx : dx < -1e-6 ? -hero.origin[0] / dx : Infinity;
+      const ty = dy > 1e-6 ? (H - hero.origin[1]) / dy : dy < -1e-6 ? -hero.origin[1] / dy : Infinity;
+      const pref = tx < ty ? (dx > 0 ? "right" : "left") : (dy > 0 ? "bottom" : "top");
+      const side = !pickedSides.has(pref) ? pref : sides.find(s => !pickedSides.has(s));
+      if (!side) break;
+      pickedSides.add(side);
+      const IN = 32;
+      let cx, cy;
+      if (side === "top")    { cx = Math.min(W-54, Math.max(54, hero.origin[0] + dx*120)); cy = IN; }
+      if (side === "bottom") { cx = Math.min(W-54, Math.max(54, hero.origin[0] + dx*120)); cy = H - IN + 14; }
+      if (side === "left")   { cx = IN - 8; cy = Math.min(H-44, Math.max(44, hero.origin[1] + dy*90)); }
+      if (side === "right")  { cx = W - IN + 8; cy = Math.min(H-44, Math.max(44, hero.origin[1] + dy*90)); }
+      cubes.push({ item: it, role: "peek", cx, cy, scale: pScale });
+    }
+  }
+  return { origin: hero.origin, cubes };
+}
+
+// 모든 폰 슬롯 초기화 & 렌더
+const PHONE_CFGS = {
+  "el-e1-neighbors:E1-A": { arrMode:"E1-A", heroMode:"E2-2", fontMode:"E3-2" },
+  "el-e1-neighbors:E1-B": { arrMode:"E1-B", heroMode:"E2-2", fontMode:"E3-2" },
+  "el-e1-neighbors:E1-C": { arrMode:"E1-C", heroMode:"E2-2", fontMode:"E3-2" },
+  "el-e2-hero-size:E2-0": { arrMode:"E1-A", heroMode:"E2-0", fontMode:"E3-2" },
+  "el-e2-hero-size:E2-1": { arrMode:"E1-A", heroMode:"E2-1", fontMode:"E3-2" },
+  "el-e2-hero-size:E2-2": { arrMode:"E1-A", heroMode:"E2-2", fontMode:"E3-2" },
+  "el-e2-hero-size:E2-3": { arrMode:"E1-A", heroMode:"E2-3", fontMode:"E3-2" },
+  "el-e3-font-size:E3-0": { arrMode:"E1-A", heroMode:"E2-2", fontMode:"E3-0" },
+  "el-e3-font-size:E3-1": { arrMode:"E1-A", heroMode:"E2-2", fontMode:"E3-1" },
+  "el-e3-font-size:E3-2": { arrMode:"E1-A", heroMode:"E2-2", fontMode:"E3-2" },
+  "el-e3-font-size:E3-3": { arrMode:"E1-A", heroMode:"E2-2", fontMode:"E3-3" }
+};
+
+const phoneStates = {};
+Object.keys(PHONE_CFGS).forEach(k => {
+  phoneStates[k] = { ...PHONE_CFGS[k], heroId: null, ring: false };
+});
+
+function buildPhones() {
+  document.querySelectorAll("[data-phone-slot]").forEach(slot => {
+    const key = slot.dataset.phoneSlot;
+    slot.innerHTML = `
+      <div class="phone-bar">
+        <span class="readout" data-ro="${key}">—</span>
+        <div style="display:flex;gap:4px;">
+          <button type="button" class="mini-btn" data-ring-btn="${key}">전체 보기</button>
+          <button type="button" class="mini-btn" data-reset-btn="${key}">초기화</button>
+        </div>
+      </div>
+      <div class="phone-outer" data-outer="${key}">
+        <div class="phone" data-phone="${key}">
+          <div class="app-scr">
+            <div class="app-hd"><span class="hlbl">HOME</span><span class="hrivet">· ·</span></div>
+            <div class="app-sb"><span class="ph">책 제목·저자를 검색</span><span class="fbtn">도서관 찾기</span></div>
+            <div class="board" data-board="${key}">
+              <div class="pan-layer" data-pan="${key}">
+                <div class="grid-layer" data-grid="${key}"></div>
+              </div>
+              <button type="button" class="plinth" data-plinth="${key}" title="누르면 전체 보기 ↔ 원래 주인공">
+                <span class="plus">+</span><span class="pt">현위치</span><span class="ps">3KM</span>
+              </button>
+            </div>
+            <div class="app-sheet">
+              <div class="grab"></div>
+              <div class="sh-title" data-shtitle="${key}">—</div>
+              <div class="sh-sub" data-shsub="${key}">NEARBY POPULAR BOOKS</div>
+              <div class="sh-books"><div class="sh-book"></div><div class="sh-book"></div><div class="sh-book"></div><div class="sh-book"></div></div>
+            </div>
+            <div class="app-tabs">
+              <div class="app-tab on">홈</div><div class="app-tab">대출·반납</div><div class="app-tab">내 정보</div>
+            </div>
+          </div>
+          <div class="toast-msg" data-toast="${key}"></div>
+        </div>
+      </div>`;
+
+    slot.querySelector(`[data-ring-btn="${key}"]`).addEventListener("click", () => {
+      phoneStates[key].ring = !phoneStates[key].ring;
+      renderPhone(key);
+    });
+    slot.querySelector(`[data-reset-btn="${key}"]`).addEventListener("click", () => {
+      phoneStates[key].heroId = null;
+      phoneStates[key].ring = false;
+      renderPhone(key);
+    });
+    slot.querySelector(`[data-plinth="${key}"]`).addEventListener("click", e => {
+      e.stopPropagation();
+      phoneStates[key].ring = !phoneStates[key].ring;
+      renderPhone(key);
+    });
+
+    // 빈 판 끌기 (40px 이상 시 반대 방향 도서관으로 주인공 전환)
+    const board = slot.querySelector(`[data-board="${key}"]`);
+    const pan = slot.querySelector(`[data-pan="${key}"]`);
+    let drag = null;
+    board.addEventListener("pointerdown", e => {
+      if (phoneStates[key].ring || e.target.closest(".iso-cube") || e.target.closest(".plinth")) return;
+      drag = { x: e.clientX, y: e.clientY };
+      pan.classList.add("dragging");
+      board.setPointerCapture(e.pointerId);
+    });
+    board.addEventListener("pointermove", e => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      pan.style.transform = `translate(${dx}px, ${dy}px)`;
+    });
+    const endDrag = e => {
+      if (!drag) return;
+      const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+      drag = null;
+      pan.classList.remove("dragging");
+      pan.style.transform = "translate(0px, 0px)";
+      const len = Math.hypot(dx, dy);
+      if (len < 40) return;
+      const items = itemsFor(state.view);
+      const heroId = phoneStates[key].heroId ?? items[0].lib.id;
+      const vx = -dx / len, vy = -dy / len;
+      let best = null, bestCos = 0.3;
+      for (const it of items) {
+        if (it.lib.id === heroId) continue;
+        const [ux, uy] = dirOf(it.bearingDeg);
+        const c = ux * vx + uy * vy;
+        if (c > bestCos) { bestCos = c; best = it.lib.id; }
+      }
+      if (best != null) {
+        phoneStates[key].heroId = best;
+        renderPhone(key);
+      }
+    };
+    board.addEventListener("pointerup", endDrag);
+    board.addEventListener("pointercancel", endDrag);
+  });
+}
+
+function showToast(key, msg) {
+  const t = document.querySelector(`[data-toast="${key}"]`);
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add("on");
+  clearTimeout(t._tm);
+  t._tm = setTimeout(() => t.classList.remove("on"), 1800);
+}
+
+function renderGrid(gridEl, ox, oy, W, H) {
+  const STEP = 96;
+  const nx = Math.ceil(W / STEP) + 2, ny = Math.ceil(H / STEP) + 2;
+  let html = "";
+  for (let i = -nx; i <= nx; i++) {
+    html += `<div class="grid-v" style="left:${ox + i*STEP}px;top:0;height:${H}px;"></div>`;
+  }
+  for (let j = -ny; j <= ny; j++) {
+    html += `<div class="grid-h" style="top:${oy + j*STEP}px;left:0;width:${W}px;"></div>`;
+  }
+  gridEl.innerHTML = html;
+}
+
+function renderPhone(key) {
+  const st = phoneStates[key];
+  const [rawW, rawH] = state.size.split("x").map(Number);
+  const boardH = rawW === 390 ? 325 : 220;
+  // 실제 기기 높이에 비례해 하단 시트 포함 폰 높이 잡기(카드 폭 285px 내외로 스케일)
+  const phoneH = rawW === 390 ? 590 : 480;
+  const slot = document.querySelector(`[data-phone-slot="${key}"]`);
+  const slotW = Math.max(250, Math.min(310, (slot.clientWidth || 295)));
+  const viewScale = slotW / rawW;
+  const outer = slot.querySelector(`[data-outer="${key}"]`);
+  const phone = slot.querySelector(`[data-phone="${key}"]`);
+  const board = slot.querySelector(`[data-board="${key}"]`);
+  const pan = slot.querySelector(`[data-pan="${key}"]`);
+  const gridEl = slot.querySelector(`[data-grid="${key}"]`);
+  const plinth = slot.querySelector(`[data-plinth="${key}"]`);
+  const ringBtn = slot.querySelector(`[data-ring-btn="${key}"]`);
+  const ro = slot.querySelector(`[data-ro="${key}"]`);
+
+  outer.style.width = `${Math.round(rawW * viewScale)}px`;
+  outer.style.height = `${Math.round(phoneH * viewScale)}px`;
+  phone.style.width = `${rawW}px`;
+  phone.style.height = `${phoneH}px`;
+  phone.style.transform = `scale(${viewScale})`;
+  board.style.height = `${boardH}px`;
+
+  const items = itemsFor(state.view);
+  const heroId = st.heroId ?? items[0].lib.id;
+  const scene = calcScene(items, heroId, rawW, boardH, st);
+
+  renderGrid(gridEl, scene.origin[0], scene.origin[1], rawW, boardH);
+  plinth.style.left = `${scene.origin[0]}px`;
+  plinth.style.top = `${scene.origin[1]}px`;
+  ringBtn.classList.toggle("on", st.ring);
+  ringBtn.textContent = st.ring ? "주인공 보기" : "전체 보기";
+
+  const heroCube = scene.cubes.find(c => c.role === "hero") || scene.cubes[0];
+  const heroItem = heroCube.item;
+  const isE3 = key.startsWith("el-e3-");
+  const sample = (isE3 && state.nameSample !== "auto") ? NAME_SAMPLES[state.nameSample] : null;
+  const heroBig = sample ? sample.big : heroItem.lib.big;
+  const heroSmall = sample ? sample.small : heroItem.lib.small;
+  const hFont = calcFont(heroBig, heroSmall, st.fontMode);
+
+  if (key.startsWith("el-e1-")) {
+    const pScale = scene.cubes.find(c => c.role === "peek")?.scale ?? 0;
+    ro.textContent = st.ring ? `전체 보기 (7곳 · ${(pScale*100).toFixed(0)}%)` : `주인공 ×${heroCube.scale.toFixed(2)} · 이웃 ${scene.cubes.length-1}곳 (×${pScale.toFixed(2)})`;
+  } else if (key.startsWith("el-e2-")) {
+    ro.textContent = `scale ${heroCube.scale.toFixed(2)} · ${Math.round(220*heroCube.scale)}×${Math.round(206*heroCube.scale)}px (폭 ${Math.round(220*heroCube.scale/rawW*100)}%)`;
+  } else {
+    ro.textContent = `큰글자 ${(hFont.fontSize * heroCube.scale).toFixed(1)}px${heroSmall ? ` · 작은 ${(hFont.smallSize * heroCube.scale).toFixed(1)}px` : ""}`;
+  }
+
+  slot.querySelector(`[data-shtitle="${key}"]`).textContent = heroItem.lib.name;
+  slot.querySelector(`[data-shsub="${key}"]`).textContent = `${fmtDist(heroItem.distanceM)} · ${heroItem.code} · POPULAR BOOKS`;
+
+  // 기존 큐브 재사용(0.8초 전환 유지) 또는 새로 생성
+  const existing = new Map();
+  pan.querySelectorAll(".iso-cube").forEach(el => existing.set(Number(el.dataset.libId), el));
+  const keep = new Set(scene.cubes.map(c => c.item.lib.id));
+  existing.forEach((el, id) => { if (!keep.has(id)) el.remove(); });
+
+  for (const c of scene.cubes) {
+    const it = c.item;
+    const isHero = c.role === "hero";
+    const big = (isHero && sample) ? sample.big : it.lib.big;
+    const small = (isHero && sample) ? sample.small : it.lib.small;
+    const f = calcFont(big, small, st.fontMode);
+
+    let el = existing.get(it.lib.id);
+    if (!el) {
+      el = document.createElement("div");
+      el.dataset.libId = String(it.lib.id);
+      el.innerHTML = `
+        <div class="ground"></div>
+        <div class="face-left">
+          <div class="l-top">
+            <span class="badge-s"><i class="dot-s"></i>OPEN</span>
+            <span class="dist-s">${fmtDist(it.distanceM)}</span>
+          </div>
+          <div class="quiet">
+            <div class="lbl-s">ADDRESS</div>
+            <div class="addr-s">${it.lib.addr}</div>
+          </div>
+        </div>
+        <div class="face-right">
+          <div class="quiet">
+            <div class="lbl-s">TODAY</div>
+            <div class="hours-s">${it.lib.hours}</div>
+          </div>
+          <div class="bear-wrap quiet">
+            <div class="lbl-s">BEARING</div>
+            <div class="bear-s">${it.code}</div>
+          </div>
+        </div>
+        <div class="face-top"></div>
+        <div class="face-top-box">
+          <div class="top-small"></div>
+          <div class="top-big"></div>
+        </div>`;
+      el.addEventListener("click", e => {
+        e.stopPropagation();
+        if (st.ring) {
+          st.ring = false;
+          st.heroId = it.lib.id;
+          renderPhone(key);
+          return;
+        }
+        if (it.lib.id === heroId) {
+          showToast(key, `방문 페이지로 이동: ${it.lib.name}`);
+        } else {
+          st.heroId = it.lib.id;
+          renderPhone(key);
+        }
+      });
+      pan.appendChild(el);
+    }
+
+    el.className = `iso-cube tone-${it.tone} ${isHero ? "is-hero" : c.role === "ring" ? "is-ring" : "is-peek"}`;
+    el.style.left = `${c.cx}px`;
+    el.style.top = `${c.cy}px`;
+    el.style.transform = `scale(${c.scale})`;
+
+    const smEl = el.querySelector(".top-small");
+    const bgEl = el.querySelector(".top-big");
+    if (small) {
+      smEl.style.display = "block";
+      smEl.style.fontSize = `${f.smallSize}px`;
+      smEl.textContent = small;
+    } else {
+      smEl.style.display = "none";
+      smEl.textContent = "";
+    }
+    bgEl.style.fontSize = `${f.fontSize}px`;
+    bgEl.style.lineHeight = `${f.lineHeight}px`;
+    bgEl.textContent = big;
+  }
+}
+
+function renderAll() {
+  Object.keys(phoneStates).forEach(renderPhone);
+}
+
+buildPhones();
+renderAll();
+
+// 전역 컨트롤 연결
+document.querySelectorAll("#sizeSeg button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#sizeSeg button").forEach(b => b.classList.remove("on"));
+    btn.classList.add("on");
+    state.size = btn.dataset.size;
+    renderAll();
+  });
+});
+
+document.getElementById("viewSelect").addEventListener("change", e => {
+  state.view = e.target.value;
+  Object.keys(phoneStates).forEach(k => { phoneStates[k].heroId = null; phoneStates[k].ring = false; });
+  renderAll();
+});
+
+document.querySelectorAll("#nameSampleSeg button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#nameSampleSeg button").forEach(b => b.classList.remove("on"));
+    btn.classList.add("on");
+    state.nameSample = btn.dataset.sample;
+    Object.keys(phoneStates).filter(k => k.startsWith("el-e3-")).forEach(renderPhone);
+  });
+});
+
+// 후보 선택 상자 (다시 보기 / 강조)
+document.querySelectorAll("select[data-for]").forEach(sel => {
+  sel.addEventListener("change", () => {
+    const elId = sel.dataset.for;
+    const sec = document.getElementById(elId);
+    sec.querySelectorAll(".cand").forEach(c => {
+      c.classList.toggle("chosen", c.dataset.id === sel.value);
+    });
+    const picked = sec.querySelector(`.cand[data-id="${sel.value}"]`);
+    if (picked) picked.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  });
+});
+
+window.addEventListener("resize", renderAll);
+</script>
+</body>
+</html>
