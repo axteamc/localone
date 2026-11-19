@@ -157,7 +157,8 @@ def test_detail_header_fields_and_today(client):
     assert r.status_code == 200
     data = r.json()
     assert set(data) == {"id", "name", "address", "latitude", "longitude", "dtl_region_code",
-                         "area_label", "distance_m", "today", "tel", "homepage", "operating_time_text", "closed_text"}
+                         "area_label", "distance_m", "today", "tel", "homepage", "operating_time_text", "closed_text",
+                         "look"}  # look: core M2-0-P3
     assert data["distance_m"] is None and data["id"] == 101 and data["area_label"] == "화동"
     assert data["operating_time_text"] == "평일 09:00~22:00 / 주말 09:00~17:00"
     assert data["closed_text"] == "매주 월요일"
@@ -216,7 +217,7 @@ def test_public_reference_rls_enabled(db_engine):
 
 def test_public_reference_columns_and_keys_match_contract(db_engine):
     expected = {
-        "libraries": "id provider_lib_code name address tel homepage latitude longitude closed_text operating_time_text region_code dtl_region_code isbn_search_url_template content_hash synced_at",
+        "libraries": "id provider_lib_code name address tel homepage latitude longitude closed_text operating_time_text region_code dtl_region_code isbn_search_url_template content_hash synced_at look look_assigned_by",  # look*: core M2-0-P3
         "books": "id isbn13 title author publisher cover_url description pub_year source fetched_at",
         "availability_observations": "library_id book_id observed_on holding loanable data_date data_date_assumed observed_at source",
         "popular_books_cache": "id scope library_id rank book_id period_label fetched_at",
@@ -233,7 +234,7 @@ def test_public_reference_columns_and_keys_match_contract(db_engine):
     for table in ("libraries", "books", "popular_books_cache"):
         id_column = next(c for c in inspector.get_columns(table) if c["name"] == "id")
         assert id_column["identity"]["always"] is True
-    assert "shelf_themes" not in inspector.get_table_names()
+    assert "shelf_themes" in inspector.get_table_names()  # M1에는 없었고 core M2-0-P3(0014)에서 생김
 
 
 @pytest.mark.parametrize("statement", [
