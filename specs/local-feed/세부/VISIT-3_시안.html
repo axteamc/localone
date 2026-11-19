@@ -90,6 +90,17 @@
   .bsheet { position:absolute; left:0; right:0; bottom:0; background:var(--paper); border-radius:var(--r-info) var(--r-info) 0 0; padding:12px 14px 16px; z-index:26; display:flex; flex-direction:column; gap:5px; font-size:10px; }
   .bsheet .sub { color:var(--sub); font-size:8.5px; }
   .pbtn { background:var(--paper); border:1px solid var(--surface3); border-bottom:2px solid var(--ink-strong); border-radius:var(--r-pill); padding:5px 12px; font:inherit; font-size:9.5px; align-self:flex-start; cursor:pointer; }
+  .vinfo .more { background:none; border:0; font:inherit; color:inherit; padding:0 2px; cursor:pointer; }
+  .vmenu { position:absolute; right:8px; top:50px; background:var(--paper); border-radius:var(--r-info); box-shadow:0 2px 10px var(--shadow-mid); padding:3px 0; width:150px; z-index:20; font-size:9.5px; }
+  .vmenu div { padding:6px 10px; cursor:pointer; } .vmenu div.new { font-weight:500; }
+  .gbline { grid-column:1 / -1; background:var(--paper); border:1px solid var(--surface3); border-radius:var(--r-info); padding:7px 9px; color:var(--sub); font-size:9.5px; cursor:pointer; text-align:left; font-family:inherit; }
+  .choice { display:flex; flex-direction:column; gap:6px; }
+  .choice button { text-align:left; background:var(--cream); border:0; border-radius:var(--r-info); padding:8px 10px; font:inherit; font-size:10px; cursor:pointer; }
+  .choice button span { display:block; color:var(--sub); font-size:8px; }
+  .bsheet textarea { font:inherit; font-size:10px; border:1px solid var(--surface3); border-radius:var(--r-info); background:var(--cream); padding:6px 8px; height:58px; resize:none; width:100%; }
+  .bsheet .row2 { display:flex; justify-content:space-between; align-items:center; }
+  .bsheet .warn { color:var(--sub); font-size:8px; min-height:10px; }
+  .gb.newone { outline:2px solid var(--fill1); }
   .hide { display:none !important; }
 
   /* ---- 표 ---- */
@@ -119,7 +130,7 @@
   <h2>정할 것 1. 책장을 처음 볼 때 어떤 책 묶음이 먼저 보일까 <span class="status">확인</span></h2>
   <div class="flow"><b>이미 정해져 있어요.</b> 방문 페이지 맨 아래에 책장이 붙어 있고, 한 번에 책 3권이 보여요. 옆으로 넘기면 묶음이 바뀌어요. 묶음은 세 가지예요 — <b>요즘 사람들이 읽은 책</b>(이 도서관에서 "반납했어요"를 누른 책을 모은 것) · <b>인기 도서</b>(도서관에서 많이 빌린 책) · <b>테마 추천</b>(도서관 쪽에서 고른 책). "요즘 사람들이 읽은 책"이 아직 하나도 없으면 그 묶음은 숨겨요. 책장의 책은 "빌릴 수 있다"는 뜻이 아니에요.<br>
     <b>정할 것</b>은 책장을 처음 볼 때 <b>어느 묶음이 첫 장</b>이고, 넘기면 어떤 순서로 나오느냐예요.</div>
-  <div class="decided"><b>고른 것: 후보 A — 요즘 사람들이 읽은 책이 먼저.</b> "A가 좋아. 최근 사람들이 찾은 책들을 먼저 보여줘서" · 차선 없음 · 불편한 점: (받는 중)</div>
+  <div class="decided"><b>고른 것: 후보 A — 요즘 사람들이 읽은 책이 먼저.</b> "A가 좋아. 최근 사람들이 찾은 책들을 먼저 보여줘서" · 차선 없음 · 불편한 점: 없음(사용자) — "불편한점 없어요" → (처음 몇 주 첫 장이 바뀌어 보이는 때를 짚어 다시 물음) "네 없어요"</div>
   <div class="pick">다시 보기: <select data-for="el-shelf-order">
     <option value="A">후보 A — 요즘 사람들이 읽은 책이 먼저</option>
     <option value="B">후보 B — 인기 도서가 먼저</option>
@@ -172,7 +183,61 @@
   </div>
 </section>
 
-<!-- 중심 요소 2(방명록 쓰는 입구), 3(방명록 카드 모양)은 1이 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
+<!-- ===== 중심 요소 2 ===== -->
+<section class="element" id="el-gb-entry" data-chosen="">
+  <h2>정할 것 2. 방명록은 어디를 눌러서 쓰기 시작할까 <span class="status">결정 전</span></h2>
+  <div class="flow"><b>이미 정해져 있어요.</b> 방명록은 이 도서관에 남기는 짧은 한마디예요. 따로 된 화면이 없고, 올리면 피드에 게시물과 섞여 카드로 나와요. 쓰려면 로그인해야 해요. 오른쪽 아래 "+"는 지금처럼 게시물 글쓰기 버튼이에요. 쓰는 칸(140자까지, "올리기")은 세 후보 모두 같아요.<br>
+    <b>정할 것</b>은 방명록을 쓰러 <b>어디를 눌러 들어가느냐</b>예요. 휴대폰 안을 눌러 직접 한마디를 올려 보세요.</div>
+  <div class="pick">다시 보기: <select data-for="el-gb-entry">
+    <option value="A">후보 A — "+"를 누르면 게시물/방명록 고르기</option>
+    <option value="B">후보 B — 피드 맨 위 한 줄 입력 칸</option>
+    <option value="C">후보 C — 머리 ⋯ 메뉴 안 "방명록 남기기"</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — "+"를 누르면 게시물/방명록 고르기 <span class="badge">추천</span></h3>
+      <div class="phone" data-order="read,pop,theme" data-entry="fab"></div>
+      <p>오른쪽 아래 "+" 하나로 둘 다 써요. 누르면 "게시물 올리기 / 방명록 남기기" 중 고르는 작은 창이 떠요. "+"를 눌러 보세요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>"+" 누름 → 아래에서 고르기 창 → "방명록 남기기" → 쓰는 칸에 한마디 → "올리기" → 피드 맨 위에 내 방명록 카드.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>화면에 새 버튼이 늘지 않아요 — 피드와 책장 모양이 지금 그대로</li>
+        <li>게시물만 쓰려는 사람도 "+" 뒤에 한 번 더 골라야 해요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>"쓰는 건 다 +에서"라 찾기 쉽고 화면이 깔끔해요. / 게시물을 쓸 때마다 한 번 더 눌러야 해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-05 떠 있는 주 행동 버튼(+) + P-04 아래에서 올라오는 작은 창</p>
+      <p><b>추천 이유:</b> 이미 정한 "오른쪽 아래 +" 하나를 그대로 쓰는 길이라, 쓰기 입구가 두 군데로 갈라지지 않아요. 피드와 책장 자리도 하나도 줄지 않아요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 피드 맨 위 한 줄 입력 칸</h3>
+      <div class="phone" data-order="read,pop,theme" data-entry="inline"></div>
+      <p>피드 맨 위에 "정독도서관에 한마디 남기기…" 한 줄이 늘 있어요. 그 줄을 누르면 바로 쓰는 칸이 열려요. "+"는 게시물 전용이에요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>방문 페이지가 열림 → 피드 맨 위 한 줄을 봄 → 누름 → 쓰는 칸에 한마디 → "올리기" → 그 줄 바로 아래에 내 방명록 카드.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>들어오자마자 "한마디 남기기" 줄이 보여서 방명록이 있다는 걸 바로 알아요</li>
+        <li>그 줄만큼 첫 화면에 보이는 게시물이 조금 줄고, 피드를 내리면 줄도 같이 올라가 사라져요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>한 번 눌러 바로 쓰고, 방명록이 눈에 잘 띄어요. / 첫 화면 피드 자리가 줄고, 쓰는 입구가 "+"와 두 군데가 돼요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-71 한 화면에 칸을 두고 "올리기" (트위터·당근 짧은 글)</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 머리 ⋯ 메뉴 안 "방명록 남기기"</h3>
+      <div class="phone" data-order="read,pop,theme" data-entry="menu"></div>
+      <p>도서관 이름 옆 ⋯를 누르면 지금 메뉴 맨 위에 "방명록 남기기"가 더해져요. "+"는 게시물 전용이에요. ⋯를 눌러 보세요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>⋯ 누름 → 메뉴 맨 위 "방명록 남기기" → 쓰는 칸에 한마디 → "올리기" → 피드 맨 위에 내 방명록 카드.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>평소 화면에는 방명록 입구가 전혀 보이지 않아요</li>
+        <li>⋯ 메뉴가 3줄로 늘어요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>화면이 가장 깔끔하고 "+"는 지금처럼 바로 게시물로 가요. / 방명록이 있다는 걸 모르는 사람이 많아요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-11 머리 오른쪽 ⋯ 메뉴 안 항목</p>
+    </article>
+  </div>
+</section>
+
+<!-- 중심 요소 3(방명록 카드 모양)은 2가 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
 
 <!-- ===== 잘 안 될 때 (예외 네 장면, 1B 3단계) ===== -->
 <section id="except">
@@ -205,8 +270,8 @@
   <h2>명세</h2>
   <div class="wide"><table>
     <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
-    <tr data-el="el-shelf-order"><td>1. 책장 첫 장·넘기는 순서</td><td>A 요즘 사람들이 읽은 책 → 인기 도서 → 테마</td><td>없음</td><td>B 인기 도서 먼저, C 테마 먼저</td><td>"A가 좋아. 최근 사람들이 찾은 책들을 먼저 보여줘서" · 불편한 점: (받는 중)</td><td>빈 묶음은 빼고 남은 순서 그대로. 처음엔 늘 첫 장</td><td>방문 페이지 → 책장 첫 장 → 옆으로 밀기 → 책 누르면 책 화면</td><td><span class="st">확인</span></td></tr>
-    <tr><td>2. 방명록 쓰는 입구</td><td>—</td><td>—</td><td>—</td><td>(1 다음에 물음)</td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-shelf-order"><td>1. 책장 첫 장·넘기는 순서</td><td>A 요즘 사람들이 읽은 책 → 인기 도서 → 테마</td><td>없음</td><td>B 인기 도서 먼저, C 테마 먼저</td><td>"A가 좋아. 최근 사람들이 찾은 책들을 먼저 보여줘서" · 불편한 점: 없음(사용자)</td><td>빈 묶음은 빼고 남은 순서 그대로. 처음엔 늘 첫 장</td><td>방문 페이지 → 책장 첫 장 → 옆으로 밀기 → 책 누르면 책 화면</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-gb-entry"><td>2. 방명록 쓰는 입구</td><td>— (추천: 후보 A "+" → 게시물/방명록 고르기)</td><td>—</td><td>—</td><td>(받기 전)</td><td>쓰는 칸 140자, 글자 수 표시, "올리기"·"닫기"</td><td>입구 → 쓰는 칸 → 올리기 → 피드 맨 위 내 카드</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>3. 방명록 카드 모양</td><td>—</td><td>—</td><td>—</td><td>(2 다음에 물음)</td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>넘김 표시</td><td>점(묶음 수만큼, 지금 장만 진하게), 점을 눌러도 넘어감</td><td>—</td><td>숫자 "1/3"</td><td>묻지 않음</td><td>점 6(앱 8), 간격 4</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>책장 머리 글자</td><td>묶음 제목(왼쪽) + 기준(오른쪽, 작게). 예 "최근 30일 · 이 도서관"</td><td>—</td><td>—</td><td>묻지 않음</td><td>제목 13(앱 16)·500, 기준 10(앱 12) <code>--sub</code>, 한 줄 고정</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
@@ -229,7 +294,7 @@
              '<div class="col"><div class="pc f2" style="height:72px">소년이 온다 다 읽음</div><div class="pc f3" style="height:100px">창가 자리</div><div class="pc f1" style="height:66px">주말 북토크</div></div>';
 
   function phoneHTML() {
-    return '<div class="hd"><button class="back">‹</button><div class="vname">정독도서관</div><div class="vinfo"><span>320m · 오늘 09:00–18:00</span><span>⋯</span></div></div>' +
+    return '<div class="hd"><button class="back">‹</button><div class="vname">정독도서관</div><div class="vinfo"><span>320m · 오늘 09:00–18:00</span><button class="more" data-more>⋯</button></div></div>' +
       '<div class="feed" data-feed>' + FEED + '</div>' +
       '<button class="fab" data-fab>+</button>' +
       '<div class="blurstrip"></div>' +
@@ -276,11 +341,56 @@
       var bk = e.target.closest('[data-book]');
       if (bk) toast(ph, '「' + bk.dataset.book + '」 책 화면으로 가요 → 빌릴 수 있는지는 거기서 확인');
       if (e.target.closest('[data-retry]')) { renderShelf(ph); toast(ph, '책장을 다시 불러왔어요'); }
-      if (e.target.closest('[data-fab]') && !ph._exState) toast(ph, '글쓰기로 가요 (방명록 입구는 정할 것 2에서)');
+      if (ph._exState === undefined) entryClick(ph, e);
     });
     renderShelf(ph);
   }
-  document.querySelectorAll('.cand .phone').forEach(function (ph) {
+  // ---- 정할 것 2: 방명록 쓰는 입구 ----
+  function closeLayers(ph) { ph.querySelectorAll('.dimx,.bsheet,.vmenu').forEach(function (x) { x.remove(); }); }
+  function sheet(ph, inner) { closeLayers(ph); ph.insertAdjacentHTML('beforeend', '<div class="dimx" data-closex></div><div class="bsheet">' + inner + '</div>'); }
+  function openComposer(ph) {
+    sheet(ph, '<b>방명록 남기기</b><span class="sub">정독도서관에 짧은 한마디를 남겨요. 모두가 볼 수 있어요.</span>' +
+      '<textarea maxlength="140" placeholder="예) 2층 창가 자리 오늘 햇살 좋아요"></textarea>' +
+      '<div class="row2"><span class="warn" data-warn></span><span class="sub" data-count>0/140</span></div>' +
+      '<div class="row2"><button class="tlink" data-closex>닫기</button><button class="pbtn" data-gbpost>올리기</button></div>');
+    var ta = ph.querySelector('.bsheet textarea'); ta.focus();
+    ta.addEventListener('input', function () { ph.querySelector('[data-count]').textContent = ta.value.length + '/140'; ph.querySelector('[data-warn]').textContent = ''; });
+  }
+  function postGb(ph) {
+    var ta = ph.querySelector('.bsheet textarea'), txt = ta.value.trim();
+    if (!txt) { ph.querySelector('[data-warn]').textContent = '한 글자 이상 써 주세요'; return; }
+    var btn = ph.querySelector('[data-gbpost]'); if (btn.disabled) return; btn.disabled = true;
+    closeLayers(ph);
+    var col = ph.querySelector('[data-feed] .col');
+    col.insertAdjacentHTML('afterbegin', '<div class="gb newone"><div class="tag"><i></i>방명록</div>' + txt.replace(/</g, '&lt;') + '<div class="meta">나 · 방금</div></div>');
+    ph.querySelector('[data-feed]').scrollTop = 0;
+    toast(ph, '방명록을 남겼어요 (카드 모양은 정할 것 3에서)');
+  }
+  function entryClick(ph, e) {
+    var mode = ph.dataset.entry || '';
+    if (e.target.closest('[data-closex]')) { closeLayers(ph); return; }
+    if (e.target.closest('[data-gbpost]')) { postGb(ph); return; }
+    if (e.target.closest('[data-gbopen]')) { openComposer(ph); return; }
+    if (e.target.closest('[data-postopen]')) { closeLayers(ph); toast(ph, '게시물 글쓰기 화면으로 가요 (지금과 같음)'); return; }
+    if (e.target.closest('[data-fab]')) {
+      if (mode === 'fab') sheet(ph, '<b>무엇을 올릴까요?</b><div class="choice"><button data-postopen>게시물 올리기<span>사진·표지와 글</span></button><button data-gbopen>방명록 남기기<span>짧은 한마디 (140자까지)</span></button></div><button class="tlink" data-closex>닫기</button>');
+      else toast(ph, '게시물 글쓰기 화면으로 가요 (지금과 같음)');
+      return;
+    }
+    if (e.target.closest('[data-more]')) {
+      if (ph.querySelector('.vmenu')) { closeLayers(ph); return; }
+      closeLayers(ph);
+      ph.insertAdjacentHTML('beforeend', '<div class="vmenu">' + (mode === 'menu' ? '<div class="new" data-gbopen>방명록 남기기</div>' : '') + '<div data-menutoast>앱을 켜면 여기부터 열기</div><div data-menutoast>도서관 홈페이지 ↗</div></div>');
+      return;
+    }
+    if (e.target.closest('[data-menutoast]')) { closeLayers(ph); toast(ph, '(방문 페이지에서 정한 메뉴 그대로)'); }
+  }
+  document.querySelectorAll('#el-gb-entry .phone').forEach(function (ph) {
+    setupPhone(ph);
+    if (ph.dataset.entry === 'inline') ph.querySelector('[data-feed]').insertAdjacentHTML('afterbegin', '<button class="gbline" data-gbopen>✎ 정독도서관에 한마디 남기기…</button>');
+  });
+
+  document.querySelectorAll('#el-shelf-order .phone').forEach(function (ph) {
     setupPhone(ph);
     var btn = ph.parentNode.querySelector('[data-emptyread]');
     btn.addEventListener('click', function () {
