@@ -43,3 +43,9 @@ BOOK_DESCRIPTION_MAX_CHARS = 2_000  # 같은 절, K21
 # ── [loan-assistant-C] ──
 LOAN_DEFAULT_DAYS = 14  # loan-assistant LOAN-1 M3: 반납 예정일 기본 = 대출일 + 14일(추정, 도서관 공식 기간 아님)
 # ── [/loan-assistant-C] ──
+
+# ── [m2-core-D] ──
+# core M2-0 Z9: 반납 집계(library_return_stats) 쓰기. Q-49(동의 문구·철회·재식별 방지·법적 검토) 결정 전에는 끈다.
+# 켜기는 이 한 줄만 바꾼다(D 결정 뒤). 꺼져 있으면 #22는 동의해도 집계를 쓰지 않는다(C6).
+RETURN_STATS_WRITE_ENABLED = False
+# ── [/m2-core-D] ──
