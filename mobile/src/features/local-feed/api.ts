@@ -192,3 +192,15 @@ export function onPostReaction(listener: ReactionListener): () => void {
 export function emitPostReaction(postId: string, patch: PostReactionPatch): void {
   reactionListeners.forEach((l) => l(postId, patch));
 }
+
+// ─────────── VISIT-3 책장(contracts/local-feed.md VISIT-3 C2·C3) ───────────
+
+export type ShelfKind = "recent_reads" | "popular" | "theme";
+export type ShelfBook = { isbn13: string; title: string; author: string | null; cover_url: string | null };
+export type ShelfPage = { kind: ShelfKind; title: string; basis_label: string | null; books: ShelfBook[] };
+export type ShelfResponse = { pages: ShelfPage[] };
+
+/** #31 `GET /api/v1/libraries/{library_id}/shelf` (D core M2-0-P3) — 빈 페이지는 서버가 빼서 준다 */
+export function fetchShelf(libraryId: number, signal?: AbortSignal): Promise<ShelfResponse> {
+  return send<ShelfResponse>(`libraries/${libraryId}/shelf`, { method: "GET" }, signal);
+}

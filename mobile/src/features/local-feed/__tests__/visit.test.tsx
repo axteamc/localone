@@ -14,6 +14,7 @@ import * as visits from "../../../lib/visits";
 import type { VisitRecord, VisitResult } from "../../../lib/visits";
 import { formatDistance, parseDistanceM } from "../VisitHeader";
 import { VISIT_TEXT, VisitScreen } from "../VisitScreen";
+import { SHELF_HEIGHT } from "../Bookshelf";
 import { pickVisitMent } from "../visitMent";
 
 const realVisits = jest.requireActual<typeof import("../../../lib/visits")>("../../../lib/visits");
@@ -47,6 +48,7 @@ jest.mock("../../../lib/publicApi", () => ({
 jest.mock("../api", () => ({
   ...jest.requireActual<object>("../api"),
   fetchLibraryPosts: jest.fn(async () => ({ items: [], next_cursor: null })),
+  fetchShelf: jest.fn(async () => ({ pages: [] })), // VISIT-3 책장(#31): 이 파일은 책장을 보지 않는다
 }));
 jest.mock("../../../lib/visits", () => ({
   recordVisit: jest.fn(),
@@ -182,7 +184,7 @@ describe("들어올 때", () => {
     });
     expect(screen.getAllByTestId("visit-ment")).toHaveLength(1);
     const style = Object.assign({}, ...[screen.getByTestId("visit-ment").props.style].flat());
-    expect(style).toEqual(expect.objectContaining({ position: "absolute", bottom: 112, alignSelf: "center" }));
+    expect(style).toEqual(expect.objectContaining({ position: "absolute", bottom: SHELF_HEIGHT + 12 + 64 + 24, alignSelf: "center" }));
     expect(screen.getByTestId("visit-ment").props.pointerEvents).toBe("none");
     await act(async () => {
       jest.advanceTimersByTime(2500);
@@ -600,7 +602,7 @@ describe("L4 디자인 반영", () => {
         width: 64,
         height: 64,
         right: 16,
-        bottom: 24,
+        bottom: SHELF_HEIGHT + 12, // VISIT-3 V3-O3: 책장 바로 위 오른쪽(이전 LOCAL-1 F13 아래 24)
       }),
     );
     expect(fabStyle.backgroundColor).not.toBe(theme.colors.fill1);

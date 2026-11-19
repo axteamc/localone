@@ -32,6 +32,7 @@ jest.mock("../../../lib/visits", () => ({ recordVisit: jest.fn(), getDefaultLibr
 jest.mock("../api", () => ({
   ...jest.requireActual<object>("../api"),
   fetchLibraryPosts: jest.fn(),
+  fetchShelf: jest.fn(async () => ({ pages: [] })), // VISIT-3 책장(#31): 이 파일은 책장을 보지 않는다
   setReaction: jest.fn(),
   setBookmark: jest.fn(),
 }));

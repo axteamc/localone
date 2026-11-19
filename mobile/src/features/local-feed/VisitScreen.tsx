@@ -17,7 +17,8 @@ import { getDefaultLibrary, recordVisit } from "../../lib/visits";
 import { actionColors, cardSurface, panel, theme, type as T } from "../../theme";
 import { FOLD_AT, VisitHeader, VisitHeaderFolded } from "./VisitHeader";
 import { AskDefaultCard } from "./AskDefaultCard";
-import { fetchLibraryPosts, type FeedPost } from "./api";
+import { fetchLibraryPosts, type FeedPost, type ShelfResponse } from "./api";
+import { Bookshelf, SHELF_FADE_HEIGHT, SHELF_HEIGHT } from "./Bookshelf";
 import { LibraryFeed } from "./LibraryFeed";
 import { VisitMenu } from "./VisitMenu";
 import { pickVisitMent } from "./visitMent";
@@ -55,6 +56,9 @@ const defaultLoadFeed: FeedLoader = (libraryId, signal, cursor) =>
   fetchLibraryPosts(libraryId, { cursor: cursor ?? null }, signal);
 
 const END_REACHED_PX = 600; // 바닥에서 이만큼 남으면 다음 묶음
+const FAB_SIZE = 64;
+const FAB_BOTTOM = SHELF_HEIGHT + 12; // VISIT-3 V3-O3: 책장 바로 위 오른쪽(책장 위 12)
+const TOAST_BOTTOM = FAB_BOTTOM + FAB_SIZE + 24; // 한 줄 안내는 + 위에
 
 type LibState =
   | { kind: "loading" }
@@ -75,6 +79,7 @@ export type VisitScreenProps = {
   renderFeed?: (items: unknown[]) => React.ReactNode; // 기본: LibraryFeed(2열 메이슨리)
   more?: (lib: LibraryDetail) => React.ReactNode; // 기본: VisitMenu (시험에서 바꿔 끼움)
   askCard?: (lib: LibraryDetail, close: () => void) => React.ReactNode; // 기본: AskDefaultCard
+  loadShelf?: (libraryId: number, signal: AbortSignal) => Promise<ShelfResponse>; // 기본: fetchShelf(#31, VISIT-3)
 };
 
 export function VisitScreen({
@@ -84,6 +89,7 @@ export function VisitScreen({
   renderFeed,
   more,
   askCard,
+  loadShelf,
 }: VisitScreenProps) {
   const router = useRouter();
   const navigation = useNavigation();
@@ -387,8 +393,16 @@ export function VisitScreen({
             renderFeed?.(feed.items) ?? <LibraryFeed items={feed.items as FeedPost[]} onNotice={showNotice} />
           )}
         </View>
-        {/* M2 책장(오늘의 서가)이 이 아래에 붙는다(G9). 지금은 아무것도 그리지 않는다 */}
       </ScrollView>
+
+      {/* VISIT-3 오늘의 서가: 방문 페이지 아래 고정(V3-1, G9). 책장 실패·빈 책장은 책장 자리 안에서만 */}
+      {libraryId !== null ? (
+        <Bookshelf
+          libraryId={libraryId}
+          load={loadShelf}
+          onOpenBook={(isbn13) => router.push({ pathname: "/books/[isbn13]", params: { isbn13 } })}
+        />
+      ) : null}
 
       {folded && lib.kind === "ok" ? <VisitHeaderFolded name={name} onBack={goBack} more={moreNode} /> : null}
 
@@ -446,7 +460,7 @@ export function VisitScreen({
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: panel.backgroundColor },
-  content: { paddingBottom: 120, minHeight: "100%" },
+  content: { paddingBottom: SHELF_HEIGHT + SHELF_FADE_HEIGHT + 24, minHeight: "100%" },
   center: { alignItems: "center", justifyContent: "center", padding: 24, gap: 6 },
   libError: { minHeight: 115, paddingHorizontal: 16, justifyContent: "flex-end", gap: 4 },
   backText: {
@@ -480,9 +494,9 @@ const styles = StyleSheet.create({
     ...ACT.primary,
     position: "absolute",
     right: 16,
-    bottom: 24,
-    width: 64,
-    height: 64,
+    bottom: FAB_BOTTOM,
+    width: FAB_SIZE,
+    height: FAB_SIZE,
     borderRadius: theme.radii.control,
     alignItems: "center",
     justifyContent: "center",
@@ -491,7 +505,7 @@ const styles = StyleSheet.create({
   ment: {
     ...cardSurface(theme, { onPanel: true }),
     position: "absolute",
-    bottom: 112,
+    bottom: TOAST_BOTTOM,
     alignSelf: "center",
     paddingHorizontal: 16,
     paddingVertical: 10,

@@ -110,6 +110,10 @@
 - [계약 보완 필요] VISIT-3-P3 허용 파일에 `mobile/src/features/local-feed/VisitScreen.tsx`가 없음 — 실제 코드는 피드 불러오기(`VisitScreen.tsx:52-53` `defaultLoadFeed` → `#26`, `:103` `feedRunner`)와 `+` 버튼·로그인 창(`VisitScreen.tsx:395-401`, `:418-435`)이 `VisitScreen.tsx`에 있어, P3에서 `#32`로 바꾸기와 결정 2(+ → 고르기 창)를 하려면 이 파일을 고쳐야 함. 추천: P3 허용 파일에 `VisitScreen.tsx` 추가(P2에도 이미 있음). 그 전에는 P3의 해당 부분을 구현하지 않음 — `../team/contracts/local-feed.md` VISIT-3 P2
 - [계약 보완 필요] P4 앱 골격은 `LibraryFeed.tsx`가 `createLatestRunner`로 첫 묶음을 부르는 모양인데, 실제로는 `VisitScreen.tsx`가 부르고 `LibraryFeed.tsx`는 받은 목록만 그림(`LibraryFeed.tsx:62`) — 위와 같은 추천(불러오기는 `VisitScreen.tsx`에서 `fetchLibraryFeedItems`로 바꿈). 수정본 P4 보완 골격은 함수 위치와 관계없이 같은 규칙 — `../team/contracts/local-feed.md` VISIT-3 P4
 
+- [구현 중 변경] VISIT-2·LOCAL-2 시험 2개 수정 — `visit.test.tsx`의 `+`(아래 24→책장 위 236)·한 줄 안내(112→324) 기대값을 V3-O3 자리로, `visit.test.tsx`·`feed.test.tsx`의 `../api` 가짜에 `fetchShelf` 추가(책장이 진짜 서버를 부르지 않게). 두 파일은 P2 허용 파일 밖 — `[계약 보완 필요]` P2 허용 파일에 두 시험 파일 추가 필요 — `mobile/src/features/local-feed/__tests__/visit.test.tsx:186,604`, `feed.test.tsx:35`
+- [Claude가 정함] 피드-책장 사이 띠는 블러 없이 그라데이션 페이드만(8단) — 블러 라이브러리는 P3(새 라이브러리) 승인 전 금지라서 V3-1의 '블러가 안 되는 기기' 처리로 통일 — `Bookshelf.tsx:202-214`
+- [Claude가 정함] 책 연타 막기 1초 — 예외 #3 '책 화면은 한 번만' — `Bookshelf.tsx:92-99`
+
 ## 다음에 할 것
 
 ## 이전 버전
@@ -121,8 +125,8 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 (대기/진행/검토요청/완료) | 구현 근거 (`파일:줄`) 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| VISIT-3-P1 | `feat/local-feed-VISIT-3` | (Draft) | 완료 | `server/app/routers/guestbook.py:70-108`(#33·#34), `server/app/routers/feed.py:212-305`(#32), `server/migrations/versions/0016_guestbook_constraints.py`(C5 CHECK), `server/app/main.py` `[local-feed-B]` · 테스트 `server/tests/test_guestbook.py`·`test_feed_items.py` 25+2개 통과, 서버 전체 567 passed · 가드 제거 7건 모두 실패 확인 | to:D #230(카드 색 공식 sRGB) |
-| VISIT-3-P2 | 같은 브랜치 | - | 대기 | - | - |
+| VISIT-3-P1 | `feat/local-feed-VISIT-3` | #231 | 완료 | `server/app/routers/guestbook.py:70-108`(#33·#34), `server/app/routers/feed.py:212-305`(#32), `server/migrations/versions/0016_guestbook_constraints.py`(C5 CHECK), `server/app/main.py` `[local-feed-B]` · 테스트 `server/tests/test_guestbook.py`·`test_feed_items.py` 25+2개 통과, 서버 전체 567 passed · 가드 제거 7건 모두 실패 확인 | to:D #230(카드 색 공식 sRGB) |
+| VISIT-3-P2 | 같은 브랜치 | #231 | 완료 | `mobile/src/features/local-feed/Bookshelf.tsx:37-40`(순서 V3-O1)·`:49-188`(책장·빈 책장·실패·다시 해 보기·점)·`:204-214`(페이드), `VisitScreen.tsx:60`(+ 자리)·`:400-406`(책장·책 화면 이동), `api.ts` `fetchShelf` · 테스트 `__tests__/bookshelf.test.tsx` 10개 통과, local-feed 앱 전체 138 passed · 가드 제거 5건 실패 확인 | - |
 | VISIT-3-P3 | 같은 브랜치 | - | 대기 | - | - |
 
-- **다음 세션 이어하기 메모**: 구현 중(이슈 #229). 첫 커밋에 명세·시안·계약 수정본 D 결정 반영. P1 완료 → P2(책장) 진행. 로컬 시험 DB는 5433이 다른 프로젝트에 잡혀 있어 `localone-test-db`(5434) 안 `localone_v3` DB를 썼다(`DATABASE_URL` 덮어씀).
+- **다음 세션 이어하기 메모**: 구현 중(이슈 #229). 첫 커밋에 명세·시안·계약 수정본 D 결정 반영. P1·P2 완료 → P3(방명록 카드·쓰기) 진행. 로컬 시험 DB는 5433이 다른 프로젝트에 잡혀 있어 `localone-test-db`(5434) 안 `localone_v3` DB를 썼다(`DATABASE_URL` 덮어씀).
