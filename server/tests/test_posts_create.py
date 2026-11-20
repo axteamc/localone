@@ -460,3 +460,19 @@ def test_withdraw_requires_login(client, auth, db_engine):
     post_id = client.post("/api/v1/posts", headers=auth["A"], json=post_body()).json()["id"]
     assert client.post(f"/api/v1/posts/{post_id}/withdraw").status_code == 401
     assert _status(db_engine, post_id) == "published"
+
+
+def test_create_accepts_h6_9_and_legacy_6_color_tokens(client, auth):
+    from app.routers.posts import COLOR_TOKENS, FEED_COLOR_TOKENS, LEGACY_COLOR_TOKENS
+
+    assert len(FEED_COLOR_TOKENS) == 9
+    assert len(LEGACY_COLOR_TOKENS) == 6
+    for token in COLOR_TOKENS:
+        response = client.post(
+            "/api/v1/posts",
+            headers=auth["A"],
+            json=post_body(image_kind="color", image_color=token),
+        )
+        assert response.status_code == 201, f"{token}: {response.text}"
+        assert response.json()["image_color"] == token
+

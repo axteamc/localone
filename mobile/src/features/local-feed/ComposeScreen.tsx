@@ -18,7 +18,7 @@ import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useAuth } from "../../auth/AuthProvider";
 import { fetchBook, fetchLibrary, searchBooks, type Book } from "../../lib/publicApi";
 import { ON_FILL_LIGHT } from "../../theme/tokens";
-import { actionColors, cardSurface, onFill, panel, theme, type as T } from "../../theme";
+import { actionColors, cardSurface, onFill, panel, resolvePostColor, theme, type as T } from "../../theme";
 import {
   ApiCallError,
   BODY_MAX,
@@ -116,8 +116,8 @@ type PreviewProps = {
 };
 
 export function PostImage({ kind, imageUrl, color, text, pos, testID }: PreviewProps) {
-  const bg = kind === "color" && color ? C[color] : C.surface3;
-  const onColor = kind === "color" && color ? onFill(C[color]) : ON_FILL_LIGHT;
+  const bg = kind === "color" ? resolvePostColor(color, C) : C.surface3;
+  const onColor = kind === "color" && color ? onFill(bg) : ON_FILL_LIGHT;
   const place = kind === "color" ? "mid" : pos; // 단색은 늘 가운데(큰 틀 결정 2)
   return (
     <View testID={testID} style={[styles.image, { backgroundColor: bg }]}>
@@ -741,7 +741,7 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
                       onPress={() => setPicked({ kind: "color", token })}
                       style={[
                         styles.swatch,
-                        { backgroundColor: C[token] },
+                        { backgroundColor: resolvePostColor(token, C) },
                         picked.token === token && styles.swatchOn,
                       ]}
                     />
@@ -1110,7 +1110,7 @@ const styles = StyleSheet.create({
     borderTopColor: C.seamHairline,
     paddingTop: 10,
   },
-  choiceRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  choiceRow: { flexDirection: "row", flexWrap: "wrap", flexShrink: 1, gap: 8 },
   image: {
     width: "100%",
     maxWidth: 420,

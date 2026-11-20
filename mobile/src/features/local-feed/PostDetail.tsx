@@ -9,7 +9,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
 import { openExternalUrl } from "../../lib/platform";
 import { fetchAvailabilityAt, type AvailabilityItem } from "../../lib/publicApi";
-import { actionColors, cardSurface, onFill, panel, theme, type as T } from "../../theme";
+import { actionColors, cardSurface, onFill, panel, resolvePostColor, theme, type as T } from "../../theme";
 import { ON_FILL_LIGHT } from "../../theme/tokens";
 import { ApiCallError, emitPostReaction, emitPostWithdrawn, fetchPost, type Post } from "./api";
 import { PostImage, PostMoreMenu } from "./ComposeScreen";
@@ -238,7 +238,7 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
 
   const backOnDark =
     post.image_kind === "color"
-      ? post.image_color !== null && onFill(C[post.image_color]) === ON_FILL_LIGHT
+      ? post.image_color !== null && onFill(resolvePostColor(post.image_color, C)) === ON_FILL_LIGHT
       : true;
 
   const image = (

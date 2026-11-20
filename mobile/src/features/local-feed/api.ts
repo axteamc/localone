@@ -6,8 +6,22 @@ import { buildImageFormData } from "./imagePicker";
 export { ApiCallError };
 
 export type ImageKind = "photo" | "cover" | "color";
-export const COLOR_TOKENS = ["fill1", "fill2", "fill3", "cream", "paper", "inkStrong"] as const;
-export type ColorToken = (typeof COLOR_TOKENS)[number];
+/** H6 선정 피드 단색 9개(글쓰기 선택지). 값은 CUBE_PALETTE 이름과 같다. */
+export const COLOR_TOKENS = [
+  "bold",
+  "coral",
+  "lemonZest",
+  "vanillaCanvas",
+  "vanilla",
+  "complementary",
+  "atlanticBlue",
+  "indigoDrift",
+  "crimsonWhisper",
+] as const;
+/** 옛 6개 토큰 호환(기존 게시물·표지 없는 책 fallback "fill3" 등). */
+export const LEGACY_COLOR_TOKENS = ["fill1", "fill2", "fill3", "cream", "paper", "inkStrong"] as const;
+export type LegacyColorToken = (typeof LEGACY_COLOR_TOKENS)[number];
+export type ColorToken = (typeof COLOR_TOKENS)[number] | LegacyColorToken;
 
 export const OVERLAY_MAX = 80;
 export const BODY_MAX = 2000;
