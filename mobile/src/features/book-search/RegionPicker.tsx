@@ -10,6 +10,9 @@ export const REGION_NO_MATCH = "일치하는 지역이 없어요. 시·군·구 
 export const REGION_LOCATION_DENIED = "위치 권한이 꺼져 있어요. 휴대폰 설정에서 켜거나 아래에서 지역을 골라 주세요.";
 export const REGION_PLACEHOLDER = "시·도 또는 시·군·구 이름 입력 (예: 종로구, 광주)";
 
+const SIDOS: readonly string[] = [...new Set(REGIONS.map((r) => r.sido))];
+const MAX_PICKER_REGIONS = 60;
+
 export function RegionPicker({
   onChoose,
   onLocationAllowed,
@@ -21,7 +24,9 @@ export function RegionPicker({
   const [q, setQ] = useState("");
   const [denied, setDenied] = useState(false);
   const [focused, setFocused] = useState(false);
-  const regions = useMemo(() => (q.trim() ? searchRegions(q, 20) : REGIONS.slice(0, 10)), [q]);
+  // 글자가 없으면 시·도부터 보여 주고, 시·도를 누르면 그 시·군·구 전체(경기 45곳까지)를 보인다(2026-11-20 문제 ④)
+  const regions = useMemo(() => (q.trim() ? searchRegions(q, MAX_PICKER_REGIONS) : []), [q]);
+  const showSido = !q.trim();
 
   const allowLocation = async () => {
     const granted = (await requestLocationPermission()) === "granted";
@@ -55,7 +60,21 @@ export function RegionPicker({
         style={[styles.input, focused && styles.inputFocused]}
         returnKeyType="search"
       />
-      {regions.length === 0 ? (
+      {showSido ? (
+        <View>
+          {SIDOS.map((sido) => (
+            <Pressable
+              key={sido}
+              testID={`sido-${sido}`}
+              accessibilityRole="button"
+              onPress={() => setQ(sido)}
+              style={styles.row}
+            >
+              <Text style={styles.rowText}>{sido}</Text>
+            </Pressable>
+          ))}
+        </View>
+      ) : regions.length === 0 ? (
         <Text style={styles.noMatch}>{REGION_NO_MATCH}</Text>
       ) : (
         <View>

@@ -12,7 +12,8 @@ import {
 export const FIND_DELAY_MS = 300;
 /** 서버가 31자 이상을 막으므로(422) 앱이 먼저 자른다(C6) */
 export const MAX_QUERY = 30;
-const MAX_REGIONS = 5;
+/** "광주"는 광주광역시 5구 + 경기 광주시, "중구"는 6개 시도 등이 모두 보이게(2026-11-20 문제 ③, 이전 5) */
+const MAX_REGIONS = 12;
 const MAX_LIBRARIES = 20;
 
 export type FindStatus = "idle" | "loading" | "ready" | "empty" | "error";

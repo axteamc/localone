@@ -368,3 +368,23 @@ def test_detail_enrichment_failure_preserves_cache(reference_db, monkeypatch, ca
     fake = FakeBookSearch(error=pe.ProviderError("offline")) if cause == "error" else FakeBookSearch([])
     if cause == "limit": monkeypatch.setattr(policy, "KAKAO_DAILY_LIMIT", 0)
     assert run(engine(reference_db, None if cause == "missing" else fake).get_book(isbn())) == cached
+
+
+def test_libraries_in_region_merges_district_codes(reference_db):
+    """구가 있는 시 본청 코드(끝자리 0)는 앞 4자리가 같은 구 코드 도서관까지, 구 코드는 자기 것만(2026-11-20)."""
+    codes = {"97010": "본청관", "97011": "장안관", "97012": "권선관", "97020": "다른시관"}
+    with reference_db.begin() as conn:
+        for code, name in codes.items():
+            conn.execute(text("""
+                INSERT INTO libraries(provider_lib_code,name,address,tel,homepage,latitude,longitude,dtl_region_code,content_hash)
+                VALUES(:p,:n,'시험','0',NULL,30,30,:c,'merge-test')
+                ON CONFLICT(provider_lib_code) DO NOTHING
+            """), {"p": f"merge-test-{code}", "n": name, "c": code})
+    try:
+        with reference_db.begin() as conn:
+            assert {lib.name for lib in pe.libraries_in_region(conn, "97010")} == {"본청관", "장안관", "권선관"}
+            assert [lib.name for lib in pe.libraries_in_region(conn, "97011")] == ["장안관"]
+            assert [lib.name for lib in pe.libraries_in_region(conn, "97020")] == ["다른시관"]
+    finally:
+        with reference_db.begin() as conn:
+            conn.execute(text("DELETE FROM libraries WHERE content_hash='merge-test'"))

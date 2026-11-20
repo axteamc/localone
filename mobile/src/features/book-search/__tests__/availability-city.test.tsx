@@ -266,9 +266,21 @@ describe("위치 없이 지역 고르기", () => {
     await render(<BookDetailScreen isbn13={BOY.isbn13} />);
     expect(await screen.findByText(REGION_INTRO)).toBeTruthy();
     expect(fetchAvailabilityNearby).not.toHaveBeenCalled();
+    await fireEvent.press(screen.getByTestId("sido-서울특별시")); // 글자 없이 열면 시·도부터 (2026-11-20 문제 ④)
     await fireEvent.press(screen.getByTestId("region-11010"));
     expect(await screen.findByText("가 도서관")).toBeTruthy();
     expect(fetchAvailabilityInCity).toHaveBeenCalledWith(BOY.isbn13, "11010", expect.anything());
+  });
+
+  test("empty picker lists all 17 sido and a sido press lists its sigungu", async () => {
+    locate.mockResolvedValueOnce({ ok: false, reason: "denied" });
+    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await screen.findByText(REGION_INTRO);
+    expect(screen.getByTestId("sido-제주특별자치도")).toBeTruthy();
+    expect(screen.getByTestId("sido-경기도")).toBeTruthy();
+    await fireEvent.press(screen.getByTestId("sido-경기도"));
+    expect(screen.getByTestId("region-31010")).toBeTruthy();
+    expect(screen.getByTestId("region-31580")).toBeTruthy(); // 경기 뒤쪽 군도 잘리지 않는다
   });
 
   test("region picker filters regions and retries location", async () => {
