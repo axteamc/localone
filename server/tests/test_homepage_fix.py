@@ -23,6 +23,20 @@ from tests.provider_fakes import FakeLibraryProvider
     ("-", None),
     ("www.dscf.or.kr", "https://www.dscf.or.kr"),
     ("lib.yongin.go.kr/dongcheon", "https://lib.yongin.go.kr/dongcheon"),
+    ("https://www.gblib.or.kr/mia/", "https://www.gblib.or.kr/"),
+    ("https://www.gblib.or.kr/youth/", "https://www.gblib.or.kr/"),
+    ("https://lib.gunsan.go.kr/index.gunsan", "https://lib.gunsan.go.kr/web/menu/10003/program/30001/searchSimple.do"),
+    ("http://lib.gunsan.go.kr", "http://lib.gunsan.go.kr"),
+    ("https://lib.paju.go.kr", "https://lib.paju.go.kr/intro/index.do"),
+    ("https://lib.paju.go.kr/", "https://lib.paju.go.kr/intro/index.do"),
+    ("https://lib.paju.go.kr/gclib", "https://lib.paju.go.kr/gclib"),
+    ("https://lib.sejong.go.kr/goun/", "https://lib.sejong.go.kr/"),
+    ("https://lib.sejong.go.kr/nasung", "https://lib.sejong.go.kr/"),
+    ("https://lib.sejong.go.kr", "https://lib.sejong.go.kr"),
+    ("https://lib.gwe.go.kr/tblib", "https://lib.gwe.go.kr/tblib/main"),
+    ("https://www.l4d.or.kr/hgh", "https://www.l4d.or.kr/intro/index.do"),
+    ("https://www.l4d.or.kr/info/index.do", "https://www.l4d.or.kr/intro/index.do"),
+    ("http://library.geumjeong.go.kr/", "https://library.geumjeong.go.kr/index.geumj"),
 ])
 def test_fix_homepage(raw, fixed):
     assert fix_homepage(raw) == fixed
