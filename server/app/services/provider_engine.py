@@ -122,9 +122,15 @@ def get_library(conn: Connection, library_id: int) -> LibraryRow | None:
 
 
 def libraries_in_region(conn: Connection, dtl_region_code: str) -> list[LibraryRow]:
+    # 구가 있는 시 본청 코드(끝자리 0, 예 수원 31010)는 정보나루가 구 코드(31011~31014)에 도서관을 두므로
+    # 앞 4자리가 같은 구 코드까지 함께 돌려준다(2026-11-20 D 결정 "하위 구 합치기"). 구·군 코드는 그대로 하나만.
+    children = f"{dtl_region_code[:4]}_" if dtl_region_code.endswith("0") else dtl_region_code
     rows = conn.execute(
-        text(f"SELECT {LIBRARY_COLUMNS} FROM libraries WHERE dtl_region_code = :c ORDER BY name COLLATE \"C\", id"),
-        {"c": dtl_region_code},
+        text(
+            f"SELECT {LIBRARY_COLUMNS} FROM libraries WHERE dtl_region_code = :c OR dtl_region_code LIKE :p "
+            'ORDER BY name COLLATE "C", id'
+        ),
+        {"c": dtl_region_code, "p": children},
     ).all()
     return [_library_row(r) for r in rows]
 
