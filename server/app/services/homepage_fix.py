@@ -21,7 +21,12 @@ EXACT = {
 def fix_homepage(url: str | None) -> str | None:
     if not url:
         return url
-    parts = urlsplit(url.strip())
+    url = url.strip()
+    if url in {"-", "없음"}:  # 정보나루가 빈 값 대신 넣는 자리표시
+        return None
+    if "://" not in url:  # `www.xxx.kr`·`lib.yongin.go.kr/dongcheon`처럼 스킴이 빠진 주소
+        url = f"https://{url}"
+    parts = urlsplit(url)
     host = parts.netloc.lower()
     path = parts.path.rstrip("/")
     if host in EXACT and not path:
