@@ -55,6 +55,8 @@ def robots_allows(host_scheme: str, host: str, path: str, cache: dict) -> bool |
 
 def check(url: str, cache: dict) -> tuple[str, str]:
     p = urlsplit(url)
+    if p.scheme not in ("http", "https") or not p.netloc:
+        return "깨짐", "주소 형식 오류(http(s):// 없음)"
     ok = robots_allows(p.scheme, p.netloc, p.path, cache)
     if ok is not True:
         return "사람확인", "robots 금지" if ok is False else "robots 못 읽음(방화벽?)"

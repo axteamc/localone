@@ -20,6 +20,9 @@ from tests.provider_fakes import FakeLibraryProvider
     ("https://lib.donggu.kr", "https://lib.donggu.kr"),
     (None, None),
     ("", ""),
+    ("-", None),
+    ("www.dscf.or.kr", "https://www.dscf.or.kr"),
+    ("lib.yongin.go.kr/dongcheon", "https://lib.yongin.go.kr/dongcheon"),
 ])
 def test_fix_homepage(raw, fixed):
     assert fix_homepage(raw) == fixed
