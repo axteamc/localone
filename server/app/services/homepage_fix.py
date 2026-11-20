@@ -30,3 +30,17 @@ def fix_homepage(url: str | None) -> str | None:
         tail = f"?{parts.query}" if parts.query else ""
         return f"https://{HOST_MOVED[host]}{path}{tail}"
     return url
+
+
+# 정보나루가 엉뚱한 시군구 코드로 돌려주는 도서관: (받은 코드, 주소 앞부분) → 바른 코드
+# 군위군은 2023년 대구로 넘어왔는데 정보나루는 달성군(22510) 쪽에 군위 도서관을 둔다.
+REGION_MOVED = {
+    ("22510", "대구광역시 군위군"): "22520",
+}
+
+
+def fix_region_code(dtl_region_code: str, address: str | None) -> str:
+    for (code, prefix), fixed in REGION_MOVED.items():
+        if dtl_region_code == code and (address or "").startswith(prefix):
+            return fixed
+    return dtl_region_code

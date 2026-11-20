@@ -22,7 +22,7 @@ from sqlalchemy.engine import Connection, Engine
 from app import policy
 from app.common import ApiError, now_kst, today_kst
 from app.db import run_db
-from app.services.homepage_fix import fix_homepage
+from app.services.homepage_fix import fix_homepage, fix_region_code
 from app.settings import Settings
 
 T = TypeVar("T")
@@ -159,10 +159,11 @@ def _store_libraries(
     counts = {"inserted": 0, "updated": 0, "unchanged": 0}
     for raw_info in libs:
         info = replace(raw_info, homepage=fix_homepage(raw_info.homepage))  # 해시 전에 고쳐야 기존 행도 갱신된다
+        dtl = fix_region_code(dtl_region_code, info.address)  # 정보나루가 다른 시군구에 둔 곳(군위 등)
         params = {
             **info.__dict__,
-            "region_code": dtl_region_code[:2],
-            "dtl_region_code": dtl_region_code,
+            "region_code": dtl[:2],
+            "dtl_region_code": dtl,
             "content_hash": library_content_hash(info),
             "synced_at": synced_at,
         }
@@ -199,6 +200,12 @@ def _store_libraries(
             counts["inserted"] += 1
         else:
             counts["updated"] += 1
+        if dtl != dtl_region_code:  # 지역 코드는 해시에 없으므로 이미 저장된 행도 따로 고친다
+            conn.execute(
+                text("UPDATE libraries SET region_code = :r, dtl_region_code = :d "
+                     "WHERE provider_lib_code = :c AND dtl_region_code IS DISTINCT FROM :d"),
+                {"r": dtl[:2], "d": dtl, "c": info.provider_lib_code},
+            )
     return counts
 
 
