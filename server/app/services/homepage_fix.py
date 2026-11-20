@@ -17,6 +17,16 @@ EXACT = {
     "gjlib.jeonnam-gwangju.go.kr": "https://gjlib.jeonnam-gwangju.go.kr/main",  # 광주 시립 3곳
 }
 
+# 호스트+경로가 정확히 같을 때 바꾸는 것(비교는 스킴·끝 슬래시·대소문자 무시). D가 새 주소를 알려 준 곳
+PATH_EXACT = {
+    **{  # 서울 강북구립 7곳: 옛 `/<이름>` 404·500 → 구립도서관 메인
+        f"www.gblib.or.kr/{n}": "https://www.gblib.or.kr/"
+        for n in ("gangbuk", "youth", "mia", "kids", "solsem", "songjung", "suyu")
+    },
+    "lib.gunsan.go.kr/index.gunsan": "https://lib.gunsan.go.kr/web/menu/10003/program/30001/searchSimple.do",  # 군산 2곳(400)
+    "lib.paju.go.kr": "https://lib.paju.go.kr/intro/index.do",  # 파주 작은도서관 3곳(루트가 인트로)
+}
+
 
 def fix_homepage(url: str | None) -> str | None:
     if not url:
@@ -29,6 +39,8 @@ def fix_homepage(url: str | None) -> str | None:
     parts = urlsplit(url)
     host = parts.netloc.lower()
     path = parts.path.rstrip("/")
+    if f"{host}{path}".lower() in PATH_EXACT:
+        return PATH_EXACT[f"{host}{path}".lower()]
     if host in EXACT and not path:
         return EXACT[host]
     if host in HOST_MOVED:
