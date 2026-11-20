@@ -26,7 +26,19 @@ IMAGE_LONG_SIDE = 2048  # F3
 JPEG_QUALITY = 85  # F3
 OVERLAY_MAX = 80  # F15
 BODY_MAX = 2000  # F15
-COLOR_TOKENS = ("fill1", "fill2", "fill3", "cream", "paper", "inkStrong")  # F7
+FEED_COLOR_TOKENS = (
+    "bold",
+    "coral",
+    "lemonZest",
+    "vanillaCanvas",
+    "vanilla",
+    "complementary",
+    "atlanticBlue",
+    "indigoDrift",
+    "crimsonWhisper",
+)  # F7 (H6 선정 9색)
+LEGACY_COLOR_TOKENS = ("fill1", "fill2", "fill3", "cream", "paper", "inkStrong")  # F7 (옛 6개 호환)
+COLOR_TOKENS = FEED_COLOR_TOKENS + LEGACY_COLOR_TOKENS
 
 MSG_VALIDATION = "요청 형식이 올바르지 않아요."
 MSG_NOT_FOUND = "찾을 수 없어요."

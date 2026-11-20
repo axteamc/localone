@@ -6,7 +6,7 @@ import { Keyboard, StyleSheet } from "react-native";
 import { useAuth } from "../../../auth/AuthProvider";
 import * as publicApi from "../../../lib/publicApi";
 import type { Book } from "../../../lib/publicApi";
-import { theme } from "../../../theme";
+import { resolvePostColor, theme } from "../../../theme";
 import * as api from "../api";
 import type { Post, PostCreateInput } from "../api";
 import { ComposeScreen, PostMoreMenu, TEXT, titleAuthorText } from "../ComposeScreen";
@@ -290,7 +290,7 @@ describe("감상", () => {
     await fireEvent.press(submitButton());
     await waitFor(() => expect(createPost).toHaveBeenCalledTimes(1));
     expect(createPost.mock.calls[0]![0]).toEqual(
-      expect.objectContaining({ body: "좋았어요", image_kind: "color", image_color: "fill1", library_id: 101 })
+      expect.objectContaining({ body: "좋았어요", image_kind: "color", image_color: "bold", library_id: 101 })
     );
   });
 });
@@ -493,5 +493,17 @@ describe("내리기", () => {
     } finally {
       addSpy.mockRestore();
     }
+  });
+
+  test("H6 color picker offers 9 colors and resolvePostColor supports legacy 6 tokens", async () => {
+    await openCompose();
+    await chooseColor();
+    for (const token of api.COLOR_TOKENS) {
+      expect(screen.getByRole("button", { name: `색 ${token}` })).toBeTruthy();
+    }
+    expect(api.COLOR_TOKENS).toHaveLength(9);
+    expect(resolvePostColor("bold")).toBe("#EB5324");
+    expect(resolvePostColor("fill1")).toBe(theme.colors.fill1);
+    expect(resolvePostColor("inkStrong")).toBe(theme.colors.inkStrong);
   });
 });

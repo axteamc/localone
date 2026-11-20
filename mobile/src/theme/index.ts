@@ -3,6 +3,7 @@
  * 값의 원본과 "임시값" 사정은 ./tokens.ts 머리 주석을 본다.
  */
 import {
+  CUBE_PALETTE,
   DEFAULT_LOOK,
   DERIVE,
   LOOK_BASE_COLORS,
@@ -178,3 +179,16 @@ export const panel = {
   backgroundColor: theme.colors.panelFrosted,
   borderColor: theme.colors.seamHairline,
 } as const;
+
+const PALETTE_HEX: Record<string, string> = Object.fromEntries(CUBE_PALETTE.map((c) => [c.name, c.hex]));
+const LEGACY_TOKEN_KEYS = new Set(["fill1", "fill2", "fill3", "cream", "paper", "inkStrong"]);
+
+/** 피드 단색 토큰(새 9색 CUBE_PALETTE + 옛 6색 테마 토큰)을 실제 hex 색으로 해석한다. */
+export function resolvePostColor(token: string | null | undefined, colors: ThemeColors = theme.colors): string {
+  if (!token) return colors.surface3;
+  if (PALETTE_HEX[token]) return PALETTE_HEX[token];
+  if (LEGACY_TOKEN_KEYS.has(token)) {
+    return colors[token as "fill1" | "fill2" | "fill3" | "cream" | "paper" | "inkStrong"];
+  }
+  return colors.surface3;
+}

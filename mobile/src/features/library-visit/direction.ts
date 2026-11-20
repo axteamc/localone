@@ -3,7 +3,8 @@
 // 전체 보기 = 개발산출물/시안/홈_파사드_큐브_시안.html "3. 실제 배치 미리보기 v2"의 layoutRing()·끌기.
 import type { LatLng, LibrarySummary } from "./deps";
 
-export type SpineTone = "fill1" | "fill2" | "fill3" | "closed";
+/** 윗면 색: `CUBE_PALETTE`의 번호(0부터) 또는 휴관 */
+export type SpineTone = number | "closed";
 
 export type FacadeItem = {
   lib: LibrarySummary;
@@ -81,21 +82,30 @@ export function shownItems(items: FacadeItem[], heroId: number | null): FacadeIt
   return hero ? [...top.slice(0, MAX_CUBES - 1), hero] : top;
 }
 
+/** 도서관 id → 0 이상 n 미만(곱셈 해시라 이웃한 id도 흩어진다) */
+export function paletteIndexOf(id: number, n: number): number {
+  return (Math.imul(id | 0, 0x9e3779b1) >>> 0) % n;
+}
+
 /**
- * 윗면 색(V3, 홈 색 규칙 그대로): 오늘 휴관(is_closed === true)은 항상 closed. 나머지는 거리순으로
- * 가장 가까운 1곳이 fill1, 그 뒤는 fill2·fill3를 번갈아 쓴다. 키는 도서관 id.
+ * 윗면 색(V3, 2026-11-20 H6 D 결정 "무작위로 표기해도 무관"): 오늘 휴관(is_closed === true)은 항상 closed.
+ * 나머지는 도서관 id로 정한 팔레트 번호(늘 같은 색). 거리순으로 앞선 곳이 먼저 갖고, 이미 쓴 번호면 다음 번호로
+ * 넘겨 팔레트 크기까지는 서로 겹치지 않는다. 키는 도서관 id, 값은 `CUBE_PALETTE` 번호.
  */
-export function assignSpineTones(items: FacadeItem[]): Map<number, SpineTone> {
+export function assignSpineTones(items: FacadeItem[], paletteSize: number): Map<number, SpineTone> {
   const all = [...items].sort(byDistance);
   const tones = new Map<number, SpineTone>();
-  let open = 0;
+  const used = new Set<number>();
   for (const it of all) {
     if (it.lib.today.is_closed === true) {
       tones.set(it.lib.id, "closed");
       continue;
     }
-    tones.set(it.lib.id, open === 0 ? "fill1" : open % 2 === 1 ? "fill2" : "fill3");
-    open += 1;
+    if (used.size >= paletteSize) used.clear();
+    let i = paletteIndexOf(it.lib.id, paletteSize);
+    while (used.has(i)) i = (i + 1) % paletteSize;
+    used.add(i);
+    tones.set(it.lib.id, i);
   }
   return tones;
 }

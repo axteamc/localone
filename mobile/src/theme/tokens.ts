@@ -76,6 +76,34 @@ export const LOOK_BASE_COLORS: Record<LookPreset, BaseColors> = {
   },
 };
 
+/**
+ * 홈 큐브 윗면 색(2026-11-20 H6, D가 고른 20색). 룩과 무관한 고정값이고 휴관은 이 목록이 아니라 `pinClosed`.
+ * 도서관 id로 한 색을 고르고 판에 같이 보이는 곳끼리는 겹치지 않게 한다(`direction.ts` `assignSpineTones`).
+ * 순서를 바꾸면 도서관마다 색이 바뀌므로 새 색은 끝에 붙인다.
+ */
+export const CUBE_PALETTE = [
+  { name: "bold", hex: "#EB5324" }, // 짙고 붉은 기 도는 주황
+  { name: "coral", hex: "#FF7850" },
+  { name: "marshmallow", hex: "#F4F1DE" },
+  { name: "neutral", hex: "#FFF6EE" },
+  { name: "porcelain", hex: "#F0F0F5" },
+  { name: "eggshell", hex: "#F0E6DC" },
+  { name: "vanillaCanvas", hex: "#EBE4D1" },
+  { name: "vanilla", hex: "#CDBEA0" },
+  { name: "indigoDrift", hex: "#232747" },
+  { name: "dark", hex: "#27324A" },
+  { name: "darkNavy", hex: "#001428" },
+  { name: "atlanticBlue", hex: "#26577C" },
+  { name: "ultramarine", hex: "#3778FF" },
+  { name: "light", hex: "#59BABD" },
+  { name: "complementary", hex: "#BFDAD3" },
+  { name: "lemonZest", hex: "#F5AF3D" },
+  { name: "citrusYellow", hex: "#FFC300" },
+  { name: "crimsonWhisper", hex: "#6B0A00" },
+  { name: "shuttleGray", hex: "#646E7D" },
+  { name: "ghostGray", hex: "#C8C8D2" },
+] as const;
+
 /** 본문 글자색(디자인_기준.md §2 "본문 글자 #1D1D1F"). 룩과 무관. */
 export const TEXT_COLOR = "#1D1D1F";
 /** 채움 위 글자 후보 중 밝은 쪽(채움 위 글자는 대비로 자동 선택, 디자인_기준.md §2). */

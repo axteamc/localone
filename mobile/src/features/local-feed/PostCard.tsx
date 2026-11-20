@@ -2,7 +2,7 @@
 // 이미지와 이미지 위 글자만 보인다. 제목·작성자·공감 수 줄은 넣지 않는다(H4).
 import React, { useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import { onFill, theme } from "../../theme";
+import { onFill, resolvePostColor, theme } from "../../theme";
 import { ON_FILL_LIGHT } from "../../theme/tokens";
 import type { FeedPost } from "./api";
 
@@ -24,8 +24,8 @@ export type PostCardProps = {
 export function PostCard({ post, onPress, onMenu, width }: PostCardProps) {
   const [hover, setHover] = useState(false);
   const isColor = post.image_kind === "color";
-  const bg = isColor && post.image_color ? C[post.image_color] : C.surface3;
-  const textColor = isColor && post.image_color ? onFill(C[post.image_color]) : ON_FILL_LIGHT;
+  const bg = isColor ? resolvePostColor(post.image_color, C) : C.surface3;
+  const textColor = isColor && post.image_color ? onFill(bg) : ON_FILL_LIGHT;
 
   const height = Math.round(width * cardHeightRatio(post));
   // 버튼 안 버튼 금지(웹 <button> 중첩 오류, 시연 전 개선 S1): ⋯는 카드 버튼의 형제로 겹쳐 두고,
