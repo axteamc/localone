@@ -176,7 +176,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | `latitude`, `longitude` | `double precision` | NULL 허용(둘 다 있거나 둘 다 없음 CHECK) | 없으면 "거리 계산 불가" | `확정`(02 §3) |
 | `closed_text`, `operating_time_text` | `text` | NULL 허용 | 제공자 원문 그대로(자유 문장) | `확정`(Q-22) |
 | `region_code`, `dtl_region_code` | `text` | NULL 허용 | 시·도, 시군구 코드 | `확정`(Q-51 ①) |
-| `isbn_search_url_template` | `text` | NULL 허용 | "실시간 확인" 주소 규칙. 없으면 `homepage`로 | `미확인(임시)` Q-48(대상 도서관·주소 규칙 미정) |
+| `isbn_search_url_template` | `text` | NULL 허용 | "실시간 확인" 주소 규칙. 없으면 `homepage`로 | `확정` Q-48: **쓰지 않는다**(2026-11-20 D). 칸은 남기되 항상 NULL → `homepage`로 이동 |
 | `look` | `text` | NULL 허용, CHECK `IN ('modern','warm','toffee','oxford')` | 도서관 룩 프리셋 (M2 `M2-0-P3`, NULL이면 앱은 `'warm'`) | `확정` (VISIT-07, 2026-11-19 D) |
 | `look_assigned_by` | `text` | NULL 허용, CHECK `IN ('auto','operator')` | 자동 배정 vs 운영자 지정/재배정 (M2 `M2-0-P3`) | `확정` (2026-11-19 D) |
 | `content_hash` | `text` | NOT NULL | 갱신 비교용 | `확정` |
@@ -384,7 +384,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | Q-31 | 인기순 집계 기준 | 인기순용 컬럼·인덱스 없음 | `posts` |
 | Q-41 | 표지·구매 API 조건, 네이버 앱 상한 | 표지는 주소만 저장 | `books.cover_url`, `provider_daily_usage` |
 | Q-42 | 인기 도서 API 선택 | 캐시 표 모양만 | `popular_books_cache` |
-| Q-48 | 실시간 확인 주소 규칙 | 컬럼만 두고 비워 둠 | `libraries.isbn_search_url_template` |
+| Q-48 | 실시간 확인 주소 규칙 | **폐기·확정**: 검색 딥링크는 불가(ISBN 검색 주소 없음, 검색해도 주소가 안 바뀌거나 POST), 항상 `homepage`로 이동. 컬럼은 비워 둠 | `libraries.isbn_search_url_template` |
 | Q-49 | 반납 집계 동의·재식별 방지 | 표와 동의 칸만, 쓰기 꺼 둠 | `library_return_stats`, `user_settings` |
 | Q-53 | 게시물 사진 저장소·용량·형식 | Supabase Storage에 올리고 DB에는 경로만(가정) | `posts` |
 | Q-54 | 파일럿 동안 게시물을 참여자에게만 보이는 방법 | 정하지 않음(공개 읽기 그대로) | §4, 06 인증 칸 |

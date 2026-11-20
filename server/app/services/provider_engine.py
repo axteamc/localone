@@ -12,7 +12,7 @@ import sys
 import urllib.error
 import urllib.request
 from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import date, datetime, timedelta
 from typing import Any, Literal, Protocol, TypeVar
 from urllib.parse import urlencode
@@ -22,6 +22,7 @@ from sqlalchemy.engine import Connection, Engine
 from app import policy
 from app.common import ApiError, now_kst, today_kst
 from app.db import run_db
+from app.services.homepage_fix import fix_homepage
 from app.settings import Settings
 
 T = TypeVar("T")
@@ -147,9 +148,11 @@ def _store_libraries(
     """새 도서관은 넣고, 해시가 다른 곳만 고치고, 받은 곳은 모두 synced_at을 갱신한다.
 
     `isbn_search_url_template`은 제공자가 주지 않으므로 건드리지 않는다.
+    `homepage`는 저장 전에 `fix_homepage`로 고친다(깨진 주소·인트로 화면 보정).
     """
     counts = {"inserted": 0, "updated": 0, "unchanged": 0}
-    for info in libs:
+    for raw_info in libs:
+        info = replace(raw_info, homepage=fix_homepage(raw_info.homepage))  # 해시 전에 고쳐야 기존 행도 갱신된다
         params = {
             **info.__dict__,
             "region_code": dtl_region_code[:2],
