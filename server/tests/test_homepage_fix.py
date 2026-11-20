@@ -30,6 +30,13 @@ from tests.provider_fakes import FakeLibraryProvider
     ("https://lib.paju.go.kr", "https://lib.paju.go.kr/intro/index.do"),
     ("https://lib.paju.go.kr/", "https://lib.paju.go.kr/intro/index.do"),
     ("https://lib.paju.go.kr/gclib", "https://lib.paju.go.kr/gclib"),
+    ("https://lib.sejong.go.kr/goun/", "https://lib.sejong.go.kr/"),
+    ("https://lib.sejong.go.kr/nasung", "https://lib.sejong.go.kr/"),
+    ("https://lib.sejong.go.kr", "https://lib.sejong.go.kr"),
+    ("https://lib.gwe.go.kr/tblib", "https://lib.gwe.go.kr/tblib/main"),
+    ("https://www.l4d.or.kr/hgh", "https://www.l4d.or.kr/intro/index.do"),
+    ("https://www.l4d.or.kr/info/index.do", "https://www.l4d.or.kr/intro/index.do"),
+    ("http://library.geumjeong.go.kr/", "https://library.geumjeong.go.kr/index.geumj"),
 ])
 def test_fix_homepage(raw, fixed):
     assert fix_homepage(raw) == fixed

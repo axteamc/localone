@@ -23,6 +23,15 @@ PATH_EXACT = {
         f"www.gblib.or.kr/{n}": "https://www.gblib.or.kr/"
         for n in ("gangbuk", "youth", "mia", "kids", "solsem", "songjung", "suyu")
     },
+    **{  # 세종 동 도서관 14곳: 옛 `/<동이름>` 404 → 시립도서관 메인
+        f"lib.sejong.go.kr/{n}": "https://lib.sejong.go.kr/"
+        for n in ("areum", "bangok", "boram", "daepyung", "dajeong", "dodam", "goun",
+                  "gounsouth", "haemil", "hansol", "jongchon", "nasung", "saerom", "sodam")
+    },
+    "lib.gwe.go.kr/tblib": "https://lib.gwe.go.kr/tblib/main",  # 태백교육도서관
+    "www.l4d.or.kr/info/index.do": "https://www.l4d.or.kr/intro/index.do",  # 동대문구정보화·휘경행복
+    "www.l4d.or.kr/hgh": "https://www.l4d.or.kr/intro/index.do",
+    "library.geumjeong.go.kr": "https://library.geumjeong.go.kr/index.geumj",  # 부산 금정
     "lib.gunsan.go.kr/index.gunsan": "https://lib.gunsan.go.kr/web/menu/10003/program/30001/searchSimple.do",  # 군산 2곳(400)
     "lib.paju.go.kr": "https://lib.paju.go.kr/intro/index.do",  # 파주 작은도서관 3곳(루트가 인트로)
 }
