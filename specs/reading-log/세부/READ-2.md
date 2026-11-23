@@ -114,6 +114,9 @@
 - [Claude가 정함] 도서관 줄 표지 폭: (앱 폭 − 16 − 간격 3개) ÷ 3.1(다음 표지 약 10%), 72~140으로 묶음. 넓은 웹은 앱 칼럼 480 기준 — `ReadingLogScreen.tsx:279-281`
 - [Claude가 정함] 쓰기·지우기 뒤 탭으로 돌아오면(화면 focus) #46과 열린 도서관 줄을 다시 받음 — `useReadingLogs.ts:134-142`
 - [처리 못 함] 이 PC에서 전체 jest 중 `library-visit/__tests__/home-list.test.tsx` "no hardcoded colors"가 `home-facade.test.tsx`의 색 코드 때문에 실패 — 이 브랜치가 건드리지 않은 파일이고 main에서도 같음. 담당 밖이라 고치지 않음
+- [구현 중 변경] 홈 칸이 `fetchReadingLogs`를 `library-visit/deps.ts`에서 다시 내보내 씀(P2 파일 목록 밖 한 줄) — 홈 시험 5개가 로그인 모듈을 대역으로 바꾸고 `deps`째 바꿔 끼우는 구조라, `reading-log/api`를 바로 읽으면 로그인 저장소(AsyncStorage)·로그아웃 정리 등록 때문에 기존 홈 시험이 깨짐. deps가 "홈이 쓰는 바깥 모듈 한곳 모음"이라 같은 규칙을 따름 — `mobile/src/features/library-visit/deps.ts:22-23`
+- [Claude가 정함] 홈 칸은 로그인했을 때만 안쪽 부품을 그림(계정마다 key로 새로 그림) — 비로그인이면 묻지도 않고, 계정이 바뀌면 앞 요청을 끊음. `home-news` 시험이 마지막 focus 콜백을 홈 것으로 잡는 구조와도 부딪히지 않음 — `RecentReadingRow.tsx:16-22`
+- [Claude가 정함] 홈 칸 표지 아래 제목 두 줄·웹 좌우 화살표 — 인기 도서 줄과 같은 모양 — `RecentReadingRow.tsx:45-70`
 - [범위 밖 요청] 구현 화면 확인 중(READ-2-P1) "최신순이랑 오래된순 내가 설정한순서 이건 못보는거야?" — 결정 2 ⚙ 순서 메뉴는 별도 계약 승인 대기라 그리지 않고 최근 읽은 순만 유지 — `../team/contracts/reading-log.md` READ-2 계약 머리말, [#283](이슈)
 
 ## 다음에 할 것
@@ -128,7 +131,7 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 (대기/진행/검토요청/완료) | 구현 근거 (`파일:줄`) 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| READ-2-P1 통계 서버·탭 거르기 | `feat/reading-log-READ-2` | (Draft) | 완료 | #46 `server/app/routers/reading_logs.py:182-233`, 앱 `mobile/src/features/reading-log/api.ts:91-102`, `useReadingLogs.ts:16-213`, `ReadingLogScreen.tsx:56-70,96-206,329-405`. 서버 `test_reading_stats.py` 6 passed(전체 704 passed), 앱 `reading-filter.test.tsx` 11 passed(reading-log 38 passed). 가드 제거 확인 서버 6·앱 9건 | 다음: READ-2-P2 |
-| READ-2-P2 홈 "내 최근 독서 기록" | 같은 브랜치 | - | 대기 | - | - |
+| READ-2-P1 통계 서버·탭 거르기 | `feat/reading-log-READ-2` | #287 | 완료 | #46 `server/app/routers/reading_logs.py:182-233`, 앱 `mobile/src/features/reading-log/api.ts:91-102`, `useReadingLogs.ts:16-213`, `ReadingLogScreen.tsx:56-70,96-206,329-405`. 서버 `test_reading_stats.py` 6 passed(전체 704 passed), 앱 `reading-filter.test.tsx` 11 passed(reading-log 38 passed). 가드 제거 확인 서버 6·앱 9건. CI ok 45140116813 | 다음: READ-2-P2 |
+| READ-2-P2 홈 "내 최근 독서 기록" | 같은 브랜치 | #287 | 완료 | `mobile/src/features/library-visit/RecentReadingRow.tsx:16-115`, `HomeSheet.tsx:72-76,122`, `deps.ts:23`. `recent-reading.test.tsx` 6 passed(앱 전체 755/756, 실패 1은 기존 home-list 색 코드). 가드 제거 확인 7건 | - |
 
-- **다음 세션 이어하기 메모**: #277·#282 머지와 team 발행 본문 SHA를 확인하고 READ-2-P1부터 착수한다. 결정 2의 순서 메뉴·자리 옮기기는 별도 계약 승인 대기다.
+- **다음 세션 이어하기 메모**: P1·P2 구현 완료, PR #287 검토 대기. 결정 2의 순서 메뉴·자리 옮기기는 별도 계약 승인 대기다.
