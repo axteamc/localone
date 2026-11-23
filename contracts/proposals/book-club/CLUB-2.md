@@ -1,0 +1,688 @@
+# 작은 모임 (`book-club`) 기술 계약서
+
+> 이 파일은 C의 작은 모임(`book-club`) 계약서다(2026-11-19 D 재배분 확정: B → C). Step은 **CLUB-1**(모임 만들기·참가·참가 취소·댓글·일정 확정/변경·모임 취소, 방문 페이지 피드의 모임 카드)과 **CLUB-2**(종료 안내·모임 기록/후기·다음 모임·출석 확인과 불참 제한·댓글 운영 요청·알림함 화면)다.
+> 상태: **1차 계약서 — D 기준선(M2 밑그림, 2026-11-19, 검토 전·구현 착수 불가).** D가 문서화된 결정(02 CLUB-01·CLUB-02·AC-CLUB·AC-MOD, 04 "모임"·"모임 참가"·"모임 댓글"·"모임 댓글 운영 요청"·"참가 제한"·"모임 후기"·"알림함 항목"·R17·R18·R19, 코드 레포 `개발산출물/명세/SNS_검색_프로필_상세결정.md` C-46 A1~A7·B1~B6·C1~C6·D6, C-47 G1~G3, `SNS_검색_프로필_개정.md` §7)으로 경로·인증·필드·테이블·오류 코드·담당 파일·파트를 먼저 고정(**잠금 칸**)하고, 사용자가 아직 정하지 않은 것(출석의 뜻, 불참 판정, 패널티 세는 법·범위, 댓글 패널티 기간)과 화면 배치·문구는 **빈 칸**으로 열어 두었다. **C-46 §7·C-47 G2 아래 "임의로 정하지 않는다"인 칸은 세부 기획에서 사용자 결정을 받아야 채울 수 있다**(`D 추천(참고)`도 두지 않았다).
+> 담당: `기능_배정.md` "C (M2, 2026-11-19 D 재배분 확정) 작은 모임". 모임 카드는 방문 페이지 피드(`local-feed.md` VISIT-3 `#32`)에 섞여 나온다. 알림함 서버는 [`core.md`](core.md) M2-0-P1, 관리자 승인·운영 화면은 M2-0-P2, 이용자 신고는 [`local-feed.md`](local-feed.md) LOCAL-4다.
+
+## Pre-flight 5대 관문 (코드 레포 `main` `761b4a1` · `team` `b4220e9`)
+
+| 관문 | 확인한 것 (`file:line`) | 이 계약서의 처리 (잠금 조건) | 미해결 / 후속 |
+| :--- | :--- | :--- | :--- |
+| ① 격리·권한·호환 | `server/app/auth.py:132,180,207`, `server/app/common.py:12-23` | 모임·댓글 읽기는 선택 인증(공개). 만들기·참가·댓글·기록은 필수 인증. 만든 사람만 하는 일(일정 바꾸기·마감·취소·출석 확인·운영 요청)은 서버가 `clubs.host_id = 토큰 user.id`로 확인, 아니면 `403 NOT_HOST`. 남의 기록·후기는 `404 NOT_FOUND`. 참가자 명단은 닉네임만, `user_id` 없음 | 없음 |
+| ② 동시성·트랜잭션·외부 I/O | `server/app/db.py:16`, `server/app/common.py:26-35`(`now_kst`·`today_kst`) | 참가는 `SELECT … FOR UPDATE`로 모임 행을 잠그고 정원·마감·제한을 본 뒤 넣는다(정원 초과 경합 방지). 참가·만들기·댓글은 멱등. 시각 비교는 서버 `now_kst()`. 서버 작업자가 없으므로(C-11) **시각이 지나서 생기는 안내(종료)는 알림함을 읽을 때 만든다**(M2-0-P1 규칙) | 없음 |
+| ③ 전제 실재성 | `clubs`·`club_participations`·`club_comments`·`club_comment_requests`·`participation_restrictions`는 **D가 `0012_m2_targets.py`로 먼저 만듦**(2026-11-19, core M2-0-P2) | 이 파일 C5 SQL 그대로 만들어 둠. C는 열린 제약 ALTER와 `club_reviews`만 만든다. 알림함 표·쓰기 함수는 D M2-0-P1(머지 완료), 관리자 승인은 D M2-0-P2(머지 완료) | 없음(M2-0-P1~P4 머지 완료) |
+| ④ 담당·공유 파일 | `server/app/main.py`(블록 표식), `mobile/src/features/local-feed/FeedItemCard.tsx`(VISIT-3) | `main.py`는 새 `# ── [book-club-C] ──` 블록. 방문 페이지(`local-feed`: `feed.py` `#32` `club` 종류, `FeedItemCard.tsx` `kind="club"`, `VisitScreen.tsx` `+` 분기)는 B 소유이므로 `VISIT-3` 미머지 시 C는 독립 화면·`ClubCard.tsx`를 먼저 만들고 `TODO(연결): B`로 둔 뒤 B와 이슈로 연결한다 | B `VISIT-3` 연결 |
+| ⑤ 승인·확장 | 계획 §2 CLUB 2 Step, 02 CLUB-01·02 | 새 표 6개·경로 `#50`~`#68`은 M2 확장으로 확정해 05·06에 반영(2026-11-19 D 확정). CLUB-2는 2 Step 구조(4파트 `P1`~`P4`)를 유지하되, 세부 기획에서 `K2-O1`~`K2-O5`가 과도하게 커지면 그때 `CLUB-3` 분할을 결정한다 | `K2-O1`~`K2-O5` |
+
+---
+
+## CLUB-1 모임 만들기·참가·댓글·일정 확정/변경·취소
+
+- **담당 역할**: C (서버 파트 포함, 2026-11-19 D 재배분) · **대상 브랜치**: `main`
+- **기준 명세서**: `specs/book-club/명세서.md`, `specs/book-club/세부/CLUB-1.md`, 시안 `specs/book-club/세부/CLUB-1_시안.html` (기획 때 작성)
+- **판**: 1차 D 확정판(2026-11-19, PR #234·#237 승인 반영)
+- **선행 설계**: 02 CLUB-01·AC-CLUB, C-46 A1~A6·D6, C-41~C-43, 04 "모임"(시작 시각은 시작 후 변경 금지, 장소·종료 시각은 수정 가능)·"모임 참가"·"모임 댓글", `DESIGN.md` 모임 카드(곡률 18·아치, 태그는 반투명 알약, 행동은 `"들어가기 →"`)
+- **작성자**: D (시니어)
+- **상태**: **발행 — 구현 착수 가능**(`3_구현.md`). 파트 머리말 4칸의 계약서 커밋 SHA를 확인한 뒤 시작한다. (선행 VISIT-3 PR #231 머지 완료)
+- **발행 본문 SHA**: `3a52e16fff924afbc3f1b11dfb176a2b83cb7b3a`
+
+
+
+### 계약
+
+#### C1. 결정
+
+| # | 결정 | 상태 | 근거 |
+| :--- | :--- | :--- | :--- |
+| K1-1 | 모임은 **도서관 하나에 속한 한 번 만나는 약속(회차)**이다. 만들기는 로그인한 누구나. 이름 필수, 소개·책·장소·시작/종료 시각·정원은 선택 | 확정 | 02 CLUB-01, 04 "모임" |
+| K1-2 | 시간·장소가 **미정이어도 게시하고 참가할 수 있다.** 미정이면 카드에 미정이라고 보인다 | 확정 | C-46 A1·D6 |
+| K1-3 | 참가는 **승인 없이 바로 등록**(`모임에 참가`) | 확정 | C-41 |
+| K1-4 | 참가 취소: 시작 시각이 **미정이면 언제든**, 확정 뒤에는 **시작 전까지만** | 확정 | C-42, C-46 A2 |
+| K1-5 | 만든 사람은 참가자가 있어도 시간·장소를 바꿀 수 있다(재승인 없음). **시작 뒤에는 시작 시각을 바꿀 수 없고** 장소·종료 시각은 바꿀 수 있다 | 확정 | C-46 A3·A4 |
+| K1-6 | 시간·장소가 **확정되거나 바뀌면 참가자에게 알림함 안내**(M2-0-P1 `add_inbox_items`, 종류 `club_confirmed`·`club_changed`) | 확정 | C-46 A1·A3·C5, C-47 G1 |
+| K1-7 | 정원은 선택, 없으면 제한 없음. **시작 시각에 자동 모집 마감**, 만든 사람이 일찍 마감할 수 있다. 정원이 차면 참가 불가 | 확정 | C-46 A5 |
+| K1-8 | 만든 사람은 **종료 전에 모임을 취소**할 수 있다. 이유 입력 필수, 참가자에게 안내(`club_canceled`), 취소 기록은 남는다(카드는 "취소됨") | 확정 | C-46 A6 |
+| K1-9 | 댓글은 **참가 여부와 관계없이** 로그인한 누구나. 댓글로 시간·장소를 의논한다 | 확정 | C-43, 04 "모임 댓글" |
+| K1-10 | 참가 제한 중인 사람은 참가·댓글을 못 한다(제한 표는 CLUB-2가 만든다. CLUB-1은 제한 확인 함수 자리만 둔다 → C7) | 확정(효과) / 확인 자리 기본값(Claude) | C-46 B2·B4 |
+| K1-11 | 모임 카드는 방문 페이지 피드에 섞여 나온다(`#32` `kind="club"`). 이름·일정·미정 여부 같은 식별 정보를 보인다. 누르면 모임 화면 `/clubs/[clubId]` | 확정 | C-46 D6, 02 CLUB-01 |
+| K1-12 | 일정 변경·모임 취소는 **불참 제재와 다르다.** 취소된 모임·바뀐 일정 때문에 패널티가 생기지 않는다 | 확정 | 04 R17 |
+
+##### 열린 칸 (C가 기획·시안 작성 후 `2_계약_보완.md`로 채울 결정 — 빈 칸만 채우고 행 추가 가능)
+
+| # | 열린 칸 | D 추천(참고) | 채택 결정 | 상태 | 근거(명세 ID) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| K1-O1 | 모임 만드는 입구(방문 페이지 `+` 고르기에 "모임" / 다른 자리) | `+` → 게시물/방명록/모임 고르기 | 방문 페이지 `+` → 고르기 창(B VISIT-3 결정 2의 "게시물 올리기 / 방명록 남기기")에 **"모임 만들기"** 한 줄을 더한다(제목 + 작은 설명 "같은 도서관 이웃과 만날 약속을 잡아요"). 고르면 지금 방문 중인 도서관 id를 넘겨 `/clubs/new`(`ClubEditor`)를 연다. 로그인 확인은 고른 뒤(비로그인이면 로그인 창, VISIT-3와 같은 순서) | 확인(사용자, 큰 틀 결정 1) | 큰 틀 E1·결정 1, CLUB-1 명세 1절 |
+| K1-O2 | 만들기 화면 칸 순서·필수 표시 | 이름 → 책 → 일정(미정 가능) → 장소 → 정원 → 소개 | **이름·날짜만 먼저 보이고 나머지 접힘(D 시안 확인 후보 C).** 처음에는 이름(필수) → 날짜·시각(선택, 오른쪽 "미정" 스위치 켜면 "날짜 미정 — 댓글로 정해요", `starts_at`·`ends_at`을 `null`로 보냄)만 보이고, **"+ 장소·책·정원·소개 더 쓰기"**를 누르면 장소 → 책(`searchBooks`로 고름, `isbn13`) → 정원 → 소개 4칸이 아래에 펼쳐진다. 머리는 "✕ · 모임 만들기 · 올리기"(P-03), 이름이 비면 "올리기" 흐림. 글자 수 칸 아래 오른쪽 `n/상한`. 올리면 방문 페이지로 돌아가 피드 맨 위에 새 카드. 만든 사람의 "일정·장소 바꾸기"도 같은 화면(값 채움, 머리 "모임 고치기 · 저장", 보낸 칸만 #52) | 확정(D 시안 확인) — 고치기 화면 재사용은 기본값(Claude) | CLUB-1 결정 2 |
+| K1-O3 | 이름·소개·장소·댓글·취소 사유 길이 상한 | 이름 40 · 소개 500 · 장소 100 · 댓글 300 · 사유 200 | 이름 1~40 · 소개 0~500 · 장소 0~100 · 댓글 1~300 · 취소 사유 1~200(앞뒤 공백을 뺀 글자 수). 넘거나 비면 `422`, `detail` = 필드명. 앱은 칸 아래 `n/상한`, 넘으면 "40자까지 쓸 수 있어요"처럼 칸 아래 안내 | 기본값(Claude) | CLUB-1 명세 0절 기본값 |
+| K1-O4 | 모임 화면 배치(정보·참가 버튼·참가자 명단·댓글) | 위 정보 → 참가 버튼 → 명단 닉네임 → 댓글 | 머리 "‹ · 모임"(만든 사람에게만 오른쪽 ⋯: "일정·장소 바꾸기" / "모집 마감" / "모임 취소", P-11) → **약속 정보 카드**(책 표지·모임 이름·"M.D 요일 오후 h:mm ~ h:mm"·장소·"n/정원명 · 만든 사람 닉네임", 곡률 `radii.infoCard`) → 바로 아래 **주 버튼**(무광 판, "모임에 참가" / 참가 중이면 "참가 취소" / 상태 문구) → "참가자 n" 닉네임 알약(내 것은 "나") → "댓글 n" 목록(오래된 순, #57) → 화면 아래 고정 댓글 칸. 미정은 "날짜 미정 · 댓글로 정해요" / "장소 미정". 만든 사람은 참가자 수에 세지 않는다 | 확인(사용자, 큰 틀 결정 2) / 세부 배치 기본값(Claude) | 큰 틀 E2·결정 2, CLUB-1 명세 0절 |
+| K1-O5 | 모임 카드 모양(아치 18, 태그 알약, `"들어가기 →"`) 세부 | `DESIGN.md` 그대로 | 피드 2열의 **한 칸**(P-30). 곡률 위 `radii.clubCardTop`(70)·아래 `radii.clubCardBottom`(18), 바탕 `colors.fill2`, 맨 위 "모임" 반투명 알약(`radii.pill`) → **날짜·요일을 제일 크게**(24, "11.28 토") → 그 아래 "오후 2:00 · 장소" 한 줄(14, 장소 `null`이면 "장소 미정") → 모임 이름 → "n/정원명 참가"(정원 `null`이면 "n명 참가") → 굵은 "들어가기 →". 미정이면 날짜 자리에 "날짜 미정", 아래 "댓글로 정해요". 책 이름은 카드에 두지 않는다(모임 화면에서 보임). `status`가 `closed`·`canceled`·`ended`면 날짜 아래 "모집 마감"·"취소됨"·"끝난 모임". 카드 전체를 눌러도 모임 화면 | 확인(사용자) | CLUB-1 결정 1 |
+| K1-O6 | 시작 시각을 바꿀 때 기존 참가자의 취소 기회(C-46 A 후속 "시작 시각이 변경되었을 때 기존 참가자의 취소 기회가 사라지는 예외는 후속 명세에서 명시") | | **규칙 그대로 — 바뀐 시작 시각 전까지만 참가 취소 가능(D 시안 확인 후보 A, K1-4 그대로).** 안내만 알림함에 가고 모임 화면 시각 옆에 `"바뀜"` 표시, 다른 모임과 똑같이 바뀐 `starts_at` 전까지만 `"참가 취소"`를 누를 수 있고 시작 뒤에는 `"시작한 모임이라 취소할 수 없어요"`(`409 CLUB_STARTED`). 별도 예외 저장 칸 없음 | 확정(D 시안 확인) | CLUB-1 결정 3 |
+| K1-O7 | 참가 취소·모임 취소 확인 방식 | 확인창 | 확인창 두 버튼(P-52). 참가 취소 "참가를 취소할까요?" [그대로 두기][참가 취소] · 모집 마감 "모집을 마감할까요? 더는 참가할 수 없어요" [닫기][마감] · 모임 취소는 아래 창에 이유 칸(필수, 1~200) + "모임을 취소할까요? 참가한 사람에게 안내가 가요" [닫기][모임 취소], 이유가 비면 "모임 취소" 흐림 | 기본값(Claude) | CLUB-1 명세 0절 기본값 |
+| K1-O8 | 내 댓글 지우기 허용 여부 | 허용(바로 지움) | 허용. 내 댓글(`mine=true`)에만 ⋯ → "지우기" → 확인창 "댓글을 지울까요?" [닫기][지우기] → 목록에서 사라짐(#59). 남의 댓글에는 ⋯를 그리지 않는다(신고 메뉴는 LOCAL-4가 붙임). 지우기 실패 "댓글을 지우지 못했어요. 다시 해 주세요"(댓글 유지) | 기본값(Claude) — D 추천 "바로 지움"에서 확인창으로 바꿈(VISIT-3 방명록 지우기와 같은 길) | CLUB-1 명세 0절 기본값 |
+
+#### C2. 엔드포인트 / 주요 함수
+
+| 메서드·경로 (`/api/v1`) | 인증 | 성공 상태 | 날짜 형식 | 목록 페이지·정렬·동률 | 연타·재시도 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `POST /libraries/{library_id}/clubs` (#50) | 필수 | `201` / 같은 `client_request_id` `200` | `starts_at`·`ends_at`: ISO 8601 `+09:00` | — | 멱등 |
+| `GET /clubs/{club_id}` (#51) | 선택 | `200` | 위와 같음 | — | N/A |
+| `PATCH /clubs/{club_id}` (#52, 만든 사람) | 필수 | `200` | 위와 같음 | — | 보낸 칸만 |
+| `POST /clubs/{club_id}/close` (#53, 만든 사람 조기 마감) | 필수 | `200`(이미 마감도 `200`) | — | — | 멱등 |
+| `POST /clubs/{club_id}/cancel` (#54, 만든 사람) | 필수 | `200`(이미 취소도 `200`) | — | — | 멱등 |
+| `PUT /clubs/{club_id}/participation` (#55 참가) | 필수 | `200` | — | — | 멱등(이미 참가면 `200` 그대로) |
+| `DELETE /clubs/{club_id}/participation` (#56 참가 취소) | 필수 | `200`(참가 안 했어도 `200`) | — | — | 멱등 |
+| `GET /clubs/{club_id}/comments?cursor=&limit=` (#57) | 선택 | `200` | `created_at` | `limit` 기본 30(1~50), `created_at ASC, id ASC`, 커서 두 값 | N/A |
+| `POST /clubs/{club_id}/comments` (#58) | 필수 | `201` / 같은 `client_request_id` `200` | — | — | 멱등 |
+| `DELETE /club-comments/{comment_id}` (#59, 작성자) | 필수 | `204` | — | — | 두 번째 `404` |
+| `GET /libraries/{library_id}/feed` (#32, VISIT-3) | 선택 | `200` | — | `kind="club"` 추가, 정렬 시각은 `clubs.created_at` | — |
+
+앱 (`mobile/src/features/book-club/`):
+
+- `api.ts`: `createClub(libraryId, input: ClubInput, clientRequestId)`, `fetchClub(clubId, signal?)`, `updateClub(clubId, patch)`, `closeClub(clubId)`, `cancelClub(clubId, reason: string)`, `joinClub(clubId)`, `leaveClub(clubId)`, `fetchClubComments(clubId, cursor, signal?)`, `postClubComment(clubId, body, clientRequestId)`, `deleteClubComment(commentId)`
+- 화면: `mobile/app/clubs/[clubId].tsx` → `ClubScreen`, `mobile/app/clubs/new.tsx` → `ClubEditor`
+- 카드: `ClubCard.tsx` `export function ClubCard(props: { club: ClubItem; width: number; onOpen(clubId: string): void }): JSX.Element` — `FeedItemCard`가 `kind="club"`일 때 부른다
+- 화면 문구: `ClubScreen.tsx` 안 `export const CLUB_TEXT` (C3 화면 문구 표의 값을 한곳에, 테스트가 같은 상수로 단언). 날짜 표시는 `ClubCard`·`ClubScreen`이 같은 함수 `formatClubWhen(startsAt: string | null, endsAt: string | null): { day: string; time: string } | null`(`ClubCard.tsx`에서 export, `null` = 미정)를 쓴다 — 새 파일 없음(K1-O4·K1-O5)
+
+#### C3. 요청·응답 필드와 화면 문구
+
+| 구분 | 필드/키 | 타입 | 필수 | null 허용 | 설명·고정 문구 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `Club` | `id` | `str (UUID)` | Y | N | |
+| `Club` | `library` | `{ id: int; name: str }` | Y | N | |
+| `Club` | `name` | `str` | Y | N | |
+| `Club` | `intro` | `str` | Y | Y | |
+| `Club` | `book` | core `Book` | Y | Y | |
+| `Club` | `place` | `str` | Y | Y | `null`이면 미정 |
+| `Club` | `starts_at`, `ends_at` | `str` | Y | Y | `null`이면 미정. `ends_at > starts_at` 아니면 `422`, `detail="ends_at"` |
+| `Club` | `capacity` | `int` | Y | Y | `null`이면 제한 없음. 1 이상 |
+| `Club` | `status` | `"open" \| "closed" \| "canceled" \| "ended"` | Y | N | `ended`는 저장하지 않고 `ends_at < now`로 계산 |
+| `Club` | `cancel_reason` | `str` | Y | Y | 취소일 때만 |
+| `Club` | `host_nickname` | `str` | Y | N | |
+| `Club` | `is_host` | `bool` | Y | N | 비로그인 `false` |
+| `Club` | `participant_count` | `int` | Y | N | |
+| `Club` | `participants[]` | `{ nickname: str; is_me: bool }[]` | Y | N | `user_id` 없음 |
+| `Club` | `my_participation` | `"none" \| "joined" \| "left"` | Y | N | 비로그인 `"none"` |
+| `Club` | `previous_club_id` | `str (UUID)` | Y | Y | CLUB-2 다음 모임 연결 |
+| `ClubItem` (피드 카드) | `id`, `library_id`, `name`, `starts_at`, `place`, `status`, `participant_count`, `capacity`, `published_at` | 위 타입 | Y | 위와 같음 | `published_at` = `created_at` |
+| 요청(#50) `ClubInput` | `name` | `str` | Y | N | 길이 K1-O3 |
+| 요청(#50) | `intro`, `isbn13`, `place`, `starts_at`, `ends_at`, `capacity` | 위 타입 | N | Y | |
+| 요청(#50) | `client_request_id` | `str (UUID)` | Y | N | |
+| 요청(#52) | `ClubInput` 칸 중 `name`·`intro`·`isbn13`·`place`·`starts_at`·`ends_at`·`capacity` | | N | Y | 시작 뒤 `starts_at` 바꾸면 `409 CLUB_STARTED` |
+| 요청(#54) | `reason` | `str` | Y | N | 비면 `422`, `detail="reason"` |
+| `ClubComment` | `id`, `body`, `author_nickname`, `created_at`, `mine` | `str`·`str`·`str`·`str`·`bool` | Y | N | `user_id` 없음 |
+| 화면 문구 | 참가 버튼 | — | — | — | `"모임에 참가"` |
+| 화면 문구 | 참가 취소 버튼 | — | — | — | `"참가 취소"` (확인창 "참가를 취소할까요?" [그대로 두기][참가 취소], K1-O7) |
+| 화면 문구 | 미정 표시 | — | — | — | 카드 큰 글자 자리 `"날짜 미정"` + 아래 `"댓글로 정해요"`, 모임 화면 `"날짜 미정 · 댓글로 정해요"`, 장소 `"장소 미정"` (K1-2·K1-O5) |
+| 화면 문구 | 마감·정원 참·취소됨·종료 표시 | — | — | — | 카드: `"모집 마감"`·`"취소됨"`(K1-8)·`"끝난 모임"`. 모임 화면 버튼 자리(흐림): `"모집 마감"` / `"자리가 다 찼어요"` + 아래 `"누가 참가를 취소하면 다시 참가할 수 있어요."` / `"취소된 모임"` + `"취소 이유"` 블록에 `cancel_reason` / `"끝난 모임"`(기록·후기 쓰기는 CLUB-2). 시작 뒤 취소 불가: `"시작한 모임이라 취소할 수 없어요"` (명세 예외 #5·#6) |
+| 화면 문구 | 카드 행동 | — | — | — | `"들어가기 →"` |
+| 화면 문구 | 비로그인 참가·댓글 | — | — | — | 버튼 `"로그인하고 참가하기"`, 댓글 칸 `"로그인하면 댓글을 쓸 수 있어요"` → 누르면 아래 로그인 창 `"로그인이 필요해요"` / `"모임에 참가하거나 댓글을 쓰려면 로그인해 주세요. 보던 모임으로 다시 돌아와요."` [로그인][닫기] (명세 예외 #4) |
+| 화면 문구 | 참가 제한 중 안내 | — | — | — | 버튼 자리(흐림)·댓글 칸 `"지금은 모임에 참가할 수 없어요"`, `detail`이 있으면 뒤에 `" (M월 D일 HH:mm까지)"`. 사유 문구는 CLUB-2 K2-O5 (K1-10) |
+| 화면 문구 | 실패 (행 추가) | — | — | — | 참가 `"참가하지 못했어요. 인터넷 연결을 확인하고 다시 해 주세요."` + `"다시 해 보기"` / 댓글 `"댓글을 올리지 못했어요. 다시 해 주세요"`(쓰던 글 유지) / 만들기 `"모임을 올리지 못했어요. 다시 해 주세요"`(입력 유지) / 모임 화면 열기 `"모임을 불러오지 못했어요."` + `"다시 해 보기"` / 없는 모임 `"모임을 찾을 수 없어요"` (명세 예외 #1) |
+| 화면 문구 | 빈 상태 (행 추가) | — | — | — | 참가자 0 `"아직 참가한 사람이 없어요. 첫 번째로 참가해 보세요."` / 댓글 0 `"아직 댓글이 없어요. 시간·장소를 댓글로 의논해 보세요."` (명세 예외 #2) |
+| 화면 문구 | 진행 중 (행 추가) | — | — | — | 참가·취소 누른 뒤 응답 전 버튼 `"참가하는 중…"`·`"취소하는 중…"`(눌리지 않음, 화면 문자열의 말줄임표) (명세 예외 #3) |
+| 화면 문구 | 만들기·고치기 화면 (행 추가) | — | — | — | 머리 `"모임 만들기"`·`"올리기"` / `"모임 고치기"`·`"저장"`, 접힘 버튼 `"+ 장소·책·정원·소개 더 쓰기"`, 칸 이름 `"모임 이름 · 필수"`·`"날짜·시각 · 선택"`·`"장소 · 선택"`·`"함께 읽을 책 · 선택"`·`"정원 · 선택"`·`"소개 · 선택"`, 스위치 `"미정"`, 넘침 `"40자까지 쓸 수 있어요"`(칸마다 상한), 시각 순서 `"끝나는 시각은 시작보다 늦어야 해요"` (K1-O2·K1-O3) |
+| 화면 문구 | 확인창·만든 사람 메뉴 (행 추가) | — | — | — | ⋯ `"일정·장소 바꾸기"`·`"모집 마감"`·`"모임 취소"`, 확인창 문구는 K1-O7, 댓글 지우기는 K1-O8 |
+| 화면 문구 | `+` 고르기 창 한 줄 (행 추가) | — | — | — | `"모임 만들기"` / 작은 설명 `"같은 도서관 이웃과 만날 약속을 잡아요"` (K1-O1) |
+
+#### C4. 플랫폼 분기 표
+
+| 분기 지점 | 공통 처리 | iOS | Android | 웹 | 모아 둘 곳 | 확인 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 날짜·시각 고르기 | LOAN-2 `DueDateSheet`와 같은 방식(새 라이브러리 없음) + 시각 칸 | LOAN-2 C4 따름 | 같음 | 같음 | `ClubEditor.tsx` | 세 플랫폼 시각 입력 |
+
+#### C5. 테이블
+
+```sql
+-- 0012_m2_targets.py (D 선행 생성, core M2-0-P2). C는 NNNN_clubs_constraints.py에서 열린 제약만 ALTER
+CREATE TABLE clubs (
+  id                uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  library_id        bigint      NOT NULL REFERENCES libraries(id),
+  host_id           uuid        NOT NULL REFERENCES users(id),
+  name              text        NOT NULL,
+  intro             text        NULL,
+  book_id           bigint      NULL REFERENCES books(id),
+  place             text        NULL,
+  starts_at         timestamptz NULL,
+  ends_at           timestamptz NULL,
+  capacity          integer     NULL CHECK (capacity IS NULL OR capacity >= 1),
+  status            text        NOT NULL DEFAULT 'open' CHECK (status IN ('open','closed','canceled','hidden')),
+  cancel_reason     text        NULL,
+  previous_club_id  uuid        NULL REFERENCES clubs(id),
+  client_request_id uuid        NOT NULL,
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  updated_at        timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT clubs_time_order CHECK (starts_at IS NULL OR ends_at IS NULL OR ends_at > starts_at),
+  CONSTRAINT clubs_cancel_reason CHECK (status <> 'canceled' OR cancel_reason IS NOT NULL),
+  CONSTRAINT clubs_host_client_request_key UNIQUE (host_id, client_request_id)
+);
+CREATE INDEX ix_clubs_library_created ON clubs (library_id, created_at DESC, id DESC) WHERE status <> 'hidden';
+
+CREATE TABLE club_participations (
+  club_id     uuid        NOT NULL REFERENCES clubs(id),
+  user_id     uuid        NOT NULL REFERENCES users(id),
+  state       text        NOT NULL CHECK (state IN ('joined','left','removed')),   -- removed = 참가 제한으로 명단에서 뺌(CLUB-2)
+  joined_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (club_id, user_id)
+);
+
+CREATE TABLE club_comments (
+  id                uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  club_id           uuid        NOT NULL REFERENCES clubs(id),
+  user_id           uuid        NOT NULL REFERENCES users(id),
+  body              text        NOT NULL,
+  status            text        NOT NULL DEFAULT 'published' CHECK (status IN ('published','deleted','hidden')),
+  client_request_id uuid        NOT NULL,
+  created_at        timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT club_comments_user_client_request_key UNIQUE (user_id, client_request_id)
+);
+CREATE INDEX ix_club_comments_club ON club_comments (club_id, created_at, id) WHERE status = 'published';
+ALTER TABLE clubs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE club_participations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE club_comments ENABLE ROW LEVEL SECURITY;
+```
+
+| 열린 제약 | 컬럼 | 값 (B 채움) |
+| :--- | :--- | :--- |
+| 길이 CHECK | `clubs.name` | `CHECK (char_length(btrim(name)) BETWEEN 1 AND 40)` (K1-O3) |
+| 길이 CHECK | `clubs.intro` | `CHECK (intro IS NULL OR char_length(intro) <= 500)` (K1-O3) |
+| 길이 CHECK | `clubs.place` | `CHECK (place IS NULL OR char_length(place) <= 100)` (K1-O3) |
+| 길이 CHECK | `clubs.cancel_reason` | `CHECK (cancel_reason IS NULL OR char_length(btrim(cancel_reason)) BETWEEN 1 AND 200)` (K1-O3) |
+| 길이 CHECK | `club_comments.body` | `CHECK (char_length(btrim(body)) BETWEEN 1 AND 300)` (K1-O3) |
+
+- `ended`는 저장하지 않는다(`ends_at`과 서버 지금 시각으로 계산). `hidden`은 운영 숨김(M2-0-P2).
+- 탈퇴: 만든 모임 중 시작 전인 것은 `canceled`(사유 `"만든 사람이 탈퇴했어요"`), 참가는 `left`, 댓글은 `deleted`. D M2-0-P5.
+
+#### C6. 검증과 에러 처리
+
+| 명세서 예외 # | 발생 조건 | HTTP / `code` / `detail` | 화면에서 바뀌는 영역 | 유지되는 영역 | 기록 보장 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 끊김 | 만들기·참가·댓글 실패 | `ApiCallError` | 누른 버튼 아래 안내 + "다시 해 보기"(참가), 댓글 칸 위 안내(댓글), "올리기" 아래 안내(만들기) — C3 실패 문구 | 입력값 | 무변경 |
+| 빈 결과 | 댓글 0 / 참가자 0 | `200` 빈 목록 | 참가자·댓글 자리에 한 줄 안내(C3 빈 상태) | 약속 정보·참가 버튼·댓글 칸 | — |
+| 연타 | 참가·취소·만들기·댓글 두 번 | `200` 같은 결과 | 하나만 | — | 행 하나 |
+| 비로그인 | 참가·댓글·만들기 | 앱은 부르지 않음, 직접 `401` | 로그인 안내 | 모임 정보 | 행 없음 |
+| 만든 사람 아님 | 남이 #52~#54 | `403 NOT_HOST` | N/A: 버튼 없음 | 모임 화면 전체(⋯ 메뉴를 그리지 않음, `is_host=false`) | 무변경 |
+| 정원 참·마감·취소·종료 | 참가 | `409 CLUB_FULL` / `409 CLUB_CLOSED` | 참가 버튼 자리 안내 | 약속 정보·참가자·댓글(댓글 쓰기 가능) | 행 없음 |
+| 시작 뒤 취소 | 확정 모임 시작 뒤 참가 취소 | `409 CLUB_STARTED` | 안내 | 참가 상태·명단·버튼 자리 "시작한 모임이라 취소할 수 없어요" | 참가 그대로 |
+| 시작 뒤 시작 시각 바꾸기 | #52 | `409 CLUB_STARTED` | 안내 | 다른 칸 | 무변경 |
+| 참가 제한 중 | 참가·댓글 | `403 PARTICIPATION_RESTRICTED`, `detail` = 만료 시각(없으면 빈 문자열) | 제한 안내 | 약속 정보·참가자·댓글 읽기 | 행 없음 |
+| 없는 모임·숨김 | 없는 `club_id`·`hidden` 모임을 열거나 참가·댓글 | `404 NOT_FOUND` | 화면 전체 "모임을 찾을 수 없어요" + "‹" | N/A: 화면 전체 교체 | 무변경 |
+| 입력 오류 | 길이·시각 순서·정원 0 | `422` / 필드명 | 칸 아래 | 입력값 | 무변경 |
+| 정원 경합 | 마지막 한 자리에 둘이 동시에 | 한 명 `200`, 한 명 `409 CLUB_FULL` | 늦은 쪽: 버튼 자리 "자리가 다 찼어요" | 약속 정보·댓글 | 정원 넘지 않음 |
+| 남의 댓글 지우기 (행 추가, K1-O8) | 작성자가 아닌 사람이 #59 | `404 NOT_FOUND` | N/A: ⋯ 없음 | 댓글 목록 | 무변경 |
+| 늦은 응답 (행 추가) | 모임 A를 불러오는 중 모임 B로 이동 | — | B만 그림(A 응답 버림, `fetchClub` `signal`·`createLatestRunner`) | B 화면 | — |
+
+#### C7. 다른 기능과 닿는 곳과 `TODO(연결)` 가짜 값
+
+| 의존 대상 | 필요한 것 | 상대 머지 전 가짜 값 |
+| :--- | :--- | :--- |
+| D `core` M2-0-P1 | `add_inbox_items(conn, recipients: list[UUID], kind: str, target: dict) -> int` | `TODO(연결): D` — D가 `M2-0-P1`(`server/app/services/inbox.py`)을 CLUB-1 착수 전에 먼저 머지한다. 머지 전이면 시험에서 `add_inbox_items`를 호출 기록 가짜(monkeypatch, 받은 인자만 모으고 `len(recipients)` 반환)로 바꿔 확인한다. `skip`은 쓰지 않는다 |
+| B CLUB-2 | `is_restricted(conn, user_id, now) -> datetime \| None \| bool` | CLUB-1에서는 `server/app/routers/clubs.py`의 `def is_restricted(conn, user_id, now): return False` 한 줄 + `TODO(연결): CLUB-2`(CLUB-2가 본문을 채운다) |
+| B VISIT-3 | `#32`·`FeedItemCard` | VISIT-3 머지 뒤 시작 |
+| B LOCAL-4 | 모임·댓글 신고 메뉴 | LOCAL-4가 `ReportSheet`를 붙인다 |
+| C `book-search` | 책 고르기 `searchBooks` | 있음 |
+
+### 구현 계획
+
+#### P1. 확인한 기존 코드 전제
+
+| 참조 대상 | 실제 경로와 줄 | 심볼·시그니처 | 있음 / 앞으로 만듦 |
+| :--- | :--- | :--- | :--- |
+| 서울 시각 | `server/app/common.py:26,35` | `now_kst()`, `today_kst()` | 있음 |
+| 쓰기 잠금 | `server/app/auth.py:132` | `lock_active_user(conn, user_id)` | 있음 |
+| 날짜 고르기 | `mobile/src/features/loan-assistant/DueDateSheet.tsx` | — | 있음 |
+| 혼합 피드 | `#32`, `FeedItemCard.tsx` | VISIT-3 | 앞으로 만듦 |
+| 알림함 쓰기 | `server/app/services/inbox.py` | `add_inbox_items` | 앞으로 만듦(D M2-0-P1) |
+
+#### P2. 파트 분할과 담당 파일
+
+| 파트 | 브랜치 | 수정/생성 허용 파일(전수) | 완료 시 확인할 명세서 항목 |
+| :--- | :--- | :--- | :--- |
+| `CLUB-1-P1` 서버 | `feat/book-club-CLUB-1` | `server/migrations/versions/NNNN_clubs_constraints.py`(**표는 D가 먼저 만듦(`0012_m2_targets.py`, core M2-0-P2, 2026-11-19 D 결정) — C 마이그레이션은 아래 열린 제약 ALTER만**), `server/app/routers/clubs.py`, `server/app/routers/feed.py`(`#32`에 `club`만, B `VISIT-3` 미머지 시 `TODO(연결): B`), `server/app/main.py`(`[book-club-C]`), `server/tests/test_clubs.py`, `server/tests/test_club_participation.py` | K1-1~K1-10·K1-12, C6 |
+| `CLUB-1-P2` 모임 화면·만들기 | 같은 브랜치 | `mobile/app/clubs/[clubId].tsx`, `mobile/app/clubs/new.tsx`, `mobile/src/features/book-club/api.ts`, `ClubScreen.tsx`, `ClubEditor.tsx`, `mobile/src/features/book-club/__tests__/club.test.tsx` | K1-1~K1-9, K1-O2~K1-O4·K1-O6~K1-O8 |
+| `CLUB-1-P3` 피드 카드·입구 | 같은 브랜치 | `mobile/src/features/book-club/ClubCard.tsx`, `mobile/src/features/local-feed/FeedItemCard.tsx`(`club` 분기, B `VISIT-3` 미머지 시 `TODO(연결): B`), `mobile/src/features/local-feed/VisitScreen.tsx`(`+` 고르기에 모임, B와 협의), `mobile/src/features/book-club/__tests__/club-card.test.tsx` | K1-11, K1-O1·K1-O5 |
+
+##### 파트 머리말 — CLUB-1-P1 · P2 · P3 (공통)
+
+| 칸 | 값 |
+| --- | --- |
+| 1. 태스크 ID | `CLUB-1-P1` / `CLUB-1-P2` / `CLUB-1-P3` |
+| 2. 담당 역할 | C |
+| 3. 기준선 버전 | M2 D 확정판(2026-11-19) |
+| 4. 계약서 커밋 | `3a52e16fff924afbc3f1b11dfb176a2b83cb7b3a` |
+| 5. 선행 태스크 | VISIT-3 머지 완료(PR #231, `7befd6d`), D M2-0-P1~P5 머지 완료 |
+| 6. 수정 허용 파일 | 위 표 |
+| 7. 금지된 결정 | 승인 단계 추가 금지(K1-3). 일정 변경·취소로 패널티 금지(K1-12). 서버 푸시·작업자 금지. 참가자 `user_id` 노출 금지 |
+| 8. 완료 조건 | 파트 표 항목 + P5 + 웹·Android |
+| 9. 검증 명령 | 서버: `uv run alembic upgrade head` → `uv run pytest`. 앱: `npx tsc --noEmit` → `npx jest --runInBand src/features/book-club src/features/local-feed` → `npx expo export --platform web` |
+| 10. 보고 형식 | `../prompts/3_구현.md` 5단계 |
+
+#### P3. 새 라이브러리
+
+| 쪽 | 패키지 | 용도 | 설정 |
+| --- | --- | --- | --- |
+| 서버·앱 | 없음 | — | — |
+
+#### P4. 핵심 흐름 골격
+
+```python
+# clubs.py — #55 참가 (정원 경합·제한·마감)
+async def join_club(club_id: UUID, user: CurrentUser = Depends(get_current_user)):
+    def tx(c):
+        lock_active_user(c, user.id)
+        club = c.execute(SELECT_CLUB_FOR_UPDATE, {"id": club_id}).first()     # FOR UPDATE: 정원 경합 막기
+        if not club or club.status == "hidden": raise ApiError(404, "NOT_FOUND", "...")
+        now = now_kst()
+        if club.status in ("closed", "canceled") or started(club, now) or ended(club, now):
+            raise ApiError(409, "CLUB_CLOSED", "...")                         # 시작 시각에 자동 마감 (K1-7)
+        until = is_restricted(c, user.id, now)                                # CLUB-2가 채움 (K1-10)
+        if until: raise ApiError(403, "PARTICIPATION_RESTRICTED", "...", iso_or_empty(until))
+        mine = select_participation(c, club_id, user.id)
+        if mine and mine.state == "joined": return club                       # 멱등
+        if mine and mine.state == "removed": raise ApiError(403, "PARTICIPATION_RESTRICTED", "...", "")
+        if club.capacity is not None and count_joined(c, club_id) >= club.capacity:
+            raise ApiError(409, "CLUB_FULL", "...")
+        upsert_participation(c, club_id, user.id, "joined")
+        return club
+    return club_view(await run_db(engine, tx), viewer=user)
+
+# #52 일정 바꾸기: 시작 뒤 starts_at 변경 → 409 CLUB_STARTED. 미정→확정이면 club_confirmed, 그 밖의 시간·장소 변경은 club_changed
+#      안내는 같은 트랜잭션 안에서 add_inbox_items(c, joined_user_ids, kind, {"club_id": ...}) (K1-6)
+# 열린 칸 K1-O6 (후보 A): 규칙 그대로 — 바뀐 시작 시각 전까지만 참가 취소 가능(K1-4 그대로, 별도 예외 없음)
+
+# #56 참가 취소
+async def leave_club(club_id: UUID, user: CurrentUser = Depends(get_current_user)):
+    def tx(c):
+        lock_active_user(c, user.id)
+        club = c.execute(SELECT_CLUB_FOR_UPDATE, {"id": club_id}).first()
+        if not club or club.status == "hidden": raise ApiError(404, "NOT_FOUND", "...")
+        mine = select_participation(c, club_id, user.id)
+        if not mine or mine.state != "joined": return club                      # 멱등: 참가 안 했어도 200
+        if club.starts_at is not None and now_kst() >= club.starts_at:         # 확정 뒤 시작했음 (K1-4·K1-O6)
+            raise ApiError(409, "CLUB_STARTED", "...")                         # 참가 그대로
+        upsert_participation(c, club_id, user.id, "left")                     # 불참 아님 (K1-12)
+        return club
+    return club_view(await run_db(engine, tx), viewer=user)
+# 응답 Club 필드는 그대로. 띠 표시는 앱이 my_participation="joined"이고 starts_at 변경 표시가 있을 때 — 표시용 필드도 D 판단(검토 메모)
+```
+
+```tsx
+// ClubScreen.tsx — 주 버튼 (K1-O4·K1-O7, 예외 #3·#4·#5)
+function MainButton({ club, signedIn, busy, onJoin, onLeave, onLogin }) {
+  if (!signedIn) return <Btn label={CLUB_TEXT.loginToJoin} onPress={onLogin} />;
+  if (club.status === "canceled") return <Btn label={CLUB_TEXT.canceled} disabled />;
+  if (club.status === "ended") return <Btn label={CLUB_TEXT.ended} disabled />;          // 기록·후기는 CLUB-2
+  if (club.my_participation === "joined")
+    return <Btn label={busy ? CLUB_TEXT.leaving : CLUB_TEXT.leave} disabled={busy} onPress={() => confirm(CLUB_TEXT.leaveConfirm, onLeave)} />;
+  if (club.status === "closed") return <Btn label={CLUB_TEXT.closed} disabled />;
+  if (club.capacity !== null && club.participant_count >= club.capacity) return <Btn label={CLUB_TEXT.full} disabled />;
+  return <Btn label={busy ? CLUB_TEXT.joining : CLUB_TEXT.join} disabled={busy} onPress={onJoin} />;  // 진행 중 연타 무시
+}
+// 409 CLUB_FULL/CLUB_CLOSED/CLUB_STARTED·403 PARTICIPATION_RESTRICTED → fetchClub으로 다시 그리고 버튼 자리 문구(C3)
+// ApiCallError → 버튼 아래 실패 문구 + "다시 해 보기", 약속 정보·명단·댓글은 그대로
+```
+
+#### P5. 필수 테스트
+
+| 파트 | 테스트 이름 | 준비 | 실행 | 기대 단언 | 잡아야 할 버그 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| CLUB-1-P1 | `join is immediate and idempotent` | 열린 모임 | `#55` 두 번 | `200` 두 번, 참가 행 1, `participant_count` 1 | K1-3·연타 |
+| CLUB-1-P1 | `capacity race lets only one in` | 정원 1, 동시 요청 2 | 두 스레드 `#55` | 하나 `200`, 하나 `409 CLUB_FULL`, 참가 1 | 정원 경합 |
+| CLUB-1-P1 | `leave allowed anytime while undecided and only before start when decided` | 미정 / 확정·시작 전 / 시작 뒤 | `#56` | `200` / `200` / `409 CLUB_STARTED` | K1-4 |
+| CLUB-1-P1 | `start time cannot change after start but place can` | 시작한 모임 | `#52` `starts_at` / `place` | `409 CLUB_STARTED` / `200` | K1-5 |
+| CLUB-1-P1 | `only host can edit close cancel` | 남의 토큰 | `#52`·`#53`·`#54` | `403 NOT_HOST`, 무변경 | 권한 |
+| CLUB-1-P1 | `confirm and change notify joined participants` | 참가 2명, `add_inbox_items` 기록 가짜 | 미정→확정, 장소 변경 | `club_confirmed` 2명, `club_changed` 2명, 떠난 사람 제외 | K1-6 |
+| CLUB-1-P1 | `cancel requires reason and keeps record` | — | 사유 없이 / 있게 | `422 reason` / `200` `status:"canceled"`, 카드 남음 | K1-8 |
+| CLUB-1-P1 | `participants expose nickname only` | — | `#51` | `user_id` 키 없음 | 식별자 노출 |
+| CLUB-1-P1 | `club writes require auth` | 비로그인 | `#50`·`#55`·`#58` | `401`, 행 0 | 익명 |
+| CLUB-1-P1 | `auto close at start time` | 시작 시각 지남 | `#55` | `409 CLUB_CLOSED` | K1-7 |
+| CLUB-1-P2 | `join button sends once` | 응답 지연 | 두 번 누름 | `joinClub` 1번 | 연타 |
+| CLUB-1-P2 | `undecided schedule shows undecided label` | `starts_at: null` | 렌더 | 미정 표시 | K1-2 |
+| CLUB-1-P3 | `club card appears in library feed` | `#32` `kind:"club"` | 렌더 | `ClubCard`, `"들어가기 →"`, 누르면 `/clubs/[clubId]` | K1-11 |
+| CLUB-1-P1 | `club text lengths are enforced with field detail` | — | `#50` 이름 41자·공백만 / 소개 501 / 장소 101, `#58` 301, `#54` 사유 201 | 각각 `422`, `detail`=`name`·`intro`·`place`·`body`·`reason`, 행 0·기존 값 그대로. 40·500·100·300·200은 `201`/`200` | K1-O3 (길이 검증이 빠지면 41자가 저장되어 실패) |
+| CLUB-1-P1 | `missing or hidden club is not found` | 없는 id / `hidden` 모임 | `#51`·`#55`·`#58` | `404 NOT_FOUND`, 참가·댓글 행 0 | 숨김 노출 |
+| CLUB-1-P1 | `create and comment are idempotent by client request id` | — | `#50`·`#58` 같은 `client_request_id` 두 번 | `201` 뒤 `200`, 같은 `id`, 행 1 | 연타·재전송 |
+| CLUB-1-P1 | `patch keeps unsent fields` | 이름·장소·시각 있는 모임 | `#52` `{place}`만 | 장소만 바뀌고 이름·시각·정원 그대로 | 부분 갱신 미전송 칸 보존 |
+| CLUB-1-P1 | `start time change still enforces leave before new starts_at` | 확정 모임, A 참가 → `#52` 시작 시각 변경, 새 시작 시각 전/후 | 시작 전·후 `#56` | 시작 전 `200` `left`, 새 시작 시각 지남 `409 CLUB_STARTED` | K1-O6 (규칙 그대로 — 시작 뒤 취소 가드 제거 시 `200`으로 실패) |
+| CLUB-1-P1 | `comment delete is author only` | A의 댓글 | B `#59` / A `#59` 두 번 | B `404`·댓글 남음, A `204` 뒤 `404`, 목록에서 빠짐 | K1-O8·타인 |
+| CLUB-1-P1 | `comments page by created_at then id` | 같은 시각 댓글 3, `limit=2` | `#57` 두 쪽 | 순서 `created_at ASC, id ASC`, 겹침·빠짐 없음 | 커서 동률 |
+| CLUB-1-P1 | `restricted user cannot join or comment` | `is_restricted` → 만료 시각(monkeypatch) | `#55`·`#58` | `403 PARTICIPATION_RESTRICTED`, `detail`=만료 ISO, 행 0 | K1-10 자리 |
+| CLUB-1-P2 | `editor shows name and schedule first and expands rest on demand` | 새 모임 | 렌더 후 "+ 장소·책·정원·소개 더 쓰기" 누름 | 처음엔 이름(필수)·날짜·시각만 보임, 누르면 장소 → 책 → 정원 → 소개 펼쳐짐, 이름 비면 "올리기" 비활성 | K1-O2 (접힘/펼침·필수 표시가 바뀌면 실패) |
+| CLUB-1-P2 | `undecided switch sends null schedule` | — | "미정" 켜고 올리기 | `createClub` 입력 `starts_at:null, ends_at:null`, 같은 `clientRequestId`로 재시도 | K1-2·K1-O2 |
+| CLUB-1-P2 | `create failure keeps input and retries with same request id` | 첫 `createClub` 실패 | 올리기 → 다시 | 실패 문구, 입력값 그대로, 두 호출 `clientRequestId` 같음 | 예외 #1 |
+| CLUB-1-P2 | `club screen order is info then main button then participants then comments` | 확정 모임 | 렌더 | 위에서부터 약속 정보 → "모임에 참가" → "참가자 n" → "댓글 n" | K1-O4 |
+| CLUB-1-P2 | `join failure shows retry and keeps screen` | `joinClub` 실패 | 누름 → 다시 해 보기 | 실패 문구·"다시 해 보기", 약속 정보·명단·댓글 그대로, 명단에 "나" 없음 | 예외 #1 |
+| CLUB-1-P2 | `empty participants and comments show guidance` | 참가 0·댓글 0 | 렌더 | C3 빈 상태 두 문구 | 예외 #2 |
+| CLUB-1-P2 | `signed out sees login prompt instead of joining` | 비로그인 | 버튼·댓글 칸 누름 | `joinClub`·`postClubComment` 0번, 로그인 창 문구, ⋯ 없음 | 예외 #4 |
+| CLUB-1-P2 | `full closed canceled states disable join with labels` | `capacity` 참 / `closed` / `canceled`(사유) | 렌더 | "자리가 다 찼어요"+안내 / "모집 마감" / "취소된 모임"+사유, 버튼 눌림 없음 | 예외 #5·#6 |
+| CLUB-1-P2 | `leave and cancel ask before acting` | 참가 중 / 만든 사람 | "참가 취소" / ⋯ "모임 취소" | 확인창 전 `leaveClub`·`cancelClub` 0번, 사유 비면 "모임 취소" 비활성 | K1-O7 |
+| CLUB-1-P2 | `only my comments have delete menu` | 내 댓글 1·남의 댓글 1 | 렌더·⋯ "지우기" | ⋯는 내 것만, 확인창 뒤 `deleteClubComment` 1번 | K1-O8 |
+| CLUB-1-P2 | `late club response is discarded` | A 불러오는 중 B로 이동 | A 응답 늦게 도착 | 화면에 B만 | 늦은 응답 |
+| CLUB-1-P3 | `club card shows big date first then time place name count` | 확정 모임 | 렌더 | 첫 글자 줄이 "11.28 토"(가장 큰 글자), 다음 "오후 2:00 · 장소", 이름, "n/정원명 참가", 책 이름 없음 | K1-O5 (결정 1 순서가 바뀌면 실패) |
+| CLUB-1-P3 | `undecided and closed cards show labels` | `starts_at:null` / `place:null` / `status` `closed`·`canceled`·`ended` | 렌더 | "날짜 미정"+"댓글로 정해요" / "장소 미정" / "모집 마감"·"취소됨"·"끝난 모임" | K1-2·K1-8·K1-O5 |
+| CLUB-1-P3 | `plus chooser includes club and opens editor for this library` | 방문 중 도서관 7, 로그인 | `+` → "모임 만들기" | `/clubs/new`에 도서관 7, 비로그인이면 로그인 창 먼저 | K1-O1 (B VISIT-3 고르기 창 머지 뒤) |
+
+## CLUB-2 종료 안내·모임 기록/후기·다음 모임·출석 확인과 불참 제한·댓글 운영 요청·알림함 화면
+
+- **담당 역할**: C (서버 파트 포함, 2026-11-19 D 재배분). 알림함 서버는 D M2-0-P1, 관리자 승인·제한 해제·재검토 처리는 D M2-0-P2 · **대상 브랜치**: `main`
+- **기준 명세서**: `specs/book-club/세부/CLUB-2.md`, 시안 `specs/book-club/세부/CLUB-2_시안.html` (기획 때 작성)
+- **판**: 1차 D 기준선(M2 밑그림, 2026-11-19)
+- **선행 설계**: 02 CLUB-02·AC-CLUB·AC-MOD, C-46 A7·B1~B6·C1~C6, C-47 G1~G3, 04 "모임 후기"·"참가 제한"·"모임 댓글 운영 요청"·"알림함 항목"·R17·R18·R19
+- **작성자**: D (시니어)
+- **상태**: **D 기준선 — 검토 전·구현 착수 불가.** 선행: CLUB-1 머지 완료. **`K2-O1`~`K2-O5`는 C-77(2026-11-23)로 사용자 결정 확정** — C는 남은 열린 칸(`K2-O6`~`K2-O10`, 화면 배치·문구)과 시안을 기획·보완한다.
+- **발행 본문 SHA**: 
+
+
+
+### 계약
+
+#### C1. 결정
+
+| # | 결정 | 상태 | 근거 |
+| :--- | :--- | :--- | :--- |
+| K2-1 | 등록된 **종료 시각이 지나면** 만든 사람과 참가자 모두에게 종료 안내(`club_ended`)가 알림함에 생긴다. 서버 작업자가 없으므로 **알림함을 읽을 때** 지난 종료를 찾아 만든다(M2-0-P1 규칙, 같은 안내는 한 번) | 확정(대상) / 만드는 시점 기본값(Claude) | 02 CLUB-02, C-11, C-46 C5 |
+| K2-2 | 종료 안내는 기록·후기 쓰기를 유도한다. **다음 모임 만들기 제안은 만든 사람에게만**, 다른 참가자는 기록 화면의 별도 버튼으로 다음 모임을 만들 수 있다 | 확정 | C-39 |
+| K2-3 | **모임 기록**: 날짜·장소·책·소개·본인 참가/참석 여부·후기. 후기는 **본인 비공개가 기본**이고, 원하면 공개 게시물 한 건으로 올린다. 올린 게시물과 원본 후기는 **따로 고친다** | 확정 | C-46 C1·C6 |
+| K2-4 | **다음 모임**: 이름·소개·책·도서관을 복사, 장소는 이전 값으로 채우되 고칠 수 있고, 날짜·시간은 새로 고른다. `previous_club_id`로 이어진다. 여러 참가자가 각자 만들 수 있고 **이미 만들어진 다음 모임을 먼저 보여 준다** | 확정 | C-46 C2·C3 |
+| K2-5 | 다음 모임이 등록되면 **이전 회차 종료 때 참가자로 남아 있던 사람 중 취소·참가 제한된 사람을 뺀 사람**에게 안내(`club_next`). **자동 참가하지 않는다** | 확정 | C-40, C-46 C4 |
+| K2-6 | 이전 회차 기록은 보존한다 | 확정 | 02 CLUB-02 |
+| K2-7 | **출석**: 참가 신청 명단 기준 **기본 전체 출석**으로 두고 **만든 사람이 불참자만 선택 확인**한다(참가자 본인 참석 버튼·명단 외 현장 참석자 추가 없음, C-77). 참가 신청·실제 참석·불참 판정은 서로 다른 상태이며, 시각 도달만으로 불참을 자동 확정하거나 패널티를 자동 부과하지 않는다 | 확정 (C-77) | 04 R17, C-46 A7, C-77 |
+| K2-8 | **불참 패널티 단계**: **최근 6개월(180일) 이내 누적** 불참 1회 **3일**, 2회 **7일**, 3회 **30일**, 4회 **영구 참가 불가**(운영자 해제로만 복구). 6개월이 지난 불참 건은 카운트에서 자동 제외한다 | 확정 (C-47 G2 · C-77) | C-47 G2, C-77 |
+| K2-9 | **댓글 운영**: 만든 사람이 댓글 처리를 **요청** → 관리자가 **댓글 삭제만 / 삭제와 참가 제한** 중 고른다. 제한 기간은 관리자가 **`1일 / 3일 / 7일 / 영구(모임 참가·댓글 영구 제한)`** 중 선택하고 사유를 직접 작성한다(강제 영구탈퇴·동일 이메일 재가입 방지는 후속 인증/운영 확장으로 분리, C-77). 승인 전 댓글은 그대로 보인다. 같은 요청은 한 번만. 제한 대상이 참가 중이면 명단에서 빼고(`removed`) 재참가를 막고 본인에게 사유·만료 시각을 안내. 본인은 재검토를 요청할 수 있고 **운영자만 해제**한다 | 확정 (C-46 · C-77) | C-46 B1·B2·B5·B6, C-77 |
+| K2-10 | 제한은 기간제(4회 불참·영구 댓글 제한은 영구)이고 **전체 모임의 참가와 댓글 작성**에 적용된다. 댓글 운영 사유 제한과 불참 사유 제한은 **사유를 구분해 기록**한다 | 확정 (C-46 · C-77) | 04 R18, C-46 B3·B4, C-77 |
+| K2-11 | **알림함 화면** `/inbox`: 모임 안내(확정·변경·취소·종료·다음 모임)와 운영 처리 안내를 모아 본다. 기기 알림을 거부해도 볼 수 있다. 서버 푸시·기기 구독은 만들지 않는다. 화면은 C가 이 Step에서 만들고, 내 정보 아이콘은 A MY-2, 서버는 D M2-0-P1 | 확정 (C-46 C5, C-47 G1, 2026-11-19 D) | C-46 C5, C-47 G1, 04 R19 |
+
+##### 열린 칸 (`K2-O1`~`K2-O5`는 C-77 사용자 결정 확정 — C는 `K2-O6`~`K2-O10`을 기획·시안 작성 후 채움)
+
+| # | 열린 칸 | D 추천(참고) | 채택 결정 | 상태 | 근거(명세 ID) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| K2-O1 | 출석의 뜻: 신청 없이 실제 참석한 사람 추가 / 신청 후 불참 표시 / 본인 체크를 만든 사람이 최종 확인 (C-46 §8-1) | (사용자 결정 필수) | **기본 전체 출석 + 만든 사람이 참가 신청 명단에서 불참자만 체크**로 통일. 참가자 본인 참석 체크 버튼 없음, 명단 외 현장 참석자 추가 없음(앱 정상 흐름 외 참석은 기록 미노출 감수) | 확정 (사용자, 2026-11-23) | C-77, `SNS_검색_프로필_상세결정.md` §10 |
+| K2-O2 | 불참 판정 조건: 만든 사람 확인만 / 관리자 확인도 거침, 일정 변경·모임 취소와 구별하는 방식 (C-46 §8-3, C-47 G3) | (사용자 결정 필수) | **만든 사람의 불참자 선택 확인(`#65`)으로 즉시 불참 확정 및 제한 적용**, 불참자가 불복(재검토 요청 `#67`) 시 **운영자가 확인·승인하여 해제**. 취소된 모임(`canceled`)은 `#65` 불가(`409 CLUB_CLOSED`)로 패널티 제외 | 확정 (사용자, 2026-11-23) | C-77, `SNS_검색_프로필_상세결정.md` §10 |
+| K2-O3 | 불참 횟수 세는 기준(누적 / 연속 / 기간이 지나면 초기화), 4회째 "참가 불가"의 기간과 해제 방법 (C-47 G2 아래) | (사용자 결정 필수) | **누적 기준**이되 장기 사용자 보호를 위해 **최근 6개월(180일) 이내 불참만 카운트**(6개월 경과 건은 자동 제외, 취소·운영자 해제된 제한 제외). 1회 3일 · 2회 7일 · 3회 30일 · **4회 영구(`ends_at = NULL`, 운영자 해제로만 복구)** | 확정 (사용자, 2026-11-23) | C-77, `SNS_검색_프로필_상세결정.md` §10 |
+| K2-O4 | 제한 범위: 모든 모임 / 해당 모임(연속 회차)만, 불참 제한에 댓글 제한 포함 여부 (C-46 B3·B4, C-47 G2 아래) | (사용자 결정 필수) | **전체 모임 적용**, 불참 제한 기간에도 **참가 + 댓글 작성 모두 제한** | 확정 (사용자, 2026-11-23) | C-77, `SNS_검색_프로필_상세결정.md` §10 |
+| K2-O5 | 댓글 운영 사유 제한의 기간(B3), 본인에게 보이는 사유·만료 시각 문구 (C-46 §8-2) | (사용자 결정 필수) | 관리자가 **`1일 / 3일 / 7일 / 영구(모임 참가·댓글 영구 제한, ends_at = NULL)`** 중 선택하고, 본인에게 보이는 **사유는 관리자가 직접 작성**(만료 시각과 함께 표시, 영구면 영구 제한 안내). 강제 영구탈퇴·동일 이메일 재가입 방지는 후속(인증/운영 확장)으로 분리 | 확정 (사용자, 2026-11-23) | C-77, `SNS_검색_프로필_상세결정.md` §10 |
+| K2-O6 | 기록 화면 배치(종료 안내 → 기록 → 후기 → 다음 모임) | 기록 위, 후기 칸, 맨 아래 다음 모임 | 머리 "‹ · 모임 기록" → **맨 위 기록 카드**(책 표지·모임 이름·"M.D 요일 오후 h:mm ~ h:mm · 끝난 모임"·장소·"참가 n명"·내 상태 "참가 신청함 / 불참으로 기록됨", 곡률 `radii.infoCard`) → **내 후기 칸**("내 후기 · 나만 보기", 안내 "오늘 모임 어땠어요? 나만 볼 수 있어요", 2000자, "저장" → 저장 뒤 "게시물로 올리기", 올린 뒤 "게시물로 올렸어요 · 보러 가기") → **다음 모임**(이미 만든 다음 모임 카드들을 먼저 `#64`, 그 아래 만든 사람은 권하는 카드 "다음 모임 만들어 볼까요? / 이름·책·장소를 그대로 가져와요. 날짜만 새로 골라요." + 주 버튼, 참가자는 보조 버튼 "다음 모임 만들기") → **만든 사람만** 맨 아래 "출석 확인" 칸(K2-O1). 다음 모임 만들기는 CLUB-1 `ClubEditor`가 아닌 `NextClubSheet`(장소·날짜만, 나머지 복사 안내) | 확인(사용자) | CLUB-2 결정 1 |
+| K2-O7 | 후기 길이 상한 | 2000 | 1~2000자(앞뒤 공백을 뺀 글자 수), 칸 아래 `n/2000`, 넘으면 "2000자까지 쓸 수 있어요", 비면 저장 버튼 흐림 | 기본값(Claude) | CLUB-2 명세 0절 |
+| K2-O8 | 알림함 화면 배치·읽음 처리(열면 모두 읽음 / 하나씩)·보관 기간 | 열면 모두 읽음, 90일 | 머리 "‹ · 알림함" → **최신순 한 줄 목록**(`#48` `created_at DESC`, 30개씩 내리면 계속, P-31). 한 줄 = 안내 제목(`InboxItem.title`) + 아래 작은 글자 "언제"(방금·n분 전·n시간 전·어제·n일 전·YYYY.MM.DD). 화면을 열어 첫 묶음을 받으면 그때 `read=false`였던 안내 id를 기억해 그 줄에만 `fill1` 점을 그리고, 곧바로 `#49 {"all": true}`로 **모두 읽음**(아이콘 점은 `#47`로 꺼짐). 줄을 누르면 `target.club_id`의 모임 화면 `/clubs/[clubId]`(큰 틀 결정 4), `post_id`면 게시물 화면. **보관 90일**: 앱은 `created_at`이 90일 지난 줄을 그리지 않는다(서버 삭제는 core 판단, PR 검토 메모) | 확인(사용자) | CLUB-2 결정 6 |
+| K2-O9 | 반납 기기 예약 알림(LOAN-3)을 알림함에 함께 보일지 (C-47 G1 아래) | 넣지 않음(서버 저장 안 하는 로컬 알림) | 넣지 않음 | 기본값(Claude) | CLUB-2 명세 0절 |
+| K2-O10 | 종료 시각에 기기 알림(LOAN-3처럼 앱이 예약)도 줄지 | 주지 않음(알림함만) | 주지 않음(알림함 안내만, C4 N/A 그대로) | 기본값(Claude) | CLUB-2 명세 0절, 큰 틀 E15 |
+
+#### C2. 엔드포인트 / 주요 함수
+
+| 메서드·경로 (`/api/v1`) | 인증 | 성공 상태 | 날짜 형식 | 목록 | 연타·재시도 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `GET /clubs/{club_id}/record` (#60, 참가자·만든 사람 본인 기록) | 필수 | `200` | ISO 8601 `+09:00` | — | N/A |
+| `PUT /clubs/{club_id}/review` (#61 내 후기 쓰기·고치기) | 필수 | `200` | — | — | 멱등(마지막 값) |
+| `POST /clubs/{club_id}/review/share` (#62 후기를 게시물로) | 필수 | `201` 새 게시물 / 같은 `client_request_id` `200` | — | — | 멱등 |
+| `POST /clubs/{club_id}/next` (#63 다음 모임 만들기) | 필수 | `201` / 같은 `client_request_id` `200` | — | — | 멱등 |
+| `GET /clubs/{club_id}/next` (#64 이미 만들어진 다음 모임들) | 선택 | `200` | — | `created_at ASC` | N/A |
+| `PUT /clubs/{club_id}/attendance` (#65 만든 사람 출석 확인) | 필수(만든 사람) | `200` | — | — | 멱등 |
+| `POST /club-comments/{comment_id}/moderation-request` (#66 만든 사람 운영 요청) | 필수(만든 사람) | `201` / 이미 요청 `200` | — | — | 멱등(B6) |
+| `POST /me/restrictions/{restriction_id}/review-request` (#67 재검토 요청) | 필수(본인) | `201` / 이미 요청 `200` | — | — | 멱등 |
+| `GET /me/restrictions` (#68 내 제한) | 필수 | `200` | — | 최근순 | N/A |
+| `GET /me/inbox`·`POST /me/inbox/read`·`GET /me/inbox/unread` (#48·#49·#47, **D** M2-0-P1) | 필수 | `200` | — | — | — |
+
+앱 (`mobile/src/features/book-club/`):
+
+- `api.ts`에 더함: `fetchClubRecord`, `putClubReview(clubId, body: string)`, `shareClubReview(clubId, clientRequestId)`, `createNextClub(clubId, input: NextClubInput, clientRequestId)`, `fetchNextClubs(clubId, signal?)`, `putAttendance(clubId, marks: AttendanceMark[])`, `requestCommentModeration(commentId, reason: string)`, `fetchMyRestrictions(signal?)`, `requestRestrictionReview(restrictionId, text: string)`
+- 화면: `mobile/app/clubs/[clubId]/record.tsx` → `ClubRecordScreen`, `mobile/app/inbox.tsx` → `InboxScreen`(`mobile/src/features/book-club/InboxScreen.tsx`)
+
+#### C3. 요청·응답 필드와 화면 문구
+
+| 구분 | 필드/키 | 타입 | 필수 | null 허용 | 설명·고정 문구 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 응답(#60) `ClubRecord` | `club` | CLUB-1 `Club` | Y | N | 날짜·장소·책·소개 |
+| `ClubRecord` | `my_participation` | `"joined" \| "left" \| "removed" \| "none"` | Y | N | 참가 신청 |
+| `ClubRecord` | `my_attendance` | (K2-O1에 따라 정함) | | | |
+| `ClubRecord` (K2-O1 채움, 행 추가) | `my_attendance` | `"attended" \| "no_show" \| null` | Y | Y | (K2-O1 채움) 참가 신청이 끝까지 `joined`였으면 `"attended"`(기본 전체 출석) 또는 만든 사람이 불참으로 확인한 `"no_show"`, 신청하지 않았거나 취소했으면 `null` |
+| `ClubRecord` | `review` | `{ body: str; updated_at: str } \| null` | Y | Y | 본인 것만 |
+| `ClubRecord` | `shared_post_id` | `str (UUID)` | Y | Y | 공유한 게시물 |
+| `ClubRecord` | `can_create_next` | `bool` | Y | N | 만든 사람·참가자 |
+| `ClubRecord` | `suggest_next` | `bool` | Y | N | 만든 사람에게만 `true`(K2-2) |
+| 요청(#61) | `body` | `str` | Y | N | 길이 K2-O7 |
+| 요청(#63) `NextClubInput` | `place` | `str` | N | Y | 빠지면 이전 값(K2-4) |
+| 요청(#63) | `starts_at`, `ends_at` | `str` | N | Y | 새로 고름(미정 가능) |
+| 요청(#63) | `client_request_id` | `str (UUID)` | Y | N | |
+| 응답(#63) | (본문) | CLUB-1 `Club` (`previous_club_id` 채워짐) | Y | N | 이름·소개·책·도서관 복사 |
+| 요청(#65) `AttendanceMark` | (K2-O1에 따라 정함) | | | | |
+| 요청(#65) `AttendanceMark` (K2-O1 채움, 행 추가) | `participant_index` | `int` | Y | N | (K2-O1 채움) 만든 사람이 불참자만 보낸다: 본문 `{ "marks": AttendanceMark[] }`, 각 `{ "participant_index": i }` = 그 모임 `Club.participants`(시작 뒤 바뀌지 않는 `joined_at, user_id` 순서)의 0부터 센 자리. 범위 밖·중복은 `422 detail="marks"`. 이미 불참인 사람을 다시 보내면 그대로(멱등), 출석으로 되돌리기는 없음(불복은 `#67` → 운영자 해제). `user_id`는 앱에 내보내지 않는다 |
+| 요청(#66) | `reason` | `str` | Y | N | |
+| 응답(#68) `Restriction` | `id` | `str (UUID)` | Y | N | |
+| `Restriction` | `reason_kind` | `"comment" \| "no_show"` | Y | N | K2-10 |
+| `Restriction` | `ends_at` | `str` | Y | Y | `null` = 참가 불가(4회, K2-8) |
+| `Restriction` | `reason_text` | `str` | Y | N | 본인에게 보이는 사유(K2-O5) |
+| `Restriction` | `review_requested` | `bool` | Y | N | |
+| 화면 문구 | 종료 안내·기록 유도 | — | — | — | 알림함 제목 `"모임이 끝났어요"`(서버 `TITLES.club_ended`), 끝난 모임 화면 주 버튼 `"기록·후기 쓰기"`(큰 틀 결정 3), 기록 화면 머리 `"모임 기록"`, 기록 카드 `"끝난 모임"`·`"참가 n명"`·`"참가 신청함"`/`"불참으로 기록됨"` |
+| 화면 문구 | 다음 모임 제안(만든 사람) / 버튼(참가자) | — | — | — | 만든 사람 카드 `"다음 모임 만들어 볼까요?"` / `"이름·책·장소를 그대로 가져와요. 날짜만 새로 골라요."` + `"다음 모임 만들기"`, 참가자 보조 버튼 `"다음 모임 만들기"`, 이미 만든 다음 모임 묶음 제목 `"이미 만든 다음 모임"`, 없을 때 `"아직 다음 모임이 없어요. 처음으로 만들어 볼까요?"`, 진행 중 `"올리는 중…"` |
+| 화면 문구 | 후기 공유 버튼 | — | — | — | 칸 제목 `"내 후기 · 나만 보기"`, 안내 `"오늘 모임 어땠어요? 나만 볼 수 있어요"`, `"저장"`→안내 `"후기를 저장했어요. 나만 볼 수 있어요"`, `"게시물로 올리기"`→`"후기를 게시물로 올렸어요. 원래 후기는 그대로 나만 봐요"`, 올린 뒤 `"게시물로 올렸어요 · 보러 가기"`, 실패 `"후기를 저장하지 못했어요. 다시 해 주세요."` + `"다시 해 보기"`(쓰던 후기 유지) |
+| 화면 문구 | 제한 안내·재검토 요청 | — | — | — | 내 참가 제한 화면 머리 `"내 참가 제한"`. 불참: `"불참으로 기록됐어요"` / `"최근 180일 불참 n번째 → 기간 동안 모임 참가와 댓글이 제한돼요. (M.D HH:mm까지)"`(4번째 `"운영자가 풀 때까지 모임 참가와 댓글이 제한돼요."`). 댓글 운영: `"관리자가 적은 사유: …"`(`reason_text`) + `"모임 댓글과 참가가 n일 제한돼요. (M.D HH:mm까지)"`(영구 같은 문장). 기록 옆 `"셈"`/`"180일 지나 안 셈"`. 버튼 `"재검토 요청하기"`→요청 칸 → `"재검토를 요청했어요. 운영자가 확인해요"`(이미 요청이면 버튼 자리 `"재검토 요청함"`). 모임 화면 버튼 자리·댓글 칸은 CLUB-1 C3 "참가 제한 중 안내" + 댓글 칸 `"지금은 댓글을 쓸 수 없어요 (M월 D일 HH:mm까지)"` |
+| 화면 문구 | 알림함 제목·빈 상태 | — | — | — | 머리 `"알림함"`, 빈 상태 `"아직 받은 안내가 없어요. 모임에 참가하면 일정 안내가 여기에 모여요."`, 실패 `"알림함을 불러오지 못했어요."` + `"다시 해 보기"`, 비로그인 `"로그인하면 받은 안내를 볼 수 있어요"` + `"로그인하기"` |
+| 화면 문구 | 알림 종류별 한 줄(`club_confirmed`·`club_changed`·`club_canceled`·`club_ended`·`club_next`·`moderation`) | — | — | — | 서버 `TITLES`(`server/app/services/inbox.py`) 그대로: `"모임 일정이 확정됐어요"`·`"모임 일정이 바뀌었어요"`·`"모임이 취소됐어요"`·`"모임이 끝났어요"`·`"다음 모임이 열렸어요"`·`"운영 기준에 따라 글이 숨겨졌어요"`. 불참·댓글 제한 안내(`moderation`, 대상 `club_id`)는 같은 제목 + 누르면 모임 화면(큰 틀 결정 4) |
+| 화면 문구 | 출석 확인(만든 사람, 행 추가) | — | — | — | 칸 제목 `"출석 확인"`, 안내 `"참가 신청 n명 · 기본은 모두 왔어요"`, 줄마다 `"왔어요"`/`"안 왔어요"`, 버튼 `"출석 확인 보내기"` → 확인창 `"안 온 n명을 불참으로 기록할까요? 바로 참가가 제한돼요"` [닫기][불참으로 기록], 보낸 뒤 줄 옆 `"불참으로 기록됨"`(되돌리기 없음) |
+| 화면 문구 | 댓글 처리 요청(만든 사람, 행 추가) | — | — | — | 모임 화면 남의 댓글 ⋯ `"댓글 처리 요청"`(만든 사람만) → 사유 칸(필수 1~200) + `"관리자에게 요청"` → `"요청했어요. 관리자가 확인할 때까지 댓글은 그대로 보여요"`, 이미 요청 `"이미 요청한 댓글이에요"` |
+
+#### C4. 플랫폼 분기 표
+
+`N/A: 공통 View 코드. K2-O10에서 기기 알림을 주기로 하면 LOAN-3 notifications.platform.ts의 분기를 그대로 쓴다(새 분기 없음).`
+
+#### C5. 테이블
+
+```sql
+-- NNNN_club_records.py: club_reviews만 C가 만든다. club_comment_requests·participation_restrictions는 0012_m2_targets.py(D 선행 생성, core M2-0-P2)
+CREATE TABLE club_reviews (
+  club_id        uuid        NOT NULL REFERENCES clubs(id),
+  user_id        uuid        NOT NULL REFERENCES users(id),
+  body           text        NOT NULL,
+  shared_post_id uuid        NULL REFERENCES posts(id),      -- 공유 게시물. 각자 따로 고친다 (K2-3)
+  updated_at     timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (club_id, user_id)
+);
+
+CREATE TABLE club_comment_requests (
+  id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  comment_id  uuid        NOT NULL REFERENCES club_comments(id),
+  requester_id uuid       NOT NULL REFERENCES users(id),    -- 만든 사람
+  reason      text        NOT NULL,
+  status      text        NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','delete_only','delete_and_restrict','rejected')),
+  decided_by  uuid        NULL REFERENCES users(id),        -- 운영자 (D M2-0-P2)
+  decided_at  timestamptz NULL,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  CONSTRAINT club_comment_requests_once UNIQUE (comment_id)  -- 같은 요청 중복 방지 (B6)
+);
+
+CREATE TABLE participation_restrictions (
+  id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      uuid        NOT NULL REFERENCES users(id),
+  reason_kind  text        NOT NULL CHECK (reason_kind IN ('comment','no_show')),
+  source_id    uuid        NOT NULL,                         -- comment: club_comment_requests.id / no_show: clubs.id
+  reason_text  text        NOT NULL,
+  starts_at    timestamptz NOT NULL DEFAULT now(),
+  ends_at      timestamptz NULL,                             -- NULL = 참가 불가(K2-8 4회)
+  review_requested_at timestamptz NULL,
+  lifted_at    timestamptz NULL,
+  lifted_by    uuid        NULL REFERENCES users(id),         -- 운영자만 (B5)
+  created_at   timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX ix_restrictions_active ON participation_restrictions (user_id) WHERE lifted_at IS NULL;
+ALTER TABLE club_reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE club_comment_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE participation_restrictions ENABLE ROW LEVEL SECURITY;
+```
+
+| 열린 제약 | 컬럼 / 표 | 값 (C 채움 — `K2-O1`~`K2-O5`는 C-77 확정 반영) |
+| :--- | :--- | :--- |
+| 출석 표 모양(K2-O1) | `club_participations`에 `attendance_status` (`'attended'\|'no_show'`, 기본 `'attended'`) 또는 별도 표 | 기본 전체 출석, 만든 사람이 불참자만 표시(명단 외 추가 없음) |
+| 불참 판정·세는 기준(K2-O2·K2-O3) | `participation_restrictions` 만드는 규칙 | `#65` 불참 체크 시 즉시 생성; 최근 180일 이내 `reason_kind='no_show' AND lifted_at IS NULL` 건수 기준 1회 +3일 / 2회 +7일 / 3회 +30일 / 4회+ `ends_at = NULL` |
+| 제한 범위(K2-O4) | `participation_restrictions` 칸 추가 여부(모임 범위) | 모임 범위 칸 불필요 — 전체 모임 참가·댓글 모두 제한 |
+| 댓글 제한 기간(K2-O5) | `ends_at` 계산 (D 운영 경로 `M2-0-P2`와 연동) | 운영자 선택 `1일 / 3일 / 7일 / 영구(NULL)`, `reason_text`는 운영자 직접 작성 |
+| 길이 CHECK | `club_reviews.body` | `CHECK (char_length(btrim(body)) BETWEEN 1 AND 2000)` (K2-O7) |
+| 출석 칸(K2-O1, 행 추가) | `club_participations.attendance_status` | `ALTER TABLE club_participations ADD COLUMN attendance_status text NOT NULL DEFAULT 'attended' CHECK (attendance_status IN ('attended','no_show'))` — 위 "출석 표 모양" 행의 앞 선택지(`club_participations`에 칸)를 고름, `NNNN_club_records.py` |
+
+- 댓글 운영 제한 만들기(관리자 승인)와 모든 제한 해제는 D 운영 경로(M2-0-P2)가 쓴다. 불참 제한 만들기는 C의 `#65`(만든 사람 불참 체크 확정, C-77 K2-O2·K2-O3)에서 만들고, 재검토 요청(`#67`)·조회(`#68`)는 C 경로가 맡는다.
+- 탈퇴: 후기 삭제(공유 게시물은 LOCAL 탈퇴 규칙대로 철회), 요청·제한 행은 운영 기록으로 남김. D M2-0-P5.
+
+#### C6. 검증과 에러 처리
+
+| 명세서 예외 # | 발생 조건 | HTTP / `code` / `detail` | 화면에서 바뀌는 영역 | 유지되는 영역 | 기록 보장 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 끊김 | 기록·후기·다음 모임·알림함 실패 | `ApiCallError` | 그 칸 | 입력값 | 무변경 |
+| 빈 결과 | 알림 0 / 다음 모임 0 / 제한 0 | `200` 빈 목록 | 빈 상태 | 기록 카드·후기 칸(다음 모임 0), 머리(알림 0) | — |
+| 기록 못 불러옴 (행 추가, 명세 예외 #6) | #60 실패 | `ApiCallError` | 화면 가운데 "기록을 불러오지 못했어요." + "다시 해 보기" | 머리 | 무변경 |
+| 연타 | 후기 공유·다음 모임 만들기·운영 요청 두 번 | `200` 같은 결과 | 하나만 | 첫 누름 뒤 버튼 "올리는 중…"(눌리지 않음) | 행 하나 |
+| 비로그인 | 기록·알림함 | 앱은 부르지 않음, 직접 `401` | 로그인 안내 | 가운데 "로그인하면 …" + 아래 로그인 창(로그인 뒤 같은 화면으로 `returnTo`, CLUB-1과 같음) | — |
+| 남의 기록 | 참가하지 않은 사람이 #60·#61 | `404 NOT_FOUND` | "이 모임에 참가한 사람만 기록을 볼 수 있어요." + "모임 화면으로" | 머리 | 무변경 |
+| 만든 사람 아님 | #65·#66 | `403 NOT_HOST` | N/A: 버튼 없음 | 출석 확인 칸·⋯ "댓글 처리 요청"을 그리지 않음 | 무변경 |
+| 아직 안 끝남 | 종료 전 #60 후기·#63 다음 모임 | `409 CLUB_NOT_ENDED` | 안내 | 모임 화면(버튼 자리가 아직 "기록·후기 쓰기"가 아님) | 무변경 |
+| 취소된 모임 | #63·#65 | `409 CLUB_CLOSED` | N/A: 취소된 모임에는 "기록·후기 쓰기"·출석 확인이 없음 | 모임 화면 "취소된 모임" | 패널티 없음(K1-12) |
+| 남의 제한 재검토 | #67 | `404 NOT_FOUND` | N/A: 내 제한에만 버튼 | 내 참가 제한 화면 | 무변경 |
+| 입력 오류 | 길이·시각 | `422` / 필드명 | 칸 아래 안내(후기 "2000자까지 쓸 수 있어요", 시각 "끝나는 시각은 시작보다 늦어야 해요", 출석 `marks`는 화면을 다시 읽음) | 입력값 | 무변경 |
+| 계정 전환 | 로그아웃 | — | 알림함·기록 캐시 비움 | | `registerSignOutCleanup` |
+
+#### C7. 다른 기능과 닿는 곳과 `TODO(연결)` 가짜 값
+
+| 의존 대상 | 필요한 것 | 상대 머지 전 가짜 값 |
+| :--- | :--- | :--- |
+| D `core` M2-0-P1 | 알림함 표·`add_inbox_items`·`register_inbox_source(kind, fn)`(읽을 때 종료 안내 만들기)·`#47`~`#49` | `TODO(연결): D` — 알림함 응답 가짜: `{"items":[{"id":"9b2e4c1a-7f3d-4e2b-8a1c-5d6e7f8a9b0c","kind":"club_ended","title":"정독 북클럽이 끝났어요","target":{"club_id":"c1a2b3c4-d5e6-47f8-9a0b-1c2d3e4f5a6b"},"created_at":"2026-11-20T21:00:00+09:00","read":false}],"next_cursor":null}` |
+| D `core` M2-0-P2 | 관리자 승인(`club_comment_requests.status`), 제한 만들기·해제, 재검토 처리 | N/A: D 작업. B 시험은 행을 직접 넣어 확인 |
+| B LOCAL-1 | 후기를 게시물로(`#24` 내부 함수 재사용) | 있음 |
+| B CLUB-1 | 모든 표·`is_restricted` 자리 | CLUB-1 머지 뒤 시작 |
+| A MY-2 | 내 정보 알림 아이콘 → `/inbox` | MY-2가 붙인다 |
+
+### 구현 계획
+
+#### P1. 확인한 기존 코드 전제
+
+| 참조 대상 | 실제 경로와 줄 | 심볼·시그니처 | 있음 / 앞으로 만듦 |
+| :--- | :--- | :--- | :--- |
+| 게시물 만들기 | `server/app/routers/posts.py` | `#24` 내부 저장 함수 | 있음 |
+| 모임 표·참가 | CLUB-1 | — | 앞으로 만듦(CLUB-1) |
+| 알림함 | `server/app/services/inbox.py` | `add_inbox_items`, `register_inbox_source` | 앞으로 만듦(D M2-0-P1) |
+| 로그아웃 정리 | `mobile/src/auth/AuthProvider.tsx:51` | `registerSignOutCleanup` | 있음 |
+
+#### P2. 파트 분할과 담당 파일
+
+| 파트 | 브랜치 | 수정/생성 허용 파일(전수) | 완료 시 확인할 명세서 항목 |
+| :--- | :--- | :--- | :--- |
+| `CLUB-2-P1` 기록·후기·다음 모임 서버 | `feat/book-club-CLUB-2` | `server/migrations/versions/NNNN_club_records.py`(`club_reviews` + 열린 제약 ALTER. `club_comment_requests`·`participation_restrictions`는 D `0012_m2_targets.py`가 먼저 만듦), `server/app/routers/club_records.py`, `server/app/main.py`(`[book-club-C]`), `server/tests/test_club_records.py` | K2-1~K2-6, C6 |
+| `CLUB-2-P2` 출석·제한·운영 요청 서버 | 같은 브랜치 | `server/app/routers/club_moderation.py`, `server/app/routers/clubs.py`(`is_restricted` 본문만), `server/tests/test_club_restrictions.py` | K2-7~K2-10, K2-O1~K2-O5 |
+| `CLUB-2-P3` 기록 화면·다음 모임 | 같은 브랜치 | `mobile/app/clubs/[clubId]/record.tsx`, `mobile/src/features/book-club/ClubRecordScreen.tsx`, `NextClubSheet.tsx`, `AttendanceSheet.tsx`, `api.ts`, `__tests__/club-record.test.tsx` | K2-2~K2-7, K2-O6·K2-O7 |
+| `CLUB-2-P4` 알림함·제한 안내 화면 | 같은 브랜치 | `mobile/app/inbox.tsx`, `mobile/src/features/book-club/InboxScreen.tsx`, `RestrictionNotice.tsx`, `api.ts`, `__tests__/inbox.test.tsx` | K2-9~K2-11, K2-O8~K2-O10 |
+
+> CLUB-2는 사용자 동선이 셋(기록·다음 모임 / 출석·제한 / 알림함)이라 4개 파트(`P1`~`P4`)로 나누어 기존 2 Step 계획을 유지한다(2026-11-19 D 확정). 단, 세부 기획에서 `K2-O1`~`K2-O5` 사용자 결정 결과가 과도하게 커지면 담당 AI가 범위를 줄이지 말고 `[계약 보완 필요]`로 `CLUB-3` 나누기를 D에게 올린다(계획 변경은 사용자 결정).
+
+##### 파트 머리말 — CLUB-2-P1 ~ P4 (공통)
+
+| 칸 | 값 |
+| --- | --- |
+| 1. 태스크 ID | `CLUB-2-P1` / `CLUB-2-P2` / `CLUB-2-P3` / `CLUB-2-P4` |
+| 2. 담당 역할 | C |
+| 3. 기준선 버전 | M2 D 기준선 |
+| 4. 계약서 커밋 | N/A: 검토 전 수정본(D 발행 뒤 본문 SHA를 적음) |
+| 5. 선행 태스크 | CLUB-1 머지. D `M2-0-P1` 머지 전이면 C7 가짜 값. P2는 K2-O1~K2-O5 사용자 결정 뒤 |
+| 6. 수정 허용 파일 | 위 표 |
+| 7. 금지된 결정 | 패널티 자동 부과 금지(K2-7). 결정 전 제한 기간·범위 임의 적용 금지(K2-O1~O5). 자동 참가 금지(K2-5). 서버 푸시·작업자 금지 |
+| 8. 완료 조건 | 파트 표 항목 + P5 + 웹·Android |
+| 9. 검증 명령 | CLUB-1과 같음 |
+| 10. 보고 형식 | `../prompts/3_구현.md` 5단계 |
+
+#### P3. 새 라이브러리
+
+| 쪽 | 패키지 | 용도 | 설정 |
+| --- | --- | --- | --- |
+| 서버·앱 | 없음 | — | — |
+
+#### P4. 핵심 흐름 골격
+
+```python
+# club_records.py — #63 다음 모임 (복사 규칙 K2-4, 안내 K2-5)
+async def create_next_club(club_id: UUID, body: NextClubIn, user: CurrentUser = Depends(get_current_user)):
+    def tx(c):
+        lock_active_user(c, user.id)
+        prev = select_club(c, club_id)                                   # 없으면 404
+        if prev.status == "canceled": raise ApiError(409, "CLUB_CLOSED", "...")
+        if not ended(prev, now_kst()): raise ApiError(409, "CLUB_NOT_ENDED", "...")
+        if not (prev.host_id == user.id or was_participant_at_end(c, prev, user.id)): raise ApiError(404, "NOT_FOUND", "...")
+        hit = select_by_client_request(c, user.id, body.client_request_id)
+        if hit: return hit, False
+        new = insert_club(c, host=user.id, library_id=prev.library_id, name=prev.name, intro=prev.intro,
+                          book_id=prev.book_id, place=body.place if "place" in body.model_fields_set else prev.place,
+                          starts_at=body.starts_at, ends_at=body.ends_at, previous_club_id=prev.id)
+        recipients = participants_at_end(c, prev) - canceled_or_restricted(c, prev, now_kst())   # K2-5
+        add_inbox_items(c, list(recipients - {user.id}), "club_next", {"club_id": str(new.id)})  # 자동 참가 없음
+        return new, True
+    ...
+
+# register_inbox_source("club_ended", club_end_items_due)   # 알림함을 읽을 때 지난 종료를 찾아 만든다 (K2-1)
+# C-77 확정(K2-O1~K2-O4): #65에서 만든 사람이 참가 신청자 중 불참자를 지정하면,
+# 최근 180일 이내 유효(lifted_at IS NULL) 불참 횟수(이번 건 포함)에 따라
+# 1회=+3일, 2회=+7일, 3회=+30일, 4회+=ends_at NULL로 participation_restrictions 행을 만든다(같은 모임·사용자 중복 생성 방지).
+# 취소된 모임(canceled)은 409 CLUB_CLOSED로 패널티를 만들지 않으며, 불복(#67) 시 운영자만 해제(lifted_at)한다.
+
+# ↓ K2-O1·K2-O2 채움: club_moderation.py — #65 출석 확인(불참자만, 즉시 확정)
+async def put_attendance(club_id: UUID, body: AttendanceIn, user: CurrentUser = Depends(get_current_user)):
+    def tx(c):
+        lock_active_user(c, user.id)
+        club = c.execute(SELECT_CLUB_FOR_UPDATE, {"id": club_id}).first()
+        if not club or club.status == "hidden": raise ApiError(404, "NOT_FOUND", "...")
+        if club.host_id != user.id: raise ApiError(403, "NOT_HOST", "...")
+        if club.status == "canceled": raise ApiError(409, "CLUB_CLOSED", "...")      # 패널티 없음(K1-12)
+        now = now_kst()
+        if not ended(club, now): raise ApiError(409, "CLUB_NOT_ENDED", "...")
+        people = joined_participants_ordered(c, club_id)                     # CLUB-1 명단과 같은 순서, 만든 사람 제외
+        idx = [m.participant_index for m in body.marks]
+        if len(set(idx)) != len(idx) or any(i < 0 or i >= len(people) for i in idx):
+            raise ApiError(422, "VALIDATION_ERROR", "...", "marks")
+        for i in idx:
+            p = people[i]
+            if p.attendance_status == "no_show": continue                     # 멱등, 되돌리기 없음
+            set_attendance(c, club_id, p.user_id, "no_show")
+            n = count_no_show(c, p.user_id, since=now - timedelta(days=180)) # lifted_at IS NULL, 이번 건 포함
+            ends = None if n >= 4 else now + timedelta(days={1: 3, 2: 7, 3: 30}[n])
+            insert_restriction(c, p.user_id, "no_show", source_id=club_id, reason_text=NO_SHOW_TEXT, ends_at=ends)
+            add_inbox_items(c, [p.user_id], "moderation", {"club_id": str(club_id), "restriction": str(...)})
+        return record_view(c, club_id, user)
+    return await run_db(engine, tx)
+```
+
+```tsx
+// InboxScreen.tsx — K2-O8 열면 모두 읽음(점은 이번에 받은 새 안내에만)
+const res = await runner.run((signal) => fetchInbox(null, signal));            // #48
+if (res.status !== "ok") return showFailOrIgnoreStale(res);
+freshIds.current = new Set(res.value.items.filter((i) => !i.read).map((i) => i.id)); // 점 그릴 줄
+setItems(withinDays(res.value.items, 90));                                        // 90일 지난 줄 숨김
+void markAllRead().catch(() => {});                                               // #49 { all: true }, 실패해도 목록 유지
+// 줄을 누르면 target.club_id → /clubs/[clubId], post_id → /posts/[postId]
+```
+
+#### P5. 필수 테스트
+
+| 파트 | 테스트 이름 | 준비 | 실행 | 기대 단언 | 잡아야 할 버그 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| CLUB-2-P1 | `ended notice created once on inbox read` | 끝난 모임, 참가 2 + 만든 사람 | 알림함 두 번 읽기 | 세 사람 각 `club_ended` 1개 | K2-1 중복 |
+| CLUB-2-P1 | `review is private by default` | A 후기 | B·비로그인 #60 | `404` / `401`, 후기 내용 없음 | K2-3 |
+| CLUB-2-P1 | `shared review and original are edited separately` | 공유 후 | 후기 고침 | 게시물 본문 그대로 | K2-3 |
+| CLUB-2-P1 | `next club copies fields and asks new time` | 이전 모임 | #63 `place` 없이 | 이름·소개·책·도서관 같음, 장소 이전 값, 시각은 보낸 값(미정 가능) | K2-4 |
+| CLUB-2-P1 | `next notice skips canceled and restricted and never auto joins` | 끝날 때 참가 3(1명 취소, 1명 제한) | #63 | `club_next` 1명, 새 모임 참가 0 | K2-5 |
+| CLUB-2-P1 | `existing next clubs listed first` | 다음 모임 2개 | #64 | 2개 `created_at ASC` | K2-4 |
+| CLUB-2-P2 | `no_show mark creates tiered restriction within 180 days` | 끝난 모임, 180일 초과 불참 1건 + 최근 불참 0~3건 | 만든 사람 `#65` 불참 체크 | 180일 초과 건 제외, 1회 3일·2회 7일·3회 30일·4회 `ends_at NULL` 생성(중복 호출 멱등) | K2-O1~K2-O3 |
+| CLUB-2-P2 | `moderation request is once per comment and comment stays visible` | 만든 사람 | #66 두 번 | 행 1, `#57`에 댓글 그대로 | B6 |
+| CLUB-2-P2 | `restricted user cannot join or comment until lifted` | 활성 제한 행(직접 넣음) | `#55`·`#58` / 해제 뒤 | `403 PARTICIPATION_RESTRICTED` / `200` | K2-9·K2-10 |
+| CLUB-2-P2 | `null ends_at means no participation` | `ends_at NULL` 제한 | `#55` | `403`, `detail` 빈 문자열 | K2-8 4회 |
+| CLUB-2-P3 | `next suggestion only for host` | 만든 사람 / 참가자 | 기록 화면 | 제안 카드 / 별도 버튼만 | K2-2 |
+| CLUB-2-P4 | `inbox works without device notification permission` | 알림 권한 거부 | `/inbox` | 목록 보임 | K2-11 |
+| CLUB-2-P4 | `inbox cache cleared on sign out` | 목록 불러옴 | 로그아웃 | 비움 | 계정 전환 |
+| CLUB-2-P1 | `review length is 1 to 2000` | — | #61 공백만 / 2001자 / 2000자 | `422 body` / `422 body` / `200`, 실패 때 기존 후기 그대로 | K2-O7 (길이 가드 빠지면 2001자 저장) |
+| CLUB-2-P1 | `record shows my attendance` | 참가 2(1명 불참 확인) / 비참가 | #60 | `"attended"` / `"no_show"` / 비참가 `404` | K2-O1·남의 기록 |
+| CLUB-2-P2 | `attendance marks only no shows by participant index` | 끝난 모임 참가 3 | 만든 사람 #65 `[{participant_index: 2}]` 두 번 | 3번째만 `no_show`, 제한 행 1(두 번째 호출 무변경), 나머지 `attended` | K2-O1·멱등 |
+| CLUB-2-P2 | `attendance rejects bad index and non host and canceled and not ended` | — | 범위 밖·중복 / 남의 토큰 / 취소 / 종료 전 | `422 marks` / `403 NOT_HOST` / `409 CLUB_CLOSED` / `409 CLUB_NOT_ENDED`, 제한 행 0 | K2-O2·K1-12 |
+| CLUB-2-P2 | `lifted and canceled no shows are not counted` | 최근 불참 2건 중 1건 운영자 해제 | #65 새 불참 | 유효 1건 + 이번 → 2번째 7일 | K2-O3 |
+| CLUB-2-P2 | `no show restriction blocks join and comment everywhere` | 다른 도서관 모임 | 불참 제한 중 `#55`·`#58` | 둘 다 `403 PARTICIPATION_RESTRICTED`, `detail`=만료 | K2-O4 |
+| CLUB-2-P3 | `record screen order is record then review then next` | 끝난 모임 | 렌더 | 위에서부터 기록 카드 → "내 후기 · 나만 보기" → 다음 모임 → (만든 사람만) 출석 확인 | K2-O6 (결정 1 순서가 바뀌면 실패) |
+| CLUB-2-P3 | `review save failure keeps text and retries` | `putClubReview` 실패 | 저장 → 다시 해 보기 | 실패 문구, 칸 글 그대로, 두 번째 호출 같은 본문 | 명세 예외 #1 |
+| CLUB-2-P3 | `share and next buttons send once` | 응답 지연 | 두 번 누름 | `shareClubReview`·`createNextClub` 각 1번, 같은 `clientRequestId` | 명세 예외 #3 |
+| CLUB-2-P3 | `attendance sheet asks before recording no shows` | 만든 사람, 참가 3 | 1명 "안 왔어요" → 보내기 | 확인창 전 `putAttendance` 0번, 뒤 1번 `[{participant_index: i}]` | K2-O1 |
+| CLUB-2-P3 | `record load failure and signed out states` | #60 실패 / 비로그인 | 렌더 | "기록을 불러오지 못했어요." + 다시 해 보기 / 로그인 창(`returnTo`) | 명세 예외 #4·#5·#6 |
+| CLUB-2-P4 | `inbox newest first and marks all read on open` | 새 2 + 지난 2 | 열기 | 순서 `created_at DESC`, 새 2줄에만 점, `markAllRead` 1번(`{all:true}`), 다시 열면 점 없음 | K2-O8 (모두 읽음·점 가드가 빠지면 실패) |
+| CLUB-2-P4 | `inbox hides items older than 90 days` | 91일 전 안내 1 | 열기 | 그 줄 없음 | K2-O8 보관 |
+| CLUB-2-P4 | `inbox item opens club screen` | `target.club_id` | 줄 누름 | `/clubs/[clubId]` | 큰 틀 결정 4 |
+| CLUB-2-P4 | `restriction notice shows reason expiry and review request once` | 불참 제한·댓글 제한(영구) | 렌더·재검토 두 번 | 문구(C3)·영구 문장, `requestRestrictionReview` 1번 뒤 "재검토 요청함" | K2-O3·K2-O5 |
