@@ -153,7 +153,7 @@
 
 <!-- ===== 중심 요소 1 ===== -->
 <section class="element" id="el-layout" data-chosen="A">
-  <h2>정할 것 1. 프로필 수정 화면을 어떻게 놓을까 <span class="status">반영 — 불편한 점 확인 중</span></h2>
+  <h2>정할 것 1. 프로필 수정 화면을 어떻게 놓을까 <span class="status">확인</span></h2>
   <div class="flow"><b>정해진 것.</b> 내 정보 위쪽의 "프로필 수정"을 누르면 고치는 화면이 열려요. 고칠 수 있는 건 <b>사진·닉네임·한 줄 소개</b> 세 가지예요. 팔로우·팔로워 수는 없어요. 정할 것은 <b>고치는 화면에 세 가지를 어떻게 놓고, 어디서 저장하느냐</b>예요.</div>
   <div class="decided"><b>고른 것: 후보 A.</b> "사진이랑 입력칸이 한번에 보이고 입력하기 편하게 나와있어" · 차선 C("나쁘진 않았어") · B는 "왔다갔다 하는게 별로였어"</div>
   <div class="pick">다시 보기: <select data-for="el-layout">
@@ -248,7 +248,130 @@
   </div>
 </section>
 
-<!-- 중심 요소 2(사진 고르기·지우기), 3(알림 아이콘 자리)은 1이 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
+<!-- ===== 중심 요소 2 ===== -->
+<section class="element" id="el-photo" data-chosen="">
+  <h2>정할 것 2. 사진을 바꾸고 지우는 모양 <span class="status">결정 전</span></h2>
+  <div class="flow"><b>정해진 것.</b> 고치는 화면은 정할 것 1에서 고른 A(사진 위 가운데, 칸 두 개, 맨 아래 "저장")예요. 사진은 <b>찍거나 앨범에서 고를 수 있고, 지울 수도 있어요</b>(지우면 기본 그림). 사진의 위치 정보는 저장할 때 지워져요. 바꾼 사진도 맨 아래 "저장"을 눌러야 저장돼요. 정할 것은 <b>사진 쪽을 누르면 무엇이 뜨느냐</b>예요.</div>
+  <div class="pick">다시 보기: <select data-for="el-photo">
+    <option value="A">후보 A — 아래에서 올라오는 작은 창</option>
+    <option value="B">후보 B — 사진 아래 버튼이 늘 보임</option>
+    <option value="C">후보 C — 사진 옆 작은 메뉴</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 아래에서 올라오는 작은 창 <span class="badge">추천</span></h3>
+      <div class="phone">
+        <div class="scr" data-screen="e">
+          <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+          <span class="av big" data-open="sheet"></span><div class="center small" data-open="sheet" style="cursor:pointer">사진 바꾸기</div>
+          <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
+          <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+          <p class="small center" style="margin-top:6px">↑ 사진을 눌러 보세요</p>
+          <div class="savebar"><button class="btn">저장</button></div>
+        </div>
+        <div class="scr hide" data-screen="sheet">
+          <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+          <span class="av big"></span><div class="center small">사진 바꾸기</div>
+          <div class="flabel">닉네임</div><div class="input">책읽는고양이</div>
+          <div class="sheet" style="bottom:10px">
+            <div class="li" data-open="e" style="cursor:pointer">사진 찍기</div>
+            <div class="li" data-open="e" style="cursor:pointer">앨범에서 고르기</div>
+            <div class="li" data-open="gone" style="cursor:pointer">사진 지우기</div>
+            <div class="li center small" data-open="e" style="border:0;cursor:pointer">닫기</div>
+          </div>
+        </div>
+        <div class="scr hide" data-screen="gone">
+          <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+          <span class="av big none" data-open="sheet2"></span><div class="center small" data-open="sheet2" style="cursor:pointer">사진 고르기</div>
+          <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
+          <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+          <p class="small center" style="margin-top:6px">기본 그림으로 바뀌었어요. "저장"을 눌러야 지워져요.</p>
+          <div class="savebar"><button class="btn" data-open="e">저장</button></div>
+        </div>
+        <div class="scr hide" data-screen="sheet2">
+          <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+          <span class="av big none"></span><div class="center small">사진 고르기</div>
+          <div class="sheet" style="bottom:10px">
+            <div class="li" data-open="e" style="cursor:pointer">사진 찍기</div>
+            <div class="li" data-open="e" style="cursor:pointer">앨범에서 고르기</div>
+            <div class="li center small" data-open="gone" style="border:0;cursor:pointer">닫기</div>
+          </div>
+        </div>
+      </div>
+      <p>사진(이나 그 아래 "사진 바꾸기")을 누르면 화면 아래에서 작은 창이 올라와요. 찍기·앨범·지우기 중 하나를 골라요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>사진 누름 → 아래 작은 창 → "앨범에서 고르기" → 기기 앨범이 열림 → 고르면 동그라미 안 사진이 바뀜 → 맨 아래 "저장". "사진 지우기"를 누르면 기본 그림으로 바뀌고, "저장"을 눌러야 지워져요.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>사진이 없을 때는 "사진 지우기" 줄이 없어요(지운 뒤 다시 눌러 보세요)</li><li>평소 화면엔 사진과 "사진 바꾸기" 글자만 있어 깔끔해요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>할 일이 한 곳에 모여 있고 평소 화면이 깔끔해요. / 무엇이든 한 번 더 눌러야 해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-04 아래에서 올라오는 시트 (iOS 공유 시트, 카카오톡 프로필 사진 바꾸기)</p>
+      <p><b>추천 이유:</b> 찍기·앨범·지우기 세 가지를 평소엔 숨겨 두고 한 번에 보여 줘요. 휴대폰 아래쪽이라 엄지로 누르기 쉬워요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 사진 아래 버튼이 늘 보임</h3>
+      <div class="phone">
+        <div class="scr" data-screen="e">
+          <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+          <span class="av big"></span>
+          <div class="center" style="margin-top:4px"><button class="btn ghost" data-toast="tb2a">찍기</button> <button class="btn ghost" data-toast="tb2b">앨범</button> <button class="btn ghost" data-open="gone">지우기</button></div>
+          <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
+          <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+          <div class="toast" id="tb2a">카메라가 열려요</div><div class="toast" id="tb2b">기기 앨범이 열려요</div>
+          <div class="savebar"><button class="btn">저장</button></div>
+        </div>
+        <div class="scr hide" data-screen="gone">
+          <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+          <span class="av big none"></span>
+          <div class="center" style="margin-top:4px"><button class="btn ghost">찍기</button> <button class="btn ghost">앨범</button> <button class="btn ghost" disabled>지우기</button></div>
+          <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
+          <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+          <div class="savebar"><button class="btn" data-open="e">저장</button></div>
+        </div>
+      </div>
+      <p>사진 바로 아래에 "찍기 · 앨범 · 지우기" 버튼 세 개가 늘 보여요. 창이 뜨지 않고 바로 해요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>"앨범" 누름 → 기기 앨범이 바로 열림 → 고르면 사진이 바뀜 → 맨 아래 "저장". "지우기"는 누르면 바로 기본 그림.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>사진이 없으면 "지우기"가 흐려져요</li><li>버튼 줄 때문에 칸들이 조금 아래로 내려가요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>한 번만 누르면 돼요. 무엇을 할 수 있는지 처음부터 보여요. / 화면에 버튼이 많아 보이고, 지우기를 실수로 누르기 쉬워요.</p>
+      <span class="lbl">표준 근거</span><p>새 패턴 — 이유: 할 일이 셋뿐이라 숨기지 않고 사진 바로 아래에 늘어놓는 모양(목록에 맞는 번호 없음)</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 사진 옆 작은 메뉴</h3>
+      <div class="phone">
+        <div class="scr" data-screen="e">
+          <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+          <div style="position:relative;width:72px;margin:0 auto"><span class="av big"></span><button class="gear" style="position:absolute;right:-6px;bottom:0;cursor:pointer" data-menu="mc">✎</button></div>
+          <div class="menu" id="mc" style="top:100px;right:20px;width:120px"><div>사진 찍기</div><div>앨범에서 고르기</div><div data-open="gone">사진 지우기</div></div>
+          <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
+          <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+          <p class="small center" style="margin-top:6px">↑ 사진 모서리 ✎를 눌러 보세요</p>
+          <div class="savebar"><button class="btn">저장</button></div>
+        </div>
+        <div class="scr hide" data-screen="gone">
+          <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+          <div style="position:relative;width:72px;margin:0 auto"><span class="av big none"></span><span class="gear" style="position:absolute;right:-6px;bottom:0">✎</span></div>
+          <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
+          <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+          <p class="small center" style="margin-top:6px">기본 그림으로 바뀌었어요.</p>
+          <div class="savebar"><button class="btn" data-open="e">저장</button></div>
+        </div>
+      </div>
+      <p>사진 모서리에 작은 연필(✎) 동그라미가 붙어 있고, 누르면 그 옆에 작은 메뉴가 떠요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>✎ 누름 → 사진 옆 작은 메뉴 → "앨범에서 고르기" → 기기 앨범 → 사진이 바뀜 → 맨 아래 "저장".</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>"사진 바꾸기" 글자가 없고 ✎ 표시만 있어요</li><li>메뉴가 화면 위쪽에 떠서 한 손으로는 손이 멀어요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>화면이 가장 깔끔하고, 메뉴가 사진 바로 옆이라 무엇을 바꾸는지 분명해요. / ✎가 작아서 처음 쓰는 사람은 못 찾을 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-11 작은 더 보기 메뉴 안 항목 (인스타그램 프로필 사진의 연필 표시)</p>
+    </article>
+  </div>
+</section>
+
+<!-- 중심 요소 3(알림 아이콘 자리)은 2가 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
 
 <!-- ===== 잘 안 될 때 (예외 네 장면) ===== -->
 <section id="except">
@@ -310,8 +433,8 @@
   <h2>명세</h2>
   <div class="wide"><table>
     <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
-    <tr data-el="el-layout"><td>1. 수정 화면 배치</td><td>후보 A 한 화면에 모두 + 맨 아래 저장</td><td>후보 C 위로 올라오는 화면 + 위에 저장</td><td>후보 B 한 줄씩 눌러 고치기 ("왔다갔다 하는게 별로였어")</td><td>"A가 제일 편하고 알아보기 좋은데" / "사진이랑 입력칸이 한번에 보이고 입력하기 편하게 나와있어"</td><td>사진 72 원, 닉네임 /40, 소개 /60, 입력 칸 곡률 9</td><td>프로필 수정 → 고치는 화면 → 저장 → 내 정보</td><td><span class="st">반영(확인 중)</span></td></tr>
-    <tr><td>2. 사진 고르기·지우기</td><td>—</td><td>—</td><td>—</td><td>(받기 전)</td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-layout"><td>1. 수정 화면 배치</td><td>후보 A 한 화면에 모두 + 맨 아래 저장</td><td>후보 C 위로 올라오는 화면 + 위에 저장</td><td>후보 B 한 줄씩 눌러 고치기 ("왔다갔다 하는게 별로였어")</td><td>"A가 제일 편하고 알아보기 좋은데" / "사진이랑 입력칸이 한번에 보이고 입력하기 편하게 나와있어"</td><td>사진 72 원, 닉네임 /40, 소개 /60, 입력 칸 곡률 9</td><td>프로필 수정 → 고치는 화면 → 저장 → 내 정보</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-photo"><td>2. 사진 고르기·지우기</td><td>— (추천: 후보 A 아래에서 올라오는 작은 창)</td><td>—</td><td>—</td><td>(받기 전)</td><td>찍기·앨범·지우기(사진 있을 때만)·닫기</td><td>사진 누름 → 작은 창 → 고름 → 저장</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>3. 알림 아이콘 자리</td><td>—</td><td>—</td><td>—</td><td>(받기 전)</td><td>점 하나, 숫자 없음</td><td>아이콘 → 알림함</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>한 줄 소개 길이</td><td>60자, 글자 수 표시</td><td>—</td><td>—</td><td>묻지 않음</td><td>60</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>저장 안 하고 나갈 때</td><td>"고친 내용을 버릴까요?" [계속 고치기] [버리기]</td><td>—</td><td>—</td><td>묻지 않음</td><td>고친 게 없으면 바로 닫힘</td><td>‹ → 확인창 → 버리기면 내 정보</td><td><span class="st">기본값(Claude)</span></td></tr>
