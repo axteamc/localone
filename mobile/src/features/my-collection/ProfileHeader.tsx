@@ -1,9 +1,10 @@
 // 내 정보 위쪽: 설정 아이콘 + 왼쪽 사진·옆에 이름·소개·"프로필 수정" — contracts/my-collection.md MY-1 Y5·Y-O1, 시안 정할 것 1 후보 A.
-// 팔로워 수·팔로잉 목록·팔로우 버튼은 두지 않는다(Y5).
+// 팔로워 수·팔로잉 목록·팔로우 버튼은 두지 않는다(Y5, MY-2 Y2-6). 설정 버튼 바로 왼쪽에 같은 크기 알림 종(MY-2 Y2-O5).
 import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { actionColors, theme, type as typeScale } from "../../theme";
 import { SettingsIcon, UserIcon } from "../../theme/Icons";
+import { InboxBell } from "./InboxBell";
 import { MY_TEXT, type ProfileState } from "./useMyCollection";
 
 const C = theme.colors;
@@ -30,6 +31,16 @@ function SettingsButton({ onPress }: { onPress: () => void }) {
   );
 }
 
+/** 머리 오른쪽 위: 종 → 설정 순서(Y2-O5) */
+function HeaderActions({ onSettings }: { onSettings: () => void }) {
+  return (
+    <View style={styles.actions} testID="profile-actions">
+      <InboxBell />
+      <SettingsButton onPress={onSettings} />
+    </View>
+  );
+}
+
 export function ProfileHeader({ state, onEdit, onRetry, onSettings }: ProfileHeaderProps) {
   return (
     <View style={styles.wrap}>
@@ -42,7 +53,7 @@ export function ProfileHeader({ state, onEdit, onRetry, onSettings }: ProfileHea
               <View style={[styles.lineShort, styles.skeleton]} />
             </View>
           </View>
-          <SettingsButton onPress={onSettings} />
+          <HeaderActions onSettings={onSettings} />
         </View>
       ) : state.kind === "error" ? (
         <View style={styles.errorRow} testID="profile-error">
@@ -54,7 +65,7 @@ export function ProfileHeader({ state, onEdit, onRetry, onSettings }: ProfileHea
           >
             <Text style={styles.reloadText} numberOfLines={1}>{MY_TEXT.reload}</Text>
           </Pressable>
-          <SettingsButton onPress={onSettings} />
+          <HeaderActions onSettings={onSettings} />
         </View>
       ) : (
         <View style={styles.topRow} testID="profile-row">
@@ -85,7 +96,7 @@ export function ProfileHeader({ state, onEdit, onRetry, onSettings }: ProfileHea
               </Pressable>
             </View>
           </View>
-          <SettingsButton onPress={onSettings} />
+          <HeaderActions onSettings={onSettings} />
         </View>
       )}
     </View>
@@ -96,6 +107,7 @@ const styles = StyleSheet.create({
   wrap: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14, backgroundColor: C.panelFrosted },
   topRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 },
   rowMain: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 14 },
+  actions: { flexDirection: "row", alignItems: "center", gap: 8 },
   gear: {
     width: 34,
     height: 34,

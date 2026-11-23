@@ -51,3 +51,54 @@
 - ⚙ → 설정 화면(`/settings`) 연결 완료(#178) — 시험 `settings gear opens settings screen when signed in`. 실제 설정 화면을 열어 본 것은 `미실행`(미리보기 뒤 합침).
 - iOS 확인 D 대기(`needs-ios`).
 - 버그 리포트 이슈 없음.
+
+---
+
+# MY-2 프로필 수정·알림 종 검증
+
+- 대상: 브랜치 `feat/my-collection-MY-2` / PR #274 · 작성일: 2026-11-23
+- 기준: 요구사항 ID 미부여(C-46 F1, 위 MY-1과 같음) + NFR-05(사진 EXIF 위치 제거). 계약서 `contracts/my-collection.md` MY-2(발행 SHA `72a6cd0`) Y2·Y2-O·C3·C6·P5, 세부 명세 `specs/my-collection/세부/MY-2.md` 결정·예외.
+- 실행 환경
+  - 서버: 실제 Postgres 17(도커 `localone-read1-db`, 5435)에 대해 `uv run pytest -q -W error` — 698 passed(이 기능 18개).
+  - 앱: jest 가짜 응답 시험 — `src/features/my-collection` 55 passed(`profile-edit.test.tsx` 20개, `my-collection.test.tsx` MY-2 9개). `tsc --noEmit` 오류 없음, `expo export --platform web` 통과.
+  - 웹 실제 연결: 로컬 API(8001, `localone_dev` DB) + 로컬 웹(8081). Google 로그인이 이 PC에서 안 돼서 **가짜 JWKS(8002) + 로컬 서명 토큰**으로 로그인(서버는 실제 JWT 검증 경로를 그대로 탐). 사진 저장소는 키가 없어 메모리 저장소(`https://memory.local/...` — 브라우저에서 이미지가 안 보이는 것은 로컬 한정).
+  - Android: `미실행` — 에뮬레이터 `localone35`는 있으나 Expo Go 앱 저장소에 로그인 세션을 넣을 방법이 없어 로그인 화면(수정 화면) 확인 불가. 플랫폼 분기가 새로 없고(정적 시험) 사진 고르기는 LOCAL-1 `imagePicker.ts`를 그대로 씀.
+
+## 1. 수용 기준 전수 점검
+
+| 요구사항 ID | AC | 준비 | 행동 | 기대 | 실제 (출력·화면) | 증거 (`파일:줄`·캡처) | 웹 | Android | iOS (D) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| C-46 F1 / Y2-1 | 수정 화면 열기 | 로그인 | "프로필 수정" | `/me/edit`, "곧 열려요" 없음 | 수정 화면 열림 | `MyCollectionScreen.tsx:99`, `my-collection.test.tsx:818` | 통과 | 미실행 | 대기 |
+| Y2-5 | 보낸 칸만 | 닉네임·소개·사진 있음 | 소개만 고쳐 저장 | 요청 본문 `bio` 하나, 나머지 그대로 | 서버·앱 시험 통과 | `test_profile_edit.py:50`, `profile-edit.test.tsx:140` | 통과 | 미실행 | 대기 |
+| Y2-2 | 닉네임 1~40 | — | 빈 칸·41자 | 앱: 저장 막고 안내 / 서버: 422 nickname | 웹에서 빈 닉네임 저장 시 안내 확인 | `test_profile_edit.py:79`, `profile-edit.test.tsx:155` | 통과 | 미실행 | 대기 |
+| Y2-3·Y2-O2 | 소개 0~60·공백은 null | — | 61자 / 공백 / 60자 | 422 bio / null / 200 | 시험 통과, 웹 글자 수 n/60 확인 | `test_profile_edit.py:88`, `profile-edit.test.tsx:148`, `:164` | 통과 | 미실행 | 대기 |
+| Y2-4·NFR-05 | 사진 EXIF 제거·지우기 | GPS 있는 JPEG | #39 → #38 | 저장 파일에 GPS 없음, `avatar_url` https, 지우면 null | 시험 통과, 웹에서 앨범 고르기·저장 요청 성공 | `test_profile_edit.py:183`, `:124`, `:157` | 통과 | 미실행 | 대기 |
+| C3 | 남의·미발급 사진 경로 | B 경로 / 미발급 UUID | #38 | 422 avatar_path, 무변경 | 시험 통과 | `test_profile_edit.py:136`, `:145` | N/A(서버) | N/A | N/A |
+| Y2-O1 | 저장 반영 | 저장 성공 | 내 정보로 | 머리 갱신 + "저장했어요" | 웹에서 확인 | `useMyCollection.ts:301`, `my-collection.test.tsx:907` | 통과 | 미실행 | 대기 |
+| Y2-O3 | 나가기 확인 | 소개 고침 | ‹ | 확인창 [저장하기]·[나가기] | 웹에서 확인(헤드리스 Edge 캡처 포함) | `ProfileEditScreen.tsx:416`, `profile-edit.test.tsx:172`, `:185` | 통과 | 미실행 | 대기 |
+| Y2-O4 | ✎ 메뉴 | 사진 있음/없음 | ✎ | 앨범 고르기, 사진 있을 때만 지우기, 웹은 사진 찍기 없음 | 웹에서 확인 | `ProfileEditScreen.tsx:334-336`, `profile-edit.test.tsx:217` | 통과 | 미실행 | 대기 |
+| Y2-6 | 팔로우 없음 | — | 렌더 | "팔로우"·"팔로워" 없음 | 시험 통과 | `my-collection.test.tsx:825` | 통과 | 미실행 | 대기 |
+| Y2-7·Y2-O5·Y2-O6 | 종(점만·설정 왼쪽·계정별 공유) | `/inbox` 연결 가정 | 렌더·포커스·계정 전환 | 점 1개 숫자 없음, 실패 시 점 제거, 두 종 같은 값 | 가짜 응답 시험 통과. 실제 화면은 `/inbox` 미연결로 종 숨김(C7) | `InboxBell.tsx:21`, `:52`, `my-collection.test.tsx:839`, `:858`, `:875` | 미실행(종 숨김) | 미실행 | 대기 |
+| AC-ISOLATION | 계정 경합 | A 저장 진행 중 | B로 전환 | A 응답이 B에 반영 안 됨, 늦은 #39 뒤 #38 없음 | 시험 통과 | `profile-edit.test.tsx:344`, `my-collection.test.tsx:916` | 통과(시험) | 미실행 | 대기 |
+
+## 2. 명세서 예외 상황 점검
+
+| 명세서 예외 # | 확인한 방법 | 화면 문구가 명세서와 같은가 | 기록이 안 바뀌었나(막는 동작) | 결과 |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 끊김 | jest(#38 503·응답 유실 → 다시 저장) | 같음("저장하지 못했어요" / "다시 저장하기") | 입력 유지, 같은 경로 재사용(#39 1회) | 통과 |
+| 2 아무것도 안 고침 | jest + 웹 | — | 호출 0회, 화면 닫힘 | 통과 |
+| 3 연타 | jest | 같음("저장 중…") | #38 1회 | 통과 |
+| 4 비로그인 | jest(처음부터·고치는 중 로그아웃) | 같음 | API 0회 | 통과 |
+| 5 사진 거절 | jest(413·422 file) + 서버 시험 | 같음 | 다른 칸 유지, #38 0회, 저장소 올리기 0회 | 통과 |
+| 6 빈 닉네임 | jest + 웹 | 같음 | 호출 0회 | 통과 |
+| 7 알림 확인 실패 | jest | 안내 없음 | 점 제거, 종 유지 | 통과 |
+
+## 3. 명세서와 달라진 점
+
+- 나가기 확인 문구·버튼: `"고친 내용을 버릴까요?"` [계속 고치기] [버리기] → `"저장하지 않고 나갈까요? 고친 내용은 사라져요"` [저장하기] [나가기] (2026-11-23 주니어가 웹 확인 뒤 요청). 명세서 0절·시안 반영, 계약 C3·P5 반영은 PR #274 검토 메모 `[계약 보완 필요]`.
+
+## 4. 남은 문제
+
+- Android `미실행`(위 실행 환경 이유). iOS는 D 확인 대기.
+- 종은 C CLUB-2-P4 `/inbox` 머지 전이라 실제 화면에서는 숨김 — `TODO(연결)` `InboxBell.tsx:21`.
+- 앱 전체 jest의 `library-visit/home-list` "no hardcoded colors" 1건 실패는 이 변경 전부터 있던 것(`home-facade.test.tsx` 색 코드, 담당 밖).

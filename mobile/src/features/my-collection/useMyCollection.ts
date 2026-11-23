@@ -1,4 +1,5 @@
 // 내 정보 모음 상태 — contracts/my-collection.md MY-1 P4 골격(이중 러너 + 비로그인/계정 전환 정화), Y-O2·Y-O4·Y-O5, C6.
+// MY-2: 프로필 수정 화면이 저장하면 emitProfileSaved로 이 머리를 응답값으로 바꾸고 "저장했어요"(Y2-O1).
 import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "../../auth/AuthProvider";
@@ -34,7 +35,7 @@ export const MY_TEXT = {
   loginTitle: "로그인하면 내 정보를 볼 수 있어요",
   loginSub: "내가 올린 게시물과 좋아요·북마크한 게시물을 모아 봐요",
   editProfile: "프로필 수정",
-  editSoon: "프로필 수정은 곧 열려요",
+  saved: "저장했어요",
   settings: "설정",
   profileFailed: "내 정보를 불러오지 못했어요",
   listFailed: "게시물을 불러오지 못했어요",
@@ -68,6 +69,13 @@ const FETCHERS: Record<CollectionTab, (page: PageArgs, signal?: AbortSignal) => 
   reactions: fetchMyReactions,
   bookmarks: fetchMyBookmarks,
 };
+
+/** MY-2 저장 알림: 수정 화면(다른 경로)이 저장 응답을 내 정보 머리로 넘긴다. 같은 계정일 때만 받는다(Y7) */
+type ProfileSavedListener = (userId: string, profile: MyProfile) => void;
+const profileSavedListeners = new Set<ProfileSavedListener>();
+export function emitProfileSaved(userId: string, profile: MyProfile): void {
+  for (const l of [...profileSavedListeners]) l(userId, profile);
+}
 
 export type ProfileState = { kind: "loading" } | { kind: "error" } | { kind: "ready"; profile: MyProfile };
 export type TabState =
@@ -286,6 +294,21 @@ export function useMyCollection() {
   }, [signedIn, userId]);
 
   useEffect(() => () => clearTimers(), []);
+
+  const ownerRef = useRef<string | null>(null);
+  ownerRef.current = signedIn ? userId : null;
+  useEffect(() => {
+    const onSaved: ProfileSavedListener = (uid, saved) => {
+      if (uid !== ownerRef.current) return; // 앞 계정의 늦은 저장은 버린다
+      profileRunner.cancel();
+      setProfile({ kind: "ready", profile: saved });
+      showNotice(MY_TEXT.saved);
+    };
+    profileSavedListeners.add(onSaved);
+    return () => {
+      profileSavedListeners.delete(onSaved);
+    };
+  }, [profileRunner, showNotice]);
 
   // ─────────── 캐시 맞추기(Y-O2 [D 보완]) ───────────
 
