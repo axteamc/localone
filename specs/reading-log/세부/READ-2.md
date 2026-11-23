@@ -117,6 +117,8 @@
 - [구현 중 변경] 홈 칸이 `fetchReadingLogs`를 `library-visit/deps.ts`에서 다시 내보내 씀(P2 파일 목록 밖 한 줄) — 홈 시험 5개가 로그인 모듈을 대역으로 바꾸고 `deps`째 바꿔 끼우는 구조라, `reading-log/api`를 바로 읽으면 로그인 저장소(AsyncStorage)·로그아웃 정리 등록 때문에 기존 홈 시험이 깨짐. deps가 "홈이 쓰는 바깥 모듈 한곳 모음"이라 같은 규칙을 따름 — `mobile/src/features/library-visit/deps.ts:22-23`
 - [Claude가 정함] 홈 칸은 로그인했을 때만 안쪽 부품을 그림(계정마다 key로 새로 그림) — 비로그인이면 묻지도 않고, 계정이 바뀌면 앞 요청을 끊음. `home-news` 시험이 마지막 focus 콜백을 홈 것으로 잡는 구조와도 부딪히지 않음 — `RecentReadingRow.tsx:16-22`
 - [Claude가 정함] 홈 칸 표지 아래 제목 두 줄·웹 좌우 화살표 — 인기 도서 줄과 같은 모양 — `RecentReadingRow.tsx:45-70`
+- [구현 중 변경] PR #287 검토 반영 — 한 도서관 책장에서 지우고 돌아오면 그 책장(#41)과 머리 권수(#46 기준)도 다시 받음 / 도서관 줄은 화면에 보이는 줄부터 #41(이미 받은 줄은 새 숫자가 오기 전까지 다시 묻지 않음), 탭·기록 화면으로 떠나면(blur) 받는 중인 요청 abort — `useReadingLogs.ts` focus 리스너, `ReadingLogScreen.tsx` `LibraryRow` `active`·`libRowHeight`
+- [계약 보완 필요] `library-visit/deps.ts` 한 줄 재내보내기가 발행 계약 READ-2 P2 수정 허용 파일 목록 밖 — 홈 시험 경계 때문에 필요. PR #287 인라인 답글로 D 확인 요청 — `mobile/src/features/library-visit/deps.ts:22-23`
 - [범위 밖 요청] 구현 화면 확인 중(READ-2-P1) "최신순이랑 오래된순 내가 설정한순서 이건 못보는거야?" — 결정 2 ⚙ 순서 메뉴는 별도 계약 승인 대기라 그리지 않고 최근 읽은 순만 유지 — `../team/contracts/reading-log.md` READ-2 계약 머리말, [#283](이슈)
 
 ## 다음에 할 것

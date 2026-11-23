@@ -79,7 +79,12 @@ export function useReadingLogs(): {
       setLib(null);
       return;
     }
-    setLib({ owner, libraryId, items: null, nextCursor: null, failed: false });
+    // 같은 책장을 다시 받을 때(탭 복귀·다시 해 보기)는 보이던 책을 그대로 두고 바꾼다
+    setLib((prev) =>
+      prev && prev.owner === owner && prev.libraryId === libraryId && prev.items
+        ? { ...prev, failed: false }
+        : { owner, libraryId, items: null, nextCursor: null, failed: false }
+    );
     void runner.run((signal) => fetchReadingLogs({ libraryId, cursor: null }, signal)).then((result) => {
       if (result.status === "stale") return; // C6 연타(이름표): 늦게 온 앞 도서관 응답은 버린다
       if (result.status === "error") {
@@ -129,11 +134,15 @@ export function useReadingLogs(): {
     return () => ctrl.abort();
   }, [owner, statsTick]);
 
-  // 탭으로 돌아오면(쓰기·지우기 뒤) 숫자와 도서관 순서를 다시 받는다. 첫 응답 전의 focus는 무시
+  // 탭으로 돌아오면(쓰기·지우기 뒤) 숫자·도서관 순서와 열린 한 도서관 책장을 다시 받는다. 첫 응답 전의 focus는 무시
+  const libraryIdRef = useRef(libraryId);
+  libraryIdRef.current = libraryId;
   useEffect(
     () =>
       navigation.addListener("focus", () => {
-        if (statsSettledRef.current) setStatsTick((n) => n + 1);
+        if (!statsSettledRef.current) return;
+        setStatsTick((n) => n + 1);
+        if (libraryIdRef.current !== null) setLibTick((n) => n + 1);
       }),
     [navigation]
   );

@@ -13,6 +13,7 @@ import { useReadingLogs } from "../useReadingLogs";
 
 const mockPush = jest.fn();
 const focusListeners: (() => void)[] = [];
+const mockBlurListeners: (() => void)[] = [];
 
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")
@@ -23,10 +24,11 @@ jest.mock("expo-router", () => ({
   useNavigation: () => ({
     setOptions: () => undefined,
     addListener: (event: string, fn: () => void) => {
-      if (event === "focus") focusListeners.push(fn);
+      const list = event === "focus" ? focusListeners : event === "blur" ? mockBlurListeners : null;
+      list?.push(fn);
       return () => {
-        const i = focusListeners.indexOf(fn);
-        if (i >= 0) focusListeners.splice(i, 1);
+        const i = list ? list.indexOf(fn) : -1;
+        if (list && i >= 0) list.splice(i, 1);
       };
     },
   }),
@@ -113,6 +115,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   api.shelfStore.clear();
   focusListeners.length = 0;
+  mockBlurListeners.length = 0;
   signedIn();
   logsAre();
   fetchReadingStats.mockResolvedValue(STATS);
@@ -368,6 +371,103 @@ describe("도서관별 보기 (R2-O1·R2-O3, C6)", () => {
     expect(fetchReadingStats).toHaveBeenCalledTimes(2);
     await waitFor(() => expect(libCalls(101)).toHaveLength(2));
     expect(libCalls(102)).toHaveLength(2);
+  });
+});
+
+describe("PR #287 검토 보완 (P4 줄 요청·복귀 갱신)", () => {
+  const manyLibs = Array.from({ length: 12 }, (_, i) => ({
+    library_id: 300 + i,
+    name: `도서관${i}`,
+    count: 1,
+    last_read_on: "2026-11-01",
+  }));
+
+  test("deleting in a library shelf and returning refreshes that shelf and its count", async () => {
+    await render(<ReadingLogScreen />);
+    await screen.findByText("전체 12 · 올해 9 · 이번 달 2");
+    await fireEvent.press(screen.getByText(TEXT.toggleAll));
+    await fireEvent.press(await screen.findByTestId("lib-tag-101"));
+    expect(await screen.findByTestId("shelf-book-11")).toBeTruthy();
+    expect(within(screen.getByTestId("reading-head")).getByText("6권")).toBeTruthy();
+
+    // 기록 화면에서 "파친코"(11)를 지우고 돌아옴
+    logsAre({ 101: [LIB_101[0]!] });
+    fetchReadingStats.mockResolvedValue({
+      ...STATS,
+      total: 11,
+      libraries: [STATS.libraries[0]!, { ...STATS.libraries[1]!, count: 5 }],
+    });
+    const before = fetchReadingLogs.mock.calls.filter((c) => c[0].libraryId === 101 && c[0].limit === undefined).length;
+    await act(async () => focusListeners.forEach((fn) => fn()));
+    await waitFor(() => expect(screen.queryByTestId("shelf-book-11")).toBeNull());
+    expect(screen.getByTestId("shelf-book-1")).toBeTruthy();
+    expect(within(screen.getByTestId("reading-head")).getByText("5권")).toBeTruthy();
+    expect(fetchReadingLogs.mock.calls.filter((c) => c[0].libraryId === 101 && c[0].limit === undefined).length).toBe(before + 1);
+  });
+
+  test("library rows load only once visible", async () => {
+    fetchReadingStats.mockResolvedValue({ ...STATS, libraries: manyLibs });
+    fetchReadingLogs.mockImplementation(async (q) => page(q.libraryId === undefined ? ALL : [log(`r${q.libraryId}`, `책${q.libraryId}`, q.libraryId!)]));
+    await render(<ReadingLogScreen />);
+    await screen.findByText("전체 12 · 올해 9 · 이번 달 2");
+    await fireEvent.press(screen.getByText(TEXT.toggleAll));
+    await screen.findByTestId("shelf-book-r300");
+
+    const asked = () => new Set(fetchReadingLogs.mock.calls.map((c) => c[0].libraryId).filter((id) => id !== undefined));
+    const first = asked();
+    expect(first.has(300)).toBe(true);
+    expect(first.has(311)).toBe(false); // 화면 밖 줄은 아직 묻지 않는다
+    expect(first.size).toBeLessThan(12);
+
+    await fireEvent.scroll(screen.getByTestId("library-shelf"), {
+      nativeEvent: { contentOffset: { y: 5000 }, layoutMeasurement: { height: 1334 }, contentSize: { height: 8000 } },
+    });
+    await waitFor(() => expect(asked().size).toBe(12));
+    // 이미 받은 줄은 다시 묻지 않는다(줄마다 한 번)
+    for (const id of first) expect(libCalls(id)).toHaveLength(1);
+  });
+
+  test("leaving the tab cancels row requests in flight", async () => {
+    const signals: AbortSignal[] = [];
+    await render(<ReadingLogScreen />);
+    await screen.findByText("전체 12 · 올해 9 · 이번 달 2");
+    fetchReadingLogs.mockImplementation((q, signal) => {
+      if (q.libraryId === undefined) return Promise.resolve(page(ALL));
+      if (signal) signals.push(signal);
+      return new Promise(() => undefined);
+    });
+    await fireEvent.press(screen.getByText(TEXT.toggleAll));
+    await waitFor(() => expect(signals).toHaveLength(2));
+    expect(signals.some((s) => s.aborted)).toBe(false);
+
+    await act(async () => mockBlurListeners.forEach((fn) => fn())); // 기록 화면·다른 탭으로 감
+    expect(signals.every((s) => s.aborted)).toBe(true);
+
+    // 돌아오면 다시 받는다
+    logsAre();
+    await act(async () => focusListeners.forEach((fn) => fn()));
+    expect(await screen.findByTestId("shelf-book-11")).toBeTruthy();
+    expect(await screen.findByTestId("shelf-book-12")).toBeTruthy();
+  });
+});
+
+describe("PR #287 검토 보완 — 받은 줄 유지", () => {
+  test("rows already loaded are not asked again until new numbers arrive", async () => {
+    await render(<ReadingLogScreen />);
+    await screen.findByText("전체 12 · 올해 9 · 이번 달 2");
+    await fireEvent.press(screen.getByText(TEXT.toggleAll));
+    await screen.findByTestId("shelf-book-11");
+    expect(libCalls(101)).toHaveLength(1);
+
+    const next = deferred<ReadingStats>();
+    fetchReadingStats.mockReturnValueOnce(next.promise);
+    await act(async () => mockBlurListeners.forEach((fn) => fn()));
+    await act(async () => focusListeners.forEach((fn) => fn()));
+    expect(libCalls(101)).toHaveLength(1); // 숫자가 오기 전에는 받은 줄 그대로
+    expect(screen.getByTestId("shelf-book-11")).toBeTruthy();
+
+    await act(async () => next.resolve({ ...STATS }));
+    await waitFor(() => expect(libCalls(101)).toHaveLength(2)); // 새 숫자가 오면 다시 받는다
   });
 });
 

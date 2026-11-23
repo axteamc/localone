@@ -4,7 +4,7 @@
 // READ-2: 머리(고정) "독서 기록" · "전체 ⇄"/"도서관별 ⇄". 숫자 줄은 책장과 같이 스크롤.
 // 도서관별 보기 = 도서관마다 한 줄(이름표 + 최근 9권 가로 줄, 바닥선 = 도서관 색). 이름표 › → 그 도서관 책장.
 // 설정 버튼 순서 메뉴·꾹 눌러 자리 바꾸기는 별도 계약 승인 대기(READ-2 계약 머리말) — 그리지 않는다.
-import { useRouter } from "expo-router";
+import { useNavigation, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -128,11 +128,20 @@ function RefreshButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-/** 도서관 한 줄: 처음 보일 때 그 도서관 #41 limit=9 한 번. 보기를 바꾸거나 화면을 떠나면 abort(C6 연타) */
+/** 도서관 줄 하나의 높이(이름표 32 + 간격 8 + 표지 + 간격 8 + 바닥선 6 + 줄 사이 18). 화면에 보이는 줄을 고르는 데 쓴다 */
+const libRowHeight = (coverSize: number) => 32 + 8 + Math.round(coverSize * 1.45) + 8 + 6 + 18;
+/** 도서관별 보기 맨 위(위 여백 16 + 숫자 줄 19 + 간격 18) */
+const LIB_LIST_TOP = 16 + 19 + 18;
+
+/**
+ * 도서관 한 줄: 화면에 처음 보일 때(active) 그 도서관 #41 limit=9 한 번(P4).
+ * 보기를 바꾸거나(언마운트) 탭·상세로 떠나면(active=false) 받는 중인 요청을 끊는다(C6 연타). 숫자를 다시 받으면(stamp) 다시 받는다
+ */
 function LibraryRow({
   lib,
   first,
   coverSize,
+  active,
   stamp,
   onOpen,
   onPick,
@@ -140,6 +149,8 @@ function LibraryRow({
   lib: ReadingStatsLibrary;
   first: boolean;
   coverSize: number;
+  /** 화면에 한 번이라도 보였고 지금 이 탭이 보이는 중 */
+  active: boolean;
   /** 숫자(#46)를 다시 받으면 바뀌는 값 — 탭으로 돌아오면 줄도 다시 받는다 */
   stamp: ReadingStats;
   onOpen: (lib: ReadingStatsLibrary) => void;
@@ -147,18 +158,24 @@ function LibraryRow({
 }) {
   const [rows, setRows] = useState<{ items: ReadingLog[] | null; failed: boolean }>({ items: null, failed: false });
   const [tick, setTick] = useState(0);
+  const loadedRef = useRef<{ tick: number; stamp: ReadingStats } | null>(null);
   useEffect(() => {
+    if (!active) return;
+    const loaded = loadedRef.current;
+    if (loaded && loaded.tick === tick && loaded.stamp === stamp) return; // 이미 받은 줄은 다시 보이게 돼도 그대로
     const ctrl = new AbortController();
     setRows((prev) => ({ items: prev.items, failed: false }));
     fetchReadingLogs({ libraryId: lib.library_id, limit: ROW_MAX }, ctrl.signal)
       .then((page) => {
-        if (!ctrl.signal.aborted) setRows({ items: page.items, failed: false });
+        if (ctrl.signal.aborted) return;
+        loadedRef.current = { tick, stamp };
+        setRows({ items: page.items, failed: false });
       })
       .catch(() => {
         if (!ctrl.signal.aborted) setRows({ items: null, failed: true });
       });
     return () => ctrl.abort();
-  }, [lib.library_id, tick, stamp]);
+  }, [active, lib.library_id, tick, stamp]);
 
   const color = libraryColor(lib.library_id);
   const tag = libraryTagText(lib, first);
@@ -208,7 +225,20 @@ export function ReadingLogScreen() {
   const { status, userId } = useAuth();
   const owner = status === "signedIn" && userId ? userId : null;
   const logs = useReadingLogs();
-  const { width: windowWidth } = useWindowDimensions();
+  const navigation = useNavigation();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  // 이 탭이 지금 보이는가: 다른 탭·기록 화면으로 가면 도서관 줄의 받는 중인 요청을 끊는다(P4)
+  const [focused, setFocused] = useState(true);
+  useEffect(() => {
+    const offFocus = navigation.addListener("focus", () => setFocused(true));
+    const offBlur = navigation.addListener("blur", () => setFocused(false));
+    return () => {
+      offFocus();
+      offBlur();
+    };
+  }, [navigation]);
+  // 도서관별 보기에서 지금까지 보인 아래 끝(스크롤한 만큼 늘어난다). 보기를 바꾸면 처음부터
+  const [libReach, setLibReach] = useState(0);
   const [viewState, setViewState] = useState<{ owner: string | null; view: ShelfView }>({ owner: null, view: "all" });
   const view: ShelfView = viewState.owner === owner ? viewState.view : "all";
   const [picked, setPicked] = useState<{ owner: string; log: ReadingLog } | null>(null);
@@ -236,6 +266,7 @@ export function ReadingLogScreen() {
 
   const goView = (next: ShelfView) => {
     setPicked(null);
+    if (next === "libraries") setLibReach(0);
     setViewState({ owner, view: next });
     logs.setFilter(typeof next === "object" ? next.libraryId : null);
   };
@@ -326,6 +357,8 @@ export function ReadingLogScreen() {
   let head: React.ReactNode;
   let content: React.ReactNode;
   if (typeof view === "object") {
+    // 권수는 다시 받은 숫자(#46)를 따른다(지우고 돌아오면 줄어든다). 그 도서관 기록이 모두 지워졌으면 0
+    const liveCount = logs.stats ? (logs.stats.libraries.find((l) => l.library_id === view.libraryId)?.count ?? 0) : view.count;
     // 한 도서관 책장: ‹ · 이름 · n권 (본문은 전체 책장과 같은 한 달 한 줄 책장)
     head = (
       <View testID="reading-head" style={styles.head}>
@@ -333,7 +366,7 @@ export function ReadingLogScreen() {
           <Text style={styles.backText}>‹</Text>
         </Pressable>
         <Text style={[styles.headTitle, base.flex]} numberOfLines={1}>{view.name}</Text>
-        <Text style={base.sub}>{`${view.count}권`}</Text>
+        <Text style={base.sub}>{`${liveCount}권`}</Text>
       </View>
     );
     content =
@@ -380,8 +413,18 @@ export function ReadingLogScreen() {
       } else content = monthShelf(logs.items, true);
     } else {
       const libs = logs.stats?.libraries ?? null;
+      const reach = Math.max(libReach, windowHeight);
+      const rowH = libRowHeight(rowCover);
       content = (
-        <ScrollView testID="library-shelf" contentContainerStyle={[styles.shelfPad, styles.libPad, libs?.length === 0 && styles.grow]}>
+        <ScrollView
+          testID="library-shelf"
+          onScroll={(e) => {
+            const { contentOffset, layoutMeasurement } = e.nativeEvent;
+            const bottom = contentOffset.y + layoutMeasurement.height;
+            setLibReach((prev) => (bottom > prev ? bottom : prev));
+          }}
+          scrollEventThrottle={100}
+          contentContainerStyle={[styles.shelfPad, styles.libPad, libs?.length === 0 && styles.grow]}>
           {statsLine}
           {libs === null ? (
             logs.statsFailed ? null : <ActivityIndicator accessibilityLabel="불러오는 중" />
@@ -397,6 +440,7 @@ export function ReadingLogScreen() {
                 lib={lib}
                 first={i === 0}
                 coverSize={rowCover}
+                active={focused && LIB_LIST_TOP + i * rowH < reach}
                 stamp={logs.stats!}
                 onOpen={(l) => goView({ libraryId: l.library_id, name: l.name, count: l.count })}
                 onPick={pick}
