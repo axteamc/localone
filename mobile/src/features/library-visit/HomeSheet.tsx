@@ -30,18 +30,21 @@ const LOAD_MORE_EDGE = 200;
 export type HomeSheetProps = {
   nearby: LibrarySummary[];
   origin: "current" | "start" | "moved";
+  locationReady: boolean;
+  viewSeq: number;
+  visitRefresh: number;
   /** 창 위쪽 끝 바로 위에 붙어 함께 움직이는 것(지도 안내 카드·"현재 위치로" 등). 창이 지도 아래쪽을 덮어도 보이게 */
   above?: React.ReactNode;
 };
 
 export function HomeSheet(props: HomeSheetProps) {
-  const { nearby, origin, above } = props;
+  const { nearby, origin, locationReady, viewSeq, visitRefresh, above } = props;
   const router = useRouter();
   const [area, setArea] = useState(0);
   const atTop = useRef(true);
   const isListAtTop = useCallback(() => atTop.current, []);
   const sheet = useHomeSheet(area, isListAtTop);
-  const feed = useHomeFeed(nearby, origin);
+  const feed = useHomeFeed(nearby, origin, { locationReady, viewSeq, visitRefresh });
 
   const onLayout = useCallback((e: LayoutChangeEvent) => setArea(e.nativeEvent.layout.height), []);
 

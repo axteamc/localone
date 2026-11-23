@@ -32,6 +32,8 @@ const TEXT = {
 export function HomeScreen() {
   const router = useRouter();
   const home = useHomeLibraries();
+  const [visitRefresh, refreshVisits] = useState(0);
+  const hasFocused = useRef(false);
 
   // V5: 미리보기 없이 방문 페이지. distanceM은 distance_m이 0 이상 안전한 정수일 때만 넘기고, null·잘못된 값은 뺀다(core K15)
   const openLibrary = useCallback(
@@ -104,6 +106,8 @@ export function HomeScreen() {
     useCallback(() => {
       readRecent(false);
       readRule();
+      if (hasFocused.current) refreshVisits((n) => n + 1);
+      hasFocused.current = true;
     }, [readRecent, readRule])
   );
   const [seenView, setSeenView] = useState({ libraries: home.libraries, viewSeq: home.viewSeq, center: home.center });
@@ -240,6 +244,9 @@ export function HomeScreen() {
         {/* VISIT-1b 결정 2: 파사드 위에 반쯤 올라온 창. 안내 카드와 아래 가운데 버튼은 창 위쪽 끝 바로 위에 */}
         <HomeSheet
           nearby={home.libraries}
+          locationReady={home.status !== "loading"}
+          viewSeq={home.viewSeq}
+          visitRefresh={visitRefresh}
           origin={home.origin}
           above={
             message || bottomButton ? (
