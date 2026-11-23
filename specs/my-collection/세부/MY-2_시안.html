@@ -142,6 +142,10 @@
   .sline { display:flex; align-items:center; gap:8px; padding:9px 2px; border-bottom:1px solid var(--surface2); cursor:pointer; }
   .sline .k { width:52px; color:var(--sub); font-size:10px; flex:none; } .sline .v { flex:1; } .sline .go { color:var(--sub); }
   .center { text-align:center; } .small { font-size:9px; color:var(--sub); }
+  .hband { margin:-12px -10px 0; padding:6px 10px; font-size:9px; letter-spacing:.1em; color:var(--sub); background:var(--cream); border-bottom:1px solid var(--surface2); display:flex; align-items:center; }
+  .bell { position:relative; } .bell.hb { margin-left:auto; font-size:12px; cursor:pointer; letter-spacing:0; }
+  .dot { position:absolute; top:1px; right:1px; width:6px; height:6px; border-radius:50%; background:var(--ink-strong); }
+  .dot.off { display:none; }
   .errcard { background:var(--cream); border:1px solid var(--surface3); border-radius:9px; padding:7px 8px; margin-top:8px; font-size:10px; }
   .warn { color:var(--text); font-size:9px; margin-top:3px; }
 </style>
@@ -250,8 +254,8 @@
 
 <!-- ===== 중심 요소 2 ===== -->
 <section class="element" id="el-photo" data-chosen="C">
-  <h2>정할 것 2. 사진을 바꾸고 지우는 모양 <span class="status">반영 — 불편한 점 확인 중</span></h2>
-  <div class="decided"><b>고른 것: 후보 C.</b> "볼펜모양 누르면 사진 설정하는기능" · "C가 제일 보기 좋다고 생각하고 이해하기도 빠를거같아" · 차선 없음 · 화면 안 안내 글자 "사진 모서리 ✎를 눌러 보세요"는 빼 달라고 해서 뺐어요(시안 안내용이었고 앱에는 넣지 않아요). 사진을 지운 뒤 "기본 그림으로 바뀌었어요" 같은 설명 글자도 "넣을필요 없다"고 해서 뺐어요 — 사진 자리가 기본 그림으로 바뀌는 것만 보여요.</div>
+  <h2>정할 것 2. 사진을 바꾸고 지우는 모양 <span class="status">확인</span></h2>
+  <div class="decided"><b>고른 것: 후보 C.</b> "볼펜모양 누르면 사진 설정하는기능" · "C가 제일 보기 좋다고 생각하고 이해하기도 빠를거같아" · 차선 없음 · 화면 안 안내 글자 "사진 모서리 ✎를 눌러 보세요"는 빼 달라고 해서 뺐어요(시안 안내용이었고 앱에는 넣지 않아요). 사진을 지운 뒤 "기본 그림으로 바뀌었어요" 같은 설명 글자도 "넣을필요 없다"고 해서 뺐어요 — 사진 자리가 기본 그림으로 바뀌는 것만 보여요. · 불편한 점: "설명이 없으면 처음에 좀 헷갈릴수 있다고 생각해 깔끔한건 장점이야"</div>
   <div class="flow"><b>정해진 것.</b> 고치는 화면은 정할 것 1에서 고른 A(사진 위 가운데, 칸 두 개, 맨 아래 "저장")예요. 사진은 <b>찍거나 앨범에서 고를 수 있고, 지울 수도 있어요</b>(지우면 기본 그림). 사진의 위치 정보는 저장할 때 지워져요. 바꾼 사진도 맨 아래 "저장"을 눌러야 저장돼요. 정할 것은 <b>사진 쪽을 누르면 무엇이 뜨느냐</b>예요.</div>
   <div class="pick">다시 보기: <select data-for="el-photo">
     <option value="A">후보 A — 아래에서 올라오는 작은 창</option>
@@ -370,7 +374,93 @@
   </div>
 </section>
 
-<!-- 중심 요소 3(알림 아이콘 자리)은 2가 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
+
+<!-- ===== 중심 요소 3 ===== -->
+<section class="element" id="el-bell" data-chosen="">
+  <h2>정할 것 3. 알림 아이콘을 어디에 둘까 <span class="status">결정 전</span></h2>
+  <div class="flow"><b>정해진 것.</b> 알림 아이콘(종 🔔)을 누르면 알림함 화면으로 가요(알림함 화면은 다른 담당이 만들어요). 읽지 않은 알림이 있으면 종 옆에 <b>점 하나</b>만 보여요(숫자 없음). 정할 것은 <b>종이 어느 화면의 어디에 있느냐</b>예요. 휴대폰 위 "점 켜기" 스위치로 읽지 않은 알림이 있을 때 모습도 볼 수 있어요.</div>
+  <div class="pick">다시 보기: <select data-for="el-bell">
+    <option value="A">후보 A — 내 정보, 설정 ⚙ 왼쪽</option>
+    <option value="B">후보 B — 내 정보, 맨 위 머리 띠 오른쪽</option>
+    <option value="C">후보 C — 홈과 내 정보 둘 다</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 내 정보, 설정 ⚙ 왼쪽 <span class="badge">추천</span></h3>
+      <div class="row small" style="justify-content:center;margin-bottom:4px">점 켜기 <button class="switch on" data-bell="A"></button></div>
+      <div class="phone">
+        <div class="scr">
+          <div class="hband">MY</div>
+          <div class="mehead"><div class="row"><span class="av"></span><div><div class="gauge">MEMBER · PROFILE</div><div class="nick">책읽는고양이</div><div class="bio">동네 도서관 순례 중</div><button class="btn ghost" style="margin-top:4px">프로필 수정</button></div>
+            <span class="gear bell" data-toast="tba" style="margin-left:auto;cursor:pointer">🔔<i class="dot" data-dot="A"></i></span><span class="gear" style="margin-left:4px">⚙</span></div></div>
+          <div class="tabs3"><span class="on">내 게시물</span><span>좋아요</span><span>북마크</span></div>
+          <div class="grid2"><i></i><i></i><i></i><i></i></div>
+          <div class="toast" id="tba">알림함 화면으로 가요</div>
+        </div>
+      </div>
+      <p>내 정보 프로필 줄 오른쪽 위에 종 🔔과 설정 ⚙이 나란히 있어요. 종이 왼쪽이에요. 홈에는 종이 없어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>하단 "내 정보" 탭 → 프로필 줄 오른쪽 위 🔔(점이 있으면 새 알림) → 누르면 알림함 화면.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>종과 ⚙가 같은 크기(24)로 나란히, 점은 종 오른쪽 위 6px</li><li>홈 화면은 지금 그대로</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>내 것(설정·알림)이 한곳에 모이고 홈은 깔끔해요. / 알림을 보려면 내 정보 탭까지 가야 해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-13 아이콘 하나 누르면 채워짐(상태 표시) — 알림 종에 점</p>
+      <p><b>추천 이유:</b> 알림은 모임·게시물 같은 "내 것"에 대한 소식이라, 내 것이 모인 내 정보에 두면 찾을 곳이 하나예요. 홈은 도서관 블록이 주인공이라 비워 둬요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 내 정보, 맨 위 머리 띠 오른쪽</h3>
+      <div class="row small" style="justify-content:center;margin-bottom:4px">점 켜기 <button class="switch on" data-bell="B"></button></div>
+      <div class="phone">
+        <div class="scr">
+          <div class="hband">MY <span class="bell hb" data-toast="tbb">🔔<i class="dot" data-dot="B"></i></span></div>
+          <div class="mehead"><div class="row"><span class="av"></span><div><div class="gauge">MEMBER · PROFILE</div><div class="nick">책읽는고양이</div><div class="bio">동네 도서관 순례 중</div><button class="btn ghost" style="margin-top:4px">프로필 수정</button></div><span class="gear">⚙</span></div></div>
+          <div class="tabs3"><span class="on">내 게시물</span><span>좋아요</span><span>북마크</span></div>
+          <div class="grid2"><i></i><i></i><i></i><i></i></div>
+          <div class="toast" id="tbb">알림함 화면으로 가요</div>
+        </div>
+      </div>
+      <p>종은 화면 맨 위 "MY" 머리 띠 오른쪽 끝에 있고, ⚙는 프로필 줄에 그대로 있어요. 홈에는 종이 없어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>하단 "내 정보" 탭 → 맨 위 머리 띠 오른쪽 🔔 → 누르면 알림함 화면.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>종은 머리 띠 안, ⚙와 떨어져 있음</li><li>아래로 내려도 머리 띠는 그대로라 종이 늘 보임</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>화면 맨 위라 다른 앱처럼 찾기 쉽고 늘 보여요. / 설정 ⚙과 알림 🔔이 서로 다른 줄에 흩어져요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-11 머리 오른쪽 자리(인스타그램 홈 위 하트·종처럼 머리 띠 끝 아이콘)</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 홈과 내 정보 둘 다</h3>
+      <div class="row small" style="justify-content:center;margin-bottom:4px">점 켜기 <button class="switch on" data-bell="C"></button></div>
+      <div class="phone">
+        <div class="scr" data-screen="home">
+          <div class="hband">HOME <span class="bell hb" data-toast="tbc">🔔<i class="dot" data-dot="C"></i></span></div>
+          <div class="vbody" style="height:250px">파사드 홈(도서관 블록)<br>지금 그대로</div>
+          <div class="tabbar"><b>홈</b><span>독서 기록</span><span>대출·반납</span><button class="link small" data-open="me">내 정보</button></div>
+          <div class="toast" id="tbc">알림함 화면으로 가요</div>
+        </div>
+        <div class="scr hide" data-screen="me">
+          <div class="hband">MY</div>
+          <div class="mehead"><div class="row"><span class="av"></span><div><div class="gauge">MEMBER · PROFILE</div><div class="nick">책읽는고양이</div><div class="bio">동네 도서관 순례 중</div><button class="btn ghost" style="margin-top:4px">프로필 수정</button></div>
+            <span class="gear bell" data-toast="tbc2" style="margin-left:auto;cursor:pointer">🔔<i class="dot" data-dot="C"></i></span><span class="gear" style="margin-left:4px">⚙</span></div></div>
+          <div class="tabs3"><span class="on">내 게시물</span><span>좋아요</span><span>북마크</span></div>
+          <div class="grid2"><i></i><i></i></div>
+          <div class="tabbar"><button class="link small" data-open="home">홈</button><span>독서 기록</span><span>대출·반납</span><b>내 정보</b></div>
+          <div class="toast" id="tbc2">알림함 화면으로 가요</div>
+        </div>
+      </div>
+      <p>홈 맨 위 "HOME" 머리 띠 오른쪽에도 종이 있고, 내 정보에는 후보 A처럼 ⚙ 왼쪽에 있어요. 아래 탭으로 두 화면을 오가 보세요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>앱을 열면 홈 머리 띠 🔔 → 누르면 알림함 화면. 내 정보에서도 ⚙ 왼쪽 🔔 → 같은 알림함.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>점은 두 종에 똑같이 켜지고 꺼짐</li><li>홈 머리 띠에 아이콘이 하나 늘어남</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>앱을 열자마자 새 알림이 있는지 보여요. / 같은 종이 두 곳에 있어 홈 머리가 덜 깔끔하고, 둘이 같은지 헷갈릴 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>새 패턴 — 같은 알림 아이콘을 두 화면에 두기(홈에서 바로 알림을 보고 싶은 경우와 비교하려고 넣음)</p>
+    </article>
+  </div>
+</section>
+
 
 <!-- ===== 잘 안 될 때 (예외 네 장면) ===== -->
 <section id="except">
@@ -435,8 +525,8 @@
   <div class="wide"><table>
     <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
     <tr data-el="el-layout"><td>1. 수정 화면 배치</td><td>후보 A 한 화면에 모두 + 맨 아래 저장</td><td>후보 C 위로 올라오는 화면 + 위에 저장</td><td>후보 B 한 줄씩 눌러 고치기 ("왔다갔다 하는게 별로였어")</td><td>"A가 제일 편하고 알아보기 좋은데" / "사진이랑 입력칸이 한번에 보이고 입력하기 편하게 나와있어"</td><td>사진 72 원, 닉네임 /40, 소개 /60, 입력 칸 곡률 9</td><td>프로필 수정 → 고치는 화면 → 저장 → 내 정보</td><td><span class="st">확인</span></td></tr>
-    <tr data-el="el-photo"><td>2. 사진 고르기·지우기</td><td>후보 C 사진 모서리 ✎ → 사진 옆 작은 메뉴</td><td>차선 없음</td><td>후보 A 아래에서 올라오는 작은 창 · 후보 B 사진 아래 버튼이 늘 보임</td><td>"C가 제일 보기 좋다고 생각하고 이해하기도 빠를거같아" / "볼펜모양 누르면 사진 설정하는기능"</td><td>찍기·앨범·지우기(사진 있을 때만), 안내 글자 없음</td><td>✎ 누름 → 사진 옆 메뉴 → 고름 → 저장</td><td><span class="st">반영(확인 중)</span></td></tr>
-    <tr><td>3. 알림 아이콘 자리</td><td>—</td><td>—</td><td>—</td><td>(받기 전)</td><td>점 하나, 숫자 없음</td><td>아이콘 → 알림함</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-photo"><td>2. 사진 고르기·지우기</td><td>후보 C 사진 모서리 ✎ → 사진 옆 작은 메뉴</td><td>차선 없음</td><td>후보 A 아래에서 올라오는 작은 창 · 후보 B 사진 아래 버튼이 늘 보임</td><td>"C가 제일 보기 좋다고 생각하고 이해하기도 빠를거같아" / "볼펜모양 누르면 사진 설정하는기능"</td><td>찍기·앨범·지우기(사진 있을 때만), 안내 글자 없음</td><td>✎ 누름 → 사진 옆 메뉴 → 고름 → 저장</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-bell"><td>3. 알림 아이콘 자리</td><td>— (추천: 후보 A 내 정보, 설정 ⚙ 왼쪽)</td><td>—</td><td>—</td><td>(받기 전)</td><td>종 24, 점 6px 하나, 숫자 없음</td><td>🔔 → 알림함 화면</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>한 줄 소개 길이</td><td>60자, 글자 수 표시</td><td>—</td><td>—</td><td>묻지 않음</td><td>60</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>저장 안 하고 나갈 때</td><td>"고친 내용을 버릴까요?" [계속 고치기] [버리기]</td><td>—</td><td>—</td><td>묻지 않음</td><td>고친 게 없으면 바로 닫힘</td><td>‹ → 확인창 → 버리기면 내 정보</td><td><span class="st">기본값(Claude)</span></td></tr>
   </table></div>
@@ -468,6 +558,13 @@
     if (t.dataset.swap) { var w = t.dataset.swap.split('|'); t.textContent = t.textContent === w[0] ? w[1] : w[0]; }
     if (t.dataset.close) { var c = document.getElementById(t.dataset.close); c.classList.remove('on'); if (c.classList.contains('sheet')) c.classList.add('hide'); }
     if (t.dataset.toast) { var m = document.getElementById(t.dataset.toast); m.classList.add('on'); clearTimeout(m._t); m._t = setTimeout(function () { m.classList.remove('on'); }, 2000); }
+  });
+  // 정할 것 3: 점 켜기 스위치
+  document.querySelectorAll('[data-bell]').forEach(function (sw) {
+    sw.addEventListener('click', function () {
+      var on = sw.classList.contains('on');
+      document.querySelectorAll('[data-dot="' + sw.dataset.bell + '"]').forEach(function (d) { d.classList.toggle('off', on); /* 바깥 처리기가 나중에 on을 바꾸므로 누르기 전 상태 기준 */ });
+    });
   });
   // 예외 화면 전환: 탭을 누르면 휴대폰 안 화면이 바뀐다
   document.querySelectorAll('#exTabs button').forEach(function (b) {
