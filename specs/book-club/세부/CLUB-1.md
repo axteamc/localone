@@ -92,7 +92,12 @@
 
 ## 7. D 피드백
 
+- PR #252 리뷰(2026-11-23, `[D→C]` #255): ① 로그인 뒤 같은 모임 복귀·계정 전환 때 다시 읽기 → 계정 전환은 고침(예외 #4), 복귀는 `login.tsx`가 허용 파일 밖이라 `to:D` #256 ② 만든 사람을 참가자 수·정원에서 뺌 → 고침(K1-O4) ③ 고치기 뒤 상세 다시 읽기 → 고침, 시각 옆 "바뀜"은 응답 필드가 없어 #256(결정 3) ④ 댓글 더 보기 한 번만·늦은 페이지 버림 → 고침. Alembic 0018 순서 #256
+
 ## 검토 메모
+
+- [구현 중 변경] 만든 사람이 "모임에 참가"를 누르면 참가 행을 만들지 않고 `200`(지금 모임 그대로), 상세·정원·피드·안내 대상에서 만든 사람의 참가 행을 뺌 — PR #252 리뷰 2, K1-O4 — `server/app/routers/clubs.py` `COUNT_JOINED`·`SELECT_PARTICIPANTS`·`join_club`
+- [Claude가 정함] 만든 사람 화면의 주 버튼 자리는 흐린 "내가 만든 모임" — `ClubScreen.tsx` `MainButton`
 
 - [계약 보완 필요] CLUB-1-P3 허용 파일에 `local-feed/api.ts`(`feedItemKey`)·`LibraryFeed.tsx`(`feedItemHeightRatio`)·`GuestbookComposer.tsx`(`ComposeChooser`)가 없어 `+` 고르기 "모임 만들기" 줄과 둘째 묶음부터의 모임 카드 열쇠를 못 맞춤 → `to:B` #253, `VisitScreen.tsx` `openClub` `TODO(연결): B`
 - [Claude가 정함] 모임 카드 누르기는 `LibraryFeed`(B 파일) 대신 `FeedItemCard` 안 `ClubFeedCard`가 직접 `/clubs/[clubId]`로 이동 — 허용 파일 안에서 K1-11 충족
@@ -125,4 +130,4 @@
 | CLUB-1-P2 모임 화면·만들기 | `feat/book-club-CLUB-1` | #252 | 완료(주니어 확인) | `mobile/src/features/book-club/ClubScreen.tsx`(`CLUB_TEXT`, `MainButton`, 확인창), `ClubEditor.tsx`(접힘·미정·고치기), `api.ts`, `ClubCard.tsx`(`formatClubWhen`), `mobile/app/clubs/[clubId].tsx`·`new.tsx`. `club.test.tsx` 19 통과, book-club+local-feed 171 통과, tsc·web export 통과. 가드 제거 7개 중 6 빨강(모임 취소 이유 빈칸 `if (!why)`는 버튼 비활성과 겹친 이중 방어라 살아남음) | - |
 | CLUB-1-P3 피드 카드·입구 | `feat/book-club-CLUB-1` | #252 | 완료(주니어 확인) | `mobile/src/features/book-club/ClubCard.tsx`(`ClubCard`, `CARD_TEXT`), `mobile/src/features/local-feed/FeedItemCard.tsx`(`club` 분기 `ClubFeedCard`), `VisitScreen.tsx`(`openClub`). `club-card.test.tsx` 5 통과, book-club+local-feed 176 통과 | `TODO(연결): B` `+` 고르기 줄·`feedItemKey`·높이 #253 |
 
-- **다음 세션 이어하기 메모**: CLUB-1 구현 P1~P3 끝, PR #252 검토 대기. B #250·#253 머지되면 `VisitScreen` `onClub` 연결하고 CI 다시 확인.
+- **다음 세션 이어하기 메모**: PR #252 리뷰(#255) 중 ②·③(다시 읽기)·④·계정 전환 고쳐 올림. 남은 것: D #256(로그인 복귀·바뀜 필드·0018 순서), B #250·#253 → `onClub` 연결·둘째 묶음 확인·CI ok.

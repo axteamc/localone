@@ -79,11 +79,15 @@ SELECT_CLUB = text(f"SELECT {CLUB_COLUMNS} {CLUB_JOINS} WHERE c.id = :id")
 SELECT_CLUB_FOR_UPDATE = text("SELECT * FROM clubs WHERE id = :id FOR UPDATE")
 SELECT_PARTICIPANTS = text(
     "SELECT p.user_id, COALESCE(up.nickname, '이웃') AS nickname FROM club_participations p "
-    "LEFT JOIN user_profiles up ON up.user_id = p.user_id "
-    "WHERE p.club_id = :id AND p.state = 'joined' ORDER BY p.joined_at, p.user_id"
+    "JOIN clubs c ON c.id = p.club_id LEFT JOIN user_profiles up ON up.user_id = p.user_id "
+    "WHERE p.club_id = :id AND p.state = 'joined' AND p.user_id <> c.host_id ORDER BY p.joined_at, p.user_id"
 )
 SELECT_MINE = text("SELECT state FROM club_participations WHERE club_id = :id AND user_id = :uid")
-COUNT_JOINED = text("SELECT count(*) FROM club_participations WHERE club_id = :id AND state = 'joined'")
+# 만든 사람은 참가자 수·정원에 세지 않는다(K1-O4)
+COUNT_JOINED = text(
+    "SELECT count(*) FROM club_participations p JOIN clubs c ON c.id = p.club_id "
+    "WHERE p.club_id = :id AND p.state = 'joined' AND p.user_id <> c.host_id"
+)
 UPSERT_PARTICIPATION = text(
     "INSERT INTO club_participations (club_id, user_id, state) VALUES (:id, :uid, :state) "
     "ON CONFLICT (club_id, user_id) DO UPDATE SET state = EXCLUDED.state, updated_at = now(), "
@@ -301,7 +305,8 @@ def lock_hosted(c: Connection, club_id: UUID, user: CurrentUser) -> Any:
 
 def joined_user_ids(c: Connection, club_id: UUID) -> list[UUID]:
     return list(c.execute(
-        text("SELECT user_id FROM club_participations WHERE club_id = :id AND state = 'joined'"), {"id": club_id}
+        text("SELECT p.user_id FROM club_participations p JOIN clubs c ON c.id = p.club_id "
+             "WHERE p.club_id = :id AND p.state = 'joined' AND p.user_id <> c.host_id"), {"id": club_id}
     ).scalars())
 
 
@@ -395,6 +400,8 @@ async def join_club(request: Request, club_id: UUID, user: CurrentUser = Depends
         club = c.execute(SELECT_CLUB_FOR_UPDATE, {"id": club_id}).first()  # FOR UPDATE: 정원 경합 막기
         if not club or club.status == "hidden":
             raise not_found()
+        if club.host_id == user.id:
+            return club_view(c, club_id, user)  # 만든 사람은 참가자로 넣지 않는다(K1-O4, 자리 소진 방지)
         now = now_kst()
         if club.status in ("closed", "canceled") or started(club, now) or ended(club, now):
             raise ApiError(409, "CLUB_CLOSED", MSG_CLOSED)  # 시작 시각에 자동 마감(K1-7)
@@ -565,5 +572,6 @@ async def delete_comment(
 FEED_CLUB_COLUMNS = (
     "c.id, c.library_id, c.name, c.starts_at, c.ends_at, c.place, c.status, c.capacity, c.created_at, "
     "c.created_at AS published_at, "
-    "(SELECT count(*) FROM club_participations p WHERE p.club_id = c.id AND p.state = 'joined') AS joined_count"
+    "(SELECT count(*) FROM club_participations p WHERE p.club_id = c.id AND p.state = 'joined' "
+    "AND p.user_id <> c.host_id) AS joined_count"
 )

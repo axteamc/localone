@@ -10,8 +10,17 @@ import { CLUB_TEXT, ClubScreen } from "../ClubScreen";
 
 const mockPush = jest.fn();
 const mockBack = jest.fn();
+let mockFocus: (() => void) | null = null;
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn(), back: mockBack, canGoBack: () => true }),
+  // 화면에 다시 돌아올 때를 시험이 직접 부른다(첫 포커스도 한 번 부른다)
+  useFocusEffect: (cb: () => void) => {
+    const React = jest.requireActual<typeof import("react")>("react");
+    React.useEffect(() => {
+      mockFocus = cb;
+      cb();
+    }, [cb]);
+  },
 }));
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")
@@ -80,8 +89,8 @@ function comment(extra: Partial<ClubComment> = {}): ClubComment {
   return { id: "c1", body: "2층 세미나실 맞죠?", author_nickname: "해바라기", created_at: FUTURE, mine: false, ...extra };
 }
 
-function signed(status: "signedIn" | "signedOut") {
-  mockedUseAuth.mockReturnValue({ status } as ReturnType<typeof useAuth>);
+function signed(status: "signedIn" | "signedOut", userId: string | null = status === "signedIn" ? "user-a" : null) {
+  mockedUseAuth.mockReturnValue({ status, userId } as ReturnType<typeof useAuth>);
 }
 
 beforeEach(() => {
@@ -156,6 +165,8 @@ describe("모임 화면", () => {
     await fireEvent.press(screen.getByText(CLUB_TEXT.close));
     await fireEvent.press(screen.getByText(CLUB_TEXT.loginToComment));
     expect(screen.getByText(CLUB_TEXT.loginTitle)).toBeTruthy();
+    await fireEvent.press(screen.getByText(CLUB_TEXT.login));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/login", params: { returnTo: "/clubs/club-1" } });
     expect(m.joinClub).not.toHaveBeenCalled();
     expect(m.postClubComment).not.toHaveBeenCalled();
     expect(screen.queryByTestId("club-host-menu")).toBeNull();
@@ -183,13 +194,17 @@ describe("모임 화면", () => {
   });
 
   test("leave and cancel ask before acting", async () => {
-    m.fetchClub.mockResolvedValue(club({ my_participation: "joined", is_host: true }));
-    await openClub();
-    await fireEvent.press(screen.getByText(CLUB_TEXT.leave));
+    m.fetchClub.mockResolvedValueOnce(club({ my_participation: "joined" }));
+    const first = await render(<ClubScreen clubId="club-1" />);
+    await fireEvent.press(await screen.findByText(CLUB_TEXT.leave));
     expect(screen.getByText(CLUB_TEXT.leaveConfirm)).toBeTruthy();
     expect(m.leaveClub).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByText(CLUB_TEXT.leaveKeep));
     expect(m.leaveClub).not.toHaveBeenCalled();
+    await first.unmount();
+
+    m.fetchClub.mockResolvedValue(club({ is_host: true }));
+    await openClub();
 
     await fireEvent.press(screen.getByTestId("club-host-menu"));
     await fireEvent.press(screen.getByText(CLUB_TEXT.menuCancel));
@@ -256,6 +271,62 @@ describe("모임 화면", () => {
     await act(async () => resolveA(club({ id: "club-a", name: "모임 A" })));
     expect(screen.queryByText("모임 A")).toBeNull();
     expect(screen.getByText("모임 B")).toBeTruthy();
+  });
+
+  test("host sees own label and cannot take a seat", async () => {
+    m.fetchClub.mockResolvedValue(club({ is_host: true }));
+    await openClub();
+    await fireEvent.press(screen.getByText(CLUB_TEXT.hostOwn));
+    expect(m.joinClub).not.toHaveBeenCalled();
+    expect(screen.queryByText(CLUB_TEXT.join)).toBeNull();
+  });
+
+  test("account switch refetches and drops previous menus", async () => {
+    m.fetchClub.mockResolvedValueOnce(club({ is_host: true }));
+    const view = await render(<ClubScreen clubId="club-1" />);
+    await screen.findByTestId("club-host-menu");
+    await fireEvent.press(screen.getByTestId("club-host-menu"));
+    expect(screen.getByTestId("club-dialog-menu")).toBeTruthy();
+    signed("signedIn", "user-b");
+    m.fetchClub.mockResolvedValueOnce(club({ is_host: false }));
+    await view.rerender(<ClubScreen clubId="club-1" />);
+    await waitFor(() => expect(screen.queryByTestId("club-host-menu")).toBeNull());
+    expect(screen.queryByTestId("club-dialog-menu")).toBeNull();
+    expect(m.fetchClub).toHaveBeenCalledTimes(2);
+    expect(screen.getByText(CLUB_TEXT.join)).toBeTruthy();
+  });
+
+  test("returning from edit reloads new time and place", async () => {
+    await openClub();
+    m.fetchClub.mockResolvedValueOnce(club({ place: "3층 열람실" }));
+    await act(async () => mockFocus?.());
+    expect(await screen.findByText("3층 열람실")).toBeTruthy();
+  });
+
+  test("more comments loads a page once and late page after reload is dropped", async () => {
+    m.fetchClubComments.mockResolvedValueOnce({ items: [comment()], next_cursor: "cur-1" });
+    await openClub();
+    let resolveMore!: (p: api.ClubCommentPage) => void;
+    m.fetchClubComments.mockReturnValueOnce(new Promise((r) => (resolveMore = r)));
+    await fireEvent.press(screen.getByText(CLUB_TEXT.moreComments));
+    await fireEvent.press(screen.getByText(CLUB_TEXT.moreComments));
+    expect(m.fetchClubComments.mock.calls.filter((c) => c[1] === "cur-1")).toHaveLength(1);
+    await act(async () => resolveMore({ items: [comment(), comment({ id: "c2", body: "둘째 댓글" })], next_cursor: null }));
+    expect(screen.getAllByText("2층 세미나실 맞죠?")).toHaveLength(1); // 같은 댓글은 한 번만
+    expect(screen.getByText("둘째 댓글")).toBeTruthy();
+
+    // 더 보기 중 다시 읽으면 늦게 온 앞 페이지는 버린다
+    m.fetchClubComments.mockResolvedValueOnce({ items: [comment()], next_cursor: "cur-2" });
+    await act(async () => mockFocus?.());
+    await screen.findByText(CLUB_TEXT.moreComments);
+    let resolveLate!: (p: api.ClubCommentPage) => void;
+    m.fetchClubComments.mockReturnValueOnce(new Promise((r) => (resolveLate = r)));
+    await fireEvent.press(screen.getByText(CLUB_TEXT.moreComments));
+    m.fetchClubComments.mockResolvedValueOnce({ items: [comment({ id: "c9", body: "새 목록" })], next_cursor: null });
+    await act(async () => mockFocus?.());
+    await screen.findByText("새 목록");
+    await act(async () => resolveLate({ items: [comment({ id: "c8", body: "늦은 페이지" })], next_cursor: null }));
+    expect(screen.queryByText("늦은 페이지")).toBeNull();
   });
 
   test("missing club shows not found", async () => {

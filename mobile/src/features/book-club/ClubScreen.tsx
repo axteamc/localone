@@ -1,7 +1,7 @@
 // CLUB-1-P2 모임 화면 `/clubs/[clubId]` — contracts/book-club.md CLUB-1 K1-O4·K1-O6~O8·C3·C6·P4, 명세 결정 1~3·예외 #1~#6
 // 순서: 머리(만든 사람만 ⋯) → 약속 정보 → 주 버튼 → 참가자 → 댓글 → 아래 고정 댓글 칸(큰 틀 결정 2)
 import * as Crypto from "expo-crypto";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -91,6 +91,7 @@ export const CLUB_TEXT = {
   commentDelete: "지우기",
   commentDeleteConfirm: "댓글을 지울까요?",
   failed: "다시 해 주세요.",
+  hostOwn: "내가 만든 모임",
 } as const;
 
 type Load = { state: "loading" } | { state: "ok"; club: Club } | { state: "error" } | { state: "notfound" };
@@ -128,6 +129,7 @@ function MainButton({
   if (!signedIn) return <Btn label={CLUB_TEXT.loginToJoin} onPress={onLogin} />;
   if (club.status === "canceled") return <Btn label={CLUB_TEXT.canceled} disabled />;
   if (club.status === "ended") return <Btn label={CLUB_TEXT.ended} disabled />; // 기록·후기는 CLUB-2
+  if (club.is_host) return <Btn label={CLUB_TEXT.hostOwn} disabled />; // 만든 사람은 참가자 수에 세지 않는다(K1-O4)
   if (club.my_participation === "joined") {
     if (started(club)) return <Btn label={CLUB_TEXT.startedNoLeave} disabled />;
     return <Btn label={busy ? CLUB_TEXT.leaving : CLUB_TEXT.leave} disabled={busy} onPress={onLeave} />;
@@ -158,8 +160,9 @@ function Btn({ label, disabled, onPress }: { label: string; disabled?: boolean; 
 export function ClubScreen({ clubId }: { clubId: string }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { status } = useAuth();
+  const { status, userId } = useAuth();
   const signedIn = status === "signedIn";
+  const account = signedIn ? userId : null; // 계정이 바뀌면 다시 읽는다(is_host·my_participation·mine)
   const [load, setLoad] = useState<Load>({ state: "loading" });
   const [comments, setComments] = useState<ClubComment[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -175,8 +178,13 @@ export function ClubScreen({ clubId }: { clubId: string }) {
   const commentSending = useRef(false);
   const commentRequestId = useRef<string>(Crypto.randomUUID());
   const runner = useMemo(() => createLatestRunner(), []);
+  const listGen = useRef(0); // 다시 읽을 때마다 올려 진행 중인 "댓글 더 보기"를 버린다
+  const loadingMore = useRef(false);
+  const focusedOnce = useRef(false);
 
   const reload = useCallback(async () => {
+    listGen.current += 1;
+    loadingMore.current = false;
     const res = await runner.run(async (signal) =>
       Promise.all([fetchClub(clubId, signal), fetchClubComments(clubId, null, signal)])
     );
@@ -190,13 +198,32 @@ export function ClubScreen({ clubId }: { clubId: string }) {
     setLoad({ state: "ok", club });
     setComments(page.items);
     setNextCursor(page.next_cursor);
-  }, [clubId, runner]);
+  }, [clubId, runner, account]); // account가 바뀌면 새 함수 → 아래 효과가 지금 계정으로 다시 읽는다
 
   useEffect(() => {
+    // 처음 열 때·계정이 바뀔 때: 앞 계정의 응답·메뉴·안내를 버리고 지금 계정으로 다시 읽는다
     setLoad({ state: "loading" });
+    setDialog(null);
+    setActionError(null);
+    setRestrictedUntil(null);
+    setComments([]);
+    setNextCursor(null);
     void reload();
     return () => runner.cancel();
   }, [reload, runner]);
+
+  // 고치기 화면 등에서 돌아오면 새 시각·장소로 다시 읽는다(처음 포커스는 위에서 이미 읽음)
+  const reloadRef = useRef(reload);
+  reloadRef.current = reload;
+  useFocusEffect(
+    useCallback(() => {
+      if (!focusedOnce.current) {
+        focusedOnce.current = true;
+        return;
+      }
+      void reloadRef.current(); // 계정이 바뀌어 reload가 새로 생겨도 여기서는 다시 부르지 않는다(위 효과가 읽음)
+    }, [])
+  );
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/"));
 
@@ -227,13 +254,21 @@ export function ClubScreen({ clubId }: { clubId: string }) {
   const doLeave = () => void act(() => leaveClub(clubId), CLUB_TEXT.leaveFailed, doLeave);
 
   async function loadMoreComments() {
-    if (!nextCursor) return;
+    if (!nextCursor || loadingMore.current) return; // 같은 커서 연타는 한 번만
+    loadingMore.current = true;
+    const gen = listGen.current;
     try {
       const page = await fetchClubComments(clubId, nextCursor);
-      setComments((prev) => [...prev, ...page.items]);
+      if (gen !== listGen.current) return; // 그사이 다시 읽었으면 늦은 쪽을 버린다
+      setComments((prev) => {
+        const seen = new Set(prev.map((c) => c.id));
+        return [...prev, ...page.items.filter((c) => !seen.has(c.id))];
+      });
       setNextCursor(page.next_cursor);
     } catch {
       /* 더 보기 실패는 그대로 두고 다시 누를 수 있게 한다 */
+    } finally {
+      if (gen === listGen.current) loadingMore.current = false;
     }
   }
 
@@ -487,7 +522,8 @@ export function ClubScreen({ clubId }: { clubId: string }) {
         }}
         onLogin={() => {
           setDialog(null);
-          router.push({ pathname: "/login" });
+          // 로그인 뒤 같은 모임으로 돌아오기(예외 #4). login.tsx가 returnTo를 읽는 것은 D 판단 대기(TODO(연결): D)
+          router.push({ pathname: "/login", params: { returnTo: `/clubs/${clubId}` } });
         }}
       />
     </View>

@@ -4,9 +4,11 @@ import threading
 import time
 from datetime import timedelta
 
+from sqlalchemy import text
+
 from app.common import now_kst
 from app.routers import clubs as clubs_router
-from tests.conftest import USER_A_ID  # noqa: F401
+from tests.conftest import USER_A_ID
 from tests.provider_fakes import public_reference_data  # noqa: F401  (픽스처)
 from tests.test_clubs import (  # noqa: F401  (픽스처·도우미)
     at, auth, clean_clubs, client, club_row, count, comment, error, join, new_club, set_times,
@@ -116,3 +118,21 @@ def test_restricted_user_cannot_join_or_comment(client, auth, db_engine, monkeyp
     assert error(join(client, auth["B"], club_id)) == expected
     assert error(comment(client, auth["B"], club_id)) == expected
     assert count(db_engine, "club_participations") == 0 and count(db_engine, "club_comments") == 0
+
+
+def test_host_is_not_counted_and_cannot_take_a_seat(client, auth, db_engine):
+    club_id = new_club(client, auth["A"], capacity=1)
+    own = join(client, auth["A"], club_id)  # 만든 사람이 눌러도 자리를 차지하지 않는다(K1-O4)
+    assert own.status_code == 200 and own.json()["participant_count"] == 0
+    assert own.json()["my_participation"] == "none"
+    assert count(db_engine, "club_participations") == 0
+    neighbor = join(client, auth["B"], club_id)
+    assert neighbor.status_code == 200 and neighbor.json()["participant_count"] == 1
+    feed = client.get("/api/v1/libraries/101/feed").json()["items"]
+    assert [i["club"]["participant_count"] for i in feed if i["kind"] == "club"] == [1]
+    with db_engine.begin() as conn:  # 예전에 넣어진 만든 사람 참가 행이 있어도 세지 않는다
+        conn.execute(text("INSERT INTO club_participations (club_id, user_id, state) VALUES (:c, :u, 'joined')"),
+                     {"c": club_id, "u": USER_A_ID})
+    detail = client.get(f"/api/v1/clubs/{club_id}").json()
+    assert detail["participant_count"] == 1 and [p["nickname"] for p in detail["participants"]] != []
+    assert len(detail["participants"]) == 1
