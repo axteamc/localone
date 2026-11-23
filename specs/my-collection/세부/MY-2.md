@@ -107,7 +107,7 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 (대기/진행/검토요청/완료) | 구현 근거 (`파일:줄`) 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| MY-2-P1 | `feat/my-collection-MY-2` | - | 대기 | - | - |
+| MY-2-P1 | `feat/my-collection-MY-2` | - | 진행 (구현 완료, PR 전) | `server/app/routers/my_collection.py:164-249`(`#38` `patch_my_profile` 185, `#39` `upload_avatar` 231), `server/tests/test_profile_edit.py` 18개 통과, 서버 전체 `uv run pytest -W error` 698 통과(2026-11-23) | - |
 | MY-2-P2 | `feat/my-collection-MY-2` | - | 대기 | - | - |
 
-- **다음 세션 이어하기 메모**: 기획 PR #261·계약 수정본 PR #268 제출, 검토 대기(`2_계약_보완.md` §7). 구현 착수 불가.
+- **다음 세션 이어하기 메모**: 계약 D+A 확정판 발행(`../team` `72a6cd0`, PR #261·#268·#269 반영). MY-2-P1 서버 구현·테스트 완료(커밋됨, PR 전). 다음은 MY-2-P2 앱 — 허용 파일만, 홈 헤더 종 연결 제외(Y2-O6 분리), `/inbox` 연결 전 종 숨김(C7). P1·P2를 한 PR로 낸다.
