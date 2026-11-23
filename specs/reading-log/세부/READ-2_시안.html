@@ -166,6 +166,13 @@
   .openstat { margin-top:5px; padding:6px 10px; border-radius:12px; background:var(--cream); font-size:10px; }
   .openstat .row { justify-content:space-between; }
   .libcount { color:var(--sub); font-size:9px; }
+  .facade { position:absolute; left:10px; right:10px; top:12px; height:120px; border-radius:var(--r-card); border:2px dashed var(--surface3); display:flex; align-items:center; justify-content:center; color:var(--sub); font-size:10px; }
+  .hsheet { position:absolute; left:0; right:0; top:146px; bottom:38px; background:var(--paper); border-radius:16px 16px 0 0; box-shadow:0 -2px 8px rgba(0,0,0,.12); padding:6px 10px; overflow-y:auto; scrollbar-width:none; }
+  .grip { width:36px; height:4px; border-radius:2px; background:var(--surface3); margin:0 auto 2px; }
+  .hcov { display:flex; gap:6px; margin-top:6px; overflow-x:auto; scrollbar-width:none; }
+  .hcov button { flex:none; width:40px; height:56px; border:0; cursor:pointer; border-radius:5px 9px 9px 5px; background:var(--fill3); font:inherit; font-size:7px; color:var(--text); display:flex; align-items:flex-end; justify-content:center; padding:0 2px 3px; }
+  .hcov button:nth-child(2n) { background:var(--fill2); }
+  .note-post { background:var(--cream); border-radius:10px; height:46px; padding:4px 6px; font-size:9px; }
   .tline { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:1px 4px 0; font-size:7.5px; color:var(--sub); text-align:center; }
 </style>
 </head>
@@ -347,7 +354,7 @@
 <!-- ===== 중심 요소 3 ===== -->
 <section class="element" id="el-libsort" data-chosen="B">
   <h2>정할 것 3. 도서관별 책장에서 어느 도서관을 맨 위에 둘까 <span class="status">확인</span></h2>
-  <div class="decided"><b>고른 것: 후보 B.</b> "B가 좋은거같아 최근에 읽은책을 바로 확인할수 있다는점이 좋은거같아" — 가장 최근에 읽은 책이 있는 도서관이 맨 위, 이름표 옆에 권수와 마지막으로 읽은 날. 차선은 없음.</div>
+  <div class="decided"><b>고른 것: 후보 B.</b> "B가 좋은거같아 최근에 읽은책을 바로 확인할수 있다는점이 좋은거같아" — 가장 최근에 읽은 책이 있는 도서관이 맨 위, 이름표 옆에 권수와 마지막으로 읽은 날. 차선은 없음. 불편한 점: "도서관 순서가 바뀌는건 헷갈릴거같아"</div>
   <div class="flow"><b>정해진 것.</b> "전체 ⇄"를 누르면 도서관마다 색이 다른 책장 줄이 쌓여요. 한 줄은 옆으로 밀어 보고, 이름표 ›를 누르면 그 도서관 책만 봐요. 기록이 있는 도서관만 나와요. 정할 것은 <b>도서관 줄의 위아래 순서</b>예요. 세 화면 모두 같은 기록(도서관 4곳, 도서관 없이 쓴 2권은 "전체"에만)이에요.</div>
   <div class="pick">다시 보기: <select data-for="el-libsort">
     <option value="A">후보 A — 기록 많은 도서관이 위</option>
@@ -391,6 +398,56 @@
       <span class="lbl">얻는 것 / 포기하는 것</span>
       <p>찾는 도서관 자리를 외울 수 있어요. / 많이 다닌 곳·요즘 다닌 곳이 순서로는 안 보여요.</p>
       <span class="lbl">표준 근거</span><p>표준 근거: P-33 가로로 넘기는 띠(캐러셀)</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 중심 요소 4 ===== -->
+<section class="element" id="el-home">
+  <h2>정할 것 4. 홈 하단 창에 "내 최근 독서 기록"을 어디에, 몇 권 둘까 <span class="status">결정 전</span></h2>
+  <div class="flow"><b>정해진 것.</b> 홈 하단 창에는 지금 "이 동네 인기 도서" 한 줄과 그 아래 "도서관 소식"이 있고, 이 순서와 동작은 그대로예요. 로그인했고 기록이 하나라도 있을 때만 "내 최근 독서 기록" 칸이 생겨요(없으면 칸 자체가 없어요). 기록을 누르면 그 기록 화면으로 가요. 정할 것은 <b>그 칸의 자리와 보이는 개수·모양</b>이에요. 세 화면 모두 같은 기록이에요.</div>
+  <div class="pick">다시 보기: <select data-for="el-home">
+    <option value="A">후보 A — 인기 도서 아래, 표지 최대 5권 옆으로 넘김</option>
+    <option value="B">후보 B — 맨 위, 가장 최근 1권 한 줄 카드</option>
+    <option value="C">후보 C — 인기 도서 아래, 최근 3권 줄 목록</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 인기 도서 아래, 표지 최대 5권 옆으로 넘김 <span class="badge">추천</span></h3>
+      <div class="phone"><div class="scr" data-screen="home"><div class="facade">도서관 큐브 판 (지금 홈 그대로)</div><div class="hsheet"><div class="grip"></div><div class="sec">이 동네 인기 도서 <span class="vsub">마포중앙도서관 기준</span></div><div class="covers"><i></i><i></i><i></i><i></i><i></i></div><div class="sec">내 최근 독서 기록</div><div class="hcov"><button data-open="log">소년이 온다</button><button data-open="log">아몬드</button><button data-open="log">파친코</button><button data-open="log">흰</button><button data-open="log">작별하지 않는다</button></div><div class="sec">자주 가는 도서관 소식</div><div class="row" style="margin-top:4px"><span class="libtag" style="--lib-c:var(--fill1);margin:0">마포중앙</span><span class="libtag" style="--lib-c:var(--surface2);margin:0">서대문</span></div><div class="two-col" style="margin-top:6px"><div class="note-post">책 모임 후기</div><div class="note-post">이번 주 신간</div><div class="note-post">열람실 자리 팁</div><div class="note-post">어린이 코너</div></div></div><div class="tabbar"><b>홈</b><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="log"><div class="row"><button class="back" data-open="home">‹</button><span class="vname">내 기록</span><span style="margin-left:auto">⋯</span></div><div class="log" style="border:0"><i></i><div>소년이 온다<small>한강</small></div></div><div class="li">읽은 날 · 11월 22일</div><div class="li">도서관 · 마포중앙도서관</div><div class="li">감상 · 끝까지 읽고 한참 앉아 있었다.</div><button class="btn" style="margin-top:8px;width:100%">게시물로 올리기</button><div class="vsub" style="margin-top:6px">‹를 누르면 홈 하단 창으로 돌아가요</div></div></div>
+      <p>인기 도서 한 줄 바로 아래에 내 최근 기록 표지가 옆으로 최대 5권 놓여요. 표지를 눌러 보세요 — 그 기록 화면이 열려요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>홈 하단 창 → 인기 도서 → 바로 아래 "내 최근 독서 기록" 표지 줄 → 표지 누르기 → 그 기록 화면 → ‹ → 홈.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>창을 반쯤 올린 상태에서 인기 도서와 내 기록이 둘 다 보임</li><li>표지만 보여서 제목은 표지 글자로 확인</li><li>5권보다 적으면 있는 만큼만</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>인기 도서와 같은 모양이라 홈이 정돈돼 보이고, 최근 책 여러 권을 한눈에 봐요. / 언제 읽었는지는 눌러야 알아요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-33 가로로 넘기는 띠(캐러셀)</p>
+      <p><b>추천 이유:</b> 홈은 동네 도서관이 주인공이라 인기 도서를 맨 위에 두고, 내 기록은 같은 표지 줄 모양으로 바로 아래에 붙이면 새 칸이 튀지 않아서요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 맨 위, 가장 최근 1권 한 줄 카드</h3>
+      <div class="phone"><div class="scr" data-screen="home"><div class="facade">도서관 큐브 판 (지금 홈 그대로)</div><div class="hsheet"><div class="grip"></div><div class="sec">내 최근 독서 기록</div><div class="log" data-open="log" style="cursor:pointer;border:0;background:var(--cream);border-radius:12px;padding:6px 8px;margin-top:4px"><i></i><div>소년이 온다<small>11월 22일 · 마포중앙도서관</small></div></div><div class="sec">이 동네 인기 도서 <span class="vsub">마포중앙도서관 기준</span></div><div class="covers"><i></i><i></i><i></i><i></i><i></i></div><div class="sec">자주 가는 도서관 소식</div><div class="row" style="margin-top:4px"><span class="libtag" style="--lib-c:var(--fill1);margin:0">마포중앙</span><span class="libtag" style="--lib-c:var(--surface2);margin:0">서대문</span></div><div class="two-col" style="margin-top:6px"><div class="note-post">책 모임 후기</div><div class="note-post">이번 주 신간</div><div class="note-post">열람실 자리 팁</div><div class="note-post">어린이 코너</div></div></div><div class="tabbar"><b>홈</b><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="log"><div class="row"><button class="back" data-open="home">‹</button><span class="vname">내 기록</span><span style="margin-left:auto">⋯</span></div><div class="log" style="border:0"><i></i><div>소년이 온다<small>한강</small></div></div><div class="li">읽은 날 · 11월 22일</div><div class="li">도서관 · 마포중앙도서관</div><div class="li">감상 · 끝까지 읽고 한참 앉아 있었다.</div><button class="btn" style="margin-top:8px;width:100%">게시물로 올리기</button><div class="vsub" style="margin-top:6px">‹를 누르면 홈 하단 창으로 돌아가요</div></div></div>
+      <p>창 맨 위, 인기 도서보다 먼저 가장 최근에 쓴 기록 1권이 카드 한 줄로 보여요. 읽은 날과 도서관도 같이 보여요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>홈 하단 창 → 맨 위 "내 최근 독서 기록" 카드 1장 → 누르기 → 그 기록 화면 → ‹ → 홈. 인기 도서는 그 아래.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>창을 조금만 올려도 내 기록이 먼저 보임</li><li>인기 도서가 카드 한 줄만큼 아래로 내려감</li><li>2번째 기록부터는 독서 기록 탭에서 봄</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>방금 읽은 책이 홈에서 가장 먼저 보여요. / 1권만 보여서 그 전 기록은 홈에서 못 봐요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-32 줄 목록(썸네일 + 두 줄 글자)</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 인기 도서 아래, 최근 3권 줄 목록</h3>
+      <div class="phone"><div class="scr" data-screen="home"><div class="facade">도서관 큐브 판 (지금 홈 그대로)</div><div class="hsheet"><div class="grip"></div><div class="sec">이 동네 인기 도서 <span class="vsub">마포중앙도서관 기준</span></div><div class="covers"><i></i><i></i><i></i><i></i><i></i></div><div class="sec">내 최근 독서 기록</div><div class="log" data-open="log" style="cursor:pointer"><i></i><div>소년이 온다<small>11월 22일</small></div></div><div class="log" data-open="log" style="cursor:pointer"><i></i><div>아몬드<small>11월 19일</small></div></div><div class="log" data-open="log" style="cursor:pointer"><i></i><div>파친코<small>10월 30일</small></div></div><div class="sec">자주 가는 도서관 소식</div><div class="row" style="margin-top:4px"><span class="libtag" style="--lib-c:var(--fill1);margin:0">마포중앙</span><span class="libtag" style="--lib-c:var(--surface2);margin:0">서대문</span></div><div class="two-col" style="margin-top:6px"><div class="note-post">책 모임 후기</div><div class="note-post">이번 주 신간</div><div class="note-post">열람실 자리 팁</div><div class="note-post">어린이 코너</div></div></div><div class="tabbar"><b>홈</b><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="log"><div class="row"><button class="back" data-open="home">‹</button><span class="vname">내 기록</span><span style="margin-left:auto">⋯</span></div><div class="log" style="border:0"><i></i><div>소년이 온다<small>한강</small></div></div><div class="li">읽은 날 · 11월 22일</div><div class="li">도서관 · 마포중앙도서관</div><div class="li">감상 · 끝까지 읽고 한참 앉아 있었다.</div><button class="btn" style="margin-top:8px;width:100%">게시물로 올리기</button><div class="vsub" style="margin-top:6px">‹를 누르면 홈 하단 창으로 돌아가요</div></div></div>
+      <p>인기 도서 아래에 최근 기록 3권이 한 줄에 하나씩, 작은 표지·제목·읽은 날로 보여요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>홈 하단 창 → 인기 도서 → "내 최근 독서 기록" 3줄 → 한 줄 누르기 → 그 기록 화면 → ‹ → 홈.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>제목과 읽은 날이 글자로 보임</li><li>3줄이 자리를 차지해 소식 칸이 더 아래로 밀림</li><li>3권보다 적으면 있는 만큼만</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>언제 읽었는지까지 바로 보여요. / 소식 칸이 밀려서 동네 소식을 보려면 더 올려야 해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-32 줄 목록(썸네일 + 두 줄 글자)</p>
     </article>
   </div>
 </section>
@@ -445,7 +502,7 @@
     <tr data-el="el-top"><td>1. 책장 위 내 기록 숫자</td><td>후보 A 제목 아래 한 줄 글자(전체 12 · 올해 9 · 이번 달 2), 책장과 같이 올라감</td><td>없음</td><td>B 큰 숫자 칸 셋(늘 그 자리), C 접힌 칸 내 기록 12권 ▾</td><td>"A가 위에 책읽은숫자 제일 보기 깔끔하고 좋은데"</td><td>숫자 셋: 전체·올해·이번 달(서울 날짜 기준), 하나도 없으면 0. 작은 글자 한 줄(--sub 색, 숫자만 --text 굵게). 도서관별 보기에서는 이름표 옆에 6권처럼 도서관마다 수</td><td>탭 열기 → 숫자 한 줄 + 책장 → 밀면 숫자 줄도 올라감 → 전체 ⇄ → 도서관별 책장(숫자 줄 그대로, 이름표 옆 권수)</td><td><span class="st">확인</span></td></tr>
     <tr data-el="el-preset"><td>2. ⚙ 배치 바꾸기에서 고르는 것</td><td>후보 B 작은 메뉴에서 순서 고르기</td><td>없음</td><td>A 아래 카드에서 묶는 단위, C 책장 설정 화면에 다 모아 두기</td><td>"나는 B가 제일 좋은거같은데 오래전에 읽었던 책도 제대로 확인 가능하고 순서대로란 생각도 들어"</td><td>메뉴 3줄(최근 읽은 순 기본 ✓, 오래 전 읽은 순, 내가 옮긴 자리), 한 칸은 늘 한 달, 고른 순서는 다음에도 그대로</td><td>⚙ → 메뉴 → 오래 전 읽은 순 → 맨 위가 처음 읽은 책 / 내가 옮긴 자리 → 꾹 눌러 바꿔 둔 순서</td><td><span class="st">확인</span></td></tr>
     <tr data-el="el-libsort"><td>3. 도서관별 책장의 도서관 순서</td><td>후보 B 최근에 읽은 도서관이 위</td><td>없음</td><td>A 기록 많은 도서관이 위, C 이름 가나다순</td><td>"B가 좋은거같아 최근에 읽은책을 바로 확인할수 있다는점이 좋은거같아"</td><td>마지막으로 읽은 날이 최근인 도서관부터(같으면 먼저 생긴 도서관), 이름표에 권수 · 최근 날짜</td><td>전체 ⇄ → 최근 읽은 도서관 줄이 맨 위 → 새 기록을 쓰면 그 도서관이 맨 위로 → 이름표 › → 그 도서관 책장</td><td><span class="st">확인</span></td></tr>
-    <tr><td>4. 홈 하단 창 "내 최근 독서 기록" 자리·개수</td><td>(다음에 봄)</td><td>—</td><td>—</td><td></td><td>로그인했고 기록이 있을 때만 칸이 생김</td><td>—</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-home"><td>4. 홈 하단 창 "내 최근 독서 기록" 자리·개수</td><td>(아직 고르지 않음)</td><td>—</td><td>—</td><td></td><td>로그인했고 기록이 있을 때만 칸이 생김</td><td>—</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>한 달에 4권 이상</td><td>그 달 안에서 다음 줄로 넘김(한 줄 3권)</td><td>—</td><td>—</td><td>묻지 않음</td><td>지금 책장과 같음</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>책장 위 카드</td><td>지금 카드 그대로(표지·제목·저자·감상 첫 줄·읽은 날·어디서 + "기록 자세히 보기")</td><td>—</td><td>—</td><td>묻지 않음</td><td>—</td><td>책 → 카드 → 기록 화면</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>도서관 색</td><td>도서관마다 고정 색 하나</td><td>—</td><td>—</td><td>묻지 않음</td><td>임시 이름 --lib-1~3(색 목록은 공통 기준에서 정함)</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
