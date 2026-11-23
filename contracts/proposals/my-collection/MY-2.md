@@ -492,6 +492,8 @@ useEffect(() => onPostWithdrawn(removeFromAllTabs), []);
 | 사진 너무 큼·형식 | `#39` | LOCAL-1 `#23`과 같은 코드 | 사진 칸 안내 | 다른 칸 | 무변경 |
 | 탈퇴 경합 | 탈퇴 처리 중 저장 | `lock_active_user` 뒤 `401 ACCOUNT_WITHDRAWN`(AUTH-3) | 로그인 화면 | — | 무변경 |
 
+> 끊김 행의 “프로필 그대로”는 #39에서 중단됐거나 #38이 명시적으로 거절된 경우에 해당한다. #38 전송 뒤 응답이 유실되면 반영 여부는 불명이며, 입력을 유지하고 같은 변경 칸과 경로로 다시 저장한다.
+
 #### C7. 다른 기능과 닿는 곳과 `TODO(연결)` 가짜 값
 
 | 의존 대상 | 필요한 것 | 상대 머지 전 가짜 값 |
@@ -511,12 +513,18 @@ useEffect(() => onPostWithdrawn(removeFromAllTabs), []);
 | 프로필 머리 | `mobile/src/features/my-collection/ProfileHeader.tsx` | — | 있음 |
 | 사진 고르기 | `mobile/src/features/local-feed/imagePicker.ts` | — | 있음 |
 
+> 위 기준선의 CLUB-2 담당 B 표기는 이전 배정이다. 현재 team `기능_배정.md`와 `contracts/book-club.md`의 CLUB-2-P4에 따라 `/inbox`는 C가 담당하며, 코드 기준 `b94fa56`에는 이 경로가 없다.
+
 #### P2. 파트 분할과 담당 파일
 
 | 파트 | 브랜치 | 수정/생성 허용 파일(전수) | 완료 시 확인할 명세서 항목 |
 | :--- | :--- | :--- | :--- |
 | `MY-2-P1` 서버 | `feat/my-collection-MY-2` | `server/app/routers/my_collection.py`(`#38`·`#39` 추가), `server/tests/test_profile_edit.py` | Y2-2~Y2-5, C6 |
 | `MY-2-P2` 앱 | 같은 브랜치 | `mobile/app/me/edit.tsx`, `mobile/src/features/my-collection/ProfileEditScreen.tsx`, `ProfileHeader.tsx`, `InboxBell.tsx`, `api.ts`, `__tests__/profile-edit.test.tsx` | Y2-1·Y2-6·Y2-7, Y2-O1~Y2-O6 |
+
+> **D 검토 쟁점 — P2 파일 범위 승인 대기.** 기존 "프로필 수정" 버튼의 동작은 `MyCollectionScreen.tsx`의 `onEdit`이 결정하며, 복귀 포커스의 `useMyCollection.ts`는 목록만 다시 읽는다. 버튼 이동·저장 결과와 토스트를 연결할 이 두 파일과 기존 테스트 `__tests__/my-collection.test.tsx`의 임시 안내 단언을 수정 범위에 포함할지 D가 확정한다. 홈 종 결정(Y2-O6)은 `mobile/app/(tabs)/_layout.tsx`의 홈 헤더와 두 종의 계정별 상태 공유 위치를 함께 확정한다. 위 잠금 목록은 승인 전까지 그대로 둔다.
+
+> **D 검토 쟁점 — #39 발급 경로 확인.** 현재 저장소 어댑터는 `put`·`public_url`만 제공한다. `public_url`은 파일 존재를 확인하지 않으므로, C3의 미발급 경로 거절을 충족할 방법과 필요한 P1 파일 범위를 D가 확정한다.
 
 ##### 파트 머리말 — MY-2-P1 · P2 (공통)
 
@@ -561,31 +569,11 @@ async def patch_my_profile(body: ProfilePatch, user: CurrentUser = Depends(get_c
 # #39 — 읽기·EXIF 지우기·저장소 올리기는 run_db 밖, DB 쓰기 없음
 ```
 
-```ts
-// ProfileEditScreen.tsx — 저장(Y2-O1·Y2-5, 예외 #1·#2·#3·#5·#6)
-const saving = useRef(false);                       // 진행 중 연타 무시(예외 #3)
-async function onSave() {
-  if (saving.current) return;
-  const patch = diff(initial, form);                // 바뀐 칸만: nickname / bio / avatar(새 사진·지움)
-  if (isEmpty(patch)) return leave();               // 예외 #2: 부르지 않고 닫기
-  if (patch.nickname !== undefined && patch.nickname.trim() === "") return setErr("nickname", TEXT.nickEmpty);
-  saving.current = true; setBusy(true);             // 버튼 "저장 중…"
-  try {
-    if (patch.avatar?.kind === "new") {             // 사진 먼저 올리고 경로만 받는다(#39, DB 쓰기 없음)
-      const { avatar_path } = await uploadAvatar(patch.avatar.file);
-      patch.avatar_path = avatar_path;              // 다시 저장해도 같은 경로를 재사용
-      form.avatar = { kind: "uploaded", avatar_path };
-    } else if (patch.avatar?.kind === "remove") patch.avatar_path = null;
-    const saved = await updateMyProfile(pick(patch, ["nickname", "bio", "avatar_path"]));
-    onSaved(saved);                                 // 내 정보 머리 갱신 + "저장했어요"
-    leave(true);                                    // 나가기 확인 없이 닫기
-  } catch (e) {
-    if (isApiError(e, 422)) setErr(e.detail, TEXT.byField[e.detail]);      // 칸 아래 안내
-    else if (isApiError(e, 413) || isFileError(e)) setErr("avatar", TEXT.photoRejected);
-    else setFailed(true);                           // 실패 카드, 입력값 그대로(Y2-5)
-  } finally { saving.current = false; setBusy(false); }
-}
-```
+- **#38 사진 경로 검사(C3).** 인증 사용자의 정확한 `avatars/<user_id>/<uuid>.jpg` 형식과 #39 발급 조건을 확인한다. 사용자 경로 접두사만 같은 미발급·형식 불일치 경로도 `422 detail="avatar_path"`로 거절한다. 소유권 확인을 위한 저장소 I/O가 필요하면 DB 트랜잭션 밖에서 처리하며, 실패하면 갱신하지 않는다.
+- **앱 저장 흐름(Y2-O1·Y2-5).** 진행 중 연타를 즉시 막고, 닉네임 검사와 변경 칸 비교 후 값이 같으면 호출 없이 닫는다. 사진을 새로 고른 경우에는 #39에서 받은 경로를 현재 선택에 묶어 보관하고, #38의 `avatar_path`에 넣는다. 같은 선택을 다시 저장하면 보관한 경로를 `avatar_path`에 다시 넣고 #39를 다시 부르지 않는다. 다른 사진을 고르거나 지우면 이전 경로를 버린다. 지우기는 `avatar_path: null`만 보내고, 사진에 변경이 없으면 그 필드를 생략한다. #38 성공 시 현재 계정의 내 정보 머리를 응답으로 갱신하고 "저장했어요"를 보여 준다.
+- **응답과 실패.** #39의 413·422 file은 일반 422 처리보다 먼저 사진 칸 문구로 연결한다. LOCAL-1 사진 디코더의 `422 detail="image"`는 #39에서 C3의 `detail="file"`로 변환한다. #38의 필드 오류는 해당 칸에 연결하고, 전송 실패는 C6의 다시 저장하기로 연결한다. #38 요청 뒤 응답이 유실되면 서버 적용 여부는 불명이다. 입력값을 유지하고, 재시도 때 동일한 변경 칸과 사진 경로를 보낸다.
+- **계정 변경.** 화면 이탈 또는 계정 변경 뒤 완료된 응답은 새 화면·계정에 반영하지 않는다. 특히 이전 계정의 #39가 늦게 끝났을 때 #38을 이어 보내지 않고, 늦은 #38 응답은 프로필과 토스트에 반영하지 않는다(MY-1 Y7 계정 격리).
+- **알림함 연결(Y2-O5·O6).** 최신 코드 기준 #47은 #212로 머지됐다. C7에 따라 CLUB-2-P4의 `/inbox`가 연결되기 전에는 종을 숨긴다. 두 위치가 연결된 뒤에는 현재 계정의 읽지 않음 결과 하나를 공유한다. 알림함에서 돌아오면 갱신하고, 실패 또는 계정 전환 시 이전 점을 지운다. 비로그인 상태에서 #47을 호출하지 않는다.
 
 #### P5. 필수 테스트
 
@@ -599,10 +587,11 @@ async function onSave() {
 | MY-2-P2 | `failed save keeps typed values` | `#38` 503 | 저장 | 입력값 그대로, 실패 문구 | Y2-5 |
 | MY-2-P2 | `no follow button or follower count` | — | 렌더 | `"팔로우"`·`"팔로워"` 글자 없음 | Y2-6 |
 | MY-2-P2 | `inbox bell shows dot only` | `has_unread:true` | 렌더 | 점 1개, 숫자 없음, 누르면 `/inbox` | Y2-7 |
+| MY-2-P1 | `patch rejects unissued own avatar path` | 인증 사용자 접두사 아래에 미발급 UUID 경로와 형식 불일치 경로 | 각 경로로 #38 | `422 detail="avatar_path"`, 프로필 무변경 | C3, 접두사만 검사 |
 | MY-2-P1 | `bio length and blank` | 소개 있음 | `bio`=61자 / `"   "` / 60자 | 61자 `422 detail="bio"`·행 무변경, 공백만은 저장 후 `bio:null`, 60자는 `200` | Y2-O2·Y2-3, 길이 검사 빠지면 61자가 저장됨 |
 | MY-2-P1 | `empty patch body is 422` | 프로필 있음 | `{}` | `422 detail="body"`, `updated_at` 그대로 | C3 빈 본문, `if not fields` 빠지면 `200` |
 | MY-2-P1 | `avatar null removes photo` | 사진 있음 | `{avatar_path:null}` | `200`, `avatar_url:null`, 닉네임·소개 그대로 | Y2-4·Y2-5 |
-| MY-2-P1 | `avatar upload rejects too large or not image` | 10MB 넘는 파일 / 글자 파일 | `#39` | `413 PAYLOAD_TOO_LARGE` / `422 detail` 필드명, 저장소 올리기 0회 | 예외 #5, 크기·형식 검사 빠지면 저장소에 올라감 |
+| MY-2-P1 | `avatar upload rejects too large or not image` | 10MB 넘는 파일 / 글자 파일 | `#39` | `413 PAYLOAD_TOO_LARGE` / `422 detail="file"`, 저장소 올리기 0회 | 예외 #5, 크기·형식 검사 빠지면 저장소에 올라감 |
 | MY-2-P1 | `patch after withdrawal is 401` | 탈퇴 처리 중 사용자 | `#38` | `401 ACCOUNT_WITHDRAWN`, 행 무변경 | C6 탈퇴 경합, `lock_active_user` 빠지면 `200` |
 | MY-2-P2 | `edit button opens edit screen` | 내 정보 로그인 | `"프로필 수정"` 누름 | `router.push("/me/edit")`, `"프로필 수정은 곧 열려요"` 안내 없음 | Y2-1 |
 | MY-2-P2 | `unchanged save closes without call` | 처음 값 그대로 | `"저장"` | `updateMyProfile`·`uploadAvatar` 0회, 화면 닫힘 | 예외 #2, diff 검사 빠지면 호출 1회 |
@@ -611,11 +600,13 @@ async function onSave() {
 | MY-2-P2 | `empty nickname is blocked` | 닉네임 다 지움 | `"저장"` | `"닉네임을 1자 이상 써 주세요"`, API 0회 | 예외 #6 |
 | MY-2-P2 | `leaving dirty edit asks before discarding` | 소개 고침 | `‹` | `"고친 내용을 버릴까요?"`, `"계속 고치기"`면 값 그대로 / 안 고쳤으면 바로 닫힘 | Y2-O3 |
 | MY-2-P2 | `photo menu from pencil` | 사진 있음 / 없음 | `"사진 바꾸기"`(✎) 누름 | 메뉴 `"앨범에서 고르기"` 있음, `"사진 지우기"`는 사진 있을 때만, 사진 밑 안내 글자 없음 | Y2-O4 |
-| MY-2-P2 | `retry after failed upload reuses path` | `#39` 성공, `#38` 503 | `"다시 저장하기"` | `uploadAvatar` 1회, 두 번째 `#38`에 같은 `avatar_path` | 예외 #1, 경로 보관 빠지면 사진 두 번 올림 |
-| MY-2-P2 | `rejected photo keeps other fields` | `#39` 413 | 사진 고른 뒤 `"저장"` | 사진 아래 `"이 사진은 올릴 수 없어요. 다른 사진을 골라 주세요."`, 닉네임·소개 입력값 그대로 | 예외 #5 |
+| MY-2-P2 | `retry after failed profile save reuses uploaded path` | `#39` 성공, `#38` 응답 유실 | `"다시 저장하기"` | `uploadAvatar` 1회, 두 번의 `#38`에 동일한 `avatar_path`와 변경 칸 | 예외 #1, 경로 보관 빠지면 사진 두 번 올림 |
+| MY-2-P2 | `rejected photo keeps other fields` | `#39` 413 또는 `422 detail="file"` | 사진 고른 뒤 `"저장"` | 사진 아래 `"이 사진은 올릴 수 없어요. 다른 사진을 골라 주세요."`, 사진·닉네임·소개 입력값 그대로, `#38` 호출 0회 | 예외 #5 |
 | MY-2-P2 | `signed out edit shows login prompt` | 비로그인 | `/me/edit` 렌더 | `"로그인하면 내 프로필을 고칠 수 있어요."`, API 0회 / 고치는 중 로그아웃되면 같은 안내로 바뀜 | 예외 #4, 계정 전환 |
 | MY-2-P2 | `saved profile shows on my page` | 저장 성공 | 내 정보로 돌아옴 | 머리에 새 닉네임·소개, 토스트 `"저장했어요"` | Y2-O1 |
-| MY-2-P2 | `bell sits left of settings and hides dot on failure` | `#47` 실패 | 내 정보 렌더 | 종이 ⚙ 왼쪽, 점 없음, 안내 없음 | Y2-O5, 예외 #7 |
+| MY-2-P2 | `bell sits left of settings and hides dot on failure` | `/inbox` 연결, 이전 #47은 true | 내 정보에서 #47 다시 호출 → 실패 | 종이 ⚙ 왼쪽, 이전 점 제거, 안내 없음 | Y2-O5, 예외 #7 |
+| MY-2-P2 | `old account save is ignored` | A의 #39 또는 #38 진행 중 | B로 전환 후 A 응답 완료 | #39가 늦으면 #38 0회, #38이 늦으면 B 머리·토스트 무변경 | 계정 경합 |
+| MY-2-P2 | `bells agree after reading and account switch` | 홈 헤더 범위 승인 및 `/inbox` 연결, A는 읽지 않음 있음 | 홈 → 알림함에서 읽음 → 내 정보와 홈 확인 → B로 전환 중 A 응답 완료 | 처음 양쪽 점 표시, 읽음 반영 후 양쪽 점 제거, A 응답은 B 점을 바꾸지 않음 | Y2-O6, 두 위치 상태 불일치·계정 경합 |
 
 ## MY-3 내 정보 "도서관 방문 모음"
 
