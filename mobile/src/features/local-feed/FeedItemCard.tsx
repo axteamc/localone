@@ -15,7 +15,7 @@ export type FeedItemCardProps = {
   onMenu?(item: FeedItem): void;
 };
 
-function isClubItem(item: FeedItem): item is { kind: "club"; club: ClubItem } {
+export function isClubItem(item: FeedItem): item is { kind: "club"; club: ClubItem } {
   // 모양이 맞는 모임만 그린다(이름·id가 없는 항목은 모르는 종류처럼 건너뜀)
   const club = (item as { club?: unknown }).club as Partial<ClubItem> | null | undefined;
   return item.kind === "club" && typeof club === "object" && club !== null

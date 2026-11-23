@@ -1,6 +1,7 @@
 // "이 동네 인기 도서" 옆으로 넘기는 한 줄 (계약서 library-visit.md VISIT-1b W1·W2·W7·W10, 예외 #1·#2-d)
 import React, { useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { WebHorizontalControls, useWebHorizontalScroll } from "../../lib/WebHorizontalControls";
 import { theme, type as T } from "../../theme";
 import type { Book } from "./deps";
 
@@ -25,17 +26,21 @@ const LOADING_SLOTS = 5;
 
 export function PopularBooksRow(props: PopularBooksRowProps) {
   const { status, basisLabel, books, onPressBook, onReload } = props;
+  const scroll = useWebHorizontalScroll(status === "ready");
 
   return (
     <View testID="popular-books">
       <View style={styles.head}>
-        <Text style={styles.title}>{TEXT.title}</Text>
-        {/* W2: 서버가 준 기준을 그대로(전국으로 대체되면 그 기준이 보임) */}
-        {basisLabel ? (
-          <Text style={styles.basis} numberOfLines={1}>
-            {basisLabel}
-          </Text>
-        ) : null}
+        <View style={styles.heading}>
+          <Text style={styles.title}>{TEXT.title}</Text>
+          {/* W2: 서버가 준 기준을 그대로(전국으로 대체되면 그 기준이 보임) */}
+          {basisLabel ? (
+            <Text style={styles.basis} numberOfLines={1}>
+              {basisLabel}
+            </Text>
+          ) : null}
+        </View>
+        <WebHorizontalControls label={TEXT.title} {...scroll.edges} onMove={scroll.onMove} />
       </View>
 
       {status === "error" ? (
@@ -50,7 +55,13 @@ export function PopularBooksRow(props: PopularBooksRowProps) {
           <Text style={styles.messageText}>{TEXT.empty}</Text>
         </View>
       ) : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+        <ScrollView
+          {...scroll.scrollProps}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.row}
+          testID="popular-books-scroll"
+        >
           {status === "loading"
             ? Array.from({ length: LOADING_SLOTS }, (_, i) => (
                 <View key={i} style={styles.book} testID="popular-book-loading">
@@ -107,7 +118,8 @@ const c = theme.colors;
 const [tl, tr, br, bl] = theme.radii.bookCover;
 
 const styles = StyleSheet.create({
-  head: { gap: 2, marginTop: 6, marginBottom: 10 },
+  head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 6, marginBottom: 10 },
+  heading: { flexShrink: 1, gap: 2 },
   title: { ...T.title },
   basis: { ...T.gauge, fontSize: 9, letterSpacing: 1.2, textTransform: "none" },
   row: { gap: 12, paddingBottom: 2 },

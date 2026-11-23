@@ -91,6 +91,99 @@ def feed(client, library_id: int = LIB_1, headers=None, **params):
     return client.get(f"/api/v1/libraries/{library_id}/posts", params=params, headers=headers or {})
 
 
+@pytest.fixture
+def regional_libraries(db_engine, public_reference_data):
+    with db_engine.begin() as conn:
+        previous = conn.execute(text(
+            "SELECT id, dtl_region_code, region_code FROM libraries WHERE id BETWEEN 101 AND 105"
+        )).mappings().all()
+        conn.execute(text("""
+            UPDATE libraries AS l SET dtl_region_code = r.district, region_code = r.province
+            FROM (VALUES (101, '31010', '31'), (102, '31010', '31'), (103, '31020', '31'),
+                         (104, '31010', '31'), (105, '32010', '32')) AS r(id, district, province)
+            WHERE l.id = r.id
+        """))
+    yield
+    with db_engine.begin() as conn:
+        conn.execute(text("""
+            UPDATE libraries SET dtl_region_code = :dtl_region_code, region_code = :region_code WHERE id = :id
+        """), previous)
+
+
+def test_region_feed_orders_scopes_and_keeps_flags(client, auth, db_engine, regional_libraries):
+    own = seed(db_engine)
+    district = [seed(db_engine, library_id=lib) for lib in (102, 104)]
+    newer_province = [seed(db_engine, library_id=103, at=T0 + timedelta(days=1)) for _ in range(2)]
+    older_province = [seed(db_engine, library_id=103, at=T0 - timedelta(days=1)) for _ in range(2)]
+    seed(db_engine, library_id=105, at=T0 + timedelta(days=2))
+    seed(db_engine, library_id=102, at=T0 + timedelta(days=2), status="hidden")
+    seed(db_engine, library_id=103, at=T0 + timedelta(days=2), status="withdrawn")
+    saved = max(newer_province)
+    react(db_engine, saved, USER_A_ID)
+    react(db_engine, district[0], USER_B_ID)
+    with db_engine.begin() as conn:
+        conn.execute(text("INSERT INTO post_bookmarks (post_id, user_id) VALUES (:p, :u)"), {"p": saved, "u": USER_A_ID})
+
+    signed_in = feed(client, headers=auth["A"], expand="region", cursor="")
+    assert signed_in.status_code == 200, signed_in.text
+    body = signed_in.json()
+    assert [p["id"] for p in body["items"]] == [
+        own, *sorted(district, reverse=True), *sorted(newer_province, reverse=True), max(older_province),
+    ]
+    assert body["next_cursor"] is None
+    assert all(set(p) == FEED_KEYS for p in body["items"])
+    assert [p["id"] for p in body["items"] if p["my_reaction"]] == [saved]
+    assert [p["id"] for p in body["items"] if p["my_bookmark"]] == [saved]
+    guest = feed(client, expand="region").json()
+    assert [p["id"] for p in guest["items"]] == [p["id"] for p in body["items"]]
+    assert all(not p["my_reaction"] and not p["my_bookmark"] for p in guest["items"])
+    assert [p["id"] for p in feed(client).json()["items"]] == [own]
+    assert [p["id"] for p in feed(client, expand="region", limit=2).json()["items"]] == [own, max(district)]
+
+
+@pytest.mark.parametrize(
+    "district,province,expected", [(None, "31", [103, 102]), ("31010", "", [102]), ("", None, [])]
+)
+def test_region_feed_skips_each_missing_code(client, auth, db_engine, regional_libraries, district, province, expected):
+    with db_engine.begin() as conn:
+        conn.execute(text("UPDATE libraries SET dtl_region_code = :d, region_code = :p WHERE id = 101"),
+                     {"d": district, "p": province})
+        conn.execute(text("UPDATE libraries SET dtl_region_code = '', region_code = '' WHERE id = 105"))
+    seed(db_engine, library_id=102)
+    seed(db_engine, library_id=103, at=T0 + timedelta(days=1))
+    seed(db_engine, library_id=105, at=T0 + timedelta(days=2))
+    result = feed(client, expand="region")
+    assert result.status_code == 200, result.text
+    assert [p["library_id"] for p in result.json()["items"]] == expected
+    assert result.json()["next_cursor"] is None
+
+
+def test_region_feed_uses_own_page_and_cursor(client, auth, db_engine, regional_libraries):
+    own = sorted([seed(db_engine) for _ in range(8)], reverse=True)
+    seed(db_engine, library_id=102, at=T0 + timedelta(days=1))
+
+    assert [p["id"] for p in feed(client, expand="region").json()["items"]] == own
+    first = feed(client, expand="region", limit=6).json()
+    assert [p["id"] for p in first["items"]] == own[:6]
+    cursor = first["next_cursor"]
+    assert cursor == encode_cursor(T0, UUID(own[5]))
+    second = feed(client, cursor=cursor).json()
+    assert second["next_cursor"] is None
+    assert [p["id"] for p in second["items"]] == own[6:]
+    for params, detail in [
+        ({"cursor": cursor, "expand": "region"}, "expand"),
+        ({"expand": "district"}, "expand"),
+        ({"expand": ""}, "expand"),
+        ({"cursor": "broken", "expand": "region"}, "cursor"),
+    ]:
+        invalid = feed(client, **params)
+        assert invalid.status_code == 422
+        assert invalid.json()["error"]["code"] == "VALIDATION_ERROR"
+        assert invalid.json()["error"]["detail"] == detail
+    assert feed(client, library_id=987654, expand="region").status_code == 404
+    assert feed(client, headers={"Authorization": "Bearer x"}, expand="region").status_code == 401
+
+
 # ─────────── #26 ───────────
 
 

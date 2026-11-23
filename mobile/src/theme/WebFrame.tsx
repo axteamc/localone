@@ -52,11 +52,12 @@ export function isDesktopPointer(): boolean {
 export function WebFrame({ children }: { children: ReactNode }) {
   useWebFont();
   const { width, height } = useWindowDimensions();
-  if (Platform.OS !== "web" || width <= APP_MAX_WIDTH || !isDesktopPointer()) return <>{children}</>;
+  if (Platform.OS !== "web") return <>{children}</>;
+  const framed = width > APP_MAX_WIDTH && isDesktopPointer();
   return (
-    <View style={styles.outer}>
-      <Wall width={width} height={height} />
-      <View style={styles.column} testID="web-column">
+    <View style={framed ? styles.outer : styles.fill}>
+      {framed ? <Wall width={width} height={height} /> : null}
+      <View style={framed ? styles.column : styles.fill} testID={framed ? "web-column" : undefined}>
         {children}
       </View>
     </View>
@@ -64,6 +65,7 @@ export function WebFrame({ children }: { children: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
+  fill: { flex: 1 },
   outer: { flex: 1, backgroundColor: theme.colors.bg, alignItems: "center", overflow: "hidden" },
   v: { position: "absolute", top: 0, bottom: 0, width: 1, backgroundColor: theme.colors.seamHairline, opacity: 0.55 },
   h: { position: "absolute", left: 0, right: 0, height: 1, backgroundColor: theme.colors.seamHairline, opacity: 0.55 },

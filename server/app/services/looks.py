@@ -6,6 +6,7 @@
 - 책장: DB만 읽는 페이지(`recent_reads`·`theme`)를 여기서 만든다. `popular`는 외부 조회가 있어 라우터가 엔진으로 만든다.
 """
 
+import unicodedata
 from collections import Counter
 from datetime import date, timedelta
 from typing import Any, Literal, cast
@@ -13,14 +14,14 @@ from typing import Any, Literal, cast
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
-from app.services.provider_engine import distance_km
+from app import policy
+from app.services.provider_engine import PopularResult, distance_km
 
 LookPreset = Literal["modern", "warm", "toffee", "oxford"]
 AUTO_LOOKS: tuple[LookPreset, ...] = ("warm", "toffee", "oxford")
 LOOK_RADIUS_KM = 5.0  # Z6
 LOOK_LOCK_KEY = "libraries:look"
 
-SHELF_BOOKS = 3  # 페이지당 책 최대 3(VISIT-3 C2)
 RECENT_READS_DAYS = 30  # Q-49 미확인(임시)
 RECENT_READS_MIN_COUNT = 3  # Q-49 미확인(임시): 도서관-책 합계 3건 이상만
 TITLE_RECENT_READS = "요즘 사람들이 읽은 책"
@@ -98,33 +99,70 @@ def recent_reads_page(conn: Connection, library_id: int, today: date) -> dict[st
         ORDER BY n DESC, b.id LIMIT :limit
         """),
         {"lid": library_id, "start": today - timedelta(days=RECENT_READS_DAYS - 1), "today": today,
-         "min": RECENT_READS_MIN_COUNT, "limit": SHELF_BOOKS}).all()
+         "min": RECENT_READS_MIN_COUNT, "limit": policy.SHELF_BOOKS_PER_PAGE}).all()
     if not rows:
         return None
     return {"kind": "recent_reads", "title": TITLE_RECENT_READS,
             "basis_label": f"최근 {RECENT_READS_DAYS}일 · 이 도서관", "books": [shelf_book(r) for r in rows]}
 
 
-def active_theme(conn: Connection, library_id: int, today: date) -> Any:
-    """Q-47 임시: 이 도서관 테마가 있으면 그것, 없으면 전체 공통. 범위마다 동시에 하나(쓰기에서 보장)."""
-    return conn.execute(text(
-        "SELECT id, title FROM shelf_themes WHERE starts_on <= :d AND ends_on >= :d "
-        "AND (library_id = :lid OR library_id IS NULL) "
-        "ORDER BY library_id IS NULL, created_at DESC, id LIMIT 1"), {"d": today, "lid": library_id}).one_or_none()
-
-
-def theme_books(conn: Connection, theme_id: Any) -> list[dict[str, Any]]:
-    rows = conn.execute(text(
-        "SELECT b.isbn13, b.title, b.author, b.cover_url FROM shelf_theme_books t JOIN books b ON b.id = t.book_id "
-        "WHERE t.theme_id = :t AND b.isbn13 IS NOT NULL ORDER BY t.position"), {"t": theme_id}).all()
-    return [shelf_book(r) for r in rows]
-
-
 def theme_page(conn: Connection, library_id: int, today: date) -> dict[str, Any] | None:
-    theme = active_theme(conn, library_id, today)
-    if theme is None:
+    rows = conn.execute(text("""
+        WITH matched AS (
+            SELECT t.id AS theme_id, t.title AS theme_title, t.library_id, t.priority,
+                   b.isbn13, b.title, b.author, b.cover_url, MIN(tb.position) AS position
+            FROM libraries l
+            JOIN library_holdings_cache h ON h.library_id = l.id AND h.region_code = l.region_code
+            JOIN library_holdings_snapshots s ON s.book_id = h.book_id AND s.region_code = h.region_code
+            JOIN shelf_theme_books tb ON tb.book_id = h.book_id
+            JOIN shelf_themes t ON t.id = tb.theme_id AND (t.library_id = l.id OR t.library_id IS NULL)
+            JOIN books b ON b.id = h.book_id
+            WHERE l.id = :library_id AND :today BETWEEN t.starts_on AND t.ends_on
+              AND s.fetched_at > statement_timestamp() - :ttl AND b.isbn13 IS NOT NULL
+            GROUP BY t.id, b.id
+        ), selected AS (
+            SELECT theme_id
+            FROM matched
+            GROUP BY theme_id, library_id, priority
+            HAVING COUNT(*) >= CASE WHEN library_id IS NULL THEN :common_min ELSE :local_min END
+            ORDER BY library_id IS NULL, priority, theme_id
+            LIMIT 1
+        )
+        SELECT m.theme_title, m.isbn13, m.title, m.author, m.cover_url
+        FROM matched m JOIN selected USING (theme_id)
+        ORDER BY m.position LIMIT :limit
+        """), {
+            "library_id": library_id, "today": today, "ttl": policy.SHELF_HOLDINGS_TTL,
+            "common_min": policy.SHELF_COMMON_THEME_MIN_HOLDINGS,
+            "local_min": policy.SHELF_LOCAL_THEME_MIN_HOLDINGS, "limit": policy.SHELF_BOOKS_PER_PAGE,
+        }).all()
+    if not rows:
         return None
-    books = theme_books(conn, theme.id)
-    if not books:
-        return None
-    return {"kind": "theme", "title": theme.title, "basis_label": None, "books": books}
+    return {"kind": "theme", "title": rows[0].theme_title, "basis_label": None,
+            "books": [shelf_book(row) for row in rows]}
+
+
+def _normalized_title(value: str) -> str:
+    return " ".join(unicodedata.normalize("NFKC", value).casefold().split())
+
+
+def _is_series_title(title: str, series: str) -> bool:
+    if not title.startswith(series):
+        return False
+    suffix = title[len(series):]
+    return not suffix or suffix[0].isspace() or suffix[0].isdecimal() or unicodedata.category(suffix[0]).startswith("P")
+
+
+def shelf_popular_books(result: PopularResult) -> list[dict[str, Any]]:
+    series_names = [_normalized_title(name) for name in policy.SHELF_POPULAR_EXCLUDED_SERIES]
+    books = []
+    for book in result.books:
+        class_name = _normalized_title(result.class_names.get(book.isbn13, ""))
+        if class_name in policy.SHELF_POPULAR_COMIC_CLASSES or book.isbn13 in policy.SHELF_POPULAR_EXCLUDED_ISBNS:
+            continue
+        if any(_is_series_title(_normalized_title(book.title), series) for series in series_names):
+            continue
+        books.append(shelf_book(book))
+        if len(books) == policy.SHELF_BOOKS_PER_PAGE:
+            break
+    return books

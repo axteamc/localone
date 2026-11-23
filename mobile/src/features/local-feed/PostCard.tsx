@@ -19,13 +19,15 @@ export type PostCardProps = {
   onPress(postId: string): void;
   onMenu?(post: FeedPost): void;
   width: number;
+  showLibraryName?: boolean;
 };
 
-export function PostCard({ post, onPress, onMenu, width }: PostCardProps) {
+export function PostCard({ post, onPress, onMenu, width, showLibraryName }: PostCardProps) {
   const [hover, setHover] = useState(false);
   const isColor = post.image_kind === "color";
   const bg = isColor ? resolvePostColor(post.image_color, C) : C.surface3;
   const textColor = isColor && post.image_color ? onFill(bg) : ON_FILL_LIGHT;
+  const label = post.overlay_text ?? "게시물";
 
   const height = Math.round(width * cardHeightRatio(post));
   // 버튼 안 버튼 금지(웹 <button> 중첩 오류, 시연 전 개선 S1): ⋯는 카드 버튼의 형제로 겹쳐 두고,
@@ -40,7 +42,7 @@ export function PostCard({ post, onPress, onMenu, width }: PostCardProps) {
       <Pressable
         testID={`post-card-${post.id}`}
         accessibilityRole="button"
-        accessibilityLabel={post.overlay_text ?? "게시물"}
+        accessibilityLabel={showLibraryName ? `${label}, ${post.library_name}` : label}
         accessibilityHint={onMenu ? "길게 누르면 메뉴가 열려요" : undefined}
         onPress={() => onPress(post.id)}
         onLongPress={onMenu ? () => onMenu(post) : undefined}
@@ -56,6 +58,18 @@ export function PostCard({ post, onPress, onMenu, width }: PostCardProps) {
           >
             {post.overlay_text}
           </Text>
+        ) : null}
+        {showLibraryName ? (
+          <View
+            pointerEvents="none"
+            accessible={false}
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+            aria-hidden
+            style={[styles.source, { right: onMenu ? 48 : 6 }]}
+          >
+            <Text numberOfLines={1} style={styles.sourceText}>{post.library_name}</Text>
+          </View>
         ) : null}
       </Pressable>
       {onMenu && hover ? (
@@ -78,6 +92,16 @@ const styles = StyleSheet.create({
   mid: { top: "35%" },
   bottom: { bottom: 10 },
   shadow: { textShadowColor: C.shadowSoft, textShadowRadius: 6, textShadowOffset: { width: 0, height: 1 } },
+  source: {
+    position: "absolute",
+    top: 6,
+    maxWidth: "75%",
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: theme.radii.pill,
+    backgroundColor: C.paper,
+  },
+  sourceText: { fontSize: 11, color: C.text },
   dots: {
     position: "absolute",
     top: 6,

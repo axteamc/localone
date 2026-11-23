@@ -81,7 +81,7 @@
 | 23 | `POST /api/v1/uploads/post-images` | 필수 | 직접 찍은 사진 올리기. 서버가 EXIF 위치를 지우고 저장 경로를 돌려준다 | LOCAL-01, NFR-05 | 동작 `확정` · 저장소·용량·형식 `미확인(임시)` Q-53 |
 | 24 | `POST /api/v1/posts` | 필수 | 올리기(이때 공개된다). 이미지 종류 사진/표지/단색 + M2(`LOCAL-3`) `template`(`minimal`·`ink`) 및 `reading_log_id`, 본문 없이도 됨 | LOCAL-01·02·07, AC-PUBLISH | `확정` (2026-11-19 D, C-75) |
 | 25 | `POST /api/v1/posts/{post_id}/withdraw` | 필수(작성자만) | 철회. 바로 목록·직접 주소에서 안 보인다 | LOCAL-01, R10 | `확정` |
-| 26 | `GET /api/v1/libraries/{library_id}/posts?sort=latest&cursor=` | 선택 | 그 도서관 공개 게시물 전용 피드(M1 방문 페이지 및 홈 하단 창 `VISIT-1b` `useHomeFeed`가 사용; M2 방문 페이지 혼합 피드는 `#32`로 분리) | LOCAL-03, VISIT-02·06 | 최신순·유지 `확정`(2026-11-19 D) · `sort=popular`는 `미확인(임시)` Q-31 · 파일럿 공개 범위 `미확인(임시)` Q-54 |
+| 26 | `GET /api/v1/libraries/{library_id}/posts?sort=latest&cursor=&expand=` | 선택 | 기본은 그 도서관의 공개 게시물. 홈 첫 조회에서 선택 `expand=region`으로 부족분을 같은 구 → 시·도 순으로 보충(M1 방문 페이지 및 홈 하단 창 `VISIT-1b` `useHomeFeed`가 사용; M2 방문 페이지 혼합 피드는 `#32`로 분리) | LOCAL-03, VISIT-02·06 | 범위별 최신순·홈 보충(2026-11-23 D) `확정`(2026-11-19 D) · `sort=popular`는 `미확인(임시)` Q-31 · 파일럿 공개 범위 `미확인(임시)` Q-54 |
 | 27 | `GET /api/v1/posts/{post_id}` | 선택 | 게시물 상세(본문·작성자 닉네임·공감 수·내 공감·내 북마크·책·M2 `from_reading_log`) | LOCAL-04·07 | `확정` · 철회·숨김은 `404 POST_NOT_AVAILABLE` |
 | 28 | `GET /api/v1/books/{isbn13}/posts?exclude=&cursor=` | 선택 | 같은 책의 다른 공개 게시물(다른 도서관 포함) | LOCAL-05 | `확정` |
 | 29 | `PUT /api/v1/posts/{post_id}/reaction` · `DELETE …/reaction` | 필수 | 공감 누르기·취소(몇 번 눌러도 결과 같음) | LOCAL-06, R14 | `확정` |
@@ -100,7 +100,7 @@
 
 | # | 메서드·경로 | 인증 | 목적 | 요구사항 | 상태 |
 | --- | --- | --- | --- | --- | --- |
-| 31 | `GET /api/v1/libraries/{library_id}/shelf` | 없음 | 방문 페이지 하단 "오늘의 서가"(책장, D `M2-0-P3`): ① 요즘 읽은 책(`recent_reads`) ② 인기 도서(`popular`) ③ 테마(`theme`), 빈 페이지 제외, 페이지당 최대 3권 | VISIT-04 | `확정` (2026-11-19 D) · ① 기간·건수 Q-49 / ② API Q-42 / ③ 테마 Q-47 |
+| 31 | `GET /api/v1/libraries/{library_id}/shelf` | 없음 | 방문 페이지 하단 "오늘의 서가"(책장, D `M2-0-P3`): ① 요즘 읽은 책(`recent_reads`) ② 인기 도서(`popular`) ③ 테마(`theme`), 빈 페이지 제외, 페이지당 최대 4권, ② 만화·시리즈 제외 후 같은 도서관 순위로 채움, ③ 소장 조건과 전용 우선 적용 | VISIT-04 | `확정` (2026-11-23 D, 적용 전) · ① 기간·건수 Q-49 / ② API Q-42 / ③ 테마 Q-47 |
 | 32 | `GET /api/v1/libraries/{library_id}/feed?cursor=&limit=` | 선택 | 방문 페이지 혼합 피드(B `VISIT-3` `post`·`guestbook` → `VISIT-4` `stamp` → `CLUB-1` `club`), 정렬 `(published_at DESC, kind ASC, id DESC)` 복합 커서. `#26`은 홈 하단 창용으로 그대로 유지 | VISIT-03·05, LOCAL-03, CLUB-01 | `확정` (2026-11-19 D, C-75) |
 | 33 | `POST /api/v1/libraries/{library_id}/guestbook` | 필수 | 도서관 방명록 글 올리기(`client_request_id` 멱등, B `VISIT-3`) | VISIT-03 | `확정` (2026-11-19 D) |
 | 34 | `POST /api/v1/guestbook/{entry_id}/withdraw` | 필수(작성자만) | 내 방명록 글 철회(멱등, 남의 글·없는 글은 같은 `404 NOT_FOUND`, B `VISIT-3`) | VISIT-03, R10 | `확정` (2026-11-19 D) |
@@ -144,7 +144,7 @@
 | OPS-3 | `POST /api/v1/ops/club-comment-requests/{id}/decide` | 필수(운영자만, 비운영자 `404`) | 모임 댓글 운영 요청 처리(삭제만 / 삭제와 참가 제한 / 기각, D `M2-0-P2`) | C-46 B1·B2·B6 | `확정` (2026-11-19 D) |
 | OPS-4 | `POST /api/v1/ops/restrictions` · `POST /api/v1/ops/restrictions/{id}/lift` | 필수(운영자만, 비운영자 `404`) | 참가·댓글 제한 생성 및 해제(사유 필수, 운영자만 해제 가능, D `M2-0-P2`) | C-46 B1~B5, R18 | `확정` (2026-11-19 D) |
 | OPS-5 | `PUT /api/v1/ops/libraries/{id}/look` | 필수(운영자만, 비운영자 `404`) | 도서관 룩(`modern` 등) 운영자 지정·재배정(D `M2-0-P3`) | VISIT-07 | `확정` (2026-11-19 D) |
-| OPS-6 | `POST /api/v1/ops/shelf-themes` · `PUT /api/v1/ops/shelf-themes/{id}` | 필수(운영자만, 비운영자 `404`) | 서가 테마 등록·수정(기간 겹침 시 `409 THEME_OVERLAP`, D `M2-0-P3`) | LIB-01(C-46 E1), VISIT-04 | `확정` (2026-11-19 D) |
+| OPS-6 | `POST /api/v1/ops/shelf-themes` · `PUT /api/v1/ops/shelf-themes/{id}` | 필수(운영자만, 비운영자 `404`) | 서가 테마 등록·수정(공통 최대 20권, 전용 최대 3권, 같은 범위·우선순위의 기간 겹침 시 `409 THEME_OVERLAP`, D `M2-0-P3` 후속) | LIB-01(C-46 E1), VISIT-04 | `확정` (2026-11-23 D, 적용 전) |
 | SET-R | `PUT /api/v1/me/settings/return-stats` | 필수 | 반납 집계 동의 설정(`{ "consent": bool }`, D `M2-0-P4`) | LOAN-03, VISIT-04 | `확정` · 동의 세부 `미확인(임시)` Q-49 |
 
 ### 2.10 작은 모임 (`book-club`, B)
@@ -195,7 +195,7 @@
 | `CLUB_CLOSED` | 409 | 마감·취소·종료된 모임 참가, 또는 취소된 모임의 다음 모임·출석 | "모집이 마감된 모임이에요." | 무변경 | `확정` (`book-club.md` CLUB-1·2, 2026-11-19 D) |
 | `CLUB_STARTED` | 409 | 확정된 모임의 시작 시각이 지난 뒤 참가 취소 또는 시작 시각 변경 | "이미 시작된 모임이에요." | 무변경 | `확정` (`book-club.md` CLUB-1, 2026-11-19 D) |
 | `CLUB_NOT_ENDED` | 409 | 아직 종료되지 않은 모임의 기록·후기·다음 모임 생성 | "모임이 끝난 뒤에 쓸 수 있어요." | 무변경 | `확정` (`book-club.md` CLUB-2, 2026-11-19 D) |
-| `THEME_OVERLAP` | 409 | 같은 범위(공통 또는 같은 도서관)의 서가 테마 노출 기간이 겹침 | "같은 기간에 이미 활성 테마가 있어요." | 무변경 | `확정` (`core.md` M2-0-P3, 2026-11-19 D) |
+| `THEME_OVERLAP` | 409 | 같은 범위(공통 또는 같은 도서관)·같은 우선순위에서 서가 테마 노출 기간이 겹침 | "같은 기간에 이미 활성 테마가 있어요." | 무변경 | `확정` (`core.md` M2-0-P3, 2026-11-19 D) |
 | `VALIDATION_ERROR` | 422 | 필수값 누락·형식 오류·날짜 역전·잘못된 ISBN. `detail`에 필드 이름 | "요청 형식이 올바르지 않아요."(화면은 필드별 문구로 바꿔 보인다) | 무변경 | `확정`(구현됨) |
 | `PAYLOAD_TOO_LARGE` | 413 | 사진이 용량 상한을 넘음 | "사진이 너무 커요." | 무변경 | `미확인(임시)` Q-53(상한 값) |
 | `PROVIDER_LIMIT` | 429 | 외부 호출 상한에 걸려 줄 것이 하나도 없음 | "지금은 조회가 많아요. 잠시 뒤 다시 시도해 주세요." | 무변경 | `기본값(Claude)` |

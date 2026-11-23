@@ -12,7 +12,7 @@ from sqlalchemy.engine import Connection
 from app import policy
 from app.common import ApiError, today_kst
 from app.db import run_db
-from app.services.looks import TITLE_POPULAR, SHELF_BOOKS, assign_look, recent_reads_page, shelf_book, theme_page
+from app.services.looks import TITLE_POPULAR, assign_look, recent_reads_page, shelf_popular_books, theme_page
 from app.services.provider_engine import (
     LibraryRow, ProviderEngine, get_library, libraries_by_name, libraries_in_region, libraries_nearby,
 )
@@ -118,7 +118,7 @@ def library_summary(lib: LibraryRow, distance_km: float | None, today: date | No
         "dtl_region_code": lib.dtl_region_code, "area_label": area_label_of(lib.address),
         "distance_m": round(distance_km * 1000) if distance_km is not None else None,
         "today": {"date": today.isoformat(), "is_closed": is_closed,
-                  "hours_text": today_hours(lib.operating_time_text, today) if is_closed is False else None,
+                  "hours_text": None if is_closed is True else today_hours(lib.operating_time_text, today),
                   "holiday_unchecked": unchecked},
     }
 
@@ -183,10 +183,12 @@ async def popular_page(engine: ProviderEngine, lib: LibraryRow) -> dict[str, Any
         result = await engine.popular_books(lib)
     except ApiError:
         return None
-    if result.scope != "library" or not result.books:
+    if result.scope != "library":
         return None
-    return {"kind": "popular", "title": TITLE_POPULAR, "basis_label": result.period_label,
-            "books": [shelf_book(b) for b in result.books[:SHELF_BOOKS]]}
+    books = shelf_popular_books(result)
+    if not books:
+        return None
+    return {"kind": "popular", "title": TITLE_POPULAR, "basis_label": result.period_label, "books": books}
 
 
 @router.get("/{library_id}/shelf")

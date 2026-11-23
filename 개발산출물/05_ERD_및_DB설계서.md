@@ -128,8 +128,10 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | 27 | `inbox_items` | 앱 안 알림함 항목(모임 안내·운영 처리 안내) | D (M2-0-P1) | `recipient_id` | C-46 C5, C-47 G1, R19 | `확정` (`core.md` M2-0) |
 | 28 | `operators` | 운영 화면(`/ops`) 권한을 가진 운영자 계정(DB 직접 등록) | D (M2-0-P2) | `user_id`(자기 자신) | LOCAL-08, C-46 B1·B5 | `확정` (2026-11-19 D) |
 | 29 | `moderation_actions` | 운영자의 숨김·복구·기각·제한·해제·룩·테마 처리 기록 | D (M2-0-P2) | `actor_id`(운영자) | LOCAL-08, AC-MOD | `확정` |
-| 30 | `shelf_themes` | 검색 추천·오늘의 서가용 운영자 구성 테마(공통/도서관별) | D (M2-0-P3) | 없음(공공/운영) | LIB-01(C-46 E1), VISIT-04 | 골격 `확정` · 범위·기간 세부 `미확인(임시)` Q-47 |
-| 31 | `shelf_theme_books` | 서가 테마에 속한 도서(테마당 최대 3권) | D (M2-0-P3) | 없음(공공/운영) | VISIT-04 | `확정` |
+| 30 | `shelf_themes` | 검색 추천·오늘의 서가용 운영자 구성 테마(공통/도서관별) | D (M2-0-P3) | 없음(공공/운영) | LIB-01(C-46 E1), VISIT-04 | `확정`(Q-47, 2026-11-23), 새 제약 적용 전 |
+| 31 | `shelf_theme_books` | 서가 테마에 속한 도서(공통 최대 20권·전용 최대 3권) | D (M2-0-P3) | 없음(공공/운영) | VISIT-04 | `확정`, 새 제약 적용 전 |
+| 32 | `library_holdings_snapshots` | ISBN·광역 지역별 완전 수집 시각 | D (M2-0-P3 후속) | 없음(공공/운영) | VISIT-04, Q-47 | 적용 전 |
+| 33 | `library_holdings_cache` | 해당 도서관 소장 확인 행 | D (M2-0-P3 후속) | 없음(공공/운영) | VISIT-04, Q-47 | 적용 전 |
 
 ## 3. 테이블별 골격
 
@@ -267,12 +269,23 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | 테이블·컬럼 | 타입 | 제약 | 설명 | 상태 |
 | --- | --- | --- | --- | --- |
 | `shelf_themes.id` | `uuid` | PK, 기본 `gen_random_uuid()` | 테마 id | `확정` |
-| `shelf_themes.library_id` | `bigint` | NULL 허용, FK → `libraries.id` | NULL이면 전체 공통 테마 | `미확인(임시)` Q-47 |
+| `shelf_themes.library_id` | `bigint` | NULL 허용, FK → `libraries.id` | NULL이면 전체 공통 테마 | `확정` Q-47 |
 | `shelf_themes.title` | `text` | NOT NULL | 테마 제목 | `확정` |
-| `shelf_themes.starts_on`, `ends_on` | `date` | NOT NULL, CHECK `ends_on >= starts_on` | 노출 기간(범위당 동시 활성 1개는 서버 쓰기 검증 `409 THEME_OVERLAP`) | `확정`(C-46 E1) |
+| `shelf_themes.starts_on`, `ends_on` | `date` | NOT NULL, CHECK `ends_on >= starts_on` | 양끝 포함 노출 기간. 같은 범위·우선순위 기간 겹침은 잠금 안에서 `409 THEME_OVERLAP` | `확정` Q-47, 적용 전 |
+| `shelf_themes.priority` | `smallint` | NOT NULL, 기본 1, CHECK 1~3 | 낮은 값 우선 | `확정` Q-47, 적용 전 |
 | `shelf_themes.created_at` | `timestamptz` | NOT NULL, 기본 `now()` | | `확정` |
-| `shelf_theme_books.theme_id`, `position` | `uuid`, `smallint` | PK (`theme_id`, `position`), FK → `shelf_themes.id`, CHECK `position BETWEEN 1 AND 3` | 테마 안 순서(최대 3권) | `확정`(VISIT-04) |
+| `shelf_theme_books.theme_id`, `position` | `uuid`, `smallint` | PK (`theme_id`, `position`), FK → `shelf_themes.id`, CHECK `position BETWEEN 1 AND 20` | 테마 안 순서. 전용 3권 상한은 운영 API 검증 | `확정`(VISIT-04), 적용 전 |
 | `shelf_theme_books.book_id` | `bigint` | NOT NULL, FK → `books.id` | 대상 도서 | `확정` |
+
+**소장 배치·인기 장 분류 (M2-0-P3 후속, 적용 전)**
+
+| 대상 | 핵심 제약과 의미 |
+| --- | --- |
+| `library_holdings_snapshots` | PK `(book_id, region_code)`, 책 FK, 완전 수집의 시작 시각 `fetched_at timestamptz NOT NULL`. 조회 TTL 72시간. |
+| `library_holdings_cache` | PK `(book_id, region_code, library_id)`, 스냅샷 복합 FK(삭제 CASCADE)·도서관 FK. 양성만 적재. 개인 식별자·대출 가능 상태 없음. |
+| `popular_books_cache.provider_class_name` | nullable text, 인기 후보에 딸린 정보나루 분류명. 구 캐시·공급자 누락은 NULL. `#31` 필터 내부에서 사용. |
+
+두 새 테이블에는 RLS를 켜고 정책 0개를 유지한다. 세부 타입과 적재·조회 계약은 [M2-0 개정안](명세/M2-0_서가테마_계약개정_초안.md)을 따른다.
 
 ### 3.2 주니어 영역 (존재·목적·소유자 컬럼·핵심 제약까지)
 
@@ -342,7 +355,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | 도서관 방문 횟수 | **기기**(도서관별 방문 횟수·마지막 방문 날짜·연속 일수·기본값을 물었는지). 방문 멘트 카드(첫 방문·연속 주기·오랜만, C-56)와 "세 번째 방문 때 물어봄"에 쓴다. 횟수는 화면에 보여 주지 않는다. M2 방문 스탬프(§10)와는 별개 값 | [D 결정 1.2-1](명세/VISIT_LOCAL_D결정.md)(2026-11-13 D: "방문 횟수에 대한 값을 저장"), C-55 | 저장한다는 것은 `확정`, 기기에 둔다는 것과 세는 단위(도서관마다 하루 한 번)는 `기본값(Claude)`: 도서관 기본값과 같은 자리이고 로그인 없이도 써야 하므로 |
 | 게시물 초안 | 기기(올리기 전에는 서버에 없음) | LOCAL-01 "올리기를 눌러야 공개" | `기본값(Claude)` |
 | 세션·리프레시 토큰 | Supabase | AUTH-1 A4 | `확정` |
-| 서가 테마 | M1에는 표가 없고 검색 추천이 "활성 테마 없음 → 인기 도서"로 동작한다. M2(`M2-0-P3`)에서 `shelf_themes`·`shelf_theme_books` 표를 만든다 | LIB-01, VISIT-04, Q-47 | M1 `확정` / M2 표 `확정`(2026-11-19 D), 범위·기간 세부 `미확인(임시)` Q-47 |
+| 서가 테마 | M1에는 표가 없고 검색 추천이 "활성 테마 없음 → 인기 도서"로 동작한다. M2(`M2-0-P3`)에서 `shelf_themes`·`shelf_theme_books` 표를 만든다 | LIB-01, VISIT-04, Q-47 | M1 `확정` / M2 표 `확정`(2026-11-19 D), Q-47 후속 결정 승인(2026-11-23), 새 정책 적용 전 |
 
 ## 7. 인덱스 (조회 패턴만 — 값은 계약서에서)
 

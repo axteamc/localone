@@ -131,11 +131,12 @@ export type FeedPage = { items: FeedPost[]; next_cursor: string | null };
 export type ReactionState = { post_id: string; reacted: boolean; reaction_count: number };
 export type BookmarkState = { post_id: string; bookmarked: boolean };
 
-function pageQuery(page: { cursor: string | null; limit?: number; exclude?: string }): string {
+function pageQuery(page: { cursor: string | null; limit?: number; exclude?: string; expand?: "region" }): string {
   const q = new URLSearchParams();
   if (page.cursor) q.set("cursor", page.cursor);
   if (page.limit !== undefined) q.set("limit", String(page.limit));
   if (page.exclude) q.set("exclude", page.exclude);
+  if (page.expand) q.set("expand", page.expand);
   const s = q.toString();
   return s ? `?${s}` : "";
 }
@@ -143,7 +144,7 @@ function pageQuery(page: { cursor: string | null; limit?: number; exclude?: stri
 /** #26 `GET /api/v1/libraries/{library_id}/posts` — 최신순만(H1) */
 export function fetchLibraryPosts(
   libraryId: number,
-  page: { cursor: string | null; limit?: number },
+  page: { cursor: string | null; limit?: number; expand?: "region" },
   signal?: AbortSignal
 ): Promise<FeedPage> {
   return send<FeedPage>(`libraries/${libraryId}/posts${pageQuery(page)}`, { method: "GET" }, signal);
