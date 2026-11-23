@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>book-club · CLUB-2 시안 — 끝난 모임 기록·후기·출석·알림함</title>
+<!--
+  짝 문서: specs/book-club/세부/CLUB-2.md
+  기준: ../team/contracts/book-club.md CLUB-2(D 기준선) · specs/book-club/명세서.md 결정 3·4 · CLUB-1 시안의 모임 화면 모양 · 개발산출물/디자인_기준.md
+  휴대폰 틀 240×430 = 390×844 화면을 약 0.615배로 줄인 그림. 세 후보 모두 같은 끝난 모임("소년이 온다 같이 읽기", 11.28)을 쓴다.
+-->
+<style>
+  :root {
+    /* 개발산출물/디자인_기준.md 토큰 (warm, M1 기본) */
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+    --cream:#EFEFE7; --paper:#EFF1F1; --ink-strong:#2E333F; --text:#1D1D1F; --sub:#71716F;
+    --on-fill:#1D1D1F;
+    /* 파생 (디자인_기준 §2 mix 식, warm) */
+    --panel-lit:#EEF0EF; --panel-frosted:#E9EAE8; --seam:#D1D2D0; --relief-bottom:#B9B9B6;
+    /* 형태 토큰 (아치 계열, 0.615배) */
+    --r-card:18px; --r-pill:9999px; --r-info:9px; --r-book:5px 9px 9px 5px;
+    --r-club:43px 43px 11px 11px;   /* 모임 카드 아치 위 70 · 아래 18 (앱 값) */
+    /* 그림자·덮개·유리 알약 (룩과 무관한 고정값) */
+    --shadow-soft:rgba(0,0,0,.15); --shadow-mid:rgba(0,0,0,.22); --dim:rgba(0,0,0,.35);
+    --pill-glass:rgba(255,255,255,.55);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; line-height:1.5; }
+  header.page, main { max-width:1280px; margin:0 auto; padding:0 16px; }
+  header.page { padding-top:20px; }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:17px; margin:0 0 4px; } h3 { font-size:15px; margin:0 0 8px; }
+  .how, .flow, .decided { background:var(--cream); border-radius:var(--r-card); padding:12px 16px; margin:10px 0 0; }
+  .decided { border-left:5px solid var(--ink-strong); }
+  section.element { margin-top:32px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:var(--r-pill); background:var(--surface2); margin-left:6px; font-weight:400; }
+  .pick { margin:8px 0 0; font-size:14px; }
+  .pick select { font:inherit; padding:4px 8px; border-radius:10px; border:1px solid var(--surface3); background:var(--paper); }
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-card); padding:14px; border:3px solid transparent; }
+  .cand.recommended { border-color:var(--fill1); } .cand.chosen { border-color:var(--ink-strong); }
+  .badge { display:inline-block; font-size:12px; font-weight:700; padding:1px 9px; border-radius:var(--r-pill); background:var(--fill1); margin-left:6px; }
+  .badge.adopted { background:var(--ink-strong); color:var(--paper); }
+  .cand p, .cand li { font-size:13.5px; margin:6px 0; } .cand ul { padding-left:18px; margin:4px 0; }
+  .lbl { font-weight:700; font-size:12.5px; color:var(--sub); margin-top:10px; display:block; }
+  .tbtn { font:inherit; font-size:12.5px; border:1px solid var(--surface3); background:var(--cream); border-radius:var(--r-pill); padding:3px 10px; cursor:pointer; margin:2px 0; }
+  .tbtn[aria-pressed="true"] { background:var(--ink-strong); color:var(--paper); border-color:var(--ink-strong); }
+
+  /* ---- 휴대폰 ---- */
+  .phone { width:240px; height:430px; margin:0 auto 10px; background:var(--cream); border-radius:26px; border:5px solid var(--ink-strong); position:relative; overflow:hidden; font-size:11px; }
+  .scr { position:absolute; inset:0; background:var(--cream); overflow:hidden; }
+  .hd { position:absolute; left:0; right:0; top:0; height:50px; padding:8px 10px 0; background:var(--panel-frosted); border-bottom:1px solid var(--seam); z-index:5; }
+  .back { font-size:20px; font-weight:800; line-height:1; background:none; border:0; padding:0; color:inherit; cursor:pointer; }
+  .vname { font-size:13px; font-weight:500; }
+  .feed { position:absolute; left:0; right:0; top:50px; bottom:0; overflow-y:auto; padding:6px 8px 60px; display:grid; grid-template-columns:1fr 1fr; gap:6px; align-items:start; scrollbar-width:none; }
+  .feed::-webkit-scrollbar { display:none; }
+  .col { display:flex; flex-direction:column; gap:6px; }
+  .pc { border-radius:var(--r-card); background:var(--surface3); }
+  .fab { position:absolute; right:10px; bottom:14px; width:34px; height:34px; border-radius:var(--r-pill); background:var(--ink-strong); color:var(--paper); display:flex; align-items:center; justify-content:center; font-size:20px; z-index:16; box-shadow:0 2px 6px var(--shadow-mid); border:0; }
+
+  /* 모임 카드 (공통) */
+  .club { border-radius:var(--r-club); background:var(--fill2); color:var(--on-fill); padding:16px 9px 9px; cursor:pointer; display:flex; flex-direction:column; gap:3px; border:0; text-align:left; font:inherit; width:100%; }
+  .club .tag { align-self:flex-start; font-size:8px; padding:1px 7px; border-radius:var(--r-pill); background:var(--pill-glass); }
+  .club .go { font-size:9px; font-weight:500; margin-top:4px; }
+  .club .nm { font-size:10px; font-weight:500; line-height:1.3; }
+  .club .meta { font-size:8.5px; opacity:.8; line-height:1.35; }
+  .club .date { font-size:15px; line-height:1.1; }
+  .club .date small { display:block; font-size:9px; opacity:.85; margin-top:2px; }
+  .club .cover { height:64px; border-radius:var(--r-book); background:var(--fill1); display:flex; align-items:flex-end; padding:5px; font-size:8px; font-weight:500; box-shadow:0 2px 5px var(--shadow-soft); margin:2px 6px 4px; }
+  .club.wide { grid-column:1 / -1; flex-direction:row; align-items:center; gap:10px; padding:12px 12px; border-radius:var(--r-card); }
+  .club.wide .dblock { flex:none; width:52px; text-align:center; background:var(--pill-glass); border-radius:var(--r-info); padding:5px 0; }
+  .club.wide .dblock b { display:block; font-size:16px; font-weight:400; line-height:1.1; }
+  .club.wide .dblock span { font-size:8px; }
+  .club.wide .body { flex:1; display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .und-only { display:none; } .phone.und .und-only { display:block; } .phone.und .dec-only { display:none; }
+
+  /* 모임 화면 (큰 틀 결정 2: 약속 정보 → 참가 버튼 → 참가자 → 댓글) */
+  .cs { position:absolute; left:0; right:0; top:50px; bottom:0; overflow-y:auto; padding:8px 10px 50px; scrollbar-width:none; }
+  .cs::-webkit-scrollbar { display:none; }
+  .info { background:var(--paper); border-radius:var(--r-info); padding:9px; display:flex; gap:8px; }
+  .info .bk { flex:none; width:38px; height:54px; border-radius:var(--r-book); background:var(--fill1); }
+  .info .nm { font-size:12px; font-weight:500; line-height:1.3; }
+  .info .ln { font-size:9.5px; color:var(--sub); }
+  .info .ln b { color:var(--text); font-weight:500; }
+  .main-btn { display:block; width:100%; margin:8px 0 0; padding:8px 0; border-radius:var(--r-pill); background:var(--panel-lit); border:1px solid var(--seam); box-shadow:0 2px 0 var(--relief-bottom); font:inherit; font-size:11px; color:var(--ink-strong); cursor:pointer; }
+  .main-btn[disabled] { opacity:.55; cursor:default; }
+  .sub-btn { display:block; width:100%; margin:6px 0 0; padding:6px 0; border-radius:var(--r-pill); background:var(--panel-frosted); border:1px solid var(--seam); font:inherit; font-size:10px; color:var(--text); cursor:pointer; }
+  .sec { font-size:9px; color:var(--sub); margin:12px 0 4px; letter-spacing:.04em; }
+  .who { display:flex; flex-wrap:wrap; gap:4px; font-size:9.5px; }
+  .who span { background:var(--paper); border-radius:var(--r-pill); padding:1px 7px; }
+  .cm { background:var(--paper); border-radius:var(--r-info); padding:6px 8px; margin-bottom:4px; font-size:9.5px; }
+  .cm i { font-style:normal; color:var(--sub); font-size:8.5px; display:block; }
+  .cin { position:absolute; left:8px; right:8px; bottom:8px; height:28px; border-radius:var(--r-pill); background:var(--paper); border:1px solid var(--seam); display:flex; align-items:center; padding:0 10px; color:var(--sub); font-size:9.5px; z-index:6; }
+  .msg { font-size:9.5px; margin-top:6px; padding:6px 8px; border-radius:var(--r-info); background:var(--panel-frosted); }
+  .empty { font-size:9.5px; color:var(--sub); padding:6px 0; }
+  .sheet { position:absolute; left:0; right:0; bottom:0; background:var(--paper); border-radius:var(--r-card) var(--r-card) 0 0; padding:12px; box-shadow:0 -2px 10px var(--shadow-mid); z-index:20; }
+  .dimmer { position:absolute; inset:0; background:var(--dim); z-index:19; }
+  .toast { position:absolute; left:14px; right:14px; bottom:46px; background:var(--ink-strong); color:var(--paper); border-radius:12px; padding:7px 10px; font-size:10px; display:none; z-index:30; }
+  .toast.on { display:block; }
+  .hide { display:none !important; }
+  /* 만들기 화면 (P-03 위로 올라오는 화면) */
+  .ed { position:absolute; left:0; right:0; top:50px; bottom:0; overflow-y:auto; padding:8px 10px 40px; scrollbar-width:none; }
+  .ed::-webkit-scrollbar { display:none; }
+  .ehd { display:flex; justify-content:space-between; align-items:center; }
+  .ehd b { font-size:12px; font-weight:500; }
+  .ehd .x { font-size:14px; background:none; border:0; cursor:pointer; padding:0; }
+  .ehd .up { font:inherit; font-size:10px; border:1px solid var(--seam); background:var(--panel-lit); box-shadow:0 2px 0 var(--relief-bottom); border-radius:var(--r-pill); padding:2px 10px; cursor:pointer; }
+  .fl { font-size:8.5px; color:var(--sub); margin:9px 0 3px; display:flex; justify-content:space-between; align-items:center; }
+  .fl em { font-style:normal; }
+  .in { background:var(--paper); border:1px solid var(--seam); border-radius:var(--r-info); padding:6px 8px; font-size:10px; min-height:26px; }
+  .in.ph { color:var(--sub); }
+  .in.big { min-height:48px; }
+  .sw { width:26px; height:15px; border-radius:var(--r-pill); background:var(--surface3); position:relative; border:0; cursor:pointer; flex:none; margin-left:4px; }
+  .sw::after { content:""; position:absolute; left:2px; top:2px; width:11px; height:11px; border-radius:50%; background:var(--paper); transition:left .15s; }
+  .sw.on { background:var(--ink-strong); } .sw.on::after { left:13px; }
+  .stepdots { font-size:9px; color:var(--sub); margin-top:4px; }
+  .more { display:block; width:100%; margin-top:10px; padding:6px; text-align:left; font:inherit; font-size:10px; background:none; border:1px dashed var(--surface3); border-radius:var(--r-info); cursor:pointer; color:var(--text); }
+  .bkpick { display:flex; gap:6px; align-items:center; }
+  .bkpick i { width:22px; height:32px; border-radius:var(--r-book); background:var(--fill1); display:block; flex:none; }
+  .done { font-size:9.5px; color:var(--sub); margin:0 0 2px; }
+  /* 시작 시각 바뀜 */
+  .ib { position:absolute; left:0; right:0; top:50px; bottom:0; padding:8px 10px; }
+  .ibi { background:var(--paper); border-radius:var(--r-info); padding:8px; font-size:9.5px; cursor:pointer; border:0; width:100%; text-align:left; font:inherit; }
+  .ibi i { font-style:normal; color:var(--sub); font-size:8.5px; display:block; }
+  .chg { font-size:8.5px; padding:0 5px; border-radius:var(--r-pill); background:var(--fill1); margin-left:4px; }
+  .old { text-decoration:line-through; color:var(--sub); }
+  .banner { font-size:9px; background:var(--fill1); color:var(--on-fill); border-radius:var(--r-info); padding:6px 8px; margin-bottom:6px; }
+  .clock { font-size:8.5px; color:var(--sub); margin:0 0 6px; }
+  .two { display:flex; gap:6px; } .two button { flex:1; }
+  /* ---- 표 ---- */
+  table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-card); overflow:hidden; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--surface2); }
+  th { background:var(--surface2); }
+  .st { font-size:12px; padding:1px 8px; border-radius:var(--r-pill); background:var(--surface2); white-space:nowrap; }
+  #spec, #except, #fullflow { margin-top:32px; }
+  .state button { font:inherit; border:0; border-radius:var(--r-pill); padding:4px 12px; background:var(--surface2); cursor:pointer; margin:2px; }
+  .state button[aria-pressed="true"] { background:var(--ink-strong); color:var(--paper); }
+  .wide-t { overflow-x:auto; }
+  .exdesc { max-width:560px; font-size:13.5px; }
+  .rv { min-height:40px; } .rv .ph { color:var(--sub); }
+  .sub-btn[disabled] { opacity:.55; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>book-club · CLUB-2 시안 — 모임이 끝난 뒤 기록·후기</h1>
+  <div class="how"><b>보는 법.</b> 화면 3개를 비교해 보세요. 휴대폰 안의 버튼(후기 쓰기, 게시물로 올리기, 다음 모임 만들기)을 눌러 볼 수 있어요. 화면 아래 <b>"만든 사람으로 보기"</b>를 누르면 모임을 만든 사람에게 보이는 모습으로 바뀌어요. 노란 테두리가 <b>추천</b>이에요. 고르는 건 직접 해 주세요.</div>
+  <div class="decided"><b>이미 정한 것.</b> 모임이 끝나면 모임 화면의 참가 버튼 자리가 <b>"기록·후기 쓰기"</b>로 바뀌고, 누르면 이 기록 화면이 열려요. 알림함 안내를 누르면 늘 모임 화면으로 가요. 후기는 나만 보는 게 기본이고, 원하면 게시물로 올려요. 다음 모임 만들기는 만든 사람에게 먼저 권하고, 다른 참가자도 버튼으로 만들 수 있어요. 이미 만들어진 다음 모임이 있으면 그걸 먼저 보여 줘요.</div>
+</header>
+<main>
+
+<!-- ===== 중심 요소 1: 기록 화면에서 무엇이 먼저 ===== -->
+<section class="element" id="el-record" data-chosen="">
+  <h2>정할 것 1. 기록 화면을 열면 무엇이 먼저 보이나 <span class="status">결정 전</span></h2>
+  <div class="flow"><b>왜 정하나.</b> 모임이 끝나고 기록 화면에 들어온 사람이 제일 먼저 하는 일이 달라져요. 그날 모임을 돌아보는지, 바로 후기를 쓰는지, 다음 모임으로 이어 가는지요. 세 화면 모두 같은 끝난 모임이에요.</div>
+  <div class="pick">다시 보기: <select data-for="el-record">
+    <option value="A">후보 A — 기록 → 후기 → 다음 모임</option>
+    <option value="B">후보 B — 후기 칸이 맨 위</option>
+    <option value="C">후보 C — 다음 모임이 맨 위</option>
+  </select></div>
+  <div class="cands">
+
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 기록 → 후기 → 다음 모임 <span class="badge">추천</span></h3>
+      <div class="phone" data-order="record,review,next"></div>
+      <button class="tbtn" data-host aria-pressed="false">만든 사람으로 보기</button>
+      <p>맨 위에 그날 모임 기록(날짜·장소·책·내 참석), 그 아래 내 후기 칸, 맨 아래 다음 모임이 있어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>모임 화면 "기록·후기 쓰기" → 그날 기록을 먼저 봄 → 아래 후기 칸에 쓰고 "저장" → 더 내리면 다음 모임 만들기·이미 만든 다음 모임.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>후기는 "나만 보기"가 기본, 쓰고 나면 "게시물로 올리기"가 생겨요</li><li>만든 사람은 다음 모임 칸이 "다음 모임 만들어 볼까요?" 권하는 카드로 보여요</li><li>다음 모임까지 가려면 한 번 내려야 해요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>그날 모임을 돌아보며 자연스럽게 후기로 이어져요. / 다음 모임은 맨 아래라 덜 눈에 띄어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-40 전체 화면 상세 + 아래에 이어지는 것 (핀터레스트 핀 상세)</p>
+      <p><b>추천 이유:</b> 모임 화면도 약속 정보를 맨 위에 두기로 해서, 기록 화면도 같은 순서면 덜 헷갈려요. 다음 모임을 빨리 잡는 게 더 중요하다면 C가 나아요.</p>
+    </article>
+
+    <article class="cand" data-id="B">
+      <h3>후보 B — 후기 칸이 맨 위</h3>
+      <div class="phone" data-order="review,record,next"></div>
+      <button class="tbtn" data-host aria-pressed="false">만든 사람으로 보기</button>
+      <p>들어오자마자 후기 칸이 열려 있어요. 그날 기록은 그 아래 한 줄로 작게, 다음 모임은 맨 아래예요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>모임 화면 "기록·후기 쓰기" → 바로 후기 칸에 씀 → "저장" → 아래로 내려 기록·다음 모임.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>후기 칸이 화면 위쪽 절반을 차지해요</li><li>그날 기록은 접힌 한 줄("11.28 토 · 2층 세미나실 · 참석")</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>후기를 바로 써요. / 그날 기록이 작아서 돌아보기 어려워요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-71 한 화면에 칸을 두고 "올리기" (당근 글쓰기)</p>
+    </article>
+
+    <article class="cand" data-id="C">
+      <h3>후보 C — 다음 모임이 맨 위</h3>
+      <div class="phone" data-order="next,record,review"></div>
+      <button class="tbtn" data-host aria-pressed="false">만든 사람으로 보기</button>
+      <p>맨 위에 다음 모임(이미 만든 것 또는 만들기 버튼), 그 아래 그날 기록, 맨 아래 후기 칸이에요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>모임 화면 "기록·후기 쓰기" → 다음 모임이 먼저 보임 → "다음 모임 만들기" 또는 이미 만든 다음 모임에 들어가기 → 후기는 내려서.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>다음 모임이 이미 있으면 그 카드가 맨 위에 커다랗게</li><li>후기 칸은 맨 아래라 한 번 이상 내려야 해요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>모임이 다음 회차로 잘 이어져요. / 후기는 덜 쓰게 될 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-42 핵심 정보 + 주 버튼 (배민 "담기")</p>
+    </article>
+  </div>
+</section>
+
+<!-- 중심 요소 2~6은 1이 '확인'이 된 뒤에 같은 모양으로 추가한다:
+     2 출석 확인과 불참 판정(K2-O1·O2) · 3 불참 횟수 세는 법과 4회째(K2-O3) · 4 제한이 걸리는 범위(K2-O4) · 5 댓글 운영 제한 기간(K2-O5) · 6 알림함 화면(K2-O8) -->
+
+<!-- ===== 잘 안 될 때 (예외, 1B 3단계) — 기록 화면 기준. 중심 요소를 다 정한 뒤 다시 본다 ===== -->
+<section id="except">
+  <h2>잘 안 될 때 보이는 화면</h2>
+  <p class="exdesc">기록 화면에서 생기는 일이에요. 버튼을 눌러 상태를 바꿔 보세요. 문구는 제가 먼저 넣어 둔 거예요(정할 것을 다 정한 뒤 다시 볼게요).</p>
+  <div class="state" id="exTabs">
+    <button aria-pressed="true" data-ex="net">인터넷이 끊김</button><button aria-pressed="false" data-ex="empty">하나도 없음</button><button aria-pressed="false" data-ex="dbl">두 번 빠르게 누름</button><button aria-pressed="false" data-ex="guest">로그인 안 함·남의 기록</button>
+  </div>
+  <div class="phone" id="exPhone" style="margin:8px 0 0"><div class="scr" data-screen="ex"></div></div>
+  <p class="exdesc" id="exNote"></p>
+</section>
+
+<!-- ===== 처음부터 끝까지 ===== -->
+<section id="fullflow">
+  <h2>처음부터 끝까지 이렇게 써요</h2>
+  <ol>
+    <li>모임의 끝나는 시각이 지나면 동네한권이 만든 사람과 참가자의 알림함에 "모임이 끝났어요" 안내를 넣는다.</li>
+    <li>사용자가 안내를 누르면 동네한권이 모임 화면을 열고, 참가 버튼 자리에 "기록·후기 쓰기"를 보여 준다.</li>
+    <li>사용자가 "기록·후기 쓰기"를 누르면 동네한권이 기록 화면을 연다. (기록 화면에서 먼저 보이는 것: 정할 것 1)</li>
+  </ol>
+</section>
+
+<!-- ===== 명세 패널 ===== -->
+<section id="spec">
+  <h2>명세</h2>
+  <div class="wide-t"><table>
+    <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
+    <tr data-el="el-record"><td>1. 기록 화면에서 먼저 보이는 것</td><td>— (추천: 후보 A 기록 → 후기 → 다음 모임)</td><td>—</td><td>—</td><td>(받기 전)</td><td>기록 카드 곡률 9, 후기 칸 2000자, 나만 보기 기본</td><td>모임 화면 "기록·후기 쓰기" → 기록 화면</td><td><span class="st">결정 전</span></td></tr>
+    <tr><td>2. 출석 확인과 불참 판정</td><td>(1이 정해진 뒤 시안으로 봄)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
+    <tr><td>3. 불참 횟수 세는 법과 4회째</td><td>(2 뒤)</td><td>—</td><td>—</td><td>—</td><td>3일·7일·30일·참가 불가(정해짐)</td><td>—</td><td><span class="st">결정 전</span></td></tr>
+    <tr><td>4. 제한이 걸리는 범위</td><td>(3 뒤)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
+    <tr><td>5. 댓글 운영 제한 기간</td><td>(4 뒤)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
+    <tr><td>6. 알림함 화면</td><td>(5 뒤)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>내 정보 알림 아이콘 → 알림함 → 안내 누르면 모임 화면</td><td><span class="st">결정 전</span></td></tr>
+    <tr><td>후기 글자 수</td><td>2000자</td><td>—</td><td>—</td><td>묻지 않음</td><td>칸 아래 n/2000</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>반납 알림을 알림함에</td><td>넣지 않음(휴대폰에만 뜨는 알림이라 지난 내역이 없음)</td><td>—</td><td>—</td><td>묻지 않음</td><td>—</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>모임 끝날 때 휴대폰 알림</td><td>띄우지 않음(알림함 안내만)</td><td>—</td><td>—</td><td>묻지 않음</td><td>—</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+  </table></div>
+</section>
+</main>
+
+<script>
+  // 기록 화면 조각(같은 가짜 값). host = 만든 사람으로 보기
+  var HEAD = '<div class="hd"><button class="back">‹</button> <span class="vname">모임 기록</span></div>';
+  function part(kind, host) {
+    if (kind === 'record') return '<div class="info"><div class="bk"></div><div><div class="nm">소년이 온다 같이 읽기</div>' +
+      '<div class="ln"><b>11.28 토 오후 2:00</b> ~ 4:00 · 끝난 모임</div><div class="ln">2층 세미나실 · 참가 4명</div><div class="ln">나: 참가 신청함</div></div></div>';
+    if (kind === 'review') return '<div class="sec">내 후기 · 나만 보기</div>' +
+      '<div class="cm rv" data-review><span class="ph">오늘 모임 어땠어요? 나만 볼 수 있어요</span></div>' +
+      '<button class="sub-btn" data-write>후기 쓰기</button><button class="sub-btn hide" data-share>게시물로 올리기</button>';
+    if (kind === 'next') return host
+      ? '<div class="msg"><b>다음 모임 만들어 볼까요?</b><br>이름·책·장소를 그대로 가져와요. 날짜만 새로 골라요.<button class="main-btn" data-next>다음 모임 만들기</button></div>'
+      : '<div class="sec">다음 모임</div><div class="cm"><i>이미 만든 다음 모임</i>소년이 온다 같이 읽기 · 12.12 토 <b>들어가기 →</b></div><button class="sub-btn" data-next>다음 모임 만들기</button>';
+    return '';
+  }
+  function draw(ph) {
+    var host = ph.classList.contains('host');
+    var order = ph.dataset.order.split(',');
+    var body = order.map(function (k) { return part(k, host); }).join('');
+    ph.innerHTML = '<div class="scr" data-screen="rec">' + HEAD + '<div class="cs">' + body + '</div><div class="toast" id="t' + Math.random().toString(36).slice(2) + '"></div></div>';
+  }
+  document.querySelectorAll('.cand .phone').forEach(draw);
+  document.querySelectorAll('[data-host]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var ph = b.closest('.cand').querySelector('.phone');
+      var on = !ph.classList.contains('host');
+      ph.classList.toggle('host', on); b.setAttribute('aria-pressed', on);
+      b.textContent = on ? '참가자로 보기' : '만든 사람으로 보기';
+      draw(ph);
+    });
+  });
+  document.addEventListener('click', function (e) {
+    var ph = e.target.closest('.phone'); if (!ph) return;
+    var toast = ph.querySelector('.toast');
+    function say(t) { if (!toast) return; toast.textContent = t; toast.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(function () { toast.classList.remove('on'); }, 2000); }
+    if (e.target.closest('[data-write]')) {
+      var rv = ph.querySelector('[data-review]'); rv.innerHTML = '처음엔 어려웠는데 같이 읽으니 끝까지 읽었어요.';
+      e.target.closest('[data-write]').textContent = '후기 저장됨 · 고치기';
+      ph.querySelector('[data-share]').classList.remove('hide'); say('후기를 저장했어요. 나만 볼 수 있어요');
+    }
+    if (e.target.closest('[data-share]')) say('후기를 게시물로 올렸어요. 원래 후기는 그대로 나만 봐요');
+    if (e.target.closest('[data-next]')) say('다음 모임 만들기 화면이 열려요(이름·책·장소 채워짐, 날짜만 새로)');
+  });
+
+  // 채택안 표시
+  function mark(el, id) {
+    el.querySelectorAll('.cand').forEach(function (c) {
+      c.classList.toggle('chosen', c.dataset.id === id);
+      var old = c.querySelector('.badge.adopted'); if (old) old.remove();
+      if (id && c.dataset.id === el.dataset.chosen) { var s = document.createElement('span'); s.className = 'badge adopted'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+    });
+    var sel = el.querySelector('select[data-for]'); if (sel && id) sel.value = id;
+  }
+  document.querySelectorAll('section.element').forEach(function (el) {
+    mark(el, el.dataset.chosen || '');
+    var sel = el.querySelector('select[data-for]');
+    if (sel) { if (!el.dataset.chosen) sel.insertAdjacentHTML('afterbegin', '<option value="" selected>(아직 고르지 않음)</option>');
+      sel.addEventListener('change', function () { mark(el, sel.value || el.dataset.chosen);
+        var c = el.querySelector('.cand[data-id="' + sel.value + '"]'); if (c) c.scrollIntoView({ behavior:'smooth', block:'nearest' }); }); }
+  });
+
+  // 예외 화면
+  var EX = {
+    net: { html: HEAD + '<div class="cs">' + part('record') + '<div class="sec">내 후기 · 나만 보기</div><div class="cm rv">처음엔 어려웠는데 같이 읽으니…</div>' +
+        '<div class="msg">후기를 저장하지 못했어요. 다시 해 주세요.<button class="sub-btn">다시 해 보기</button></div></div>',
+      note: '후기를 저장하다 인터넷이 끊긴 모습이에요. 쓰던 후기는 칸에 그대로 남고, "다시 해 보기"를 누르면 같은 후기로 다시 저장해요. 기록 화면을 아예 못 불러오면 "기록을 불러오지 못했어요" + "다시 해 보기"가 화면 가운데에 보여요.' },
+    empty: { html: HEAD + '<div class="cs">' + part('record') + part('review') + '<div class="sec">다음 모임</div><div class="empty">아직 다음 모임이 없어요. 처음으로 만들어 볼까요?</div><button class="sub-btn">다음 모임 만들기</button></div>',
+      note: '후기도 다음 모임도 아직 없는 첫 모습이에요. 후기 칸에는 안내 글자가, 다음 모임 자리에는 한 줄 안내와 만들기 버튼이 보여요.' },
+    dbl: { html: HEAD + '<div class="cs">' + part('record') + '<div class="sec">내 후기 · 나만 보기</div><div class="cm rv">처음엔 어려웠는데 같이 읽으니…</div><button class="sub-btn" disabled>올리는 중…</button></div>',
+      note: '"게시물로 올리기"나 "다음 모임 만들기"를 빠르게 두 번 눌러도 첫 누름 뒤 버튼이 "올리는 중…"으로 잠겨서 게시물·다음 모임이 하나만 생겨요.' },
+    guest: { html: HEAD + '<div class="cs"><div class="empty" style="margin-top:40px">이 모임에 참가한 사람만 기록을 볼 수 있어요.</div><button class="sub-btn">모임 화면으로</button></div>',
+      note: '참가하지 않은 모임의 기록 화면이나, 로그인하지 않은 사람이 들어온 모습이에요(로그인 안 했으면 먼저 로그인 창이 떠요). 남의 후기는 어디에도 보이지 않아요.' }
+  };
+  var exScr = document.querySelector('#exPhone [data-screen="ex"]'), exNote = document.getElementById('exNote');
+  function showEx(k) { exScr.innerHTML = EX[k].html; exNote.textContent = EX[k].note;
+    document.querySelectorAll('#exTabs button').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.ex === k); }); }
+  document.querySelectorAll('#exTabs button').forEach(function (b) { b.addEventListener('click', function () { showEx(b.dataset.ex); }); });
+  showEx('net');
+</script>
+</body>
+</html>
