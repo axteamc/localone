@@ -130,7 +130,7 @@
 | 43 | `POST /api/v1/me/reading-logs` | 필수 | 비공개 독서 기록 쓰기(`client_request_id` 멱등, 도서관 자동 보정 금지, 미래 날짜 불가, A `READ-1`) | READ-01, R8 | `확정` (2026-11-19 D) |
 | 44 | `DELETE /api/v1/me/reading-logs/{log_id}` | 필수 | 내 독서 기록 삭제(연결된 공개 게시물은 유지되고 `posts.reading_log_id`만 `NULL`, A `READ-1`) | READ-01, 04 관계 표 | `확정` (2026-11-19 D, C-75) |
 | 45 | `PATCH /api/v1/me/reading-logs/{log_id}` | 필수 | 내 독서 기록 부분 수정(책 `isbn13`은 변경 불가, A `READ-1`) | READ-01 | `확정` (2026-11-19 D) |
-| 46 | `GET /api/v1/me/reading-logs/stats` | 필수 | 내 독서 기록 기초 통계(전체·올해·이번 달·기록 있는 도서관별 수, 0건은 모두 `0`, A `READ-2`) | READ-02 | `확정` (2026-11-19 D) |
+| 46 | `GET /api/v1/me/reading-logs/stats` | 필수 | 내 독서 기록 기초 통계(전체·올해·이번 달·기록 있는 도서관별 수·최근 읽은 날짜, 0건은 모두 `0`, A `READ-2`) | READ-02 | `확정` (2026-11-19 D) |
 
 ### 2.9 알림함 · 운영 화면 · 반납 집계 설정 (`core` M2-0, D)
 
