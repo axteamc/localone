@@ -300,12 +300,14 @@ function onClose() { isDirty(form) ? confirmDiscard() : router.back(); }   // R1
 - **판**: 1차 D 기준선(M2 밑그림, 2026-11-19)
 - **선행 설계**: 02 READ-02(전체 기록·도서관별 거르기·기초 통계, 빈 통계는 0, 내 발자취는 이 탭의 도서관별 보기로 통합)·VISIT-06("내 최근 독서 기록"은 READ가 생길 때 넣는다)·AC-READ, Q-44, `library-visit.md` VISIT-1b W11("내 최근 독서 기록"은 넣지 않는다 — READ-2에서 연다)
 - **작성자**: D (시니어)
-- **상태**: **D 기준선 — 검토 전·구현 착수 불가.** 선행: READ-1 발행
+- **상태**: **D 승인 수정본 — 구현은 두 PR 머지 및 team 계약 발행 확인 뒤 착수.** 선행: READ-1 구현 머지(#251)
 - **발행 본문 SHA**: 
 
 
 
 ### 계약
+
+- 책장 안 읽은 책의 순서는 READ-1의 최근 읽은 순을 사용한다. 기획 결정 2(⚙ 순서 메뉴·꾹 눌러 재배치)는 별도 계약 승인 대기다.
 
 #### C1. 결정
 
@@ -322,9 +324,9 @@ function onClose() { isDirty(form) ? confirmDiscard() : router.back(); }   // R1
 
 | # | 열린 칸 | D 추천(참고) | 채택 결정 | 상태 | 근거(명세 ID) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| R2-O1 | 전체 / 도서관별 바꾸는 모양(위 알약 / 위 탭) | 위 알약 `"전체"` + 도서관 이름들 | **제목 줄 오른쪽 위 버튼 하나로 바꾼다**(알약·위 탭 없음). 머리: `"독서 기록"` · 오른쪽 `⚙` · `"전체 ⇄"`(도서관별 보기에서는 `"도서관별 ⇄"`). 도서관별 보기 = 도서관마다 책장 한 줄: 이름표 `"<도서관 이름> <count>권 ›"` + 표지 가로 줄(그 도서관 기록 최근 순 최대 9권, 옆으로 밀기, 화면 오른쪽 끝에 다음 표지가 약 10% 보이는 폭), 줄 바닥선 색 = 도서관 색(`CUBE_PALETTE[paletteIndexOf(library_id, CUBE_PALETTE.length)]`, 홈 큐브와 같은 도서관 = 같은 색). 이름표 `›` → 그 도서관 책장 화면(머리 `‹` · 도서관 이름 · `"<count>권"`, 본문은 전체 책장과 같은 한 달 한 줄 책장, `#41 ?library_id=`) | 확인(사용자, 큰 틀) / 색 배정 기본값(Claude) | 큰 틀 결정 4(2026-11-19 변경), 명세 6절 |
+| R2-O1 | 전체 / 도서관별 바꾸는 모양(위 알약 / 위 탭) | 위 알약 `"전체"` + 도서관 이름들 | **제목 줄 오른쪽 위 버튼 하나로 바꾼다**(알약·위 탭 없음). 머리: `"독서 기록"` · 오른쪽 `"전체 ⇄"`(도서관별 보기에서는 `"도서관별 ⇄"`). 도서관별 보기 = 도서관마다 책장 한 줄: 이름표(C3, 첫 줄만 최근 날짜 포함) + 표지 가로 줄(그 도서관 기록 최근 순 최대 9권, 옆으로 밀기, 화면 오른쪽 끝에 다음 표지가 약 10% 보이는 폭), 줄 바닥선 색 = 도서관 색(`CUBE_PALETTE[paletteIndexOf(library_id, CUBE_PALETTE.length)]`, 홈 큐브와 같은 도서관 = 같은 색). 이름표 `›` → 그 도서관 책장 화면(머리 `‹` · 도서관 이름 · `"<count>권"`, 본문은 전체 책장과 같은 한 달 한 줄 책장, `#41 ?library_id=`) | 확인(사용자, 큰 틀) / 색 배정 기본값(Claude) | 큰 틀 결정 4(2026-11-19 변경), 명세 6절 |
 | R2-O2 | 통계 배치와 문구(맨 위 숫자 셋 / 접히는 칸) | 맨 위 계기판 숫자 셋 | **제목 줄 아래 작은 글자 한 줄** `"전체 {total} · 올해 {this_year} · 이번 달 {this_month}"`(숫자만 `theme.colors.text`, 나머지는 READ-1 `base.sub` 모양). 책장과 **같이 스크롤**된다(제목 줄만 고정). 도서관별 보기에서도 같은 줄을 둔다. 통계를 못 받으면 그 줄만 C3 실패 문구로 바뀌고 책장은 그대로 | 확인(사용자) | 명세 결정 1(시안 #el-top 후보 A), 예외 #1 |
-| R2-O3 | 도서관별 보기 정렬(기록 많은 순 / 최근 순) | 기록 많은 순 | **최근 순**: 그 도서관에서 마지막으로 읽은 날(`max(coalesce(read_on, created_at 서울 날짜))`)이 최근인 도서관이 위. 같으면 `max(created_at) DESC`, 그래도 같으면 `library_id ASC`. 새 기록을 쓰면 그 도서관이 맨 위로 올라간다. 이름표의 마지막으로 읽은 날 표시는 응답 필드가 없어 쟁점(계약 PR 쟁점 2) — 승인 전에는 권수만 | 확인(사용자) / 동률 순서 기본값(Claude) | 명세 결정 3(시안 #el-libsort 후보 B) |
+| R2-O3 | 도서관별 보기 정렬(기록 많은 순 / 최근 순) | 기록 많은 순 | **첫 줄**은 가장 최근에 읽은 도서관 하나이며, 이름표에 권수와 최근 날짜를 붙인다. 읽은 날짜는 `read_on`, 없으면 `created_at`의 서울 날짜다. 날짜가 같으면 그 날짜 기록의 `created_at DESC`, 그래도 같으면 `library_id ASC`다. **둘째 줄부터**는 나머지 도서관을 `count DESC, library_id ASC`로 정렬하고 권수만 표시한다. 최초 조회 및 기록 변경 후 재조회에 같은 규칙을 적용한다 | 확정(사용자/D) / 동률 기본값 | 명세 결정 3(시안 #el-libsort 후보 D) |
 | R2-O4 | 홈 하단 창 안 자리(인기 도서 위 / 아래)와 개수 | 인기 도서 아래, 최대 5권 옆으로 넘김 | **인기 도서(`PopularBooksRow`) 바로 아래, 소식(`LibraryNewsSection`) 위.** 칸 제목 `"내 최근 독서 기록"`, 표지 **최대 5권**(`#41 limit=5`, #41 정렬 그대로 최근 순) 가로 줄(인기 도서와 같은 표지 크기, 옆으로 넘김), 5권 미만이면 있는 만큼. 표지를 누르면 그 기록 화면. 차선: 맨 위 가장 최근 1권 한 줄 카드 | 확인(사용자) | 명세 결정 4(시안 #el-home 후보 A, 차선 B) |
 | R2-O5 | 기록 목록 카드 모양(표지 + 제목 + 날짜 / 표지만) | 표지 + 제목 + 날짜 | **표지만**(READ-1 책장 표지 면 그대로: 한 줄 3권, 한 달 한 줄, 3권 넘으면 그 달 안에서 줄바꿈). 제목·저자·감상 첫 줄·읽은 날·도서관은 책을 누르면 뜨는 책장 위 카드(READ-1 R1-O4 그대로) | 확인(사용자, 큰 틀) / 카드 유지 기본값(Claude) | 큰 틀 결정 3(2026-11-19 수정), 명세 0절 기본값 |
 
@@ -333,7 +335,7 @@ function onClose() { isDirty(form) ? confirmDiscard() : router.back(); }   // R1
 | 메서드·경로 (`/api/v1`) | 인증 | 성공 상태 | 날짜 형식 | 목록 | 연타·재시도 |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | `GET /me/reading-logs?library_id=&cursor=&limit=` (#41, READ-1) | 필수 | `200` | READ-1 | READ-1 | 러너 |
-| `GET /me/reading-logs/stats` (#46, A) | 필수 | `200` | — | `libraries[]`는 `count DESC, library_id ASC`(R2-O3로 바꾸면 그 값) | N/A |
+| `GET /me/reading-logs/stats` (#46, A) | 필수 | `200` | — | `libraries[]`는 R2-O3 순서로 응답 | N/A |
 
 앱 함수·부품:
 
@@ -348,14 +350,14 @@ function onClose() { isDirty(form) ? confirmDiscard() : router.back(); }   // R1
 | 응답(#46) `ReadingStats` | `total` | `int` | Y | N | 0 이상 |
 | `ReadingStats` | `this_year` | `int` | Y | N | 서울 기준 올해(`coalesce(read_on, created_at 서울 날짜)`) |
 | `ReadingStats` | `this_month` | `int` | Y | N | 서울 기준 이번 달 |
-| `ReadingStats` | `libraries[]` | `{ library_id: int; name: str; count: int }[]` | Y | N | 기록이 있는 도서관만(R2-2) |
+| `ReadingStats` | `libraries[]` | `{ library_id: int; name: str; count: int; last_read_on: str }[]` | Y | N | 기록이 있는 도서관만(R2-2). `last_read_on`은 해당 도서관의 마지막 독서일(`YYYY-MM-DD`, R2-O3) |
 | 화면 문구 | 전체 알약 | — | — | — | `"전체"` |
 | 화면 문구 | 통계 이름 (`R2-O2`) | — | — | — | `"전체 {total} · 올해 {this_year} · 이번 달 {this_month}"` (기록 0이면 `"전체 0 · 올해 0 · 이번 달 0"`) |
 | 화면 문구 | 도서관별 빈 상태 | — | — | — | `libraries: []`이면 책장 자리에 `"도서관에서 읽은 기록이 아직 없어요."` + 둘째 줄 `"기록을 쓸 때 도서관을 고르면 여기 꽂혀요."`, `+`는 그대로 |
 | 화면 문구 | 홈 하단 창 칸 제목 (`R2-O4`) | — | — | — | `"내 최근 독서 기록"` |
 | 화면 문구 | 통계 불러오기 실패 | — | — | — | 숫자 줄 자리에 `"숫자를 불러오지 못했어요"` + 버튼 `↻` 표시 + `"새로고침"`(접근성 이름 `"새로고침"`, `#46`만 다시) |
 | 화면 문구 | 보기 바꾸기 버튼 (`R2-O1`) | — | — | — | 전체 보기 `"전체 ⇄"` / 도서관별 보기 `"도서관별 ⇄"`. 접근성 이름 `"도서관별로 보기"` / `"전체로 보기"` |
-| 화면 문구 | 도서관 이름표 (`R2-O1`·`R2-O3`) | — | — | — | `"<name> <count>권 ›"` |
+| 화면 문구 | 도서관 이름표 (`R2-O1`·`R2-O3`) | — | — | — | 첫 줄 `"<name> <count>권 · 최근 <M>월 <D>일 ›"`, 둘째 줄부터 `"<name> <count>권 ›"` |
 | 화면 문구 | 한 도서관 책장 머리 (`R2-O1`) | — | — | — | `‹` · `<name>` · `"<count>권"` |
 | 화면 문구 | 도서관 한 줄 불러오기 실패 | — | — | — | 그 줄 자리에 `"책을 불러오지 못했어요"` + 버튼 `↻` 표시 + `"새로고침"`(그 도서관 `#41`만 다시) |
 
@@ -455,33 +457,42 @@ FROM (SELECT coalesce(read_on, (created_at AT TIME ZONE 'Asia/Seoul')::date) AS 
 ```
 
 ```python
-# #46 libraries[] — R2-O3 최근 순 (위 SQL과 같은 d, 같은 트랜잭션)
-SELECT r.library_id, l.name, count(*) AS count
-FROM (SELECT library_id, created_at,
-             coalesce(read_on, (created_at AT TIME ZONE 'Asia/Seoul')::date) AS d
-      FROM reading_logs WHERE user_id = :uid AND library_id IS NOT NULL) r
-JOIN libraries l ON l.id = r.library_id
-GROUP BY r.library_id, l.name
-ORDER BY max(r.d) DESC, max(r.created_at) DESC, r.library_id ASC;
+# #46 libraries[] — R2-O3 (위 SQL과 같은 d, 같은 트랜잭션)
+WITH dated AS (
+  SELECT library_id, created_at,
+         coalesce(read_on, (created_at AT TIME ZONE 'Asia/Seoul')::date) AS d
+  FROM reading_logs WHERE user_id = :uid AND library_id IS NOT NULL
+), per_library AS (
+  SELECT DISTINCT ON (library_id) library_id, d AS last_read_on, created_at,
+         count(*) OVER (PARTITION BY library_id) AS count
+  FROM dated ORDER BY library_id, d DESC, created_at DESC
+), ranked AS (
+  SELECT *, row_number() OVER (ORDER BY last_read_on DESC, created_at DESC, library_id ASC) AS recent_rank
+  FROM per_library
+)
+SELECT r.library_id, l.name, r.count, r.last_read_on
+FROM ranked r JOIN libraries l ON l.id = r.library_id
+ORDER BY (r.recent_rank = 1) DESC, r.count DESC, r.library_id ASC;
 -- :uid = 검증한 JWT sub. 인증 없으면 401(#41과 같은 의존성)
 ```
 
 ```ts
 // ReadingLogScreen.tsx — R2-O1·O2 (READ-1 책장 위에 덧붙임)
 // view: "all" | "libraries" | { libraryId, name, count }   (기기 저장 없음, 탭을 다시 열면 "all")
-// 머리 고정: "독서 기록" · ⚙(쟁점 1 승인 전에는 그리지 않음) · view === "all" ? "전체 ⇄" : "도서관별 ⇄"
+// 머리 고정: "독서 기록" · view === "all" ? "전체 ⇄" : "도서관별 ⇄"
 // 스크롤 본문 첫 줄 = 숫자 줄(R2-O2): stats ? `전체 ${t} · 올해 ${y} · 이번 달 ${m}` : statsFailed ? 실패 문구 + "새로고침" : 자리만
 // useReadingLogs: owner(userId)가 바뀌면 stats·rows 비우고 세대 +1. 늦은 응답은 세대·owner 다르면 버림(C6 계정 바뀜)
 //
 // 도서관별 보기:
 //   stats.libraries가 []면 C3 도서관별 빈 상태
+//   응답 순서로 한 도서관당 한 줄. 첫 줄만 last_read_on을 서울 날짜의 월·일로 표시(C3).
 //   각 줄: 처음 보일 때 한 번 fetchReadingLogs({ libraryId, limit: 9 }, signal)   (줄마다 AbortController,
 //          보기를 바꾸거나 화면을 떠나면 모두 abort). 실패면 그 줄만 C3 실패 문구 + 새로고침
 //   이름표 › → view = { libraryId, name, count }: runner.run(s => fetchReadingLogs({ libraryId, cursor }, s))
 //          result.status === "stale"이면 버림(C6 연타 이름표). 본문은 groupByMonth(items) 그대로
 //   줄 색: CUBE_PALETTE[paletteIndexOf(libraryId, CUBE_PALETTE.length)]
 // "전체 ⇄" 연타: view만 바꾸고 이전 보기 요청 abort → 마지막 보기만(C6 연타)
-// 쓰기·지우기 뒤 책장으로 돌아오면 stats와 열린 도서관 줄을 다시 받음(새 기록의 도서관이 맨 위로 — R2-O3)
+// 쓰기·지우기 뒤 책장으로 돌아오면 stats와 열린 도서관 줄을 다시 받음(읽은 날짜와 권수에 따라 R2-O3 재적용)
 ```
 
 ```ts
@@ -506,12 +517,12 @@ ORDER BY max(r.d) DESC, max(r.created_at) DESC, r.library_id ASC;
 | READ-2-P2 | `home row hidden when signed out or empty` | 비로그인 / 0개 / `#41` 실패 | 홈 렌더 | 칸 없음, `"독서 기록"` 글자 없음, 다른 칸 정상 | R2-5 |
 | READ-2-P2 | `home row opens log detail` | 기록 2개 | 누름 | `router.push({pathname:"/reading/[logId]",params:{logId}})` 1번 | 이동 |
 | READ-2-P2 | `home sheet keeps existing sections order` | 기록 있음 | 렌더 | VISIT-1b 칸 순서 그대로, 새 칸만 R2-O4 자리 | R2-6 |
-| READ-2-P1 | `library list is ordered by last read date` | A가 도서관 101(마지막 11-19, 5개)·102(마지막 11-22, 2개)·103(마지막 10-02, 1개) 기록, 102와 104 마지막 날 같음(104가 created_at 더 늦음) | A `#46` | `libraries[]` 순서 104·102·101·103(날짜 DESC → created_at DESC → id ASC), count 각각 맞음 | R2-O3, 결정 3 — `count DESC`로 남기면 첫 단언 실패 |
-| READ-2-P1 | `new log moves its library to top` | 위 상태에서 103에 오늘 기록 1개 추가 | `#46` | `libraries[0].library_id == 103` | R2-O3 |
+| READ-2-P1 | `library list pins only the latest library before count order` | A 기록: 101(5권, 11-19), 102(2권, 11-22), 103(1권, 11-21), 104(5권, 11-20). 도서관 없는 11-23 기록도 추가 | A `#46` | 순서 102·101·104·103, 각 도서관 한 번, 권수 정확, 첫 줄 `last_read_on == "2026-11-22"` | R2-O3 — 전체 최근순·전체 권수순·동률 재정렬·중복·도서관 없는 기록 포함을 잡음 |
+| READ-2-P1 | `latest library handles seoul fallback and same-day ties` | 101·102·103의 마지막 읽은 날은 11-22. 101의 해당 날짜 기록이 늦게 생성되고 102·103은 동일 시각. 102에 뒤늦게 입력한 과거 기록 추가 | A `#46` → 102에 서울 11-23 00:30에 만든 `read_on=null` 기록 추가 → 재조회 → 그 기록을 삭제하고 재조회 | 첫 줄 101 → 102 → 101, 102의 새 날짜는 UTC 11-22가 아닌 서울 11-23. 101 기록 삭제 후 재조회 시 102·103 중 ID가 작은 102가 첫 줄 | R2-O3 — 과거 기록의 입력 시각 오사용, UTC 날짜, 최근 동률·재조회 오류 |
 | READ-2-P1 | `stats line shows three numbers and scrolls with shelf` | `#46` `{total:12,this_year:9,this_month:2}` | 탭 열기 | `"전체 12 · 올해 9 · 이번 달 2"`가 책장 `ScrollView` 안에 있음(머리 밖), 머리에 `"전체 ⇄"` | R2-O2, 결정 1 — 숫자 줄을 머리에 고정하면 실패 |
 | READ-2-P1 | `stats failure keeps shelf and retries stats only` | `#46` 실패, `#41` 성공 | 탭 열기 → `"새로고침"` | `"숫자를 불러오지 못했어요"`, 책 표지 보임, 새로고침 때 `fetchReadingStats` 2회·`fetchReadingLogs` 1회 | 예외 #1, C6 끊김 |
 | READ-2-P1 | `zero stats and empty library view` | `#46` 0·0·0·`libraries: []` | 탭 → `"전체 ⇄"` | `"전체 0 · 올해 0 · 이번 달 0"`, `"도서관에서 읽은 기록이 아직 없어요."`, `+` 보임 | 예외 #2, R2-3 |
-| READ-2-P1 | `library view rows load nine per library with library color` | `libraries` 2곳 | `"전체 ⇄"` | `fetchReadingLogs({libraryId, limit: 9})` 도서관마다 1회, 이름표 `"<name> <count>권 ›"`, 줄 색 = `CUBE_PALETTE[paletteIndexOf(id, n)]` | R2-O1, 결정 4(큰 틀) |
+| READ-2-P1 | `library view rows load nine per library with library color` | `libraries` 2곳 | `"전체 ⇄"` | `fetchReadingLogs({libraryId, limit: 9})` 도서관마다 1회, 첫 이름표만 `"최근 11월 22일"` 포함, 아래 줄은 응답 순서와 권수만 표시, 줄 색 = `CUBE_PALETTE[paletteIndexOf(id, n)]` | R2-O1, 결정 4(큰 틀) |
 | READ-2-P1 | `one library row failure keeps other rows` | 102 줄 `#41` 실패 | `"전체 ⇄"` → 102 `"새로고침"` | 102 자리만 `"책을 불러오지 못했어요"`, 101 표지·숫자 줄 그대로, 새로고침 때 102 요청만 1회 더 | C6 끊김(도서관 한 줄) |
 | READ-2-P1 | `library tag opens that library shelf and late response is dropped` | 101·102 응답 deferred | 101 › → 바로 ‹ → 102 › → 101 응답 먼저 해결 | 머리 `"서대문도서관"`·102 기록만, 101 책 없음 | C6 연타(이름표) — 러너 stale 확인을 빼면 실패 |
 | READ-2-P1 | `toggle twice quickly shows last view only` | `#46` deferred | `"전체 ⇄"` 두 번 빠르게 | 마지막 보기(전체) 책장만, 도서관 줄 요청은 abort | 예외 #3, C6 연타 |
