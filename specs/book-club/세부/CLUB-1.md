@@ -94,6 +94,11 @@
 
 ## 검토 메모
 
+- [계약 보완 필요] CLUB-1-P3 허용 파일에 `local-feed/api.ts`(`feedItemKey`)·`LibraryFeed.tsx`(`feedItemHeightRatio`)·`GuestbookComposer.tsx`(`ComposeChooser`)가 없어 `+` 고르기 "모임 만들기" 줄과 둘째 묶음부터의 모임 카드 열쇠를 못 맞춤 → `to:B` #253, `VisitScreen.tsx` `openClub` `TODO(연결): B`
+- [Claude가 정함] 모임 카드 누르기는 `LibraryFeed`(B 파일) 대신 `FeedItemCard` 안 `ClubFeedCard`가 직접 `/clubs/[clubId]`로 이동 — 허용 파일 안에서 K1-11 충족
+- [Claude가 정함] 모양이 맞지 않는 `club` 항목(id·name·status 없음)은 모르는 종류처럼 그리지 않음 — B 시험 `feed item card ignores unknown kinds` 뜻 유지
+- [처리 못 함] CI `서버 시험` 1건 실패 = B 시험 `test_feed_items` 예시가 `club`(#250 대기)
+
 - [Claude가 정함] 만들기 화면 날짜·시각은 새 라이브러리 없이 글자 칸("2026-11-28"·"14:00", 끝 시각 선택, 같은 날)으로 받음 — C4 "DueDateSheet와 같은 방식", `parseYmd` 재사용 — `mobile/src/features/book-club/ClubEditor.tsx`
 - [Claude가 정함] 책 찾기는 `ComposeScreen`의 `BookFinder`가 내보내지지 않은 B 파일 안 함수라 `ClubEditor` 안에 작은 찾기를 둠(`searchBooks` 그대로) — `ClubEditor.tsx` `BookFinder`
 - [Claude가 정함] 주니어에게 보여 줄 때 만들기 화면은 로그인 확인을 임시로 끈 사본으로 띄움(웹에서 로그인 불가), 커밋 안 함
@@ -118,6 +123,6 @@
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | CLUB-1-P1 서버 | `feat/book-club-CLUB-1` | #252 | 완료(주니어 확인) | `server/app/routers/clubs.py`(#50 `:259`, #52 `:312`, #53 `:349`, #54 `:366`, #55 `:392`, #56 `:418`, #57~#59 `:482`·`:521`·`:548`), `server/app/routers/feed.py:272,297,311`, `server/migrations/versions/0018_clubs_constraints.py`. 시험 `test_clubs.py` 21 + `test_club_participation.py` 8 통과, 가드 제거 12개 모두 빨강. 전체 624 통과·1 실패(B 시험 `test_feed_items` "모르는 kind club" 예시, #250) | `TODO(연결): CLUB-2` `is_restricted`(`clubs.py:51`), `to:B` #250 |
 | CLUB-1-P2 모임 화면·만들기 | `feat/book-club-CLUB-1` | #252 | 완료(주니어 확인) | `mobile/src/features/book-club/ClubScreen.tsx`(`CLUB_TEXT`, `MainButton`, 확인창), `ClubEditor.tsx`(접힘·미정·고치기), `api.ts`, `ClubCard.tsx`(`formatClubWhen`), `mobile/app/clubs/[clubId].tsx`·`new.tsx`. `club.test.tsx` 19 통과, book-club+local-feed 171 통과, tsc·web export 통과. 가드 제거 7개 중 6 빨강(모임 취소 이유 빈칸 `if (!why)`는 버튼 비활성과 겹친 이중 방어라 살아남음) | - |
-| CLUB-1-P3 피드 카드·입구 | `feat/book-club-CLUB-1` | - | 대기 | - | `TODO(연결): B` VISIT-3 |
+| CLUB-1-P3 피드 카드·입구 | `feat/book-club-CLUB-1` | #252 | 완료(주니어 확인) | `mobile/src/features/book-club/ClubCard.tsx`(`ClubCard`, `CARD_TEXT`), `mobile/src/features/local-feed/FeedItemCard.tsx`(`club` 분기 `ClubFeedCard`), `VisitScreen.tsx`(`openClub`). `club-card.test.tsx` 5 통과, book-club+local-feed 176 통과 | `TODO(연결): B` `+` 고르기 줄·`feedItemKey`·높이 #253 |
 
-- **다음 세션 이어하기 메모**: 구현 중. P1·P2 완료, P3(피드 카드·`+` 입구) 진행.
+- **다음 세션 이어하기 메모**: CLUB-1 구현 P1~P3 끝, PR #252 검토 대기. B #250·#253 머지되면 `VisitScreen` `onClub` 연결하고 CI 다시 확인.
