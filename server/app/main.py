@@ -153,7 +153,10 @@ def create_app(
     # ── [book-club-C] ──
     from app.routers.clubs import router as clubs_router  # CLUB-1 #50~#59
 
+    from app.routers.club_records import router as club_records_router  # CLUB-2 #60~#64, 종료 안내
+
     app.include_router(clubs_router)
+    app.include_router(club_records_router)
     # ── [/book-club-C] ──
 
     # ── [my-collection-A] ──
