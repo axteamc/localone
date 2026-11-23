@@ -49,8 +49,20 @@ def not_found(detail: str = "club_id") -> ApiError:
 
 
 def is_restricted(conn: Connection, user_id: UUID, now: datetime) -> datetime | None | bool:
-    """참가 제한 확인 자리(K1-10). 제한 중이면 만료 시각(무기한이면 True), 아니면 False."""
-    return False  # TODO(연결): CLUB-2 — participation_restrictions로 본문을 채운다
+    """참가 제한 확인(K1-10, CLUB-2 K2-10). 제한 중이면 만료 시각(무기한이면 True), 아니면 False.
+
+    사유(불참·댓글 운영)와 모임에 관계없이 해제 전·기간 안의 제한이 하나라도 있으면 막는다(K2-O4).
+    여러 개면 가장 늦게 끝나는 것을 돌려준다.
+    """
+    rows = conn.execute(text(
+        "SELECT ends_at FROM participation_restrictions WHERE user_id = :uid AND lifted_at IS NULL "
+        "AND starts_at <= :now AND (ends_at IS NULL OR ends_at > :now)"
+    ), {"uid": user_id, "now": now}).scalars().all()
+    if not rows:
+        return False
+    if any(ends is None for ends in rows):
+        return True  # 4번째 불참·영구 댓글 제한(K2-8·K2-O5)
+    return max(rows)
 
 
 def iso_or_empty(until: datetime | None | bool) -> str:

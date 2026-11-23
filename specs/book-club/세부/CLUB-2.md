@@ -125,6 +125,11 @@
 - [Claude가 정함] (구현) 종료 안내는 끝난 지 90일 안의 모임만 만든다(K2-O8 보관 90일과 맞춤) — `server/app/routers/club_records.py:36,51-58`
 - [계약 보완 필요] K2-5 `club_next` 수신자는 계약대로 이전 회차 참가자만 — 참가자가 다음 모임을 만들면 이전 회차 만든 사람은 안내를 받지 않음(기록 화면 "이미 만든 다음 모임"에서는 보임) — `../team/contracts/book-club.md` K2-5
 - [계약 보완 필요] 탈퇴 시 `club_reviews` 삭제는 D M2-0-P5(`server/app/routers/me.py:129` 대기 목록) — C 허용 파일 밖이라 손대지 않음
+- [구현 중 변경] P2 라우터 등록을 위해 `server/app/main.py` `[book-club-C]` 블록에 한 줄 더함(파트 표상 `main.py`는 P1 허용 파일) — `server/app/main.py:154-160`
+- [계약 보완 필요] #67 재검토 요청 글(`requestRestrictionReview(restrictionId, text)`)을 저장할 칸이 C5 `participation_restrictions`에 없음 — 서버는 `text`(500자까지)를 받기만 하고 `review_requested_at`만 기록. 운영자가 글을 보려면 칸 추가 필요 — `server/app/routers/club_moderation.py:181-205`
+- [계약 보완 필요] K2-9 "제한 대상이 참가 중이면 명단에서 빼기(`removed`)"가 D 운영 경로(`ops.py` decide)에 없음. 불참 제한(#65)도 계약 골격대로 다른 모임 참가는 그대로 둠(새 참가·댓글만 막힘) — `server/app/routers/ops.py:264-296`
+- [계약 보완 필요] 만든 사람이 출석 확인 화면을 다시 열 때 누가 이미 불참인지 알 칸이 `ClubRecord`·`Club.participants`에 없음(보낸 직후에는 앱이 기억해 보여 줌) — C3
+- [Claude가 정함] (구현) #66 응답 `{id, comment_id, status}`, 만든 사람 본인 댓글은 `422 comment_id`(직접 지움), 사라진 댓글 `404`. #68은 해제 전 제한 중 지금 걸린 것 + 최근 180일 불참(셈)만, 최근순. 4번째 판정은 `created_at` 기준 180일 — `server/app/routers/club_moderation.py`
 - [처리 못 함] `[D→C]` #180·#233·#240·#255·#258 이슈 닫기 — auto mode 권한 분류기가 `gh issue close` 거부(내용은 처리)
 
 ## 다음에 할 것
@@ -171,9 +176,9 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 (대기/진행/검토요청/완료) | 구현 근거 (`파일:줄`) 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| CLUB-2-P1 기록·후기·다음 모임 서버 | `feat/book-club-CLUB-2` | (Draft) | 완료 | 종료 안내 `server/app/routers/club_records.py:51-58`, #60 `:76-113`, #61 `:131-150`, #62 `:158-195`, #63 `:232-269`, #64 `:272-283`, 마이그레이션 `server/migrations/versions/0021_club_records.py` · `tests/test_club_records.py` 13 passed, 서버 전체 711 passed · 가드 제거 6건 확인 | `is_restricted`는 P2에서 채움 |
-| CLUB-2-P2 출석·제한·운영 요청 서버 | 같은 브랜치 | | 진행 | | |
-| CLUB-2-P3 기록 화면·다음 모임 | 같은 브랜치 | | 대기 | | |
+| CLUB-2-P1 기록·후기·다음 모임 서버 | `feat/book-club-CLUB-2` | #284 (Draft) | 완료 | 종료 안내 `server/app/routers/club_records.py:51-58`, #60 `:76-113`, #61 `:131-150`, #62 `:158-195`, #63 `:232-269`, #64 `:272-283`, 마이그레이션 `server/migrations/versions/0021_club_records.py` · `tests/test_club_records.py` 13 passed, 서버 전체 711 passed · 가드 제거 6건 확인 | — (CI ok 45137081622) |
+| CLUB-2-P2 출석·제한·운영 요청 서버 | 같은 브랜치 | #284 | 완료 | `is_restricted` `server/app/routers/clubs.py:51-67`, #65 `server/app/routers/club_moderation.py:67-112`, #66 `:121-155`, #67 `:181-205`, #68 `:208-220` · `tests/test_club_restrictions.py` 13 passed, 서버 전체 724 passed · 가드 제거 9건 확인 | — |
+| CLUB-2-P3 기록 화면·다음 모임 | 같은 브랜치 | #284 | 진행 | | |
 | CLUB-2-P4 알림함·제한 안내 화면 | 같은 브랜치 | | 대기 | | |
 
-- **다음 세션 이어하기 메모**: 구현(3) 진행 중. 계약 발행 본문 SHA `68a6c60`. P1 완료 → P2부터.
+- **다음 세션 이어하기 메모**: 구현(3) 진행 중. 계약 발행 본문 SHA `68a6c60`. P1·P2 완료 → P3부터.
