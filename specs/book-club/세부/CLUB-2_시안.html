@@ -373,7 +373,61 @@
   </div>
 </section>
 
-<!-- 중심 요소 5~6은 4가 '확인'이 된 뒤에 같은 모양으로 추가한다:
+<!-- ===== 중심 요소 5: 댓글 운영 제한 기간과 보이는 사유 ===== -->
+<section class="element" id="el-comment" data-chosen="">
+  <h2>정할 것 5. 댓글 때문에 제한되면 며칠이고, 본인에게 무엇이 보이나 <span class="status">결정 전</span></h2>
+  <div class="flow"><b>정해진 것.</b> 만든 사람이 댓글 처리를 요청하면 관리자가 "댓글 삭제만" 또는 "삭제와 제한"을 골라요. 제한되면 모임 댓글과 참가를 못 하고, 이미 참가 중이던 모임 명단에서 빠져요. 본인은 사유를 보고 재검토를 요청할 수 있고, 운영자만 풀어요. 불참 제한과 따로 기록해요.<br>
+  <b>정할 것.</b> 이 "댓글 운영 제한"의 <b>기간</b>과 본인에게 보이는 <b>사유 문구</b>예요. 세 화면 모두 같은 사람이 처음으로 댓글 때문에 제한된 모습이에요. "한 번 더 제한되면?"을 눌러 보세요.</div>
+  <div class="pick">다시 보기: <select data-for="el-comment">
+    <option value="A">후보 A — 늘 7일, 정해진 사유 문구</option>
+    <option value="B">후보 B — 불참과 같은 단계(3일·7일·30일·참가 불가), 정해진 문구</option>
+    <option value="C">후보 C — 관리자가 기간을 고르고 사유를 직접 적음</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand" data-id="A">
+      <h3>후보 A — 늘 7일</h3>
+      <div class="phone"><div class="scr" data-screen="now"><div class="hd"><button class="back">‹</button> <span class="vname">내 참가 제한</span></div><div class="cs"><div class="step">댓글 운영 · 11.23 처리</div><div class="msg">모임 댓글 운영 기준에 따라 <b>7일 동안</b> 모임 댓글과 참가가 제한돼요. (11.30 18:00까지)</div><div class="cm"><i>숨겨진 내 댓글</i>그 책 읽고도 그런 말이 나와요?</div><button class="sub-btn" data-open="later">한 번 더 제한되면?</button><button class="sub-btn">재검토 요청하기</button></div><div class="cin">지금은 댓글을 쓸 수 없어요</div></div><div class="scr hide" data-screen="later"><div class="hd"><button class="back" data-open="now">‹</button> <span class="vname">한 번 더 제한되면</span></div><div class="cs"><div class="msg">두 번째로 제한돼도 똑같이 <b>7일</b>이에요.</div><button class="sub-btn" data-open="now">돌아가기</button></div></div></div>
+      <p>댓글 때문에 제한되면 언제나 7일이에요. 본인에게는 정해진 한 문장과 끝나는 시각, 숨겨진 내 댓글이 보여요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>관리자 "삭제와 제한" → 알림함 안내 → 내 참가 제한 화면 "7일 동안 … 제한돼요 (언제까지)" → 재검토 요청 가능 → 7일 뒤 풀림.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>몇 번째든 7일</li><li>사유는 늘 같은 문장 "모임 댓글 운영 기준에 따라…"</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>가장 단순하고 예측하기 쉬워요. / 같은 사람이 계속 그래도 7일씩만 막혀요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-50 아래 한 줄 안내 — 결과를 한 문장으로 (M3 Snackbar)</p>
+    </article>
+
+    <article class="cand recommended" data-id="B">
+      <h3>후보 B — 불참과 같은 단계 <span class="badge">추천</span></h3>
+      <div class="phone"><div class="scr" data-screen="now"><div class="hd"><button class="back">‹</button> <span class="vname">내 참가 제한</span></div><div class="cs"><div class="step">댓글 운영 · 11.23 처리</div><div class="msg">모임 댓글 운영 기준에 따라 모임 댓글과 참가가 제한돼요. 최근 1년 <b>1번째</b> → <b>3일</b> (11.26 18:00까지)</div><div class="cm"><i>숨겨진 내 댓글</i>그 책 읽고도 그런 말이 나와요?</div><button class="sub-btn" data-open="later">한 번 더 제한되면?</button><button class="sub-btn">재검토 요청하기</button></div><div class="cin">지금은 댓글을 쓸 수 없어요</div></div><div class="scr hide" data-screen="later"><div class="hd"><button class="back" data-open="now">‹</button> <span class="vname">한 번 더 제한되면</span></div><div class="cs"><div class="msg">1년 안에 두 번째로 제한되면 <b>7일</b>, 세 번째 <b>30일</b>, 네 번째 <b>참가 불가</b>예요(불참과 같은 단계, 따로 셈).</div><button class="sub-btn" data-open="now">돌아가기</button></div></div></div>
+      <p>불참처럼 최근 1년 안 댓글 제한 횟수로 3일·7일·30일·참가 불가예요. 불참과는 따로 세요. 사유는 정해진 문장이에요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>관리자 "삭제와 제한" → 알림함 안내 → 내 참가 제한 화면 "최근 1년 1번째 → 3일 (언제까지)" → 재검토 요청 가능 → 기간 뒤 풀림. 4번째는 운영자가 풀 때까지.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>몇 번째인지와 기간이 함께 보여요</li><li>불참 제한과 같은 화면, 사유만 "댓글 운영"</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>불참과 규칙이 같아서 익히기 쉽고, 되풀이하면 단계가 올라가요. / 처음엔 3일이라 가벼워 보일 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-32 줄 목록 — 제한 기록을 한 줄씩 (iOS 메일)</p>
+      <p><b>추천 이유:</b> 앞에서 정한 불참 세는 법(최근 1년, 3일·7일·30일·참가 불가)과 똑같아서 사용자가 규칙을 하나만 알면 돼요. 상황마다 다르게 정하고 싶다면 C가 나아요.</p>
+    </article>
+
+    <article class="cand" data-id="C">
+      <h3>후보 C — 관리자가 기간과 사유를 정함</h3>
+      <div class="phone"><div class="scr" data-screen="now"><div class="hd"><button class="back">‹</button> <span class="vname">내 참가 제한</span></div><div class="cs"><div class="step">댓글 운영 · 11.23 처리</div><div class="msg">관리자가 적은 사유: <b>"다른 참가자를 비꼬는 댓글을 반복했어요"</b><br>모임 댓글과 참가가 <b>14일</b> 제한돼요. (12.7 18:00까지)</div><div class="cm"><i>숨겨진 내 댓글</i>그 책 읽고도 그런 말이 나와요?</div><button class="sub-btn" data-open="later">한 번 더 제한되면?</button><button class="sub-btn">재검토 요청하기</button></div><div class="cin">지금은 댓글을 쓸 수 없어요</div></div><div class="scr hide" data-screen="later"><div class="hd"><button class="back" data-open="now">‹</button> <span class="vname">한 번 더 제한되면</span></div><div class="cs"><div class="msg">다음에는 관리자가 그때 상황을 보고 3일·7일·14일·30일 중에서 골라요.</div><button class="sub-btn" data-open="now">돌아가기</button></div></div></div>
+      <p>관리자가 처리할 때 기간(3일·7일·14일·30일)을 고르고 사유를 직접 적어요. 본인에게는 그 사유가 그대로 보여요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>관리자 "삭제와 제한" + 기간·사유 입력 → 알림함 안내 → 내 참가 제한 화면에 관리자가 적은 사유와 기간 → 재검토 요청 가능.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>사유가 사람마다 달라요</li><li>기간도 그때그때 달라요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>상황에 맞게 정해요. / 사람마다 기간이 달라 불공평하게 느낄 수 있고, 관리자 일이 늘어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-73 접힌 선택 칸 — 관리자만 쓰는 칸 (선택 사항 더 보기)</p>
+    </article>
+
+  </div>
+</section>
+
+<!-- 중심 요소 6은 5가 '확인'이 된 뒤에 같은 모양으로 추가한다:
      2 출석 확인과 불참 판정(K2-O1·O2) · 3 불참 횟수 세는 법과 4회째(K2-O3) · 4 제한이 걸리는 범위(K2-O4) · 5 댓글 운영 제한 기간(K2-O5) · 6 알림함 화면(K2-O8) -->
 
 <!-- ===== 잘 안 될 때 (예외, 1B 3단계) — 기록 화면 기준. 중심 요소를 다 정한 뒤 다시 본다 ===== -->
@@ -411,8 +465,8 @@
     <tr data-el="el-record"><td>1. 기록 화면에서 먼저 보이는 것</td><td>A 기록 → 후기 → 다음 모임</td><td>없음</td><td>B 후기 칸 맨 위, C 다음 모임 맨 위</td><td>"기록이 먼저 보이는 게 좋아요. 그날 모임을 돌아볼 수 있어서요" · 불편한 점: 다음 모임이 맨 아래라 찾기 어려워요</td><td>맨 위 기록 카드(책 표지·이름·날짜 시각·끝난 모임·장소·참가 수·내 참가/참석), 곡률 9 → 내 후기 칸(나만 보기 기본, 2000자) → 다음 모임(만든 사람은 권하는 카드, 참가자는 이미 만든 다음 모임 + 만들기 버튼)</td><td>모임 화면 기록·후기 쓰기 → 그날 기록 → 아래 후기 쓰기·저장 → 게시물로 올리기 → 더 내려 다음 모임</td><td><span class="st">확인</span></td></tr>
     <tr data-el="el-attend"><td>2. 출석 확인과 불참 판정</td><td>A 만든 사람 표시 → 관리자 확인</td><td>없음</td><td>B 본인 참석 체크 + 만든 사람 표시, C 본인에게 사정 묻기</td><td>"만든 사람이 표시하고 관리자가 확인하는 게 좋아요. 관리자가 확인하니까 억울하게 불참되는 사람이 없어서요" · 불편한 점: 관리자 확인을 기다리는 동안 결과가 늦어요</td><td>끝난 모임 기록 화면에 만든 사람만 출석 확인 칸, 참가자마다 왔어요/안 왔어요(기본 왔어요), 보내기 확인창. 안 왔어요 → 관리자 확인 전에는 결과를 기다리고 있어요, 확인되면 불참 1회</td><td>모임 끝남 → 만든 사람 출석 확인 → 보내기 → 관리자 확인 → 불참 1회 + 본인 알림함 안내 → 본인 재검토 요청 가능</td><td><span class="st">확인</span></td></tr>
     <tr data-el="el-count"><td>3. 불참 횟수 세는 법과 4회째</td><td>A 최근 1년 불참만 셈, 4회째 참가 불가는 운영자가 풀 때까지</td><td>없음</td><td>B 지금까지 전부 셈, C 연속 불참만 셈·90일 자동 해제</td><td>"최근 1년만 세는 게 좋아요. 예전 실수가 계속 남지 않아서요" · 불편한 점: 자주 빠지는 사람이 계속 30일까지만 가요</td><td>관리자가 확인한 불참 중 확인 시각이 최근 365일 안인 것만 셈. 1회 3일·2회 7일·3회 30일·4회 참가 불가(끝나는 날 없음). 기록 옆 셈 / 1년 지나 안 셈 표시</td><td>불참 확인 → 최근 1년 불참 수로 단계 → 제한 → 1년 지난 불참은 저절로 빠짐 → 참가 불가는 재검토 요청 → 운영자 해제</td><td><span class="st">확인</span></td></tr>
-    <tr data-el="el-scope"><td>4. 불참 제한 범위</td><td>A 모든 모임 참가만 막힘, 댓글은 됨</td><td>없음</td><td>B 참가·댓글 모두, C 불참한 모임(다음 회차)만</td><td>"모든 모임 참가만 막히는 게 좋아요. 댓글을 쓸 수 있어서요" · 불편한 점: (받는 중)</td><td>불참 사유 제한 = 모든 도서관 모든 모임의 참가(#55)만 막음. 버튼 자리 지금은 모임에 참가할 수 없어요 (M.D HH:mm까지), 참가 불가면 괄호 없음. 댓글·읽기는 평소대로</td><td>제한 중 모임 화면 → 참가 버튼 자리 안내 → 댓글은 씀 → 기간이 끝나면 다시 참가</td><td><span class="st">확인</span></td></tr>
-    <tr><td>5. 댓글 운영 제한 기간</td><td>(4 뒤)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-scope"><td>4. 불참 제한 범위</td><td>A 모든 모임 참가만 막힘, 댓글은 됨</td><td>없음</td><td>B 참가·댓글 모두, C 불참한 모임(다음 회차)만</td><td>"모든 모임 참가만 막히는 게 좋아요. 댓글을 쓸 수 있어서요" · 불편한 점: 제한 중에도 댓글로 계속 말을 걸 수 있어요</td><td>불참 사유 제한 = 모든 도서관 모든 모임의 참가(#55)만 막음. 버튼 자리 지금은 모임에 참가할 수 없어요 (M.D HH:mm까지), 참가 불가면 괄호 없음. 댓글·읽기는 평소대로</td><td>제한 중 모임 화면 → 참가 버튼 자리 안내 → 댓글은 씀 → 기간이 끝나면 다시 참가</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-comment"><td>5. 댓글 운영 제한 기간·사유</td><td>— (추천: 후보 B 불참과 같은 단계, 정해진 문구)</td><td>—</td><td>—</td><td>(받기 전)</td><td>—</td><td>관리자 삭제와 제한 → 알림함 안내 → 내 참가 제한 → 재검토 요청</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>6. 알림함 화면</td><td>(5 뒤)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>내 정보 알림 아이콘 → 알림함 → 안내 누르면 모임 화면</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>후기 글자 수</td><td>2000자</td><td>—</td><td>—</td><td>묻지 않음</td><td>칸 아래 n/2000</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>반납 알림을 알림함에</td><td>넣지 않음(휴대폰에만 뜨는 알림이라 지난 내역이 없음)</td><td>—</td><td>—</td><td>묻지 않음</td><td>—</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
