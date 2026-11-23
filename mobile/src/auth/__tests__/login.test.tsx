@@ -6,6 +6,7 @@ import { useAuth } from "../AuthProvider";
 import { isAppleSignInAvailable, SignInResult } from "../platform";
 
 const mockReplace = jest.fn();
+let mockParams: Record<string, string | undefined> = {};
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({
@@ -13,6 +14,7 @@ jest.mock("expo-router", () => ({
     push: jest.fn(),
     back: jest.fn(),
   }),
+  useLocalSearchParams: () => mockParams,
 }));
 
 jest.mock("expo-apple-authentication", () => {
@@ -47,6 +49,7 @@ describe("LoginScreen (AUTH-1-P6)", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    mockParams = {};
     mockedIsAppleAvailable.mockResolvedValue(false);
     mockedUseAuth.mockReturnValue({
       status: "signedOut",
@@ -155,5 +158,25 @@ describe("LoginScreen (AUTH-1-P6)", () => {
 
     await screen.rerender(<LoginScreen />);
     expect(mockReplace).toHaveBeenCalledTimes(1);
+  });
+
+  test("returnTo_navigates_back_to_safe_internal_path_only", async () => {
+    mockParams = { returnTo: "/clubs/club-1" };
+    signInWithGoogleMock.mockResolvedValueOnce({ ok: true });
+    const view1 = await render(<LoginScreen />);
+    await act(async () => {
+      await fireEvent.press(view1.getByText("Google로 계속하기"));
+    });
+    expect(mockReplace).toHaveBeenCalledWith("/clubs/club-1");
+    await view1.unmount();
+
+    mockReplace.mockClear();
+    mockParams = { returnTo: "//evil.example/phish" };
+    signInWithGoogleMock.mockResolvedValueOnce({ ok: true });
+    const view2 = await render(<LoginScreen />);
+    await act(async () => {
+      await fireEvent.press(view2.getByText("Google로 계속하기"));
+    });
+    expect(mockReplace).toHaveBeenCalledWith("/");
   });
 });

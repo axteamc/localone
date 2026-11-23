@@ -252,6 +252,10 @@ export function isGuestbookItem(item: FeedItem): item is { kind: "guestbook"; gu
 export function feedItemKey(item: FeedItem): string | null {
   if (isPostItem(item)) return `post:${item.post.id}`;
   if (isGuestbookItem(item)) return `guestbook:${item.guestbook.id}`;
+  if (item.kind === "club" && typeof item.club === "object" && item.club !== null) {
+    const id = (item.club as { id?: unknown }).id;
+    if (typeof id === "string" && id.length > 0) return `club:${id}`;
+  }
   return null;
 }
 

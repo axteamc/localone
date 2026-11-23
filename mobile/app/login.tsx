@@ -1,5 +1,5 @@
 import * as AppleAuthentication from "expo-apple-authentication";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter, type Href } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import {
@@ -54,8 +54,39 @@ function messageForFailure(result: Extract<SignInResult, { ok: false }>): string
   return "로그인하지 못했어요. 다시 시도해 주세요.";
 }
 
+const RETURN_TO_KEY = "localone.login.returnTo";
+
+function safeReturnTo(raw: string | string[] | null | undefined): string | null {
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  if (typeof value !== "string") return null;
+  if (!value.startsWith("/") || value.startsWith("//") || value.includes("\\") || value.startsWith("/login")) {
+    return null;
+  }
+  return value;
+}
+
+function readStoredReturnTo(): string | null {
+  try {
+    return safeReturnTo(globalThis.sessionStorage?.getItem(RETURN_TO_KEY));
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredReturnTo(value: string | null) {
+  try {
+    if (!globalThis.sessionStorage) return;
+    if (value) globalThis.sessionStorage.setItem(RETURN_TO_KEY, value);
+    else globalThis.sessionStorage.removeItem(RETURN_TO_KEY);
+  } catch {
+    /* sessionStorage 미지원 환경 무시 */
+  }
+}
+
 export default function LoginScreen(): React.JSX.Element {
   const router = useRouter();
+  const params = useLocalSearchParams?.<{ returnTo?: string | string[] }>() ?? {};
+  const returnTo = safeReturnTo(params.returnTo);
   const insets = useSafeAreaInsets();
   const { width: winWidth, height: winHeight } = useWindowDimensions();
   const [boardSize, setBoardSize] = useState<{ width: number; height: number } | null>(null);
@@ -69,6 +100,10 @@ export default function LoginScreen(): React.JSX.Element {
   const busyRef = useRef(false);
   const navigatedRef = useRef(false);
 
+  useEffect(() => {
+    if (returnTo) writeStoredReturnTo(returnTo);
+  }, [returnTo]);
+
   const onBoardLayout = useCallback((event: LayoutChangeEvent) => {
     const { width, height } = event.nativeEvent.layout;
     setBoardSize((prev) =>
@@ -81,8 +116,10 @@ export default function LoginScreen(): React.JSX.Element {
       return;
     }
     navigatedRef.current = true;
-    router.replace("/");
-  }, [router]);
+    const target = returnTo ?? readStoredReturnTo() ?? "/";
+    writeStoredReturnTo(null);
+    router.replace(target as Href);
+  }, [returnTo, router]);
 
   // DEF-019: 웹은 제공자에서 /login으로 돌아온 뒤 세션이 복원되므로 상태를 보고 넘어간다.
   useEffect(() => {

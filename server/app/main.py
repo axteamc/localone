@@ -150,6 +150,12 @@ def create_app(
     app.include_router(loans_router)
     # ── [/loan-assistant-C] ──
 
+    # ── [book-club-C] ──
+    from app.routers.clubs import router as clubs_router  # CLUB-1 #50~#59
+
+    app.include_router(clubs_router)
+    # ── [/book-club-C] ──
+
     # ── [my-collection-A] ──
     from app.routers.my_collection import router as my_collection_router
 

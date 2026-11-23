@@ -15,6 +15,8 @@ export const GUESTBOOK_TEXT = {
   choosePostSub: "사진·표지와 글",
   chooseGuestbook: "방명록 남기기",
   chooseGuestbookSub: `짧은 한마디 (${GUESTBOOK_MAX}자까지)`,
+  chooseClub: "모임 만들기",
+  chooseClubSub: "같은 도서관 이웃과 만날 약속을 잡아요",
   close: "닫기",
   title: "방명록 남기기",
   guide: (libraryName: string) => `${libraryName}에 짧은 한마디를 남겨요. 모두가 볼 수 있어요.`,
@@ -31,10 +33,10 @@ export const GUESTBOOK_TEXT = {
   login: "로그인하기",
 } as const;
 
-export type ComposeChooserProps = { visible: boolean; onPost(): void; onGuestbook(): void; onClose(): void };
+export type ComposeChooserProps = { visible: boolean; onPost(): void; onGuestbook(): void; onClub?(): void; onClose(): void };
 
 /** "+"를 누르면 아래에서 뜨는 고르기 창(결정 2) */
-export function ComposeChooser({ visible, onPost, onGuestbook, onClose }: ComposeChooserProps) {
+export function ComposeChooser({ visible, onPost, onGuestbook, onClub, onClose }: ComposeChooserProps) {
   if (!visible) return null;
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
@@ -49,6 +51,12 @@ export function ComposeChooser({ visible, onPost, onGuestbook, onClose }: Compos
             <Text style={styles.rowText}>{GUESTBOOK_TEXT.chooseGuestbook}</Text>
             <Text style={styles.rowSub}>{GUESTBOOK_TEXT.chooseGuestbookSub}</Text>
           </Pressable>
+          {onClub ? (
+            <Pressable accessibilityRole="button" onPress={onClub} style={styles.row}>
+              <Text style={styles.rowText}>{GUESTBOOK_TEXT.chooseClub}</Text>
+              <Text style={styles.rowSub}>{GUESTBOOK_TEXT.chooseClubSub}</Text>
+            </Pressable>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             onPress={onClose}
