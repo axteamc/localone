@@ -31,7 +31,7 @@ export const EDIT_TEXT = {
   nicknameEmpty: "닉네임을 1자 이상 써 주세요",
   bioPlaceholder: "나를 한 줄로 소개해 보세요",
   bioTooLong: "한 줄 소개는 60자까지 쓸 수 있어요",
-  discardTitle: "고친 내용을 버릴까요?",
+  discardTitle: "저장하지 않고 나갈까요? 고친 내용은 사라져요",
   keepEditing: "계속 고치기",
   discard: "버리기",
   photoMenu: "사진 바꾸기",
