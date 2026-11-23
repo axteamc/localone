@@ -9,11 +9,12 @@ import pytest
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
-from app.common import today_kst
+from app.common import now_kst, today_kst
 from app.services import provider_engine as pe
+from app.services.theme_holdings import HoldingsTarget, replace_holdings
 from tests.provider_fakes import FakeBookSearch, FakeLibraryData, public_reference_data  # noqa: F401
 from tests.test_feed import auth, books, client  # noqa: F401  (픽스처)
-from tests.test_lib_engine import book, engine, isbn, reference_db, seed_book  # noqa: F401
+from tests.test_lib_engine import NOW, book, engine, isbn, reference_db, run, seed_book  # noqa: F401
 from tests.test_ops import REASON, ops, q  # noqa: F401  (픽스처)
 
 NEW_LIB = 106  # 시험 중에만 있는 "새 도서관"(101에서 1.5km)
@@ -25,6 +26,7 @@ PAGE_KEYS = {"kind", "title", "basis_label", "books"}
 def clean_looks_and_themes(db_engine, public_reference_data, reference_db):
     def clean():
         with db_engine.begin() as c:
+            c.execute(text("DELETE FROM library_holdings_snapshots"))
             c.execute(text("DELETE FROM shelf_theme_books"))
             c.execute(text("DELETE FROM shelf_themes"))
             c.execute(text("DELETE FROM library_return_stats"))
@@ -32,8 +34,16 @@ def clean_looks_and_themes(db_engine, public_reference_data, reference_db):
             c.execute(text("UPDATE libraries SET look = NULL, look_assigned_by = NULL"))
 
     clean()
+    with db_engine.begin() as c:
+        previous_regions = c.execute(text(
+            "SELECT id, region_code FROM libraries WHERE id IN (101,102,103)"
+        )).mappings().all()
+        c.execute(text("UPDATE libraries SET region_code = '11' WHERE id IN (101,102)"))
+        c.execute(text("UPDATE libraries SET region_code = '24' WHERE id = 103"))
     yield
     clean()
+    with db_engine.begin() as c:
+        c.execute(text("UPDATE libraries SET region_code = :region_code WHERE id = :id"), previous_regions)
 
 
 @pytest.fixture
@@ -60,6 +70,20 @@ def add_return_stats(db_engine, library_id: int, book_id: int, days_ago: int, co
         c.execute(text("INSERT INTO library_return_stats (library_id, book_id, returned_on, return_count) "
                        "VALUES (:l, :b, :d, :n)"),
                   {"l": library_id, "b": book_id, "d": today_kst() - timedelta(days=days_ago), "n": count})
+
+
+def add_holdings(db_engine, library_id: int, book_ids: list[int], age_hours: int = 0) -> None:
+    with db_engine.begin() as c:
+        for book_id in book_ids:
+            params = {"b": book_id, "l": library_id, "at": now_kst() - timedelta(hours=age_hours)}
+            c.execute(text("""
+                INSERT INTO library_holdings_snapshots (book_id, region_code, fetched_at)
+                SELECT :b, region_code, :at FROM libraries WHERE id = :l ON CONFLICT DO NOTHING
+                """), params)
+            c.execute(text("""
+                INSERT INTO library_holdings_cache (book_id, region_code, library_id)
+                SELECT :b, region_code, id FROM libraries WHERE id = :l
+                """), params)
 
 
 def theme_body(library_id=None, title="겨울에 읽는 책", start=0, end=10, isbns=(0, 1), **extra):
@@ -186,15 +210,16 @@ def test_shelf_full_pages_order_and_shape(client, reference_db, seeded, ops):
     add_return_stats(reference_db, 101, seeded[3], 4, 1)  # 합계 3
     add_return_stats(reference_db, 101, seeded[4], 1, 6)
     assert client.post("/api/v1/ops/shelf-themes", json=theme_body(isbns=(2, 0)), headers=ops["A"]).status_code == 201
+    add_holdings(reference_db, 101, [seeded[2], seeded[0]])
 
     pages = shelf(client).json()["pages"]
     assert [p["kind"] for p in pages] == ["recent_reads", "popular", "theme"]
-    assert all(set(p) == PAGE_KEYS and 1 <= len(p["books"]) <= 3 for p in pages)
+    assert all(set(p) == PAGE_KEYS and 1 <= len(p["books"]) <= 4 for p in pages)
     assert all(set(b) == BOOK_KEYS for p in pages for b in p["books"])
     recent, popular, theme = pages
-    assert [b["isbn13"] for b in recent["books"]] == [isbn(1), isbn(4), isbn(2)]  # 7·6·4, 3건짜리는 4위라 잘림
+    assert [b["isbn13"] for b in recent["books"]] == [isbn(1), isbn(4), isbn(2), isbn(0)]
     assert recent["title"] == "요즘 사람들이 읽은 책" and recent["basis_label"] == "최근 30일 · 이 도서관"
-    assert [b["isbn13"] for b in popular["books"]] == [isbn(0), isbn(1), isbn(2)]
+    assert [b["isbn13"] for b in popular["books"]] == [isbn(0), isbn(1), isbn(2), isbn(3)]
     assert popular["title"] == "인기 도서" and popular["basis_label"] == "정독도서관 · 최근 30일 대출"
     assert theme == {"kind": "theme", "title": "겨울에 읽는 책", "basis_label": None,
                      "books": [{"isbn13": isbn(2), "title": "이식 도서 002", "author": None, "cover_url": None},
@@ -205,12 +230,55 @@ def test_shelf_full_pages_order_and_shape(client, reference_db, seeded, ops):
 
 def test_shelf_library_theme_wins_over_common(client, reference_db, seeded, ops):
     use_providers(client, reference_db, library=FakeLibraryData())
-    common = theme_body(title="모두의 테마", isbns=(0,))
-    mine = theme_body(library_id=101, title="정독 테마", isbns=(1,))
+    common = theme_body(title="모두의 테마", isbns=(0, 2))
+    mine = theme_body(library_id=101, title="정독 테마", isbns=(1,), priority=3)
     for body in (common, mine):
         assert client.post("/api/v1/ops/shelf-themes", json=body, headers=ops["A"]).status_code == 201
+    add_holdings(reference_db, 101, [seeded[0], seeded[1], seeded[2]])
+    add_holdings(reference_db, 102, [seeded[0], seeded[2]])
     assert [p["title"] for p in shelf(client, 101).json()["pages"]] == ["정독 테마"]
     assert [p["title"] for p in shelf(client, 102).json()["pages"]] == ["모두의 테마"]
+
+
+def test_shelf_uses_first_eligible_priority_and_four_confirmed_books(client, reference_db, ops):
+    ids = [seed_book(reference_db, index=i).id for i in range(10)]
+    use_providers(client, reference_db, library=FakeLibraryData())
+    headers = ops["A"]
+    for body in (
+        theme_body(library_id=101, title="미적재 전용", isbns=(9,)),
+        theme_body(title="한 권만 확인", isbns=(0, 1)),
+        theme_body(title="채택", isbns=(0, 2, 3, 4, 5, 6, 7), priority=2),
+        theme_body(title="후순위", isbns=(2, 3), priority=3),
+    ):
+        assert client.post("/api/v1/ops/shelf-themes", json=body, headers=headers).status_code == 201
+    add_holdings(reference_db, 101, [ids[i] for i in (0, 2, 4, 5, 6, 7)])
+    add_holdings(reference_db, 101, [ids[3]], age_hours=72)
+    add_holdings(reference_db, 102, [ids[1], ids[9]])
+    assert shelf(client, 102).json()["pages"] == []
+    page, = shelf(client).json()["pages"]
+    assert page["title"] == "채택"
+    assert [b["isbn13"] for b in page["books"]] == [isbn(i) for i in (0, 2, 4, 5)]
+
+
+def test_shelf_filters_comics_and_series_before_slicing_and_preserves_recommendations(client, reference_db):
+    candidates = [
+        pe.BookInfo(isbn(0), "분류된 그림책", class_name="학습만화"),
+        pe.BookInfo(isbn(1), "1984"),
+        pe.BookInfo(isbn(2), "백앤아 ３"),
+        pe.BookInfo(isbn(3), "백앤아카이브"),
+        book(4),
+        book(5),
+        book(6),
+    ]
+    fake = FakeLibraryData(popular={"test-101": candidates})
+    use_providers(client, reference_db, library=fake)
+    expected = [isbn(i) for i in (1, 3, 4, 5)]
+    for _ in range(2):
+        page, = shelf(client).json()["pages"]
+        assert [b["isbn13"] for b in page["books"]] == expected
+    r = client.get("/api/v1/books/recommendations", params={"library_id": 101})
+    assert [b["isbn13"] for b in r.json()["books"]] == [b.isbn13 for b in candidates]
+    assert len(fake.calls) == 1
 
 
 def test_shelf_popular_is_library_only(client, reference_db, seeded):
@@ -245,7 +313,8 @@ def test_theme_create_is_idempotent_and_overlap_is_409(client, reference_db, see
     r = post(theme_body())
     assert r.status_code == 201
     created = r.json()
-    assert set(created) == {"id", "library_id", "title", "starts_on", "ends_on", "books"}
+    assert set(created) == {"id", "library_id", "title", "starts_on", "ends_on", "priority", "books"}
+    assert created["priority"] == 1
     assert created["library_id"] is None and [b["isbn13"] for b in created["books"]] == [isbn(0), isbn(1)]
     r = post(theme_body())  # 연타
     assert r.status_code == 200 and r.json() == created
@@ -265,7 +334,12 @@ def test_theme_create_is_idempotent_and_overlap_is_409(client, reference_db, see
     ({"title": "  "}, "title"),
     ({"title": "가" * 41}, "title"),
     ({"isbn13s": []}, "isbn13s"),
-    ({"isbn13s": [isbn(0), isbn(1), isbn(2), isbn(3)]}, "isbn13s"),
+    ({"library_id": 101, "isbn13s": [isbn(i) for i in range(4)]}, "isbn13s"),
+    ({"isbn13s": [isbn(i) for i in range(21)]}, "isbn13s"),
+    ({"priority": "2"}, "priority"),
+    ({"priority": True}, "priority"),
+    ({"priority": None}, "priority"),
+    ({"priority": 4}, "priority"),
     ({"isbn13s": [isbn(0), isbn(0)]}, "isbn13s"),
     ({"isbn13s": ["9780000000000"]}, "isbn13s"),
     ({"library_id": 0}, "library_id"),
@@ -274,7 +348,24 @@ def test_theme_create_is_idempotent_and_overlap_is_409(client, reference_db, see
 def test_theme_validation(client, reference_db, seeded, ops, db_engine, override, field):
     r = client.post("/api/v1/ops/shelf-themes", json={**theme_body(), **override}, headers=ops["A"])
     assert r.status_code == 422 and r.json()["error"]["code"] == "VALIDATION_ERROR"
-    assert q(db_engine, "SELECT id FROM shelf_themes") == []
+    assert r.json()["error"]["detail"] == field
+    assert q(db_engine, "SELECT id FROM shelf_themes") == [] and actions(db_engine) == []
+
+
+def test_common_theme_twenty_and_put_omitted_priority(client, reference_db, ops, db_engine):
+    for i in range(20):
+        seed_book(reference_db, index=i)
+    path = "/api/v1/ops/shelf-themes"
+    headers = ops["A"]
+    assert client.post(path, json=theme_body(), headers=headers).status_code == 201
+    body = theme_body(title="후보 20권", isbns=tuple(range(20)), priority=2)
+    r = client.post(path, json=body, headers=headers)
+    assert r.status_code == 201 and len(r.json()["books"]) == 20
+    row = r.json()
+    del body["priority"]
+    assert client.put(f"{path}/{row['id']}", json=body, headers=headers).json() == row
+    assert client.put(f"{path}/{row['id']}", json={**body, "priority": 1}, headers=headers).status_code == 409
+    assert len(actions(db_engine)) == 2
 
 
 def test_theme_period_and_required_keys(client, reference_db, seeded, ops, db_engine):
@@ -318,7 +409,94 @@ def test_theme_put_replaces_and_checks_overlap(client, reference_db, seeded, ops
     assert put("00000000-0000-0000-0000-000000000000", theme_body(start=40, end=41)).status_code == 404
     assert put(first["id"], theme_body(library_id=999999999)).status_code == 404
     assert [a.action for a in actions(db_engine)] == ["theme_edit"] * 5
+    add_holdings(reference_db, 101, [seeded[0], seeded[1]])
     assert [b["isbn13"] for b in shelf(client).json()["pages"][0]["books"]] == [isbn(0), isbn(1)]
+
+
+# ─────────── 소장 배치 ───────────
+
+
+def test_holdings_provider_uses_isbn_and_parses_page(monkeypatch):
+    client = pe.Data4LibraryClient("fake", "https://example.test", 5)
+
+    def response(operation, params):
+        assert operation == "libSrchByBook"
+        assert params == {"isbn": isbn(0), "region": "11", "pageNo": 1, "pageSize": 100}
+        return {"pageNo": "1", "pageSize": "100", "numFound": "1", "resultNum": "1",
+                "libs": [{"lib": {"libCode": "011123"}}]}
+
+    monkeypatch.setattr(client, "_get", response)
+    page = client.holdings_page(isbn(0), "11", 1, 100)
+    assert page == pe.HoldingsPage(1, 100, 1, ("011123",))
+
+
+def test_holdings_batch_preserves_partial_then_replaces_and_reuses(reference_db, seeded, monkeypatch):
+    with reference_db.begin() as c:
+        theme_id = c.execute(text("""
+            INSERT INTO shelf_themes (title, starts_on, ends_on) VALUES ('활성', :d, :d) RETURNING id
+            """), {"d": today_kst(NOW)}).scalar_one()
+        c.execute(text("INSERT INTO shelf_theme_books VALUES (:t, :b, 1)"), {"t": theme_id, "b": seeded[0]})
+    add_holdings(reference_db, 101, [seeded[0]], age_hours=96)
+    calls = []
+
+    class Provider:
+        def holdings_page(self, isbn13, region, page, size):
+            calls.append((isbn13, region, page))
+            usage, = q(reference_db, "SELECT call_count FROM provider_daily_usage "
+                       "WHERE provider = 'data4library' AND usage_date = :day", day=today_kst(NOW))
+            assert usage.call_count == len(calls)
+            if page == 2:
+                raise pe.ProviderError("interrupted")
+            return pe.HoldingsPage(1, 1, 2, ("test-102",))
+
+    provider = Provider()
+    worker = engine(reference_db, library=provider)
+    status, report = run(worker.sync_theme_holdings(["11"], max_calls=1))
+    assert status == 1 and report["stop_reason"] == "run_limit"
+    assert report["regions"]["11"]["unprocessed"] == 1
+    status, report = run(worker.sync_theme_holdings(["11"]))
+    assert status == 1 and report["regions"]["11"]["failed"] == 1
+    assert calls == [(isbn(0), "11", 1), (isbn(0), "11", 1), (isbn(0), "11", 2)]
+    assert q(reference_db, "SELECT library_id FROM library_holdings_cache") == [(101,)]
+
+    with monkeypatch.context() as patch:
+        patch.setattr(pe.policy, "DATA4LIBRARY_DAILY_LIMIT", 3)
+        status, report = run(worker.sync_theme_holdings(["11"]))
+        assert status == 1 and report["stop_reason"] == "daily_limit"
+        assert report["requests"] == 0 and len(calls) == 3
+
+    class FullProvider:
+        def holdings_page(self, isbn13, region, page, size):
+            return pe.HoldingsPage(page, 1, 2, (("test-102", "test-103")[page - 1],))
+
+    status, report = run(engine(reference_db, library=FullProvider()).sync_theme_holdings(["11"]))
+    assert status == 0 and report["regions"]["11"]["unmatched_codes"] == 1
+    assert q(reference_db, "SELECT library_id FROM library_holdings_cache") == [(102,)]
+    with reference_db.begin() as c:
+        c.execute(text("UPDATE library_holdings_snapshots SET fetched_at = now() - interval '4 days'"))
+
+    class EmptyProvider:
+        def holdings_page(self, isbn13, region, page, size):
+            return pe.HoldingsPage(1, size, 0, ())
+
+    worker = engine(reference_db, library=EmptyProvider())
+    status, report = run(worker.sync_theme_holdings(["11"]))
+    assert status == 0 and report["regions"]["11"]["empty"] == 1 and report["requests"] == 1
+    assert q(reference_db, "SELECT library_id FROM library_holdings_cache") == []
+    status, report = run(worker.sync_theme_holdings(["11"]))
+    assert status == 0 and report["regions"]["11"]["reused"] == 1 and report["requests"] == 0
+    status, report = run(engine(reference_db).sync_theme_holdings(["11"]))
+    assert status == 0 and report["regions"]["11"]["reused"] == 1 and report["requests"] == 0
+
+
+def test_holdings_does_not_replace_a_newer_snapshot(reference_db, seeded):
+    target = HoldingsTarget(seeded[0], isbn(0), "11", False)
+    now = now_kst()
+    with reference_db.begin() as c:
+        assert replace_holdings(c, target, now, {"test-102", "unknown"}) == 1
+    with reference_db.begin() as c:
+        assert replace_holdings(c, target, now - timedelta(seconds=1), {"test-101"}) is None
+    assert q(reference_db, "SELECT library_id FROM library_holdings_cache") == [(102,)]
 
 
 # ─────────── 마이그레이션 ───────────
@@ -326,8 +504,11 @@ def test_theme_put_replaces_and_checks_overlap(client, reference_db, seeded, ops
 
 def test_new_tables_have_rls_and_look_check(db_engine):
     rls = dict(q(db_engine, "SELECT relname, relrowsecurity FROM pg_class "
-                            "WHERE relname IN ('shelf_themes', 'shelf_theme_books')"))
-    assert rls == {"shelf_themes": True, "shelf_theme_books": True}
+                            "WHERE relname IN ('shelf_themes', 'shelf_theme_books', "
+                            "'library_holdings_snapshots', 'library_holdings_cache')"))
+    assert rls == {"shelf_themes": True, "shelf_theme_books": True,
+                   "library_holdings_snapshots": True, "library_holdings_cache": True}
+    assert q(db_engine, "SELECT policyname FROM pg_policies WHERE tablename LIKE 'library_holdings_%'") == []
     for column, value in (("look", "neon"), ("look_assigned_by", "someone")):
         with db_engine.begin() as c, pytest.raises(IntegrityError):
             c.execute(text(f"UPDATE libraries SET {column} = :v WHERE id = 101"), {"v": value})

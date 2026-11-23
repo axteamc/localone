@@ -220,7 +220,7 @@ def test_public_reference_columns_and_keys_match_contract(db_engine):
         "libraries": "id provider_lib_code name address tel homepage latitude longitude closed_text operating_time_text region_code dtl_region_code isbn_search_url_template content_hash synced_at look look_assigned_by",  # look*: core M2-0-P3
         "books": "id isbn13 title author publisher cover_url description pub_year source fetched_at",
         "availability_observations": "library_id book_id observed_on holding loanable data_date data_date_assumed observed_at source",
-        "popular_books_cache": "id scope library_id rank book_id period_label fetched_at",
+        "popular_books_cache": "id scope library_id rank book_id period_label fetched_at provider_class_name",  # provider_class_name: core M2-0-P3 후속(0020)
         "provider_daily_usage": "provider usage_date call_count",
     }
     inspector = inspect(db_engine)
