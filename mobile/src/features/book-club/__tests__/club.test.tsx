@@ -255,8 +255,10 @@ describe("모임 화면", () => {
     m.joinClub.mockRejectedValueOnce(new api.ApiCallError(403, "PARTICIPATION_RESTRICTED", "x", "2026-11-30T18:00:00+09:00"));
     await openClub();
     await fireEvent.press(screen.getByText(CLUB_TEXT.join));
-    const label = `${CLUB_TEXT.restricted} (11월 30일 18:00까지)`;
-    await waitFor(() => expect(screen.getAllByText(label)).toHaveLength(2)); // 버튼 자리 + 댓글 칸
+    const until = " (11월 30일 18:00까지)";
+    // 버튼 자리는 참가, 댓글 칸은 댓글 문구(CLUB-2 C3 — 불참·댓글 제한 모두 참가와 댓글을 막는다)
+    await waitFor(() => expect(screen.getAllByText(`${CLUB_TEXT.restricted}${until}`)).toHaveLength(1));
+    expect(screen.getAllByText(`${CLUB_TEXT.commentRestricted}${until}`)).toHaveLength(1);
     expect(screen.queryByTestId("club-comment-input")).toBeNull();
   });
 
