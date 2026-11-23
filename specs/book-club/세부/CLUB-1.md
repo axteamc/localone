@@ -94,6 +94,10 @@
 
 ## 검토 메모
 
+- [Claude가 정함] 만들기 화면 날짜·시각은 새 라이브러리 없이 글자 칸("2026-11-28"·"14:00", 끝 시각 선택, 같은 날)으로 받음 — C4 "DueDateSheet와 같은 방식", `parseYmd` 재사용 — `mobile/src/features/book-club/ClubEditor.tsx`
+- [Claude가 정함] 책 찾기는 `ComposeScreen`의 `BookFinder`가 내보내지지 않은 B 파일 안 함수라 `ClubEditor` 안에 작은 찾기를 둠(`searchBooks` 그대로) — `ClubEditor.tsx` `BookFinder`
+- [Claude가 정함] 주니어에게 보여 줄 때 만들기 화면은 로그인 확인을 임시로 끈 사본으로 띄움(웹에서 로그인 불가), 커밋 안 함
+
 - [구현 중 변경] 마이그레이션 번호 `NNNN` → `0018`(main에 `0016`·`0017` 있음) — `server/migrations/versions/0018_clubs_constraints.py`
 - [Claude가 정함] `club_changed` 안내 대상에 `changed_at`을 넣어 바뀔 때마다 새 안내가 가게 함(알림함 "같은 안내 한 번" 규칙의 키, `server/app/services/inbox.py` 머리 설명) — `server/app/routers/clubs.py:339-342`
 - [Claude가 정함] 공개 `status`: 취소 > 끝남(`ends_at` 지남) > 마감(저장값 또는 시작 시각 지남, K1-7) > 열림 — `server/app/routers/clubs.py:102`
@@ -112,8 +116,8 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 (대기/진행/검토요청/완료) | 구현 근거 (`파일:줄`) 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| CLUB-1-P1 서버 | `feat/book-club-CLUB-1` | (Draft) | 진행(테스트 통과, 최종 확인 대기) | `server/app/routers/clubs.py`(#50 `:259`, #52 `:312`, #53 `:349`, #54 `:366`, #55 `:392`, #56 `:418`, #57~#59 `:482`·`:521`·`:548`), `server/app/routers/feed.py:272,297,311`, `server/migrations/versions/0018_clubs_constraints.py`. 시험 `test_clubs.py` 21 + `test_club_participation.py` 8 통과, 가드 제거 12개 모두 빨강. 전체 624 통과·1 실패(B 시험 `test_feed_items` "모르는 kind club" 예시, #250) | `TODO(연결): CLUB-2` `is_restricted`(`clubs.py:51`), `to:B` #250 |
-| CLUB-1-P2 모임 화면·만들기 | `feat/book-club-CLUB-1` | - | 대기 | - | - |
+| CLUB-1-P1 서버 | `feat/book-club-CLUB-1` | #252 | 완료(주니어 확인) | `server/app/routers/clubs.py`(#50 `:259`, #52 `:312`, #53 `:349`, #54 `:366`, #55 `:392`, #56 `:418`, #57~#59 `:482`·`:521`·`:548`), `server/app/routers/feed.py:272,297,311`, `server/migrations/versions/0018_clubs_constraints.py`. 시험 `test_clubs.py` 21 + `test_club_participation.py` 8 통과, 가드 제거 12개 모두 빨강. 전체 624 통과·1 실패(B 시험 `test_feed_items` "모르는 kind club" 예시, #250) | `TODO(연결): CLUB-2` `is_restricted`(`clubs.py:51`), `to:B` #250 |
+| CLUB-1-P2 모임 화면·만들기 | `feat/book-club-CLUB-1` | #252 | 완료(주니어 확인) | `mobile/src/features/book-club/ClubScreen.tsx`(`CLUB_TEXT`, `MainButton`, 확인창), `ClubEditor.tsx`(접힘·미정·고치기), `api.ts`, `ClubCard.tsx`(`formatClubWhen`), `mobile/app/clubs/[clubId].tsx`·`new.tsx`. `club.test.tsx` 19 통과, book-club+local-feed 171 통과, tsc·web export 통과. 가드 제거 7개 중 6 빨강(모임 취소 이유 빈칸 `if (!why)`는 버튼 비활성과 겹친 이중 방어라 살아남음) | - |
 | CLUB-1-P3 피드 카드·입구 | `feat/book-club-CLUB-1` | - | 대기 | - | `TODO(연결): B` VISIT-3 |
 
-- **다음 세션 이어하기 메모**: 구현 중. P1 서버 만들고 설명함, 주니어 "최종 테스트" 답 기다림 → 3단계(전체 시험·CI) 뒤 P2.
+- **다음 세션 이어하기 메모**: 구현 중. P1·P2 완료, P3(피드 카드·`+` 입구) 진행.
