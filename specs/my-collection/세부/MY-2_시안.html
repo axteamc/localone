@@ -249,8 +249,9 @@
 </section>
 
 <!-- ===== 중심 요소 2 ===== -->
-<section class="element" id="el-photo" data-chosen="">
-  <h2>정할 것 2. 사진을 바꾸고 지우는 모양 <span class="status">결정 전</span></h2>
+<section class="element" id="el-photo" data-chosen="C">
+  <h2>정할 것 2. 사진을 바꾸고 지우는 모양 <span class="status">반영 — 불편한 점 확인 중</span></h2>
+  <div class="decided"><b>고른 것: 후보 C.</b> "볼펜모양 누르면 사진 설정하는기능" · "C가 제일 보기 좋다고 생각하고 이해하기도 빠를거같아" · 차선 없음 · 화면 안 안내 글자 "사진 모서리 ✎를 눌러 보세요"는 빼 달라고 해서 뺐어요(시안 안내용이었고 앱에는 넣지 않아요).</div>
   <div class="flow"><b>정해진 것.</b> 고치는 화면은 정할 것 1에서 고른 A(사진 위 가운데, 칸 두 개, 맨 아래 "저장")예요. 사진은 <b>찍거나 앨범에서 고를 수 있고, 지울 수도 있어요</b>(지우면 기본 그림). 사진의 위치 정보는 저장할 때 지워져요. 바꾼 사진도 맨 아래 "저장"을 눌러야 저장돼요. 정할 것은 <b>사진 쪽을 누르면 무엇이 뜨느냐</b>예요.</div>
   <div class="pick">다시 보기: <select data-for="el-photo">
     <option value="A">후보 A — 아래에서 올라오는 작은 창</option>
@@ -347,7 +348,6 @@
           <div class="menu" id="mc" style="top:100px;right:20px;width:120px"><div>사진 찍기</div><div>앨범에서 고르기</div><div data-open="gone">사진 지우기</div></div>
           <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
           <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
-          <p class="small center" style="margin-top:6px">↑ 사진 모서리 ✎를 눌러 보세요</p>
           <div class="savebar"><button class="btn">저장</button></div>
         </div>
         <div class="scr hide" data-screen="gone">
@@ -424,7 +424,9 @@
     <li>사용자가 닉네임·한 줄 소개 칸에 글자를 고치면 동네한권이 칸 아래에 글자 수(/40, /60)를 보여 준다.</li>
     <li>사용자가 맨 아래 "저장"을 누르면 동네한권이 고친 칸만 저장하고, 내 정보로 돌아가 "저장했어요"를 잠깐 보여 준다.</li>
     <li>사용자가 고친 뒤 저장하지 않고 ‹를 누르면 동네한권이 "고친 내용을 버릴까요?"를 묻는다.</li>
-    <li>(사진을 누른 뒤 모습은 정할 것 2에서 이어서 쓴다)</li>
+    <li>사용자가 사진 모서리의 볼펜 모양(✎)을 누르면 동네한권이 사진 옆에 "사진 찍기"·"앨범에서 고르기"·"사진 지우기"(사진이 있을 때만) 작은 메뉴를 띄운다.</li>
+    <li>사용자가 "앨범에서 고르기"로 사진을 고르면 동네한권이 사진 자리를 새 사진으로 바꿔 보여 주고, "저장"을 누를 때 위치 정보를 지운 뒤 저장한다.</li>
+    <li>사용자가 "사진 지우기"를 누르면 동네한권이 사진 자리를 기본 그림으로 바꾸고, "저장"을 누를 때 사진을 지운다.</li>
   </ol>
 </section>
 
@@ -434,7 +436,7 @@
   <div class="wide"><table>
     <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
     <tr data-el="el-layout"><td>1. 수정 화면 배치</td><td>후보 A 한 화면에 모두 + 맨 아래 저장</td><td>후보 C 위로 올라오는 화면 + 위에 저장</td><td>후보 B 한 줄씩 눌러 고치기 ("왔다갔다 하는게 별로였어")</td><td>"A가 제일 편하고 알아보기 좋은데" / "사진이랑 입력칸이 한번에 보이고 입력하기 편하게 나와있어"</td><td>사진 72 원, 닉네임 /40, 소개 /60, 입력 칸 곡률 9</td><td>프로필 수정 → 고치는 화면 → 저장 → 내 정보</td><td><span class="st">확인</span></td></tr>
-    <tr data-el="el-photo"><td>2. 사진 고르기·지우기</td><td>— (추천: 후보 A 아래에서 올라오는 작은 창)</td><td>—</td><td>—</td><td>(받기 전)</td><td>찍기·앨범·지우기(사진 있을 때만)·닫기</td><td>사진 누름 → 작은 창 → 고름 → 저장</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-photo"><td>2. 사진 고르기·지우기</td><td>후보 C 사진 모서리 ✎ → 사진 옆 작은 메뉴</td><td>차선 없음</td><td>후보 A 아래에서 올라오는 작은 창 · 후보 B 사진 아래 버튼이 늘 보임</td><td>"C가 제일 보기 좋다고 생각하고 이해하기도 빠를거같아" / "볼펜모양 누르면 사진 설정하는기능"</td><td>찍기·앨범·지우기(사진 있을 때만), 안내 글자 없음</td><td>✎ 누름 → 사진 옆 메뉴 → 고름 → 저장</td><td><span class="st">반영(확인 중)</span></td></tr>
     <tr><td>3. 알림 아이콘 자리</td><td>—</td><td>—</td><td>—</td><td>(받기 전)</td><td>점 하나, 숫자 없음</td><td>아이콘 → 알림함</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>한 줄 소개 길이</td><td>60자, 글자 수 표시</td><td>—</td><td>—</td><td>묻지 않음</td><td>60</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>저장 안 하고 나갈 때</td><td>"고친 내용을 버릴까요?" [계속 고치기] [버리기]</td><td>—</td><td>—</td><td>묻지 않음</td><td>고친 게 없으면 바로 닫힘</td><td>‹ → 확인창 → 버리기면 내 정보</td><td><span class="st">기본값(Claude)</span></td></tr>
