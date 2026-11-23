@@ -40,21 +40,29 @@ export const TEXT = {
 } as const;
 
 type State =
-  | { kind: "loading" }
-  | { kind: "ok"; log: ReadingLog }
-  | { kind: "notFound" }
-  | { kind: "failed" };
+  | { kind: "loading"; owner: string | null; logId: string }
+  | { kind: "ok"; owner: string; logId: string; log: ReadingLog }
+  | { kind: "notFound"; owner: string; logId: string }
+  | { kind: "failed"; owner: string; logId: string };
+
+function cachedFor(owner: string | null, logId: string): ReadingLog | undefined {
+  if (!owner) return undefined;
+  const s = shelfStore.get();
+  return s.owner === owner ? s.items?.find((l) => l.id === logId) : undefined;
+}
 
 export function ReadingLogDetail({ logId }: { logId: string }) {
   const router = useRouter();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const { status, userId } = useAuth();
+  const activeOwner = status === "signedIn" ? userId ?? null : null;
   const [state, setState] = useState<State>(() => {
-    const cached = shelfStore.get().owner === userId ? shelfStore.get().items?.find((l) => l.id === logId) : undefined;
-    return cached ? { kind: "ok", log: cached } : { kind: "loading" };
+    const cached = cachedFor(activeOwner, logId);
+    return cached && activeOwner ? { kind: "ok", owner: activeOwner, logId, log: cached } : { kind: "loading", owner: activeOwner, logId };
   });
   const [reload, setReload] = useState(0);
+  const [refreshFailed, setRefreshFailed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -78,17 +86,40 @@ export function ReadingLogDetail({ logId }: { logId: string }) {
   }, [navigation]);
 
   useEffect(() => {
-    if (status !== "signedIn") return;
+    setMenuOpen(false);
+    setEditing(false);
+    setConfirmDelete(false);
+    setRefreshFailed(false);
+    if (!activeOwner) {
+      setState({ kind: "loading", owner: null, logId });
+      return;
+    }
+    const cached = cachedFor(activeOwner, logId);
+    setState(cached ? { kind: "ok", owner: activeOwner, logId, log: cached } : { kind: "loading", owner: activeOwner, logId });
     const ctrl = new AbortController();
     fetchReadingLog(logId, ctrl.signal)
-      .then((log) => setState({ kind: "ok", log }))
+      .then((log) => {
+        if (ctrl.signal.aborted) return;
+        setRefreshFailed(false);
+        setState({ kind: "ok", owner: activeOwner, logId, log });
+      })
       .catch((err) => {
         if (ctrl.signal.aborted) return;
-        if (err instanceof ApiCallError && err.status === 404) setState({ kind: "notFound" });
-        else setState((s) => (s.kind === "ok" ? s : { kind: "failed" }));
+        if (err instanceof ApiCallError && err.status === 404) {
+          setRefreshFailed(false);
+          setState({ kind: "notFound", owner: activeOwner, logId });
+        } else {
+          setState((s) => {
+            if (s.kind === "ok" && s.owner === activeOwner && s.logId === logId) {
+              setRefreshFailed(true);
+              return s;
+            }
+            return { kind: "failed", owner: activeOwner, logId };
+          });
+        }
       });
     return () => ctrl.abort();
-  }, [logId, reload, status]);
+  }, [logId, reload, activeOwner]);
 
   const goBack = () => {
     if (router.canGoBack?.()) router.back();
@@ -102,12 +133,12 @@ export function ReadingLogDetail({ logId }: { logId: string }) {
     try {
       await deleteReadingLog(log.id);
       setConfirmDelete(false);
-      if (userId) shelfStore.remove(userId, log.id, TEXT.deleted);
+      if (activeOwner) shelfStore.remove(activeOwner, log.id, TEXT.deleted);
       goBack();
     } catch (err) {
       setConfirmDelete(false);
       if (err instanceof ApiCallError && err.status === 404) {
-        if (userId) shelfStore.remove(userId, log.id, TEXT.deleted); // 이미 없음: 책장에서도 뺀다
+        if (activeOwner) shelfStore.remove(activeOwner, log.id, TEXT.deleted); // 이미 없음: 책장에서도 뺀다
         goBack();
       } else showToast(TEXT.deleteFailed); // 기록 화면 그대로
     } finally {
@@ -116,22 +147,23 @@ export function ReadingLogDetail({ logId }: { logId: string }) {
     }
   }
 
-  if (state.kind === "ok" && editing) {
+  const owned = activeOwner !== null && state.owner === activeOwner && state.logId === logId;
+  const log = owned && state.kind === "ok" ? state.log : null;
+
+  if (log && editing) {
     return (
       <ReadingLogEditor
         mode="edit"
-        log={state.log}
+        log={log}
         onCancel={() => setEditing(false)}
-        onDone={(log) => {
-          setState({ kind: "ok", log });
+        onDone={(saved) => {
+          if (activeOwner) setState({ kind: "ok", owner: activeOwner, logId, log: saved });
           setEditing(false);
           showToast(EDITOR_TEXT.saved);
         }}
       />
     );
   }
-
-  const log = state.kind === "ok" ? state.log : null;
 
   return (
     <View style={base.screen}>
@@ -181,7 +213,7 @@ export function ReadingLogDetail({ logId }: { logId: string }) {
             <Text style={base.primaryText}>{EDITOR_TEXT.login}</Text>
           </Pressable>
         </View>
-      ) : state.kind === "loading" ? (
+      ) : !owned || state.kind === "loading" ? (
         <View style={[base.flex, base.center]}>
           <ActivityIndicator accessibilityLabel="불러오는 중" />
         </View>
@@ -192,12 +224,20 @@ export function ReadingLogDetail({ logId }: { logId: string }) {
       ) : state.kind === "failed" ? (
         <View style={[base.flex, base.center]}>
           <Text style={base.centerText}>{TEXT.loadFailed}</Text>
-          <Pressable accessibilityRole="button" onPress={() => { setState({ kind: "loading" }); setReload((n) => n + 1); }} style={({ pressed }) => [base.secondaryBtn, pressed && ACT.secondaryPressed]}>
+          <Pressable accessibilityRole="button" onPress={() => { setState({ kind: "loading", owner: activeOwner, logId }); setReload((n) => n + 1); }} style={({ pressed }) => [base.secondaryBtn, pressed && ACT.secondaryPressed]}>
             <Text style={base.secondaryText}>{TEXT.retry}</Text>
           </Pressable>
         </View>
       ) : log ? (
         <>
+          {refreshFailed ? (
+            <View testID="detail-refresh-error" style={styles.errorBanner}>
+              <Text style={styles.errorBannerText}>{TEXT.loadFailed}</Text>
+              <Pressable accessibilityRole="button" onPress={() => { setRefreshFailed(false); setReload((n) => n + 1); }} style={({ pressed }) => [base.secondaryBtn, pressed && ACT.secondaryPressed]}>
+                <Text style={base.secondaryText}>{TEXT.retry}</Text>
+              </Pressable>
+            </View>
+          ) : null}
           <ScrollView style={base.flex} contentContainerStyle={[base.body, styles.body]}>
             <View style={styles.bookRow}>
               <Cover book={log.book} size={72} />
@@ -284,4 +324,6 @@ const styles = StyleSheet.create({
   menuItem: { minHeight: 44, justifyContent: "center", paddingHorizontal: 16 },
   menuLine: { borderBottomWidth: StyleSheet.hairlineWidth, borderColor: C.seamHairline },
   menuText: { fontSize: 15, color: C.text },
+  errorBanner: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderColor: C.seamHairline, backgroundColor: C.panelFrosted },
+  errorBannerText: { flex: 1, fontSize: 13, color: C.inkSoft },
 });

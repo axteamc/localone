@@ -143,8 +143,9 @@ export const shelfStore = {
       listeners.delete(fn);
     };
   },
-  /** 서버에서 받은 첫 묶음(또는 이어 받은 묶음)을 넣는다. 다른 계정이면 먼저 비운다 */
+  /** 서버에서 받은 첫 묶음(또는 이어 받은 묶음)을 넣는다. 이어 받기 때 소유자가 다르면 무시한다 */
   setPage(owner: string, page: ReadingLogPage, append: boolean) {
+    if (append && shelf.owner !== owner) return;
     const base = shelf.owner === owner && append ? shelf.items ?? [] : [];
     const seen = new Set(base.map((l) => l.id));
     emit({

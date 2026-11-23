@@ -67,10 +67,13 @@ export function ReadingLogScreen() {
   const [loading, setLoading] = useState(false);
   const [failed, setFailed] = useState(false);
   const [moreLoading, setMoreLoading] = useState(false);
-  const [picked, setPicked] = useState<ReadingLog | null>(null);
+  const [picked, setPicked] = useState<{ owner: string; log: ReadingLog } | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [reload, setReload] = useState(0);
+  const genRef = useRef(0);
+  const moreCtrlRef = useRef<AbortController | null>(null);
+  const loadingCursorRef = useRef<string | null>(null);
 
   const load = useCallback(
     async (owner: string, cursor: string | null, signal?: AbortSignal) => {
@@ -82,8 +85,15 @@ export function ReadingLogScreen() {
   );
 
   useEffect(() => {
+    genRef.current += 1;
+    moreCtrlRef.current?.abort();
+    moreCtrlRef.current = null;
+    loadingCursorRef.current = null;
+    setMoreLoading(false);
     if (status !== "signedIn" || !userId) {
       setPicked(null);
+      setFailed(false);
+      setLoading(false);
       return;
     }
     const ctrl = new AbortController();
@@ -96,7 +106,10 @@ export function ReadingLogScreen() {
       .finally(() => {
         if (!ctrl.signal.aborted) setLoading(false);
       });
-    return () => ctrl.abort();
+    return () => {
+      ctrl.abort();
+      moreCtrlRef.current?.abort();
+    };
   }, [status, userId, reload, load]);
 
   // 쓰기·지우기 뒤 책장으로 돌아오면 안내 한 번("저장했어요"·"기록을 지웠어요")
@@ -112,19 +125,32 @@ export function ReadingLogScreen() {
     if (toastTimer.current) clearTimeout(toastTimer.current);
   }, []);
 
-  // 카드에 띄운 기록이 지워지거나 고쳐지면 카드도 맞춘다
-  useEffect(() => {
-    if (!picked) return;
-    const fresh = items?.find((l) => l.id === picked.id) ?? null;
-    if (fresh !== picked) setPicked(fresh);
-  }, [items, picked]);
+  const activePicked =
+    status === "signedIn" && userId && picked && picked.owner === userId
+      ? (items?.find((l) => l.id === picked.log.id) ?? null)
+      : null;
 
   const loadMore = () => {
-    if (!userId || moreLoading || !shelf.nextCursor || shelf.owner !== userId) return;
+    const cursor = shelf.nextCursor;
+    if (!userId || !cursor || moreLoading || loadingCursorRef.current === cursor || shelf.owner !== userId) return;
+    const reqGen = genRef.current;
+    const reqOwner = userId;
+    const ctrl = new AbortController();
+    moreCtrlRef.current = ctrl;
+    loadingCursorRef.current = cursor;
     setMoreLoading(true);
-    load(userId, shelf.nextCursor)
+    fetchReadingLogs({ cursor }, ctrl.signal)
+      .then((page) => {
+        if (ctrl.signal.aborted || genRef.current !== reqGen) return;
+        shelfStore.setPage(reqOwner, page, true);
+      })
       .catch(() => undefined) // 다음 묶음 실패는 다음 스크롤 때 다시 한다
-      .finally(() => setMoreLoading(false));
+      .finally(() => {
+        if (genRef.current === reqGen) {
+          loadingCursorRef.current = null;
+          setMoreLoading(false);
+        }
+      });
   };
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -190,7 +216,7 @@ export function ReadingLogScreen() {
                     testID={`shelf-book-${log.id}`}
                     accessibilityRole="button"
                     accessibilityLabel={log.book.title}
-                    onPress={() => setPicked(log)}
+                    onPress={() => setPicked(userId ? { owner: userId, log } : null)}
                     style={({ pressed }) => [styles.slot, pressed && styles.slotPressed]}
                   >
                     <Cover book={log.book} size={COVER} />
@@ -208,27 +234,35 @@ export function ReadingLogScreen() {
 
   return (
     <View style={base.screen}>
+      {items !== null && failed ? (
+        <View testID="shelf-refresh-error" style={styles.errorBanner}>
+          <Text style={styles.errorBannerText}>{TEXT.loadFailed}</Text>
+          <Pressable accessibilityRole="button" onPress={() => setReload((n) => n + 1)} style={({ pressed }) => [base.secondaryBtn, pressed && ACT.secondaryPressed]}>
+            <Text style={base.secondaryText}>{TEXT.retry}</Text>
+          </Pressable>
+        </View>
+      ) : null}
       {content}
 
-      {picked ? (
+      {activePicked ? (
         <View testID="shelf-card" style={styles.card}>
           <Pressable accessibilityRole="button" accessibilityLabel={TEXT.close} onPress={() => setPicked(null)} hitSlop={8} style={styles.cardClose}>
             <Text style={base.headerX}>✕</Text>
           </Pressable>
           <View style={styles.cardRow}>
-            <Cover book={picked.book} size={56} />
+            <Cover book={activePicked.book} size={56} />
             <View style={base.flex}>
-              <Text style={base.bookTitle} numberOfLines={2}>{picked.book.title}</Text>
-              {picked.book.author ? <Text style={base.sub} numberOfLines={1}>{picked.book.author}</Text> : null}
-              {picked.note ? <Text style={styles.noteLine} numberOfLines={1}>{picked.note.split("\n")[0]}</Text> : null}
+              <Text style={base.bookTitle} numberOfLines={2}>{activePicked.book.title}</Text>
+              {activePicked.book.author ? <Text style={base.sub} numberOfLines={1}>{activePicked.book.author}</Text> : null}
+              {activePicked.note ? <Text style={styles.noteLine} numberOfLines={1}>{activePicked.note.split("\n")[0]}</Text> : null}
             </View>
           </View>
-          <Text style={base.sub}>{`${TEXT.readOn} · ${picked.read_on ? monthDay(picked.read_on) : TEXT.noDate}`}</Text>
-          <Text style={base.sub}>{`${TEXT.library} · ${picked.library?.name ?? TEXT.noLibrary}`}</Text>
+          <Text style={base.sub}>{`${TEXT.readOn} · ${activePicked.read_on ? monthDay(activePicked.read_on) : TEXT.noDate}`}</Text>
+          <Text style={base.sub}>{`${TEXT.library} · ${activePicked.library?.name ?? TEXT.noLibrary}`}</Text>
           <Pressable
             accessibilityRole="button"
             onPress={() => {
-              const id = picked.id;
+              const id = activePicked.id;
               setPicked(null);
               router.push({ pathname: "/reading/[logId]", params: { logId: id } });
             }}
@@ -292,4 +326,6 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   fabText: { ...ACT.primaryText, fontSize: 22, lineHeight: 24 },
+  errorBanner: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderColor: C.seamHairline, backgroundColor: C.panelFrosted },
+  errorBannerText: { flex: 1, fontSize: 13, color: C.inkSoft },
 });

@@ -466,4 +466,101 @@ describe("책장 탭 (C3·C6)", () => {
     await render(<ReadingLogScreen />);
     expect(screen.queryByTestId(`shelf-book-${makeLog().id}`)).toBeNull();
   });
+
+  test("account switch clears detail body, menu, edit form and shelf picked card", async () => {
+    const log = makeLog({ note: "A만 볼 수 있는 감상" });
+    fetchReadingLog.mockResolvedValueOnce(log);
+    const detailView = await render(<ReadingLogDetail logId={log.id} />);
+    expect(await screen.findByText("A만 볼 수 있는 감상")).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText(DETAIL.more));
+    await fireEvent.press(screen.getByText(DETAIL.edit));
+    expect(screen.getByText(EDITOR.editTitle)).toBeTruthy();
+
+    let resolveLateA!: (l: ReadingLog) => void;
+    signedIn(USER_B);
+    fetchReadingLog.mockReturnValueOnce(new Promise((r) => { resolveLateA = r; }));
+    await detailView.rerender(<ReadingLogDetail logId={log.id} />);
+    expect(screen.queryByText(EDITOR.editTitle)).toBeNull();
+    expect(screen.queryByText("A만 볼 수 있는 감상")).toBeNull();
+    expect(screen.queryByLabelText(DETAIL.more)).toBeNull();
+
+    // 로그아웃 시 늦은 이전 응답은 폐기된다
+    mockedUseAuth.mockReturnValue({ status: "signedOut", userId: null } as unknown as ReturnType<typeof useAuth>);
+    await detailView.rerender(<ReadingLogDetail logId={log.id} />);
+    await act(async () => resolveLateA(makeLog({ note: "늦게 온 응답" })));
+    expect(screen.queryByText("늦게 온 응답")).toBeNull();
+    await detailView.unmount();
+
+    // 책장 선택 카드도 계정 전환 즉시 닫힌다
+    signedIn(USER_A);
+    fetchReadingLogs.mockResolvedValueOnce({ items: [log], next_cursor: null });
+    const shelfView = await render(<ReadingLogScreen />);
+    await fireEvent.press(await screen.findByTestId(`shelf-book-${log.id}`));
+    expect(screen.getByTestId("shelf-card")).toBeTruthy();
+
+    signedIn(USER_B);
+    fetchReadingLogs.mockReturnValueOnce(new Promise(() => undefined));
+    await shelfView.rerender(<ReadingLogScreen />);
+    expect(screen.queryByTestId("shelf-card")).toBeNull();
+  });
+
+  test("loadMore deduplicates same cursor and drops stale page after account switch", async () => {
+    const logA1 = makeLog({ id: "a1", note: "A 첫 페이지" });
+    const logA2 = makeLog({ id: "a2", note: "A 둘째 페이지" });
+    const logB1 = makeLog({ id: "b1", note: "B 첫 페이지" });
+    fetchReadingLogs.mockResolvedValueOnce({ items: [logA1], next_cursor: "cur-a1" });
+    const view = await render(<ReadingLogScreen />);
+    await screen.findByTestId("shelf-book-a1");
+
+    let resolveMoreA!: (p: api.ReadingLogPage) => void;
+    fetchReadingLogs.mockReturnValueOnce(new Promise((r) => { resolveMoreA = r; }));
+    const nearBottom = { nativeEvent: { layoutMeasurement: { height: 600 }, contentOffset: { y: 500 }, contentSize: { height: 1000 } } };
+    await fireEvent.scroll(screen.getByTestId("shelf"), nearBottom);
+    await fireEvent.scroll(screen.getByTestId("shelf"), nearBottom);
+    expect(fetchReadingLogs.mock.calls.filter((c) => c[0].cursor === "cur-a1")).toHaveLength(1);
+
+    // 다른 계정으로 전환하고 새 목록을 받은 뒤, 이전 추가 페이지 응답이 뒤늦게 도착해도 덮어쓰지 못한다
+    signedIn(USER_B);
+    fetchReadingLogs.mockResolvedValueOnce({ items: [logB1], next_cursor: "cur-b1" });
+    await view.rerender(<ReadingLogScreen />);
+    await screen.findByTestId("shelf-book-b1");
+
+    await act(async () => resolveMoreA({ items: [logA2], next_cursor: "cur-stale" }));
+    expect(api.shelfStore.get().owner).toBe(USER_B);
+    expect(api.shelfStore.get().items?.map((l) => l.id)).toEqual(["b1"]);
+    expect(api.shelfStore.get().nextCursor).toBe("cur-b1");
+
+    // shelfStore 직접 append 호출도 소유자가 다르면 무시한다
+    api.shelfStore.setPage(USER_A, { items: [logA2], next_cursor: "cur-stale" }, true);
+    expect(api.shelfStore.get().owner).toBe(USER_B);
+    expect(api.shelfStore.get().items?.map((l) => l.id)).toEqual(["b1"]);
+  });
+
+  test("cached shelf and detail still show load error and recover on retry", async () => {
+    const log = makeLog({ note: "캐시된 감상" });
+    api.shelfStore.setPage(USER_A, { items: [log], next_cursor: null }, false);
+
+    // 책장: 캐시가 있어도 재조회 실패 시 오류·재시도를 보여 주고 회복한다
+    fetchReadingLogs
+      .mockRejectedValueOnce(new api.ApiCallError(0, "NETWORK", "x", ""))
+      .mockResolvedValueOnce({ items: [log], next_cursor: null });
+    const shelfView = await render(<ReadingLogScreen />);
+    expect(await screen.findByTestId("shelf-refresh-error")).toBeTruthy();
+    expect(screen.getByText(SHELF.loadFailed)).toBeTruthy();
+    await fireEvent.press(screen.getByText(SHELF.retry));
+    await waitFor(() => expect(screen.queryByTestId("shelf-refresh-error")).toBeNull());
+    expect(fetchReadingLogs).toHaveBeenCalledTimes(2);
+    await shelfView.unmount();
+
+    // 상세: 캐시가 있어도 재조회 실패 시 오류·재시도를 보여 주고 회복한다
+    fetchReadingLog
+      .mockRejectedValueOnce(new api.ApiCallError(0, "NETWORK", "x", ""))
+      .mockResolvedValueOnce(makeLog({ note: "새로 받은 감상" }));
+    await render(<ReadingLogDetail logId={log.id} />);
+    expect(await screen.findByTestId("detail-refresh-error")).toBeTruthy();
+    expect(screen.getByText(DETAIL.loadFailed)).toBeTruthy();
+    await fireEvent.press(screen.getByText(DETAIL.retry));
+    expect(await screen.findByText("새로 받은 감상")).toBeTruthy();
+    expect(screen.queryByTestId("detail-refresh-error")).toBeNull();
+  });
 });
