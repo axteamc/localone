@@ -3,7 +3,10 @@ import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import React from "react";
 import { StyleSheet } from "react-native";
+import { feedItemKey } from "../../local-feed/api";
 import { FeedItemCard } from "../../local-feed/FeedItemCard";
+import { ComposeChooser, GUESTBOOK_TEXT } from "../../local-feed/GuestbookComposer";
+import { feedItemHeightRatio } from "../../local-feed/LibraryFeed";
 import type { ClubItem } from "../api";
 import { CARD_TEXT, ClubCard, formatClubWhen } from "../ClubCard";
 
@@ -84,5 +87,15 @@ describe("피드 모임 카드", () => {
       time: "오전 10:00 ~ 오후 1:30",
     });
     expect(formatClubWhen(null, null)).toBeNull();
+  });
+
+  test("club feed key, height ratio, and chooser onClub work together", async () => {
+    const entry = { kind: "club" as const, club: item() };
+    expect(feedItemKey(entry)).toBe("club:club-1");
+    expect(feedItemHeightRatio(entry)).toBe(1.15);
+    const onClub = jest.fn();
+    await render(<ComposeChooser visible onPost={jest.fn()} onGuestbook={jest.fn()} onClub={onClub} onClose={jest.fn()} />);
+    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.chooseClub));
+    expect(onClub).toHaveBeenCalledTimes(1);
   });
 });
