@@ -319,7 +319,61 @@
   </div>
 </section>
 
-<!-- 중심 요소 4~6은 3이 '확인'이 된 뒤에 같은 모양으로 추가한다:
+<!-- ===== 중심 요소 4: 불참 제한이 걸리는 범위 ===== -->
+<section class="element" id="el-scope" data-chosen="">
+  <h2>정할 것 4. 불참으로 제한되면 어디서 무엇을 못 하나 <span class="status">결정 전</span></h2>
+  <div class="flow"><b>정해진 것.</b> 제한은 기간이 있고(최근 1년 불참 수로 3일·7일·30일·참가 불가), 참가 버튼 자리에 "지금은 모임에 참가할 수 없어요 (언제까지)"가 보여요. 댓글 운영으로 생긴 제한은 다음 정할 것에서 따로 봐요.<br>
+  <b>정할 것.</b> <b>불참</b> 때문에 제한된 사람이 <b>모든 모임</b>에서 막히는지 <b>불참했던 모임(다음 회차 포함)</b>에서만 막히는지, <b>댓글</b>도 막히는지예요. 세 화면 모두 같은 사람(불참 2번, 12.5까지 제한)이 다른 모임을 연 모습이에요. "불참했던 모임의 다음 회차 보기"도 눌러 보세요.</div>
+  <div class="pick">다시 보기: <select data-for="el-scope">
+    <option value="A">후보 A — 모든 모임 참가만 막힘, 댓글은 됨</option>
+    <option value="B">후보 B — 모든 모임 참가와 댓글 모두 막힘</option>
+    <option value="C">후보 C — 불참했던 모임(다음 회차)만 참가 막힘</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 모든 모임 참가만 막힘, 댓글은 됨 <span class="badge">추천</span></h3>
+      <div class="phone"><div class="scr" data-screen="other"><div class="hd"><button class="back">‹</button> <span class="vname">모임</span></div><div class="cs"><div class="info"><div class="bk"></div><div><div class="nm">시집 같이 읽기(다른 모임)</div><div class="ln"><b>12.6 토 오후 3:00</b> ~ 5:00</div><div class="ln">1층 열람실 · 2/8명</div></div></div><button class="main-btn" disabled>지금은 모임에 참가할 수 없어요 (12.5 18:00까지)</button><div class="sec">댓글 1</div><div class="cm"><i>해바라기 · 어제</i>책은 미리 읽어 와요?</div><button class="sub-btn" data-open="same">불참했던 모임의 다음 회차 보기</button></div><div class="cin">댓글 쓰기</div></div><div class="scr hide" data-screen="same"><div class="hd"><button class="back">‹</button> <span class="vname">모임</span></div><div class="cs"><div class="info"><div class="bk"></div><div><div class="nm">소년이 온다 같이 읽기 2회차</div><div class="ln"><b>12.6 토 오후 3:00</b> ~ 5:00</div><div class="ln">1층 열람실 · 2/8명</div></div></div><button class="main-btn" disabled>지금은 모임에 참가할 수 없어요 (12.5 18:00까지)</button><div class="sec">댓글 1</div><div class="cm"><i>해바라기 · 어제</i>책은 미리 읽어 와요?</div><button class="sub-btn" data-open="other">다른 모임 보기</button></div><div class="cin">댓글 쓰기</div></div></div>
+      <p>어느 모임이든 참가 버튼이 막혀요. 댓글은 그대로 쓸 수 있어서 일정 의논에는 낄 수 있어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>제한 중 모임 화면 → 참가 버튼 자리 "지금은 모임에 참가할 수 없어요 (12.5 18:00까지)" → 댓글은 씀 → 기간이 끝나면 다시 참가.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>다른 모임과 불참했던 모임 다음 회차 모두 같은 모습</li><li>댓글 칸은 평소와 같아요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>자리만 잡고 안 오는 일을 막으면서 대화는 막지 않아요. / 제한 중에도 댓글로 계속 말을 걸 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-61 오류: 무엇이 안 됐는지 + 다시 해 보기 — 막힌 이유를 버튼 자리에 (대부분의 앱)</p>
+      <p><b>추천 이유:</b> 불참은 "자리만 잡고 안 오는 것"이라 참가를 막는 게 맞고, 댓글 제한은 댓글 운영에서 따로 걸려요. 불참하는 사람이 다른 모임에도 피해를 주니 모든 모임이 맞아요. 더 엄하게 하고 싶다면 B가 나아요.</p>
+    </article>
+
+    <article class="cand" data-id="B">
+      <h3>후보 B — 모든 모임 참가와 댓글 모두 막힘</h3>
+      <div class="phone"><div class="scr" data-screen="other"><div class="hd"><button class="back">‹</button> <span class="vname">모임</span></div><div class="cs"><div class="info"><div class="bk"></div><div><div class="nm">시집 같이 읽기(다른 모임)</div><div class="ln"><b>12.6 토 오후 3:00</b> ~ 5:00</div><div class="ln">1층 열람실 · 2/8명</div></div></div><button class="main-btn" disabled>지금은 모임에 참가할 수 없어요 (12.5 18:00까지)</button><div class="sec">댓글 1</div><div class="cm"><i>해바라기 · 어제</i>책은 미리 읽어 와요?</div><button class="sub-btn" data-open="same">불참했던 모임의 다음 회차 보기</button></div><div class="cin">지금은 댓글을 쓸 수 없어요 (12.5 18:00까지)</div></div><div class="scr hide" data-screen="same"><div class="hd"><button class="back">‹</button> <span class="vname">모임</span></div><div class="cs"><div class="info"><div class="bk"></div><div><div class="nm">소년이 온다 같이 읽기 2회차</div><div class="ln"><b>12.6 토 오후 3:00</b> ~ 5:00</div><div class="ln">1층 열람실 · 2/8명</div></div></div><button class="main-btn" disabled>지금은 모임에 참가할 수 없어요 (12.5 18:00까지)</button><div class="sec">댓글 1</div><div class="cm"><i>해바라기 · 어제</i>책은 미리 읽어 와요?</div><button class="sub-btn" data-open="other">다른 모임 보기</button></div><div class="cin">지금은 댓글을 쓸 수 없어요 (12.5 18:00까지)</div></div></div>
+      <p>어느 모임이든 참가 버튼과 댓글 칸이 모두 막혀요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>제한 중 모임 화면 → 참가 버튼·댓글 칸 둘 다 "지금은 … 할 수 없어요 (12.5 18:00까지)" → 기간이 끝나면 다시.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>댓글 칸도 흐린 안내로 바뀌어요</li><li>읽기는 다 돼요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>규칙이 하나라 단순하고 엄해요. / 불참과 상관없는 댓글까지 못 써요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-54 화면 위 띠 배너 — 화면 전체에 걸린 상태 (오프라인 안내)</p>
+    </article>
+
+    <article class="cand" data-id="C">
+      <h3>후보 C — 불참했던 모임(다음 회차)만 막힘</h3>
+      <div class="phone"><div class="scr" data-screen="other"><div class="hd"><button class="back">‹</button> <span class="vname">모임</span></div><div class="cs"><div class="info"><div class="bk"></div><div><div class="nm">시집 같이 읽기(다른 모임)</div><div class="ln"><b>12.6 토 오후 3:00</b> ~ 5:00</div><div class="ln">1층 열람실 · 2/8명</div></div></div><button class="main-btn">모임에 참가</button><div class="sec">댓글 1</div><div class="cm"><i>해바라기 · 어제</i>책은 미리 읽어 와요?</div><button class="sub-btn" data-open="same">불참했던 모임의 다음 회차 보기</button></div><div class="cin">댓글 쓰기</div></div><div class="scr hide" data-screen="same"><div class="hd"><button class="back">‹</button> <span class="vname">모임</span></div><div class="cs"><div class="info"><div class="bk"></div><div><div class="nm">소년이 온다 같이 읽기 2회차</div><div class="ln"><b>12.6 토 오후 3:00</b> ~ 5:00</div><div class="ln">1층 열람실 · 2/8명</div></div></div><button class="main-btn" disabled>지금은 모임에 참가할 수 없어요 (12.5 18:00까지)</button><div class="sec">댓글 1</div><div class="cm"><i>해바라기 · 어제</i>책은 미리 읽어 와요?</div><button class="sub-btn" data-open="other">다른 모임 보기</button></div><div class="cin">댓글 쓰기</div></div></div>
+      <p>불참했던 모임과 그 다음 회차에서만 참가가 막혀요. 다른 모임에는 참가할 수 있어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>제한 중 다른 모임 → 평소처럼 참가 / 불참했던 모임 다음 회차 → "지금은 모임에 참가할 수 없어요" → 기간이 끝나면 다시.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>다른 모임은 평소와 똑같아요</li><li>다음 회차는 이전 회차와 이어진 모임만</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>그 모임을 만든 사람만 지켜 줘요. / 여기저기 모임을 옮겨 다니며 계속 빠질 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-11 머리 오른쪽 ⋯ 메뉴 — 그 모임 안에서만 바뀌는 것 (iOS ⋯)</p>
+    </article>
+
+  </div>
+</section>
+
+<!-- 중심 요소 5~6은 4가 '확인'이 된 뒤에 같은 모양으로 추가한다:
      2 출석 확인과 불참 판정(K2-O1·O2) · 3 불참 횟수 세는 법과 4회째(K2-O3) · 4 제한이 걸리는 범위(K2-O4) · 5 댓글 운영 제한 기간(K2-O5) · 6 알림함 화면(K2-O8) -->
 
 <!-- ===== 잘 안 될 때 (예외, 1B 3단계) — 기록 화면 기준. 중심 요소를 다 정한 뒤 다시 본다 ===== -->
@@ -355,8 +409,8 @@
     <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
     <tr data-el="el-record"><td>1. 기록 화면에서 먼저 보이는 것</td><td>A 기록 → 후기 → 다음 모임</td><td>없음</td><td>B 후기 칸 맨 위, C 다음 모임 맨 위</td><td>"기록이 먼저 보이는 게 좋아요. 그날 모임을 돌아볼 수 있어서요" · 불편한 점: 다음 모임이 맨 아래라 찾기 어려워요</td><td>맨 위 기록 카드(책 표지·이름·날짜 시각·끝난 모임·장소·참가 수·내 참가/참석), 곡률 9 → 내 후기 칸(나만 보기 기본, 2000자) → 다음 모임(만든 사람은 권하는 카드, 참가자는 이미 만든 다음 모임 + 만들기 버튼)</td><td>모임 화면 기록·후기 쓰기 → 그날 기록 → 아래 후기 쓰기·저장 → 게시물로 올리기 → 더 내려 다음 모임</td><td><span class="st">확인</span></td></tr>
     <tr data-el="el-attend"><td>2. 출석 확인과 불참 판정</td><td>A 만든 사람 표시 → 관리자 확인</td><td>없음</td><td>B 본인 참석 체크 + 만든 사람 표시, C 본인에게 사정 묻기</td><td>"만든 사람이 표시하고 관리자가 확인하는 게 좋아요. 관리자가 확인하니까 억울하게 불참되는 사람이 없어서요" · 불편한 점: 관리자 확인을 기다리는 동안 결과가 늦어요</td><td>끝난 모임 기록 화면에 만든 사람만 출석 확인 칸, 참가자마다 왔어요/안 왔어요(기본 왔어요), 보내기 확인창. 안 왔어요 → 관리자 확인 전에는 결과를 기다리고 있어요, 확인되면 불참 1회</td><td>모임 끝남 → 만든 사람 출석 확인 → 보내기 → 관리자 확인 → 불참 1회 + 본인 알림함 안내 → 본인 재검토 요청 가능</td><td><span class="st">확인</span></td></tr>
-    <tr data-el="el-count"><td>3. 불참 횟수 세는 법과 4회째</td><td>A 최근 1년 불참만 셈, 4회째 참가 불가는 운영자가 풀 때까지</td><td>없음</td><td>B 지금까지 전부 셈, C 연속 불참만 셈·90일 자동 해제</td><td>"최근 1년만 세는 게 좋아요. 예전 실수가 계속 남지 않아서요" · 불편한 점: (받는 중)</td><td>관리자가 확인한 불참 중 확인 시각이 최근 365일 안인 것만 셈. 1회 3일·2회 7일·3회 30일·4회 참가 불가(끝나는 날 없음). 기록 옆 셈 / 1년 지나 안 셈 표시</td><td>불참 확인 → 최근 1년 불참 수로 단계 → 제한 → 1년 지난 불참은 저절로 빠짐 → 참가 불가는 재검토 요청 → 운영자 해제</td><td><span class="st">확인</span></td></tr>
-    <tr><td>4. 제한이 걸리는 범위</td><td>(3 뒤)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-count"><td>3. 불참 횟수 세는 법과 4회째</td><td>A 최근 1년 불참만 셈, 4회째 참가 불가는 운영자가 풀 때까지</td><td>없음</td><td>B 지금까지 전부 셈, C 연속 불참만 셈·90일 자동 해제</td><td>"최근 1년만 세는 게 좋아요. 예전 실수가 계속 남지 않아서요" · 불편한 점: 자주 빠지는 사람이 계속 30일까지만 가요</td><td>관리자가 확인한 불참 중 확인 시각이 최근 365일 안인 것만 셈. 1회 3일·2회 7일·3회 30일·4회 참가 불가(끝나는 날 없음). 기록 옆 셈 / 1년 지나 안 셈 표시</td><td>불참 확인 → 최근 1년 불참 수로 단계 → 제한 → 1년 지난 불참은 저절로 빠짐 → 참가 불가는 재검토 요청 → 운영자 해제</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-scope"><td>4. 불참 제한 범위</td><td>— (추천: 후보 A 모든 모임 참가만, 댓글은 됨)</td><td>—</td><td>—</td><td>(받기 전)</td><td>버튼 자리 지금은 모임에 참가할 수 없어요 (M.D HH:mm까지)</td><td>제한 중 모임 화면 → 막힌 안내 → 기간 끝나면 다시 참가</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>5. 댓글 운영 제한 기간</td><td>(4 뒤)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>6. 알림함 화면</td><td>(5 뒤)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>내 정보 알림 아이콘 → 알림함 → 안내 누르면 모임 화면</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>후기 글자 수</td><td>2000자</td><td>—</td><td>—</td><td>묻지 않음</td><td>칸 아래 n/2000</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
