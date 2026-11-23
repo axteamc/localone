@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 짝 문서: 세부/<STEP>.md 이면 이 줄을 지워도 된다(같은 이름으로 찾는다). 다른 곳이면 상대 경로를 적는다. -->
+<meta name="명세" content="READ-2.md">
+<title>독서 기록 READ-2 시안</title>
+<!--
+  시안 템플릿 (../team/prompts/1_기획.md 1B 2단계 시안 사이클). 복사해서 specs/<기능>/세부/<STEP>_시안.html 로 쓴다.
+  아래 내용은 "검색창을 누르면 보이는 화면"의 예시다. 내용은 전부 바꿔 쓰되 **부품(아래 목록)은 그대로 가져다 쓴다.**
+
+  검사: sh ../team/tools/check_mockup.sh <이 파일>   (훅이 저장할 때마다·차례 끝에 자동으로 돌린다. 통과해야 끝낼 수 있다)
+
+  지킬 것 (검사기 번호)
+  - 정할 중심 요소 하나 = <section class="element" id="el-…"> 하나(M10·M11). 후보 화면 3개, 연속값이면 data-kind="continuous" + 기준·3단계 4개(M12).
+  - 후보 = <article class="cand" data-id="…">. 안에: 휴대폰 틀 .phone(M17), 눌러 볼 수 있는 것 하나 이상(M18),
+    "누르면 이렇게 이어져요"·"화면을 열어야 보이는 것"·"얻는 것 / 포기하는 것"·"표준 근거: P-번호"(M15·M16).
+  - 표준 근거는 ../team/docs/앱_표준_패턴.md 의 번호. 후보 3개는 서로 다른 패턴. 목록 밖은 "새 패턴 — 이유", 한 요소에 하나까지.
+  - 추천은 후보 하나에만 class="cand recommended" + "추천 이유"(M13).
+  - 채택 후: data-chosen="<후보 id>", 상태 "확인", 명세 패널 이유 칸에 사용자 말 그대로(M20·M32). 후보는 지우지 않는다 — 선택 상자로 다시 본다(M21).
+  - 명세 패널 #spec: 요소마다 <tr data-el="el-…">(M31), 머리 칸 채택안·차선·탈락안·이유·값·유저 플로우·상태(M30).
+  - 세부 시안은 #except(예외 4장면, M40)·#fullflow(M41). 명세서 확인 목록의 '확인' 행은 "시안 #el-…"를 적는다(X10).
+  - 색·곡률은 :root 토큰(var(--이름))만(M03). 외부 연결 없음(M02).
+
+  부품 목록 (class) — 휴대폰 화면은 이것만 조립해도 된다
+  - .phone 휴대폰 틀 240×430 · .scr 화면 한 장(data-screen="이름", 첫 장 말고는 class="scr hide")
+  - .search 맨 위 검색창 / .field 검색 화면의 입력 칸 / .tabbar 하단 탭 바 / .vhead + .back 머리와 "‹"
+  - .map·.pin·.me 지도·핀·내 위치 / .chip 떠 있는 작은 버튼 / .btn·.btn.ghost 버튼 / .switch 스위치 / .seg 세그먼트
+  - .sheet 아래에서 올라오는 카드 / .menu ⋯ 메뉴 / .toast 아래 한 줄 안내 / .note-card 버튼 없는 작은 카드
+  - .covers 책 표지 줄 / .li 목록 한 줄 / .two-col 두 칸 / .vbody 아직 안 그린 자리(점선)
+  동작 (data-…) — 스크립트를 새로 쓰지 않아도 된다
+  - data-open="화면이름"   같은 .phone 안의 그 화면만 보이기
+  - data-toast="id"        그 안내를 2초 보이기 / data-menu="id" 메뉴 열고 닫기 / data-close="id" 닫기 / data-show="id" 다시 띄우기
+  - data-swap="켜기 글자|끄기 글자"  누를 때마다 글자 바꾸기 / .switch 는 누르면 켜짐·꺼짐
+  - <select data-for="el-…"> 채택안·탈락안 다시 보기 (옵션 값 = 후보 data-id)
+-->
+<style>
+  :root {
+    /* 개발산출물/디자인_기준.md 토큰 (warm, M1 기본). 새 색이 필요하면 여기에 이름을 붙여 더한다 */
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+    --cream:#EFEFE7; --paper:#EFF1F1; --ink-strong:#2E333F; --text:#1D1D1F; --sub:#71716F;
+    --me-dot:#3B7BDB; --on-dark-sub:#CFD2D8;
+    --r-card:18px; --r-pill:18px;
+    /* 도서관마다 고유 색 (결정 4, 00 제안 "도서관마다 고유 색"). 임시 값 — 팔레트 색 목록은 D가 정한다(MY-3 M3-O4와 같은 방식). 이름만 쓰고 값은 여기 한 곳 */
+    --lib-1:#C7D3E3; --lib-2:#E6C8CF; --lib-3:#C9DDBF; --lib-4:#E8DDBE;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; line-height:1.5; }
+  header.page, main { max-width:1280px; margin:0 auto; padding:0 16px; }
+  header.page { padding-top:20px; }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:17px; margin:0 0 4px; } h3 { font-size:15px; margin:0 0 8px; }
+  .how, .flow, .decided { background:var(--cream); border-radius:var(--r-card); padding:12px 16px; margin:10px 0 0; }
+  .decided { border-left:5px solid var(--ink-strong); }
+  section.element { margin-top:32px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:var(--r-pill); background:var(--surface2); margin-left:6px; font-weight:400; }
+  .pick { margin:8px 0 0; font-size:14px; }
+  .pick select { font:inherit; padding:4px 8px; border-radius:10px; border:1px solid var(--surface3); background:var(--paper); }
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-card); padding:14px; border:3px solid transparent; }
+  .cand.recommended { border-color:var(--fill1); } .cand.chosen { border-color:var(--ink-strong); }
+  .badge { display:inline-block; font-size:12px; font-weight:700; padding:1px 9px; border-radius:var(--r-pill); background:var(--fill1); margin-left:6px; }
+  .badge.adopted { background:var(--ink-strong); color:var(--paper); }
+  .cand p, .cand li { font-size:13.5px; margin:6px 0; } .cand ul { padding-left:18px; margin:4px 0; }
+  .lbl { font-weight:700; font-size:12.5px; color:var(--sub); margin-top:10px; display:block; }
+  /* ---- 휴대폰 부품 ---- */
+  .phone { width:240px; height:430px; margin:0 auto 10px; background:var(--bg); border-radius:26px; border:5px solid var(--ink-strong); position:relative; overflow:hidden; font-size:11px; }
+  .scr { position:absolute; inset:0; padding:12px 10px; background:var(--paper); overflow:hidden; }
+  .scr.dark { background:var(--ink-strong); color:var(--paper); }
+  .map { position:absolute; inset:0; background:
+      linear-gradient(115deg, transparent 47%, var(--cream) 47%, var(--cream) 51%, transparent 51%),
+      linear-gradient(20deg, transparent 60%, var(--cream) 60%, var(--cream) 63%, transparent 63%), var(--bg); }
+  .pin { position:absolute; display:flex; flex-direction:column; align-items:center; transform:translateX(-50%); cursor:pointer; background:none; border:0; padding:0; font:inherit; color:inherit; }
+  .pin i { width:16px; height:16px; border-radius:50% 50% 50% 0; background:var(--fill1); transform:rotate(-45deg); border:2px solid var(--ink-strong); display:block; }
+  .pin b { margin-top:5px; font-size:10px; } .pin span { font-size:9px; color:var(--sub); }
+  .me { position:absolute; width:12px; height:12px; border-radius:50%; background:var(--me-dot); border:2px solid var(--paper); }
+  .search { position:absolute; left:10px; right:10px; top:12px; height:34px; border-radius:var(--r-pill); background:var(--paper); display:flex; align-items:center; padding:0 12px; gap:6px; box-shadow:0 1px 4px rgba(0,0,0,.15); cursor:pointer; }
+  .search .ph { flex:1; color:var(--sub); }
+  .field { height:34px; border-radius:var(--r-pill); display:flex; align-items:center; padding:0 12px; gap:6px; background:var(--cream); color:var(--sub); }
+  .scr.dark .field { background:var(--paper); color:var(--text); }
+  .tabbar { position:absolute; left:0; right:0; bottom:0; height:38px; background:var(--paper); display:flex; justify-content:space-around; align-items:center; font-size:9px; color:var(--sub); }
+  .tabbar b { color:var(--text); }
+  .btn { border:0; font:inherit; cursor:pointer; border-radius:var(--r-pill); padding:4px 10px; background:var(--ink-strong); color:var(--paper); }
+  .btn.ghost { background:var(--surface2); color:var(--text); }
+  .chip { position:absolute; border:0; cursor:pointer; font:inherit; border-radius:var(--r-pill); padding:5px 10px; background:var(--paper); box-shadow:0 1px 4px rgba(0,0,0,.18); font-size:10px; }
+  .vhead { padding:4px 2px 8px; } .row { display:flex; align-items:center; gap:6px; }
+  .back { font-size:24px; font-weight:800; line-height:1; background:none; border:0; cursor:pointer; text-shadow:0 1px 3px rgba(0,0,0,.2); padding:0 6px 0 0; color:inherit; }
+  .vname { font-size:14px; font-weight:700; } .vsub { color:var(--sub); font-size:10px; }
+  .vbody { margin:8px 2px; height:200px; border-radius:var(--r-card); border:2px dashed var(--surface3); display:flex; align-items:center; justify-content:center; text-align:center; color:var(--sub); padding:10px; }
+  .sheet { position:absolute; left:8px; right:8px; bottom:46px; background:var(--paper); border-radius:16px; padding:10px 12px; box-shadow:0 2px 10px rgba(0,0,0,.2); }
+  .menu { position:absolute; right:10px; top:40px; background:var(--paper); border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.2); padding:4px 0; width:150px; display:none; z-index:2; }
+  .menu.on { display:block; } .menu div { padding:7px 12px; cursor:pointer; }
+  .toast { position:absolute; left:14px; right:14px; bottom:48px; background:var(--ink-strong); color:var(--paper); border-radius:12px; padding:7px 10px; font-size:10px; display:none; }
+  .toast.on { display:block; }
+  .note-card { position:absolute; left:50%; bottom:46px; transform:translate(-50%,6px); background:var(--paper); border-radius:14px; padding:6px 12px; box-shadow:0 2px 10px rgba(0,0,0,.2); font-size:10px; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .3s, transform .3s; }
+  .note-card.on { opacity:1; transform:translate(-50%,0); }
+  .switch { width:30px; height:17px; border-radius:9px; background:var(--surface3); position:relative; border:0; cursor:pointer; flex:none; }
+  .switch::after { content:""; position:absolute; left:2px; top:2px; width:13px; height:13px; border-radius:50%; background:var(--paper); transition:left .15s; }
+  .switch.on { background:var(--ink-strong); } .switch.on::after { left:15px; }
+  .seg { display:flex; background:var(--surface2); border-radius:var(--r-pill); padding:2px; width:max-content; }
+  .seg button { border:0; font:inherit; border-radius:var(--r-pill); padding:3px 9px; background:none; cursor:pointer; color:inherit; }
+  .seg button.on { background:var(--ink-strong); color:var(--paper); }
+  .covers { display:flex; gap:6px; margin-top:6px; overflow:hidden; }
+  .covers i { width:40px; height:56px; border-radius:5px 9px 9px 5px; background:var(--fill2); display:block; flex:none; }
+  .covers i:nth-child(3n+2){ background:var(--fill3); } .covers i:nth-child(3n){ background:var(--fill1); }
+  .li { padding:7px 2px; border-bottom:1px solid var(--surface2); } .scr.dark .li { border-color:rgba(255,255,255,.18); }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .sec { font-weight:700; font-size:10.5px; margin-top:10px; }
+  .hide { display:none !important; }
+  /* ---- 표 ---- */
+  table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-card); overflow:hidden; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--surface2); }
+  th { background:var(--surface2); }
+  .st { font-size:12px; padding:1px 8px; border-radius:var(--r-pill); background:var(--surface2); white-space:nowrap; }
+  #spec, #except, #fullflow { margin-top:32px; }
+  .state button { font:inherit; border:0; border-radius:var(--r-pill); padding:4px 12px; background:var(--surface2); cursor:pointer; margin:2px; }
+  .state button[aria-pressed="true"] { background:var(--ink-strong); color:var(--paper); }
+  .wide { overflow-x:auto; }
+  .fab { position:absolute; right:12px; bottom:50px; width:38px; height:38px; border-radius:50%; border:0; background:var(--ink-strong); color:var(--paper); font-size:22px; line-height:1; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.3); }
+  .hplus { border:0; background:none; font-size:20px; font-weight:700; cursor:pointer; color:inherit; margin-left:auto; padding:0 4px; }
+  .bigadd { margin:6px 0 4px; padding:10px; border-radius:14px; border:2px dashed var(--surface3); background:var(--cream); cursor:pointer; width:100%; font:inherit; text-align:left; }
+  .log { display:flex; gap:8px; align-items:center; padding:6px 2px; border-bottom:1px solid var(--surface2); }
+  .log i { width:28px; height:40px; border-radius:3px 6px 6px 3px; background:var(--fill2); flex:none; display:block; }
+  .log:nth-child(3n) i { background:var(--fill3); } .log:nth-child(3n+1) i { background:var(--fill1); }
+  .log small { display:block; color:var(--sub); font-size:9px; }
+  .stats { display:flex; gap:6px; margin:6px 0; }
+  .stats button { flex:1; border:0; font:inherit; background:var(--cream); border-radius:12px; padding:6px 2px; cursor:pointer; color:inherit; }
+  .stats b { display:block; font-size:16px; }
+  .shelf { display:flex; align-items:flex-end; gap:3px; padding:0 6px; height:92px; border-bottom:6px solid var(--surface3); margin-top:6px; }
+  .shelf button { border:0; cursor:pointer; width:16px; border-radius:2px; background:var(--fill2); font-size:7px; writing-mode:vertical-rl; padding:3px 0; color:var(--text); }
+  .shelf button:nth-child(3n) { background:var(--fill3); } .shelf button:nth-child(3n+1) { background:var(--fill1); }
+  .fold { margin-top:8px; padding:6px 8px; border-radius:10px; background:var(--cream); cursor:pointer; border:0; font:inherit; width:100%; text-align:left; color:inherit; }
+  .pop { position:absolute; left:14px; right:14px; top:70px; background:var(--paper); border-radius:16px; padding:10px; box-shadow:0 4px 16px rgba(0,0,0,.3); z-index:3; text-align:center; }
+  .pop i { width:46px; height:64px; margin:4px auto; display:block; border-radius:4px 8px 8px 4px; background:var(--fill3); }
+  .pop .x { position:absolute; right:8px; top:4px; border:0; background:none; font-size:16px; cursor:pointer; }
+  .shelfname { font-size:9px; color:var(--sub); margin-top:6px; }
+  /* ---- 결정 3·4 반영(2026-11-19): 표지 면 책장 ---- */
+  .scroll { position:absolute; top:58px; bottom:38px; left:10px; right:10px; overflow-y:auto; scrollbar-width:none; }
+  .topr { margin-left:auto; display:flex; gap:4px; }
+  .topr .btn { font-size:9.5px; padding:3px 8px; }
+  .m { display:block; font-size:9px; font-weight:700; color:var(--sub); letter-spacing:.12em; margin-top:8px; }
+  .cvrow { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:3px 4px 0; border-bottom:5px solid var(--surface3); }
+  .cvrow button, .hrow button { border:0; cursor:pointer; aspect-ratio:3/4; border-radius:3px 6px 6px 3px; background:var(--fill2); font:inherit; font-size:8px; color:var(--text); display:flex; align-items:flex-end; justify-content:center; padding:0 2px 4px; }
+  .cvrow button:nth-child(3n+2), .hrow button:nth-child(3n+2) { background:var(--fill3); } .cvrow button:nth-child(3n), .hrow button:nth-child(3n) { background:var(--fill1); }
+  .hrow { display:flex; gap:6px; overflow-x:auto; padding:3px 0 0; border-bottom:5px solid var(--lib-c); scrollbar-width:none; }
+  .hrow button { flex:none; width:62px; height:83px; aspect-ratio:auto; }
+  .libtag { display:inline-block; font:inherit; font-size:9px; padding:1px 8px; border-radius:var(--r-pill); background:var(--lib-c); margin-top:9px; border:0; cursor:pointer; color:var(--text); }
+  .oldnote { font-size:9px; color:var(--sub); margin-top:4px; }
+  /* ---- READ-1 ---- */
+  .stars { display:flex; gap:3px; margin:6px 2px 2px; }
+  .stars button { border:0; background:none; font-size:17px; line-height:1; cursor:pointer; padding:0; color:var(--surface3); }
+  .stars button.on { color:var(--ink-strong); }
+  .stars.sm button { font-size:11px; }
+  .wf { height:auto; min-height:28px; align-items:flex-start; padding-top:7px; margin-top:5px; }
+  .fold2 { margin-top:5px; padding:6px 10px; border-radius:var(--r-pill); background:var(--cream); border:1px dashed var(--surface3); cursor:pointer; font:inherit; font-size:10px; color:var(--sub); width:100%; text-align:left; }
+  .exnote { font-size:12.5px; color:var(--sub); margin:6px 0 0; }
+  /* ---- READ-2 ---- */
+  .topbar { display:flex; align-items:center; gap:6px; }
+  .statline { font-size:10px; color:var(--sub); margin:2px 2px 0; }
+  .statline b { color:var(--text); }
+  .dash { display:flex; gap:5px; margin:6px 0 0; }
+  .dash div { flex:1; background:var(--cream); border-radius:12px; padding:5px 2px; text-align:center; font-size:9px; color:var(--sub); }
+  .dash b { display:block; font-size:17px; color:var(--text); line-height:1.2; }
+  .foldstat { margin-top:5px; padding:5px 10px; border-radius:var(--r-pill); background:var(--cream); border:0; cursor:pointer; font:inherit; font-size:10px; width:100%; text-align:left; color:inherit; }
+  .openstat { margin-top:5px; padding:6px 10px; border-radius:12px; background:var(--cream); font-size:10px; }
+  .openstat .row { justify-content:space-between; }
+  .libcount { color:var(--sub); font-size:9px; }
+  .facade { position:absolute; left:10px; right:10px; top:12px; height:120px; border-radius:var(--r-card); border:2px dashed var(--surface3); display:flex; align-items:center; justify-content:center; color:var(--sub); font-size:10px; }
+  .hsheet { position:absolute; left:0; right:0; top:146px; bottom:38px; background:var(--paper); border-radius:16px 16px 0 0; box-shadow:0 -2px 8px rgba(0,0,0,.12); padding:6px 10px; overflow-y:auto; scrollbar-width:none; }
+  .grip { width:36px; height:4px; border-radius:2px; background:var(--surface3); margin:0 auto 2px; }
+  .hcov { display:flex; gap:6px; margin-top:6px; overflow-x:auto; scrollbar-width:none; }
+  .hcov button { flex:none; width:40px; height:56px; border:0; cursor:pointer; border-radius:5px 9px 9px 5px; background:var(--fill3); font:inherit; font-size:7px; color:var(--text); display:flex; align-items:flex-end; justify-content:center; padding:0 2px 3px; }
+  .hcov button:nth-child(2n) { background:var(--fill2); }
+  .note-post { background:var(--cream); border-radius:10px; height:46px; padding:4px 6px; font-size:9px; }
+  .tline { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:1px 4px 0; font-size:7.5px; color:var(--sub); text-align:center; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>독서 기록 · READ-2 시안 — 전체·도서관별 보기, 기초 통계, 홈 "내 최근 독서 기록"</h1>
+  <div class="how"><b>보는 법.</b> 화면 3개를 비교해 보세요. 휴대폰 안의 <b>책장을 위아래로 밀어 보고, 오른쪽 위 "전체 ⇄"를 눌러 보세요</b> — 도서관별 책장으로 바뀌어요. 노란 테두리가 <b>추천</b>이에요. 고르는 건 직접 해 주세요.</div>
+  <div class="flow"><b>이미 정해진 것.</b> 책장은 표지 면, 한 줄 3권, 한 달 한 줄(최근이 위·왼쪽). 책을 누르면 책장 위 카드. 오른쪽 위 "전체 ⇄"로 도서관별 책장(도서관마다 색, 한 줄 9권 옆으로 밀기, 이름표 ›를 누르면 그 도서관만)으로 바뀌어요. 도서관 없이 쓴 기록은 "전체"에만 있어요. 숫자는 내 기록만 세고, 하나도 없으면 0이에요.</div>
+</header>
+<main>
+
+<!-- ===== 중심 요소 1 ===== -->
+<section class="element" id="el-top" data-chosen="A">
+  <h2>정할 것 1. 책장 위쪽에 내 기록 숫자(전체·올해·이번 달)를 어떻게 둘까 <span class="status">확인</span></h2>
+  <div class="decided"><b>고른 것: 후보 A.</b> "A가 위에 책읽은숫자 제일 보기 깔끔하고 좋은데" — 제목 아래 한 줄 글자로 숫자 셋, 책장을 밀면 같이 올라가요. 차선은 없음. 불편한 점: "숫자가 작아서 체감은 덜될거같아"</div>
+  <div class="flow"><b>정해진 것.</b> 위쪽 줄 오른쪽에 ⚙(배치 바꾸기)와 "전체 ⇄"가 있어요. 숫자는 전체 기록 수, 올해 읽은 수, 이번 달 읽은 수 세 가지예요. 정할 것은 <b>그 숫자를 책장 위에 어떤 모양으로 두느냐</b>예요. 세 화면 모두 같은 기록 12개(올해 9, 이번 달 2)예요.</div>
+  <div class="pick">다시 보기: <select data-for="el-top">
+    <option value="A">후보 A — 제목 아래 한 줄 글자, 책장과 같이 올라감</option>
+    <option value="B">후보 B — 큰 숫자 칸 셋, 늘 그 자리</option>
+    <option value="C">후보 C — 접힌 칸 "내 기록 12권 ▾"</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 제목 아래 한 줄 글자, 책장과 같이 올라감 <span class="badge">추천</span></h3>
+      <div class="phone">
+        <div class="scr" data-screen="all"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-toast="ta-set">⚙</button><button class="btn ghost" data-open="lib">전체 ⇄</button></span></div>
+          <div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div>
+            <span class="m">Nov</span><div class="cvrow"><button data-show="pa1">소년이 온다</button><button>아몬드</button></div>
+            <span class="m">Oct</span><div class="cvrow"><button>작별하지 않는다</button><button>흰</button><button>파친코</button></div>
+            <span class="m">Sep</span><div class="cvrow"><button>채식주의자</button><button>희랍어 시간</button><button>시선으로부터</button></div>
+            <span class="m">Aug</span><div class="cvrow"><button>연년세세</button></div>
+            <span class="m">Dec 2025</span><div class="cvrow"><button>불편한 편의점</button><button>지구에서 한아뿐</button><button>달러구트 꿈 백화점</button></div></div>
+          <button class="fab">+</button>
+          <div class="pop hide" id="pa1"><button class="x" data-close="pa1">✕</button><i></i><b>소년이 온다</b><div class="vsub">한강</div><div class="vsub" style="margin-top:2px">"끝까지 읽고 한참 앉아 있었다…"</div><div class="li">읽은 날 · 11월 19일</div><div class="li">어디서 · 마포중앙도서관</div><button class="btn ghost" style="margin-top:6px">기록 자세히 보기</button></div>
+          <div class="toast" id="ta-set">배치 바꾸기는 다음 정할 것에서 봐요</div>
+          <div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+        <div class="scr hide" data-screen="lib"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost" data-open="all">도서관별 ⇄</button></span></div>
+          <div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div>
+            <button class="libtag" style="--lib-c:var(--lib-1)">마포중앙도서관 <span class="libcount">6권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-1)"><button>소년이 온다</button><button>흰</button><button>파친코</button><button>채식주의자</button><button>희랍어 시간</button><button>연년세세</button></div>
+            <button class="libtag" style="--lib-c:var(--lib-2)">서대문도서관 <span class="libcount">3권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-2)"><button>아몬드</button><button>시선으로부터</button><button>불편한 편의점</button></div>
+            <button class="libtag" style="--lib-c:var(--lib-3)">은평구립도서관 <span class="libcount">1권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-3)"><button>작별하지 않는다</button></div></div>
+          <button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+      </div>
+      <p>제목 바로 아래 작은 글자 한 줄로 숫자 셋이 보여요. 책장을 위로 밀면 이 줄도 같이 올라가고, 제목 줄(⚙·전체 ⇄)만 남아요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>탭 열기 → 숫자 한 줄 + 책장 → 책장을 밀어 올리면 숫자 줄은 사라지고 책이 더 보임 → "전체 ⇄" → 도서관별 책장(숫자 줄은 그대로, 이름표 옆에 도서관마다 권수).</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>처음 화면에 책장이 4달치 넘게 보임(숫자 줄이 얇아서)</li><li>책장을 밀면 숫자 줄이 같이 올라가 사라짐 — 다시 보려면 맨 위로</li><li>도서관별 보기에서는 이름표 옆에 "6권"처럼 도서관마다 수가 붙음</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>책장이 주인공으로 가장 넓게 보여요. / 숫자가 작아서 "이만큼 읽었다"는 느낌은 약해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-36 피드를 올리면 접히는 머리</p>
+      <p><b>추천 이유:</b> 큰 틀에서 "채워 가는 책장"을 골랐어요. 책장이 화면을 가장 넓게 쓰고, 숫자는 처음 열 때 한 번 보면 충분해서요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 큰 숫자 칸 셋, 늘 그 자리</h3>
+      <div class="phone">
+        <div class="scr" data-screen="all"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-toast="tb-set">⚙</button><button class="btn ghost" data-open="lib">전체 ⇄</button></span></div>
+          <div class="dash"><div><b>12</b>전체</div><div><b>9</b>올해</div><div><b>2</b>이번 달</div></div>
+          <div class="scroll" style="top:86px">
+            <span class="m">Nov</span><div class="cvrow"><button data-show="pb1">소년이 온다</button><button>아몬드</button></div>
+            <span class="m">Oct</span><div class="cvrow"><button>작별하지 않는다</button><button>흰</button><button>파친코</button></div>
+            <span class="m">Sep</span><div class="cvrow"><button>채식주의자</button><button>희랍어 시간</button><button>시선으로부터</button></div>
+            <span class="m">Aug</span><div class="cvrow"><button>연년세세</button></div>
+            <span class="m">Dec 2025</span><div class="cvrow"><button>불편한 편의점</button><button>지구에서 한아뿐</button><button>달러구트 꿈 백화점</button></div></div>
+          <button class="fab">+</button>
+          <div class="pop hide" id="pb1"><button class="x" data-close="pb1">✕</button><i></i><b>소년이 온다</b><div class="vsub">한강</div><div class="vsub" style="margin-top:2px">"끝까지 읽고 한참 앉아 있었다…"</div><div class="li">읽은 날 · 11월 19일</div><div class="li">어디서 · 마포중앙도서관</div><button class="btn ghost" style="margin-top:6px">기록 자세히 보기</button></div>
+          <div class="toast" id="tb-set">배치 바꾸기는 다음 정할 것에서 봐요</div>
+          <div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+        <div class="scr hide" data-screen="lib"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost" data-open="all">도서관별 ⇄</button></span></div>
+          <div class="dash"><div><b>12</b>전체</div><div><b>9</b>올해</div><div><b>2</b>이번 달</div></div>
+          <div class="scroll" style="top:86px">
+            <button class="libtag" style="--lib-c:var(--lib-1)">마포중앙도서관 <span class="libcount">6권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-1)"><button>소년이 온다</button><button>흰</button><button>파친코</button><button>채식주의자</button><button>희랍어 시간</button><button>연년세세</button></div>
+            <button class="libtag" style="--lib-c:var(--lib-2)">서대문도서관 <span class="libcount">3권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-2)"><button>아몬드</button><button>시선으로부터</button><button>불편한 편의점</button></div>
+            <button class="libtag" style="--lib-c:var(--lib-3)">은평구립도서관 <span class="libcount">1권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-3)"><button>작별하지 않는다</button></div></div>
+          <button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+      </div>
+      <p>제목 아래 큰 숫자 칸 세 개가 있어요. 책장을 밀어도 숫자 칸은 늘 그 자리에 있고, 책장만 움직여요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>탭 열기 → 큰 숫자 셋 + 책장 → 책장을 밀어도 숫자는 그대로 → "전체 ⇄" → 도서관별 책장(숫자 칸 그대로, 이름표 옆에 도서관마다 권수).</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>숫자 칸이 자리를 차지해서 처음 화면에 책장이 3달치 정도만 보임</li><li>어디까지 내려도 숫자가 계속 보임</li><li>숫자 칸은 눌러도 아무 일 없음(보기만)</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>"올해 9권"이 크게 늘 보여서 많이 읽은 느낌이 확실해요. / 책장이 보이는 자리가 줄어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: 새 패턴 — 큰 숫자 계기판은 표준 목록에 없어서(운동·가계부 앱 맨 위 숫자 칸과 같은 모양)</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 접힌 칸 "내 기록 12권 ▾"</h3>
+      <div class="phone">
+        <div class="scr" data-screen="all"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-toast="tc-set">⚙</button><button class="btn ghost" data-open="lib">전체 ⇄</button></span></div>
+          <button class="foldstat" data-open="open">내 기록 12권 ▾</button>
+          <div class="scroll" style="top:64px">
+            <span class="m">Nov</span><div class="cvrow"><button data-show="pc1">소년이 온다</button><button>아몬드</button></div>
+            <span class="m">Oct</span><div class="cvrow"><button>작별하지 않는다</button><button>흰</button><button>파친코</button></div>
+            <span class="m">Sep</span><div class="cvrow"><button>채식주의자</button><button>희랍어 시간</button><button>시선으로부터</button></div>
+            <span class="m">Aug</span><div class="cvrow"><button>연년세세</button></div>
+            <span class="m">Dec 2025</span><div class="cvrow"><button>불편한 편의점</button><button>지구에서 한아뿐</button><button>달러구트 꿈 백화점</button></div></div>
+          <button class="fab">+</button>
+          <div class="pop hide" id="pc1"><button class="x" data-close="pc1">✕</button><i></i><b>소년이 온다</b><div class="vsub">한강</div><div class="vsub" style="margin-top:2px">"끝까지 읽고 한참 앉아 있었다…"</div><div class="li">읽은 날 · 11월 19일</div><div class="li">어디서 · 마포중앙도서관</div><button class="btn ghost" style="margin-top:6px">기록 자세히 보기</button></div>
+          <div class="toast" id="tc-set">배치 바꾸기는 다음 정할 것에서 봐요</div>
+          <div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+        <div class="scr hide" data-screen="open"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost" data-open="lib">전체 ⇄</button></span></div>
+          <div class="openstat"><div class="row"><b>내 기록 12권</b><button class="back" style="font-size:12px;text-shadow:none" data-open="all">접기 ▴</button></div>
+            <div class="row"><span>올해</span><b>9권</b></div><div class="row"><span>이번 달</span><b>2권</b></div>
+            <div class="row"><span>마포중앙도서관</span><b>6권</b></div><div class="row"><span>서대문도서관</span><b>3권</b></div><div class="row"><span>은평구립도서관</span><b>1권</b></div></div>
+          <div class="scroll" style="top:170px"><span class="m">Nov</span><div class="cvrow"><button>소년이 온다</button><button>아몬드</button></div>
+            <span class="m">Oct</span><div class="cvrow"><button>작별하지 않는다</button><button>흰</button><button>파친코</button></div></div>
+          <button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+        <div class="scr hide" data-screen="lib"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost" data-open="all">도서관별 ⇄</button></span></div>
+          <button class="foldstat" data-open="open">내 기록 12권 ▾</button>
+          <div class="scroll" style="top:64px">
+            <button class="libtag" style="--lib-c:var(--lib-1)">마포중앙도서관 ›</button><div class="hrow" style="--lib-c:var(--lib-1)"><button>소년이 온다</button><button>흰</button><button>파친코</button><button>채식주의자</button><button>희랍어 시간</button><button>연년세세</button></div>
+            <button class="libtag" style="--lib-c:var(--lib-2)">서대문도서관 ›</button><div class="hrow" style="--lib-c:var(--lib-2)"><button>아몬드</button><button>시선으로부터</button><button>불편한 편의점</button></div>
+            <button class="libtag" style="--lib-c:var(--lib-3)">은평구립도서관 ›</button><div class="hrow" style="--lib-c:var(--lib-3)"><button>작별하지 않는다</button></div></div>
+          <button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+      </div>
+      <p>평소에는 "내 기록 12권 ▾" 한 줄만 보여요. 눌러 보세요 — 펼치면 올해·이번 달과 도서관마다 몇 권인지가 한꺼번에 나와요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>탭 열기 → "내 기록 12권 ▾" + 책장 → 누르면 올해·이번 달·도서관별 권수가 펼쳐짐 → "접기 ▴" → 다시 책장 → "전체 ⇄" → 도서관별 책장(이름표에 권수 없음, 숫자는 펼친 칸에서).</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>접혀 있으면 올해·이번 달 숫자는 안 보임 — 한 번 눌러야 봄</li><li>펼치면 숫자가 6줄이라 책장이 2달치만 보임</li><li>도서관별 권수는 이 칸에서만 보임</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>숫자를 보고 싶을 때만 펼치고, 도서관별 수까지 한곳에서 봐요. / 올해·이번 달 수를 보려면 매번 눌러야 해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-73 접힌 선택 칸</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 중심 요소 2 ===== -->
+<section class="element" id="el-preset" data-chosen="B">
+  <h2>정할 것 2. ⚙를 누르면 책장 배치를 무엇으로 바꿀 수 있게 할까 <span class="status">확인</span></h2>
+  <p>순서 메뉴와 자리 옮기기는 별도 계약 승인 대기이며, 이번 발행 범위는 최근 읽은 순 책장이에요.</p>
+  <div class="decided"><b>고른 것: 후보 B.</b> "나는 B가 제일 좋은거같은데 오래전에 읽었던 책도 제대로 확인 가능하고 순서대로란 생각도 들어" — ⚙ → 작은 메뉴에서 최근 읽은 순 / 오래 전 읽은 순 / 내가 옮긴 자리. 한 칸은 늘 한 달. 차선은 없음. 불편한 점: "많아지면 번거롭고 불편할수 있겠지만 그만큼 읽은책이 쌓인느낌이나서 좋을거같은데"</div>
+  <div class="flow"><b>정해진 것.</b> 처음 배치는 "최근 읽은 책이 위·왼쪽, 한 달 한 줄"이에요. 책을 꾹 눌러 같은 줄 안에서 자리를 바꾸는 건 세 화면 모두 같아요. 정할 것은 <b>⚙를 눌렀을 때 무엇을 고를 수 있느냐</b>예요. 세 화면 모두 같은 기록 12개예요.</div>
+  <div class="pick">다시 보기: <select data-for="el-preset">
+    <option value="A">후보 A — 아래 카드에서 묶는 단위(한 달·석 달·한 해)</option>
+    <option value="B">후보 B — 작은 메뉴에서 순서(최근·오래 전·내가 옮긴 자리)</option>
+    <option value="C">후보 C — 책장 설정 화면에 다 모아 두기</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 아래 카드에서 묶는 단위 고르기 <span class="badge">추천</span></h3>
+      <div class="phone"><div class="scr" data-screen="m"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-show="pa-m">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><span class="m">Nov</span><div class="cvrow"><button>소년이 온다</button><button>아몬드</button></div><span class="m">Oct</span><div class="cvrow"><button>작별하지 않는다</button><button>흰</button><button>파친코</button></div><span class="m">Sep</span><div class="cvrow"><button>채식주의자</button><button>희랍어 시간</button><button>시선으로부터</button></div><span class="m">Aug</span><div class="cvrow"><button>연년세세</button></div><span class="m">Dec 2025</span><div class="cvrow"><button>불편한 편의점</button><button>지구에서 한아뿐</button><button>달러구트 꿈 백화점</button></div></div><button class="fab">+</button><div class="sheet hide" id="pa-m"><b>책장 묶기</b><div class="li row" data-open="m" style="cursor:pointer"><span>● 한 달씩</span><span class="vsub" style="margin-left:auto">Nov · Oct · Sep …</span></div><div class="li row" data-open="q" style="cursor:pointer"><span>○ 석 달씩</span><span class="vsub" style="margin-left:auto">Sep–Nov · Jun–Aug …</span></div><div class="li row" data-open="y" style="cursor:pointer"><span>○ 한 해씩</span><span class="vsub" style="margin-left:auto">2026 · 2025</span></div></div><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="q"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-show="pa-q">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><span class="m">Sep–Nov</span><div class="cvrow"><button>소년이 온다</button><button>아몬드</button><button>작별하지 않는다</button></div><div class="cvrow"><button>흰</button><button>파친코</button><button>채식주의자</button></div><div class="cvrow"><button>희랍어 시간</button><button>시선으로부터</button></div><span class="m">Jun–Aug</span><div class="cvrow"><button>연년세세</button></div><span class="m">Dec 2025–Feb</span><div class="cvrow"><button>불편한 편의점</button><button>지구에서 한아뿐</button><button>달러구트 꿈 백화점</button></div></div><button class="fab">+</button><div class="sheet hide" id="pa-q"><b>책장 묶기</b><div class="li row" data-open="m" style="cursor:pointer"><span>○ 한 달씩</span><span class="vsub" style="margin-left:auto">Nov · Oct · Sep …</span></div><div class="li row" data-open="q" style="cursor:pointer"><span>● 석 달씩</span><span class="vsub" style="margin-left:auto">Sep–Nov · Jun–Aug …</span></div><div class="li row" data-open="y" style="cursor:pointer"><span>○ 한 해씩</span><span class="vsub" style="margin-left:auto">2026 · 2025</span></div></div><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="y"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-show="pa-y">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><span class="m">2026</span><div class="cvrow"><button>소년이 온다</button><button>아몬드</button><button>작별하지 않는다</button></div><div class="cvrow"><button>흰</button><button>파친코</button><button>채식주의자</button></div><div class="cvrow"><button>희랍어 시간</button><button>시선으로부터</button><button>연년세세</button></div><span class="m">2025</span><div class="cvrow"><button>불편한 편의점</button><button>지구에서 한아뿐</button><button>달러구트 꿈 백화점</button></div></div><button class="fab">+</button><div class="sheet hide" id="pa-y"><b>책장 묶기</b><div class="li row" data-open="m" style="cursor:pointer"><span>○ 한 달씩</span><span class="vsub" style="margin-left:auto">Nov · Oct · Sep …</span></div><div class="li row" data-open="q" style="cursor:pointer"><span>○ 석 달씩</span><span class="vsub" style="margin-left:auto">Sep–Nov · Jun–Aug …</span></div><div class="li row" data-open="y" style="cursor:pointer"><span>● 한 해씩</span><span class="vsub" style="margin-left:auto">2026 · 2025</span></div></div><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div></div>
+      <p>⚙를 누르면 아래에서 "책장 묶기" 카드가 올라와요. 한 달씩 / 석 달씩 / 한 해씩 중 하나를 누르면 책장 한 칸이 그만큼 묶여요. 순서는 늘 최근 읽은 책이 위예요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>⚙ → 아래 카드 → "석 달씩" → 카드가 닫히고 책장이 Sep–Nov, Jun–Aug처럼 석 달 칸으로 → 다시 ⚙ → "한 해씩" → 2026, 2025 두 칸.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>한 달씩: 칸 5개, 적게 읽은 달은 한 권만 덩그러니</li><li>석 달씩: 칸 3개, 첫 칸이 3줄로 꽉 참</li><li>한 해씩: 칸 2개, 올해 9권이 한눈에</li><li>고른 것은 다음에 탭을 열어도 그대로</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>조금 읽는 사람도 빈칸 없이 꽉 찬 책장을 봐요. / 오래 전 책부터 보는 순서는 못 바꿔요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-04 아래에서 올라오는 시트</p>
+      <p><b>추천 이유:</b> 큰 틀에서 "적게 읽으면 몇 달씩 묶어 1~2줄로"를 직접 말했어요. 그 생각을 그대로 고르는 칸으로 만든 거라서요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 작은 메뉴에서 순서 고르기</h3>
+      <div class="phone"><div class="scr" data-screen="new"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-menu="mb-new">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><span class="m">Nov</span><div class="cvrow"><button>소년이 온다</button><button>아몬드</button></div><span class="m">Oct</span><div class="cvrow"><button>작별하지 않는다</button><button>흰</button><button>파친코</button></div><span class="m">Sep</span><div class="cvrow"><button>채식주의자</button><button>희랍어 시간</button><button>시선으로부터</button></div><span class="m">Aug</span><div class="cvrow"><button>연년세세</button></div><span class="m">Dec 2025</span><div class="cvrow"><button>불편한 편의점</button><button>지구에서 한아뿐</button><button>달러구트 꿈 백화점</button></div></div><button class="fab">+</button><div class="menu" id="mb-new" style="top:30px;right:40px"><div data-open="new">✓ 최근 읽은 순</div><div data-open="old">　오래 전 읽은 순</div><div data-open="mine">　내가 옮긴 자리</div></div><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="old"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-menu="mb-old">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><span class="m">Dec 2025</span><div class="cvrow"><button>달러구트 꿈 백화점</button><button>지구에서 한아뿐</button><button>불편한 편의점</button></div><span class="m">Aug</span><div class="cvrow"><button>연년세세</button></div><span class="m">Sep</span><div class="cvrow"><button>시선으로부터</button><button>희랍어 시간</button><button>채식주의자</button></div><span class="m">Oct</span><div class="cvrow"><button>파친코</button><button>흰</button><button>작별하지 않는다</button></div><span class="m">Nov</span><div class="cvrow"><button>아몬드</button><button>소년이 온다</button></div></div><button class="fab">+</button><div class="menu" id="mb-old" style="top:30px;right:40px"><div data-open="new">　최근 읽은 순</div><div data-open="old">✓ 오래 전 읽은 순</div><div data-open="mine">　내가 옮긴 자리</div></div><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="mine"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-menu="mb-mine">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><span class="m">Nov</span><div class="cvrow"><button>아몬드</button><button>소년이 온다</button></div><span class="m">Oct</span><div class="cvrow"><button>흰</button><button>작별하지 않는다</button><button>파친코</button></div><span class="m">Sep</span><div class="cvrow"><button>채식주의자</button><button>희랍어 시간</button><button>시선으로부터</button></div><span class="m">Aug</span><div class="cvrow"><button>연년세세</button></div><span class="m">Dec 2025</span><div class="cvrow"><button>불편한 편의점</button><button>지구에서 한아뿐</button><button>달러구트 꿈 백화점</button></div></div><button class="fab">+</button><div class="menu" id="mb-mine" style="top:30px;right:40px"><div data-open="new">　최근 읽은 순</div><div data-open="old">　오래 전 읽은 순</div><div data-open="mine">✓ 내가 옮긴 자리</div></div><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div></div>
+      <p>⚙를 누르면 작은 메뉴가 떠요. 최근 읽은 순 / 오래 전 읽은 순 / 내가 옮긴 자리 중 하나를 고르면 책 순서가 바뀌어요. 한 칸은 늘 한 달이에요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>⚙ → 메뉴 → "오래 전 읽은 순" → 맨 위가 Dec 2025(처음 읽은 책) → 다시 ⚙ → "내가 옮긴 자리" → 꾹 눌러 바꿔 둔 순서(Nov: 아몬드가 앞).</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>오래 전 읽은 순: 첫 기록부터 쌓아 온 순서로 봄</li><li>내가 옮긴 자리: 한 번도 안 옮겼으면 최근 읽은 순과 같음</li><li>달 묶음은 바뀌지 않음</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>처음 읽은 책부터 거꾸로 돌아볼 수 있어요. / 적게 읽은 달은 여전히 한 권짜리 칸이 남아요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-11 머리 오른쪽 ⋯(더 보기) 메뉴 안 항목</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 책장 설정 화면에 다 모아 두기</h3>
+      <div class="phone"><div class="scr" data-screen="before"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-open="set">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><span class="m">Nov</span><div class="cvrow"><button>소년이 온다</button><button>아몬드</button></div><span class="m">Oct</span><div class="cvrow"><button>작별하지 않는다</button><button>흰</button><button>파친코</button></div><span class="m">Sep</span><div class="cvrow"><button>채식주의자</button><button>희랍어 시간</button><button>시선으로부터</button></div><span class="m">Aug</span><div class="cvrow"><button>연년세세</button></div><span class="m">Dec 2025</span><div class="cvrow"><button>불편한 편의점</button><button>지구에서 한아뿐</button><button>달러구트 꿈 백화점</button></div></div><button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="set"><div class="row"><button class="back" data-open="after">‹</button><span class="vname">책장 설정</span></div><div class="sec">묶기</div><div class="seg"><button>한 달</button><button class="on">석 달</button><button>한 해</button></div><div class="sec">순서</div><div class="seg"><button class="on">최근 읽은 순</button><button>오래 전 읽은 순</button></div><div class="li row" style="margin-top:10px"><span>책 제목 같이 보기</span><button class="switch on" style="margin-left:auto"></button></div><div class="li row"><span>내가 옮긴 자리 처음대로</span><button class="btn ghost" style="margin-left:auto;font-size:9px">되돌리기</button></div><div class="vsub" style="margin-top:8px">‹를 누르면 고른 대로 바뀐 책장이 보여요(이 시안은 석 달 + 제목 보기로 고른 상태)</div></div><div class="scr hide" data-screen="after"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-open="set">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><span class="m">Sep–Nov</span><div class="cvrow"><button>소년이 온다</button><button>아몬드</button><button>작별하지 않는다</button></div><div class="tline"><span>소년이 온다</span><span>아몬드</span><span>작별하지 않는다</span></div><div class="cvrow"><button>흰</button><button>파친코</button><button>채식주의자</button></div><div class="tline"><span>흰</span><span>파친코</span><span>채식주의자</span></div><div class="cvrow"><button>희랍어 시간</button><button>시선으로부터</button></div><div class="tline"><span>희랍어 시간</span><span>시선으로부터</span></div><span class="m">Jun–Aug</span><div class="cvrow"><button>연년세세</button></div><div class="tline"><span>연년세세</span></div><span class="m">Dec 2025–Feb</span><div class="cvrow"><button>불편한 편의점</button><button>지구에서 한아뿐</button><button>달러구트 꿈 백화점</button></div><div class="tline"><span>불편한 편의점</span><span>지구에서 한아뿐</span><span>달러구트 꿈 백화점</span></div></div><button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div></div>
+      <p>⚙를 누르면 "책장 설정" 화면으로 넘어가요. 묶기, 순서, 책 제목 같이 보기, 옮긴 자리 되돌리기를 한곳에서 바꾸고 ‹로 돌아와요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>⚙ → 책장 설정 화면 → 묶기 "석 달"·제목 보기 켜기 → ‹ → 석 달 칸 + 표지 아래 제목이 보이는 책장.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>고를 것이 4줄 — 묶기 3개, 순서 2개, 스위치 1개, 되돌리기 버튼</li><li>바뀐 모습은 ‹로 돌아와야 보임</li><li>제목을 켜면 한 줄 높이가 커져 한 화면에 보이는 책이 줄어듦</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>원하는 대로 다 바꿀 수 있어요. / 고를 게 많고, 바꿀 때마다 화면을 오가야 해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-14 설정 화면 안 항목</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 중심 요소 3 ===== -->
+<section class="element" id="el-libsort" data-chosen="D">
+  <h2>정할 것 3. 도서관별 책장에서 어느 도서관을 맨 위에 둘까 <span class="status">확인</span></h2>
+  <div class="decided"><b>고른 것: 후보 D.</b> 가장 최근에 읽은 도서관 하나를 맨 위에 두고 그 줄에만 최근 날짜를 붙여요. 둘째 줄부터는 기록이 많은 도서관 순이에요.</div>
+  <div class="flow"><b>정해진 것.</b> "전체 ⇄"를 누르면 도서관마다 색이 다른 책장 줄이 쌓여요. 한 줄은 옆으로 밀어 보고, 이름표 ›를 누르면 그 도서관 책만 봐요. 기록이 있는 도서관만 나와요. 정할 것은 <b>도서관 줄의 위아래 순서</b>예요. 세 화면 모두 같은 기록(도서관 4곳, 도서관 없이 쓴 2권은 "전체"에만)이에요.</div>
+  <div class="pick">다시 보기: <select data-for="el-libsort">
+    <option value="A">후보 A — 기록 많은 도서관이 위</option>
+    <option value="B">후보 B — 최근에 읽은 도서관이 위</option>
+    <option value="C">후보 C — 이름 가나다순</option>
+      <option value="D">후보 D — 첫 줄만 최근, 아래는 기록 많은 순</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 기록 많은 도서관이 위 <span class="badge">추천</span></h3>
+      <div class="phone"><div class="scr" data-screen="lib"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost">도서관별 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><button class="libtag" style="--lib-c:var(--lib-1)" data-open="one-mapo">마포중앙도서관 <span class="libcount">5권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-1)"><button>소년이 온다</button><button>흰</button><button>파친코</button><button>채식주의자</button><button>연년세세</button></div><button class="libtag" style="--lib-c:var(--lib-2)" data-open="one-sdm">서대문도서관 <span class="libcount">2권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-2)"><button>아몬드</button><button>불편한 편의점</button></div><button class="libtag" style="--lib-c:var(--lib-4)" data-open="one-gs">강서도서관 <span class="libcount">2권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-4)"><button>시선으로부터</button><button>희랍어 시간</button></div><button class="libtag" style="--lib-c:var(--lib-3)" data-open="one-ep">은평구립도서관 <span class="libcount">1권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-3)"><button>작별하지 않는다</button></div></div><button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="one-mapo"><div class="row"><button class="back" data-open="lib">‹</button><span class="vname">마포중앙도서관</span><span class="vsub" style="margin-left:auto">5권</span></div><div style="height:4px;border-radius:2px;background:var(--lib-1);margin:2px 0 6px"></div><div class="cvrow"><button>소년이 온다</button><button>흰</button><button>파친코</button></div><div class="cvrow"><button>채식주의자</button><button>연년세세</button></div><button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div></div>
+      <p>책을 가장 많이 읽은 도서관이 맨 위예요. 권수가 같으면 최근에 읽은 쪽이 위예요. 맨 위 이름표 ›를 눌러 보세요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>"전체 ⇄" → 마포중앙 5권, 서대문 2권, 강서 2권, 은평 1권 순서 → 마포중앙 › → 마포중앙에서 읽은 5권 책장 → ‹로 돌아옴.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>자주 다닌 도서관일수록 위 — 순서가 잘 안 바뀜</li><li>새 도서관에서 한 권 읽으면 맨 아래에 생김</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>내 "단골 도서관"이 한눈에 보여요. / 요즘 새로 다니는 도서관은 아래에 묻혀요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-33 가로로 넘기는 띠(캐러셀)</p>
+      <p><b>추천 이유:</b> 도서관별 보기가 "내 발자취"예요. 가장 많이 다닌 곳이 위에 있으면 발자취가 어디에 몰렸는지 바로 보여요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 최근에 읽은 도서관이 위</h3>
+      <div class="phone"><div class="scr" data-screen="lib"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost">도서관별 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><button class="libtag" style="--lib-c:var(--lib-2)" data-open="one-sdm">서대문도서관 <span class="libcount">2권 · 최근 11월 22일</span> ›</button><div class="hrow" style="--lib-c:var(--lib-2)"><button>아몬드</button><button>불편한 편의점</button></div><button class="libtag" style="--lib-c:var(--lib-1)" data-open="one-mapo">마포중앙도서관 <span class="libcount">5권 · 최근 11월 19일</span> ›</button><div class="hrow" style="--lib-c:var(--lib-1)"><button>소년이 온다</button><button>흰</button><button>파친코</button><button>채식주의자</button><button>연년세세</button></div><button class="libtag" style="--lib-c:var(--lib-3)" data-open="one-ep">은평구립도서관 <span class="libcount">1권 · 최근 10월 2일</span> ›</button><div class="hrow" style="--lib-c:var(--lib-3)"><button>작별하지 않는다</button></div><button class="libtag" style="--lib-c:var(--lib-4)" data-open="one-gs">강서도서관 <span class="libcount">2권 · 최근 9월 14일</span> ›</button><div class="hrow" style="--lib-c:var(--lib-4)"><button>시선으로부터</button><button>희랍어 시간</button></div></div><button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="one-sdm"><div class="row"><button class="back" data-open="lib">‹</button><span class="vname">서대문도서관</span><span class="vsub" style="margin-left:auto">2권</span></div><div style="height:4px;border-radius:2px;background:var(--lib-2);margin:2px 0 6px"></div><div class="cvrow"><button>아몬드</button><button>불편한 편의점</button></div><button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div></div>
+      <p>가장 최근에 읽은 책이 있는 도서관이 맨 위예요. 이름표 옆에 마지막으로 읽은 날이 붙어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>"전체 ⇄" → 서대문(11월 22일), 마포중앙(11월 19일), 은평(10월 2일), 강서(9월 14일) 순서 → 서대문 › → 서대문에서 읽은 2권 → ‹.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>새 기록을 쓰면 그 도서관이 맨 위로 올라감 — 순서가 자주 바뀜</li><li>이름표가 조금 길어짐(권수 · 최근 날짜)</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>요즘 다니는 도서관이 늘 위에 있어요. / 많이 다닌 곳이 어디인지는 권수를 비교해야 알아요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-33 가로로 넘기는 띠(캐러셀)</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 이름 가나다순</h3>
+      <div class="phone"><div class="scr" data-screen="lib"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost">도서관별 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><button class="libtag" style="--lib-c:var(--lib-4)" data-open="one-gs">강서도서관 <span class="libcount">2권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-4)"><button>시선으로부터</button><button>희랍어 시간</button></div><button class="libtag" style="--lib-c:var(--lib-1)" data-open="one-mapo">마포중앙도서관 <span class="libcount">5권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-1)"><button>소년이 온다</button><button>흰</button><button>파친코</button><button>채식주의자</button><button>연년세세</button></div><button class="libtag" style="--lib-c:var(--lib-2)" data-open="one-sdm">서대문도서관 <span class="libcount">2권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-2)"><button>아몬드</button><button>불편한 편의점</button></div><button class="libtag" style="--lib-c:var(--lib-3)" data-open="one-ep">은평구립도서관 <span class="libcount">1권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-3)"><button>작별하지 않는다</button></div></div><button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="one-gs"><div class="row"><button class="back" data-open="lib">‹</button><span class="vname">강서도서관</span><span class="vsub" style="margin-left:auto">2권</span></div><div style="height:4px;border-radius:2px;background:var(--lib-4);margin:2px 0 6px"></div><div class="cvrow"><button>시선으로부터</button><button>희랍어 시간</button></div><button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div></div>
+      <p>도서관 이름의 가나다순이에요. 기록을 더 써도 순서가 바뀌지 않아요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>"전체 ⇄" → 강서, 마포중앙, 서대문, 은평 순서 → 강서 › → 강서에서 읽은 2권 → ‹.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>도서관이 많아도 이름으로 찾기 쉬움</li><li>순서가 늘 같음</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>찾는 도서관 자리를 외울 수 있어요. / 많이 다닌 곳·요즘 다닌 곳이 순서로는 안 보여요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-33 가로로 넘기는 띠(캐러셀)</p>
+    </article>
+    <article class="cand" data-id="D">
+      <h3>후보 D — 첫 줄만 최근, 아래는 기록 많은 순</h3>
+      <div class="phone"><div class="scr" data-screen="lib"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">도서관별 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><button class="libtag" style="--lib-c:var(--lib-2)" data-open="one-sdm">서대문도서관 <span class="libcount">2권 · 최근 11월 22일</span> ›</button><div class="hrow" style="--lib-c:var(--lib-2)"><button>아몬드</button><button>불편한 편의점</button></div><button class="libtag" style="--lib-c:var(--lib-1)" data-open="one-mapo">마포중앙도서관 <span class="libcount">5권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-1)"><button>소년이 온다</button><button>흰</button><button>파친코</button><button>채식주의자</button><button>연년세세</button></div><button class="libtag" style="--lib-c:var(--lib-4)" data-open="one-gs">강서도서관 <span class="libcount">2권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-4)"><button>시선으로부터</button><button>희랍어 시간</button></div><button class="libtag" style="--lib-c:var(--lib-3)" data-open="one-ep">은평구립도서관 <span class="libcount">1권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-3)"><button>작별하지 않는다</button></div></div><button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="one-sdm"><div class="row"><button class="back" data-open="lib">‹</button><span class="vname">서대문도서관</span><span class="vsub" style="margin-left:auto">2권</span></div><div style="height:4px;border-radius:2px;background:var(--lib-2);margin:2px 0 6px"></div><div class="cvrow"><button>아몬드</button><button>불편한 편의점</button></div><button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div></div>
+      <p>첫 줄은 최근에 읽은 서대문도서관이고 이름표에 11월 22일을 보여요. 그 아래에는 권수가 많은 마포중앙, 강서, 은평 순으로 나와요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>"전체 ⇄" → 서대문 2권 · 최근 11월 22일 → 마포중앙 5권 → 강서 2권 → 은평 1권. 서대문 ›를 누르면 서대문에서 읽은 책을 봐요.</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>최근에 읽은 곳과 기록이 많은 곳을 함께 볼 수 있어요. 아래 줄의 최근 날짜는 이름표에 표시하지 않아요.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 중심 요소 4 ===== -->
+<section class="element" id="el-home" data-chosen="A">
+  <h2>정할 것 4. 홈 하단 창에 "내 최근 독서 기록"을 어디에, 몇 권 둘까 <span class="status">확인</span></h2>
+  <div class="decided"><b>고른 것: 후보 A.</b> "A가 홈에는 어울리는데 B도 아깝다 싶을정도로 지금 대여중인 도서가 있으면 저렇게 뜨고 아니면 A처럼 뜨는거 좋을거같은데" — 인기 도서 바로 아래, 표지 최대 5권 옆으로 넘김. 차선: 후보 B. "지금 빌린 책 카드"는 빌린 책 이야기라 나중 목록에 적어 뒀어요. 불편한 점: "언제 읽었는지 확인하려면 결국 눌러봐야 하는점 정도?"</div>
+  <div class="flow"><b>정해진 것.</b> 홈 하단 창에는 지금 "이 동네 인기 도서" 한 줄과 그 아래 "도서관 소식"이 있고, 이 순서와 동작은 그대로예요. 로그인했고 기록이 하나라도 있을 때만 "내 최근 독서 기록" 칸이 생겨요(없으면 칸 자체가 없어요). 기록을 누르면 그 기록 화면으로 가요. 정할 것은 <b>그 칸의 자리와 보이는 개수·모양</b>이에요. 세 화면 모두 같은 기록이에요.</div>
+  <div class="pick">다시 보기: <select data-for="el-home">
+    <option value="A">후보 A — 인기 도서 아래, 표지 최대 5권 옆으로 넘김</option>
+    <option value="B">후보 B — 맨 위, 가장 최근 1권 한 줄 카드</option>
+    <option value="C">후보 C — 인기 도서 아래, 최근 3권 줄 목록</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 인기 도서 아래, 표지 최대 5권 옆으로 넘김 <span class="badge">추천</span></h3>
+      <div class="phone"><div class="scr" data-screen="home"><div class="facade">도서관 큐브 판 (지금 홈 그대로)</div><div class="hsheet"><div class="grip"></div><div class="sec">이 동네 인기 도서 <span class="vsub">마포중앙도서관 기준</span></div><div class="covers"><i></i><i></i><i></i><i></i><i></i></div><div class="sec">내 최근 독서 기록</div><div class="hcov"><button data-open="log">소년이 온다</button><button data-open="log">아몬드</button><button data-open="log">파친코</button><button data-open="log">흰</button><button data-open="log">작별하지 않는다</button></div><div class="sec">자주 가는 도서관 소식</div><div class="row" style="margin-top:4px"><span class="libtag" style="--lib-c:var(--fill1);margin:0">마포중앙</span><span class="libtag" style="--lib-c:var(--surface2);margin:0">서대문</span></div><div class="two-col" style="margin-top:6px"><div class="note-post">책 모임 후기</div><div class="note-post">이번 주 신간</div><div class="note-post">열람실 자리 팁</div><div class="note-post">어린이 코너</div></div></div><div class="tabbar"><b>홈</b><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="log"><div class="row"><button class="back" data-open="home">‹</button><span class="vname">내 기록</span><span style="margin-left:auto">⋯</span></div><div class="log" style="border:0"><i></i><div>소년이 온다<small>한강</small></div></div><div class="li">읽은 날 · 11월 22일</div><div class="li">도서관 · 마포중앙도서관</div><div class="li">감상 · 끝까지 읽고 한참 앉아 있었다.</div><button class="btn" style="margin-top:8px;width:100%">게시물로 올리기</button><div class="vsub" style="margin-top:6px">‹를 누르면 홈 하단 창으로 돌아가요</div></div></div>
+      <p>인기 도서 한 줄 바로 아래에 내 최근 기록 표지가 옆으로 최대 5권 놓여요. 표지를 눌러 보세요 — 그 기록 화면이 열려요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>홈 하단 창 → 인기 도서 → 바로 아래 "내 최근 독서 기록" 표지 줄 → 표지 누르기 → 그 기록 화면 → ‹ → 홈.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>창을 반쯤 올린 상태에서 인기 도서와 내 기록이 둘 다 보임</li><li>표지만 보여서 제목은 표지 글자로 확인</li><li>5권보다 적으면 있는 만큼만</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>인기 도서와 같은 모양이라 홈이 정돈돼 보이고, 최근 책 여러 권을 한눈에 봐요. / 언제 읽었는지는 눌러야 알아요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-33 가로로 넘기는 띠(캐러셀)</p>
+      <p><b>추천 이유:</b> 홈은 동네 도서관이 주인공이라 인기 도서를 맨 위에 두고, 내 기록은 같은 표지 줄 모양으로 바로 아래에 붙이면 새 칸이 튀지 않아서요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 맨 위, 가장 최근 1권 한 줄 카드</h3>
+      <div class="phone"><div class="scr" data-screen="home"><div class="facade">도서관 큐브 판 (지금 홈 그대로)</div><div class="hsheet"><div class="grip"></div><div class="sec">내 최근 독서 기록</div><div class="log" data-open="log" style="cursor:pointer;border:0;background:var(--cream);border-radius:12px;padding:6px 8px;margin-top:4px"><i></i><div>소년이 온다<small>11월 22일 · 마포중앙도서관</small></div></div><div class="sec">이 동네 인기 도서 <span class="vsub">마포중앙도서관 기준</span></div><div class="covers"><i></i><i></i><i></i><i></i><i></i></div><div class="sec">자주 가는 도서관 소식</div><div class="row" style="margin-top:4px"><span class="libtag" style="--lib-c:var(--fill1);margin:0">마포중앙</span><span class="libtag" style="--lib-c:var(--surface2);margin:0">서대문</span></div><div class="two-col" style="margin-top:6px"><div class="note-post">책 모임 후기</div><div class="note-post">이번 주 신간</div><div class="note-post">열람실 자리 팁</div><div class="note-post">어린이 코너</div></div></div><div class="tabbar"><b>홈</b><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="log"><div class="row"><button class="back" data-open="home">‹</button><span class="vname">내 기록</span><span style="margin-left:auto">⋯</span></div><div class="log" style="border:0"><i></i><div>소년이 온다<small>한강</small></div></div><div class="li">읽은 날 · 11월 22일</div><div class="li">도서관 · 마포중앙도서관</div><div class="li">감상 · 끝까지 읽고 한참 앉아 있었다.</div><button class="btn" style="margin-top:8px;width:100%">게시물로 올리기</button><div class="vsub" style="margin-top:6px">‹를 누르면 홈 하단 창으로 돌아가요</div></div></div>
+      <p>창 맨 위, 인기 도서보다 먼저 가장 최근에 쓴 기록 1권이 카드 한 줄로 보여요. 읽은 날과 도서관도 같이 보여요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>홈 하단 창 → 맨 위 "내 최근 독서 기록" 카드 1장 → 누르기 → 그 기록 화면 → ‹ → 홈. 인기 도서는 그 아래.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>창을 조금만 올려도 내 기록이 먼저 보임</li><li>인기 도서가 카드 한 줄만큼 아래로 내려감</li><li>2번째 기록부터는 독서 기록 탭에서 봄</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>방금 읽은 책이 홈에서 가장 먼저 보여요. / 1권만 보여서 그 전 기록은 홈에서 못 봐요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-32 줄 목록(썸네일 + 두 줄 글자)</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 인기 도서 아래, 최근 3권 줄 목록</h3>
+      <div class="phone"><div class="scr" data-screen="home"><div class="facade">도서관 큐브 판 (지금 홈 그대로)</div><div class="hsheet"><div class="grip"></div><div class="sec">이 동네 인기 도서 <span class="vsub">마포중앙도서관 기준</span></div><div class="covers"><i></i><i></i><i></i><i></i><i></i></div><div class="sec">내 최근 독서 기록</div><div class="log" data-open="log" style="cursor:pointer"><i></i><div>소년이 온다<small>11월 22일</small></div></div><div class="log" data-open="log" style="cursor:pointer"><i></i><div>아몬드<small>11월 19일</small></div></div><div class="log" data-open="log" style="cursor:pointer"><i></i><div>파친코<small>10월 30일</small></div></div><div class="sec">자주 가는 도서관 소식</div><div class="row" style="margin-top:4px"><span class="libtag" style="--lib-c:var(--fill1);margin:0">마포중앙</span><span class="libtag" style="--lib-c:var(--surface2);margin:0">서대문</span></div><div class="two-col" style="margin-top:6px"><div class="note-post">책 모임 후기</div><div class="note-post">이번 주 신간</div><div class="note-post">열람실 자리 팁</div><div class="note-post">어린이 코너</div></div></div><div class="tabbar"><b>홈</b><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="log"><div class="row"><button class="back" data-open="home">‹</button><span class="vname">내 기록</span><span style="margin-left:auto">⋯</span></div><div class="log" style="border:0"><i></i><div>소년이 온다<small>한강</small></div></div><div class="li">읽은 날 · 11월 22일</div><div class="li">도서관 · 마포중앙도서관</div><div class="li">감상 · 끝까지 읽고 한참 앉아 있었다.</div><button class="btn" style="margin-top:8px;width:100%">게시물로 올리기</button><div class="vsub" style="margin-top:6px">‹를 누르면 홈 하단 창으로 돌아가요</div></div></div>
+      <p>인기 도서 아래에 최근 기록 3권이 한 줄에 하나씩, 작은 표지·제목·읽은 날로 보여요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>홈 하단 창 → 인기 도서 → "내 최근 독서 기록" 3줄 → 한 줄 누르기 → 그 기록 화면 → ‹ → 홈.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>제목과 읽은 날이 글자로 보임</li><li>3줄이 자리를 차지해 소식 칸이 더 아래로 밀림</li><li>3권보다 적으면 있는 만큼만</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>언제 읽었는지까지 바로 보여요. / 소식 칸이 밀려서 동네 소식을 보려면 더 올려야 해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-32 줄 목록(썸네일 + 두 줄 글자)</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 잘 안 될 때 (예외 네 장면 + 홈 칸) — 문구는 Claude 초안, 결정 1~4 모양에 맞춤 ===== -->
+<section id="except">
+  <h2>잘 안 될 때 보이는 화면</h2>
+  <div class="state" id="exTabs">
+    <button aria-pressed="true" data-ex="x0">인터넷이 끊김</button><button aria-pressed="false" data-ex="x1">하나도 없음</button><button aria-pressed="false" data-ex="x2">두 번 빠르게 누름</button><button aria-pressed="false" data-ex="x3">로그인 안 함</button><button aria-pressed="false" data-ex="x4">홈 칸이 안 생길 때</button>
+  </div>
+  <p class="exnote" id="exNote"></p>
+  <div class="phone" id="exPhone" style="margin:8px 0 0">
+    <div class="scr" data-ex-screen="x0"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost">전체 ⇄</button></span></div>
+      <div class="scroll" style="top:36px"><div class="row statline">숫자를 불러오지 못했어요 <button class="btn ghost" style="font-size:9px;padding:2px 8px;margin-left:auto">↻ 새로고침</button></div>
+        <span class="m">Nov</span><div class="cvrow"><button>소년이 온다</button><button>아몬드</button></div>
+        <span class="m">Oct</span><div class="cvrow"><button>작별하지 않는다</button><button>흰</button><button>파친코</button></div></div>
+      <button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+    <div class="scr hide" data-ex-screen="x1"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost">도서관별 ⇄</button></span></div>
+      <div class="statline">전체 <b>0</b> · 올해 <b>0</b> · 이번 달 <b>0</b></div>
+      <div class="vbody" style="height:150px;margin-top:14px">도서관에서 읽은 기록이 아직 없어요.<br>기록을 쓸 때 도서관을 고르면 여기 꽂혀요.</div>
+      <button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+    <div class="scr hide" data-ex-screen="x2"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">도서관별 ⇄</button></span></div>
+      <div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div>
+        <button class="libtag" style="--lib-c:var(--lib-2)">서대문도서관 <span class="libcount">2권 · 최근 11월 22일</span> ›</button><div class="hrow" style="--lib-c:var(--lib-2)"><button>아몬드</button><button>불편한 편의점</button></div>
+        <button class="libtag" style="--lib-c:var(--lib-1)">마포중앙도서관 <span class="libcount">5권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-1)"><button>소년이 온다</button><button>흰</button><button>파친코</button><button>채식주의자</button><button>연년세세</button></div></div>
+      <button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+    <div class="scr hide" data-ex-screen="x3"><div class="vname">독서 기록</div>
+      <div class="vbody" style="height:150px;margin-top:14px">로그인하면 나만 보는 독서 기록을 남길 수 있어요.</div>
+      <button class="btn" style="background:var(--fill1);color:var(--text);width:100%;padding:8px">로그인하기</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+    <div class="scr hide" data-ex-screen="x4"><div class="facade">도서관 큐브 판 (지금 홈 그대로)</div><div class="hsheet"><div class="grip"></div><div class="sec">이 동네 인기 도서 <span class="vsub">마포중앙도서관 기준</span></div><div class="covers"><i></i><i></i><i></i><i></i><i></i></div><div class="sec">자주 가는 도서관 소식</div><div class="two-col" style="margin-top:6px"><div class="note-post">책 모임 후기</div><div class="note-post">이번 주 신간</div><div class="note-post">열람실 자리 팁</div><div class="note-post">어린이 코너</div></div></div><div class="tabbar"><b>홈</b><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div></div>
+  </div>
+</section>
+
+<!-- ===== 처음부터 끝까지 (세부 명세서 2. 유저 플로우와 같게) — 중심 요소를 정하면서 채운다 ===== -->
+<section id="fullflow">
+  <h2>처음부터 끝까지 이렇게 써요</h2>
+  <ol>
+    <li>사용자가 하단 "독서 기록" 탭을 누르면 동네한권이 내 책장(표지 면, 최근 읽은 책이 위·왼쪽)과 제목 아래 한 줄 글자로 내 기록 숫자(전체·올해·이번 달)를 보여 준다. 사용자가 책장을 밀어 올리면 숫자 줄도 같이 올라간다.</li>
+    <li>사용자가 오른쪽 위 "전체 ⇄"를 누르면 동네한권이 도서관별 책장(도서관마다 색, 한 줄에 옆으로 밀기)으로 바꿔 보여 준다. 동네한권은 가장 최근에 읽은 도서관 하나를 맨 위에 두고, 그 이름표에 권수와 최근 날짜를 붙인다. 둘째 줄부터는 나머지 도서관을 기록 많은 순으로 보여 주고 권수만 붙인다. 읽은 날이 없으면 기록을 만든 서울 날짜를 사용한다. 최근 날짜가 같으면 그 날짜 기록을 더 늦게 남긴 도서관이 먼저고, 시각도 같으면 도서관 ID 오름차순이다. 둘째 줄부터 권수가 같으면 도서관 ID 오름차순이다.</li>
+    <li>사용자가 도서관 이름표 ›를 누르면 동네한권이 그 도서관에서 읽은 책만 책장으로 보여 준다.</li>
+    <li>사용자가 다시 "도서관별 ⇄"를 누르면 동네한권이 전체 책장으로 돌아간다.</li>
+    <li>사용자가 홈 하단 창을 올리면 동네한권이 "이 동네 인기 도서" 한 줄 바로 아래에 "내 최근 독서 기록" 표지를 최근 것부터 최대 5권 보여 준다(로그인했고 기록이 있을 때만).</li>
+    <li>사용자가 그 표지를 누르면 동네한권이 그 기록 화면을 연다.</li>
+  </ol>
+</section>
+
+<!-- ===== 명세 패널 ===== -->
+<section id="spec">
+  <h2>명세</h2>
+  <div class="wide"><table>
+    <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
+    <tr data-el="el-top"><td>1. 책장 위 내 기록 숫자</td><td>후보 A 제목 아래 한 줄 글자(전체 12 · 올해 9 · 이번 달 2), 책장과 같이 올라감</td><td>없음</td><td>B 큰 숫자 칸 셋(늘 그 자리), C 접힌 칸 내 기록 12권 ▾</td><td>"A가 위에 책읽은숫자 제일 보기 깔끔하고 좋은데"</td><td>숫자 셋: 전체·올해·이번 달(서울 날짜 기준), 하나도 없으면 0. 작은 글자 한 줄(--sub 색, 숫자만 --text 굵게). 도서관별 보기에서는 이름표 옆에 6권처럼 도서관마다 수</td><td>탭 열기 → 숫자 한 줄 + 책장 → 밀면 숫자 줄도 올라감 → 전체 ⇄ → 도서관별 책장(숫자 줄 그대로, 이름표 옆 권수)</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-preset"><td>2. ⚙ 배치 바꾸기에서 고르는 것</td><td>후보 B 작은 메뉴에서 순서 고르기</td><td>없음</td><td>A 아래 카드에서 묶는 단위, C 책장 설정 화면에 다 모아 두기</td><td>"나는 B가 제일 좋은거같은데 오래전에 읽었던 책도 제대로 확인 가능하고 순서대로란 생각도 들어"</td><td>메뉴 3줄(최근 읽은 순 기본 ✓, 오래 전 읽은 순, 내가 옮긴 자리), 한 칸은 늘 한 달, 고른 순서는 다음에도 그대로</td><td>⚙ → 메뉴 → 오래 전 읽은 순 → 맨 위가 처음 읽은 책 / 내가 옮긴 자리 → 꾹 눌러 바꿔 둔 순서</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-libsort"><td>3. 도서관별 책장의 도서관 순서</td><td>후보 D 첫 줄만 최근, 아래는 기록 많은 순</td><td>없음</td><td>A 기록 많은 순, B 최근 순, C 이름 가나다순</td><td>가장 위만 최근 읽은 도서관으로 하고 최근 날짜도 표기. 2번째 줄부턴 기록 많은 도서관이 위</td><td>첫 줄만 권수 · 최근 날짜, 아래는 권수만</td><td>전체 ⇄ → 최근 도서관 → 나머지는 권수 순 → 이름표 › → 그 도서관 책장</td><td><span class="st">확인(D 수정)</span></td></tr>
+    <tr data-el="el-home"><td>4. 홈 하단 창 "내 최근 독서 기록" 자리·개수</td><td>후보 A 인기 도서 아래, 표지 최대 5권 옆으로 넘김</td><td>후보 B 맨 위, 가장 최근 1권 한 줄 카드</td><td>C 인기 도서 아래, 최근 3권 줄 목록</td><td>"A가 홈에는 어울리는데 B도 아깝다 싶을정도로 지금 대여중인 도서가 있으면 저렇게 뜨고 아니면 A처럼 뜨는거 좋을거같은데"</td><td>칸 제목 내 최근 독서 기록, 표지 최대 5권(최근 기록 순), 인기 도서와 같은 표지 크기, 로그인했고 기록이 있을 때만 칸이 생김</td><td>홈 하단 창 → 인기 도서 → 내 최근 독서 기록 표지 줄 → 표지 → 그 기록 화면 → ‹ → 홈</td><td><span class="st">확인</span></td></tr>
+    <tr><td>한 달에 4권 이상</td><td>그 달 안에서 다음 줄로 넘김(한 줄 3권)</td><td>—</td><td>—</td><td>묻지 않음</td><td>지금 책장과 같음</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>책장 위 카드</td><td>지금 카드 그대로(표지·제목·저자·감상 첫 줄·읽은 날·어디서 + "기록 자세히 보기")</td><td>—</td><td>—</td><td>묻지 않음</td><td>—</td><td>책 → 카드 → 기록 화면</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>도서관 색</td><td>도서관마다 고정 색 하나</td><td>—</td><td>—</td><td>묻지 않음</td><td>임시 이름 --lib-1~3(색 목록은 공통 기준에서 정함)</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+  </table></div>
+</section>
+</main>
+<script>
+  function mark(el, id) {
+    el.querySelectorAll('.cand').forEach(function (c) {
+      c.classList.toggle('chosen', c.dataset.id === id);
+      var old = c.querySelector('.badge.adopted'); if (old) old.remove();
+      if (id && c.dataset.id === el.dataset.chosen) { var s = document.createElement('span'); s.className = 'badge adopted'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+    });
+    var sel = el.querySelector('select[data-for]'); if (sel && id) sel.value = id;
+  }
+  document.querySelectorAll('section.element').forEach(function (el) {
+    mark(el, el.dataset.chosen || '');
+    var sel = el.querySelector('select[data-for]');
+    if (sel) { if (!el.dataset.chosen) sel.insertAdjacentHTML('afterbegin', '<option value="" selected>(아직 고르지 않음)</option>');
+      sel.addEventListener('change', function () { mark(el, sel.value || el.dataset.chosen); }); }
+  });
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-open],[data-toast],[data-menu],[data-close],[data-show],[data-swap],.switch'); if (!t) return;
+    if (t.classList.contains('switch')) t.classList.toggle('on');
+    if (t.dataset.open) { var ph = t.closest('.phone'); ph.querySelectorAll('.scr[data-screen]').forEach(function (s) { s.classList.toggle('hide', s.dataset.screen !== t.dataset.open); }); ph.querySelectorAll('.pop, .sheet[id]').forEach(function (p) { p.classList.add('hide'); }); }
+    if (t.dataset.menu) { document.getElementById(t.dataset.menu).classList.toggle('on'); return; }
+    if (t.dataset.show) { document.getElementById(t.dataset.show).classList.remove('hide'); }
+    if (t.dataset.swap) { var w = t.dataset.swap.split('|'); t.textContent = t.textContent === w[0] ? w[1] : w[0]; }
+    if (t.dataset.close) { var c = document.getElementById(t.dataset.close); c.classList.remove('on'); if (c.classList.contains('sheet') || c.classList.contains('pop')) c.classList.add('hide'); }
+    if (t.dataset.toast) { var m = document.getElementById(t.dataset.toast); m.classList.add('on'); clearTimeout(m._t); m._t = setTimeout(function () { m.classList.remove('on'); }, 2000); }
+  });
+  // 예외 화면 전환 — 탭마다 실제 화면이 바뀐다
+  var exNote = { x0: '숫자만 못 불러왔을 때: 책장은 그대로 보이고, 숫자 자리만 안내와 "↻ 새로고침"으로 바뀌어요(사용자 말로 "다시 해 보기"에서 바꿈). 도서관 한 줄을 못 불러올 때도 그 줄만 "책을 불러오지 못했어요" + "새로고침"이에요.',
+                 x1: '도서관을 고른 기록이 하나도 없을 때 도서관별 보기: 숫자는 0, 책장 자리에 한 줄 안내, + 버튼은 그대로예요.',
+                 x2: '"전체 ⇄"나 이름표를 빠르게 여러 번 눌러도 따로 안내는 뜨지 않아요. 마지막으로 누른 보기(여기서는 도서관별, 최근 읽은 도서관이 위)만 조용히 보여요.',
+                 x3: '로그인 안 하고 탭을 열면: 책장·숫자 대신 안내 한 줄과 로그인 버튼. 홈 하단 창에는 "내 최근 독서 기록" 칸이 아예 생기지 않아요.',
+                 x4: '홈 하단 창에서 로그인 안 했거나, 기록이 하나도 없거나, 기록을 못 불러왔을 때: "내 최근 독서 기록" 칸이 통째로 없어요. 빈 자리나 안내 글도 없고, 인기 도서와 소식은 그대로예요.' };
+  function showEx(id) {
+    document.querySelectorAll('#exTabs button').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.ex === id); });
+    document.querySelectorAll('#exPhone [data-ex-screen]').forEach(function (s) { s.classList.toggle('hide', s.dataset.exScreen !== id); });
+    document.getElementById('exNote').textContent = exNote[id];
+  }
+  document.querySelectorAll('#exTabs button').forEach(function (b) { b.addEventListener('click', function () { showEx(b.dataset.ex); }); });
+  showEx('x0');
+</script>
+</body>
+</html>
