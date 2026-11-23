@@ -27,7 +27,7 @@ TEST_DB_URL = os.environ["DATABASE_URL"]
 TEST_SUPABASE_URL = "https://auth.example.test"
 USER_A_ID = "00000000-0000-4000-8000-00000000000a"
 USER_B_ID = "00000000-0000-4000-8000-00000000000b"
-NO_DB_MODULES = {"test_auth_jwt.py", "test_cors.py", "test_ready.py"}
+NO_DB_MODULES = {"test_auth_jwt.py", "test_cors.py", "test_post_storage.py", "test_ready.py"}
 
 
 def build_alembic_config() -> Config:

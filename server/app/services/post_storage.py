@@ -18,6 +18,8 @@ STORAGE_TIMEOUT_SECONDS = 10
 class PostImageStorage(Protocol):
     def put(self, path: str, data: bytes, content_type: str) -> None: ...
 
+    def exists(self, path: str) -> bool: ...
+
     def public_url(self, path: str) -> str: ...
 
 
@@ -43,6 +45,23 @@ class SupabasePostImageStorage:
             if resp.status >= 300:
                 raise urllib.error.HTTPError(req.full_url, resp.status, "storage put failed", resp.headers, None)
 
+    def exists(self, path: str) -> bool:
+        req = urllib.request.Request(
+            f"{self.base_url}/storage/v1/object/authenticated/{self.bucket}/{quote(path)}",
+            method="HEAD",
+            headers={
+                "Authorization": f"Bearer {self.service_role_key}",
+                "apikey": self.service_role_key,
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=STORAGE_TIMEOUT_SECONDS) as resp:
+                return 200 <= resp.status < 300
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404:
+                return False
+            raise
+
     def public_url(self, path: str) -> str:
         return f"{self.base_url}/storage/v1/object/public/{self.bucket}/{quote(path)}"
 
@@ -57,6 +76,10 @@ class MemoryPostImageStorage:
     def put(self, path: str, data: bytes, content_type: str) -> None:
         with self._lock:
             self.files[path] = (data, content_type)
+
+    def exists(self, path: str) -> bool:
+        with self._lock:
+            return path in self.files
 
     def public_url(self, path: str) -> str:
         with self._lock:
