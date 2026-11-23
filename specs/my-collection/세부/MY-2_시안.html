@@ -36,6 +36,10 @@
   - <select data-for="el-…"> 채택안·탈락안 다시 보기 (옵션 값 = 후보 data-id)
 -->
 <style>
+  #mc button, #mc-empty button { display:block; width:100%; padding:7px 8px; border:0; background:transparent; color:inherit; text-align:left; font:inherit; cursor:pointer; }
+  #mc button + button, #mc-empty button + button { border-top:1px solid #ddd; }
+  #el-photo .av.photo-picked { background:linear-gradient(145deg, #c1a18e, #785e4c); }
+
   :root {
     /* 개발산출물/디자인_기준.md 토큰 (warm, M1 기본). 새 색이 필요하면 여기에 이름을 붙여 더한다 */
     --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
@@ -348,15 +352,17 @@
       <div class="phone">
         <div class="scr" data-screen="e">
           <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
-          <div style="position:relative;width:72px;margin:0 auto"><span class="av big"></span><button class="gear" style="position:absolute;right:-6px;bottom:0;cursor:pointer" data-menu="mc">✎</button></div>
-          <div class="menu" id="mc" style="top:100px;right:20px;width:120px"><div>사진 찍기</div><div>앨범에서 고르기</div><div data-open="gone">사진 지우기</div></div>
+          <div style="position:relative;width:72px;margin:0 auto"><span class="av big"></span><button class="gear" style="position:absolute;right:-6px;bottom:0;cursor:pointer" data-menu="mc" aria-label="사진 바꾸기">✎</button></div>
+          <div class="menu" id="mc" style="top:100px;right:20px;width:120px"><button data-photo-pick="mc" data-toast="my2-photo-camera">사진 찍기</button><button data-photo-pick="mc">앨범에서 고르기</button><button data-open="gone" data-close="mc">사진 지우기</button></div>
           <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
           <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+          <div class="toast" id="my2-photo-camera">카메라가 열려요</div>
           <div class="savebar"><button class="btn">저장</button></div>
         </div>
         <div class="scr hide" data-screen="gone">
           <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
-          <div style="position:relative;width:72px;margin:0 auto"><span class="av big none"></span><span class="gear" style="position:absolute;right:-6px;bottom:0">✎</span></div>
+          <div style="position:relative;width:72px;margin:0 auto"><span class="av big none"></span><button class="gear" style="position:absolute;right:-6px;bottom:0" data-menu="mc-empty" aria-label="사진 바꾸기">✎</button></div>
+          <div class="menu" id="mc-empty" style="top:100px;right:20px;width:120px"><button data-photo-pick="mc-empty" data-toast="my2-photo-camera">사진 찍기</button><button data-photo-pick="mc-empty">앨범에서 고르기</button></div>
           <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
           <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
           <div class="savebar"><button class="btn" data-open="e">저장</button></div>
@@ -566,8 +572,17 @@
   });
   // 휴대폰 부품 동작
   document.addEventListener('click', function (e) {
-    var t = e.target.closest('[data-open],[data-toast],[data-menu],[data-close],[data-show],[data-swap],.switch'); if (!t) return;
+    var t = e.target.closest('[data-open],[data-toast],[data-menu],[data-close],[data-show],[data-swap],[data-photo-pick],.switch'); if (!t) return;
     if (t.classList.contains('switch')) t.classList.toggle('on');
+    if (t.dataset.photoPick) {
+      var menu = document.getElementById(t.dataset.photoPick);
+      var photo = menu.closest('.phone');
+      menu.classList.remove('on');
+      photo.querySelector('[data-screen="gone"]').classList.add('hide');
+      var edit = photo.querySelector('[data-screen="e"]');
+      edit.classList.remove('hide');
+      edit.querySelector('.av').classList.add('photo-picked');
+    }
     if (t.dataset.open) { var ph = t.closest('.phone'); ph.querySelectorAll('.scr[data-screen]').forEach(function (s) { s.classList.toggle('hide', s.dataset.screen !== t.dataset.open); }); }
     if (t.dataset.menu) { document.getElementById(t.dataset.menu).classList.toggle('on'); return; }
     if (t.dataset.show) { document.getElementById(t.dataset.show).classList.remove('hide'); }
