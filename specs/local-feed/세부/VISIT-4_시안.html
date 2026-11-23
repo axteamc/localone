@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>local-feed · VISIT-4 시안 — 방문 스탬프("다녀왔어요")·도서관 룩</title>
+<!--
+  짝 문서: specs/local-feed/세부/VISIT-4.md
+  기준: ../team/contracts/local-feed.md VISIT-4(D 기준선) · 개발산출물/디자인_기준.md(규칙 7: 방문 페이지의 무거운 표식은 스탬프 버튼 하나, 컨트롤 곡률 9999)
+  휴대폰 틀 240×430 = 390×844 화면을 약 0.615배로 줄인 그림. 책장은 VISIT-3에서 만든 모양을 줄여 그렸다(이번에 정하는 것 아님).
+  모양 비교용 가짜 값은 세 후보 모두 같은 피드 카드 5장을 쓴다. 바뀌는 것은 "다녀왔어요"를 누른 뒤의 순서뿐이다.
+-->
+<style>
+  :root {
+    /* 개발산출물/디자인_기준.md 토큰 (warm, M1 기본) */
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+    --cream:#EFEFE7; --paper:#EFF1F1; --ink-strong:#2E333F; --text:#1D1D1F; --sub:#71716F;
+    --on-fill:#1D1D1F;
+    /* 형태 토큰 (아치 계열) */
+    --r-card:18px; --r-pill:9999px; --r-info:9px; --r-book:5px 9px 9px 5px;
+    /* 그림자·덮개 (룩과 무관한 고정값, 디자인_기준 §2 조명·그림자) */
+    --shadow-soft:rgba(0,0,0,.15); --shadow-mid:rgba(0,0,0,.22); --dim:rgba(0,0,0,.35);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; line-height:1.5; }
+  header.page, main { max-width:1280px; margin:0 auto; padding:0 16px; }
+  header.page { padding-top:20px; }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:17px; margin:0 0 4px; } h3 { font-size:15px; margin:0 0 8px; }
+  .how, .flow, .decided { background:var(--cream); border-radius:var(--r-card); padding:12px 16px; margin:10px 0 0; }
+  .decided { border-left:5px solid var(--ink-strong); }
+  section.element { margin-top:32px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:var(--r-pill); background:var(--surface2); margin-left:6px; font-weight:400; }
+  .pick { margin:8px 0 0; font-size:14px; }
+  .pick select { font:inherit; padding:4px 8px; border-radius:10px; border:1px solid var(--surface3); background:var(--paper); }
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-card); padding:14px; border:3px solid transparent; }
+  .cand.recommended { border-color:var(--fill1); } .cand.chosen { border-color:var(--ink-strong); }
+  .badge { display:inline-block; font-size:12px; font-weight:700; padding:1px 9px; border-radius:var(--r-pill); background:var(--fill1); margin-left:6px; }
+  .badge.adopted { background:var(--ink-strong); color:var(--paper); }
+  .cand p, .cand li { font-size:13.5px; margin:6px 0; } .cand ul { padding-left:18px; margin:4px 0; }
+  .lbl { font-weight:700; font-size:12.5px; color:var(--sub); margin-top:10px; display:block; }
+  .tbtn { font:inherit; font-size:12.5px; border:1px solid var(--surface3); background:var(--cream); border-radius:var(--r-pill); padding:3px 10px; cursor:pointer; margin:2px 0; }
+  /* ---- 휴대폰: 방문 페이지 ---- */
+  .phone { width:240px; height:430px; margin:0 auto 10px; background:var(--cream); border-radius:26px; border:5px solid var(--ink-strong); position:relative; overflow:hidden; font-size:11px; }
+  .hd { position:absolute; left:0; right:0; top:0; height:56px; padding:8px 10px 0; background:var(--cream); z-index:5; }
+  .back { font-size:20px; font-weight:800; line-height:1; background:none; border:0; padding:0; color:inherit; }
+  .vname { font-size:14px; font-weight:500; margin-top:2px; }
+  .vinfo { color:var(--sub); font-size:9px; }
+  .fhead { position:absolute; left:0; right:0; top:56px; height:30px; padding:4px 8px; display:flex; justify-content:space-between; align-items:center; gap:6px; z-index:6; background:var(--cream); }
+  .fhead .ftitle { font-size:9px; color:var(--sub); }
+  .fhead .right { display:flex; align-items:center; gap:5px; }
+  .stamp { border:1px solid var(--surface3); border-bottom:2px solid var(--ink-strong); background:var(--paper); border-radius:var(--r-pill); padding:4px 10px; font:inherit; font-size:10px; font-weight:500; cursor:pointer; color:var(--text); white-space:nowrap; }
+  .stamp.done { background:var(--ink-strong); color:var(--paper); border-color:var(--ink-strong); }
+  .mini { display:flex; align-items:center; gap:3px; font-size:8px; color:var(--sub); }
+  .switch { width:22px; height:13px; border-radius:7px; background:var(--surface3); position:relative; border:0; cursor:pointer; flex:none; padding:0; }
+  .switch::after { content:""; position:absolute; left:2px; top:2px; width:9px; height:9px; border-radius:50%; background:var(--paper); transition:left .15s; }
+  .switch.on { background:var(--ink-strong); } .switch.on::after { left:11px; }
+  .feed { position:absolute; left:0; right:0; top:86px; bottom:96px; overflow-y:auto; padding:2px 8px 40px; display:grid; grid-template-columns:1fr 1fr; gap:6px; align-items:start; scrollbar-width:none; }
+  .feed::-webkit-scrollbar { display:none; }
+  .col { display:flex; flex-direction:column; gap:6px; }
+  .pc { border-radius:var(--r-card); display:flex; align-items:center; justify-content:center; text-align:center; padding:8px; font-size:9px; color:var(--on-fill); }
+  .pc.f1 { background:var(--fill1); } .pc.f2 { background:var(--fill2); } .pc.f3 { background:var(--fill3); } .pc.s3 { background:var(--surface3); }
+  .gb { background:var(--paper); border-radius:var(--r-info); padding:7px 8px; font-size:9.5px; line-height:1.4; }
+  .gb .tag, .sc .tag { font-size:7.5px; opacity:.7; display:flex; align-items:center; gap:3px; margin-bottom:3px; }
+  .gb .tag i, .sc .tag i { width:4px; height:4px; border-radius:50%; background:var(--ink-strong); display:block; }
+  .gb .meta, .sc .meta { font-size:7.5px; color:var(--sub); margin-top:4px; }
+  .sc { background:var(--paper); border-radius:var(--r-info); padding:7px 8px; font-size:9.5px; line-height:1.4; outline:2px solid var(--fill1); }
+  .sc .seal { width:26px; height:26px; border-radius:50%; border:2px solid var(--ink-strong); display:flex; align-items:center; justify-content:center; font-size:7px; font-weight:700; margin:2px 0 4px; }
+  .fab { position:absolute; right:10px; bottom:104px; width:30px; height:30px; border-radius:var(--r-pill); background:var(--paper); border:1px solid var(--surface3); border-bottom:2px solid var(--ink-strong); color:var(--text); display:flex; align-items:center; justify-content:center; font-size:18px; z-index:16; cursor:default; }
+  .shelf { position:absolute; left:0; right:0; bottom:0; height:96px; background:var(--surface2); z-index:15; padding:6px 10px 0; }
+  .shelf b { font-size:9px; font-weight:500; }
+  .shelf .bks { display:flex; gap:8px; justify-content:center; margin-top:4px; }
+  .shelf .bks i { width:44px; height:58px; border-radius:var(--r-book); display:block; background:var(--fill2); box-shadow:0 3px 6px var(--shadow-soft); }
+  .shelf .bks i:nth-child(2) { background:var(--fill3); } .shelf .bks i:nth-child(3) { background:var(--paper); }
+  .shelf .plank { height:3px; background:var(--ink-strong); margin:0 -4px; }
+  .dimx { position:absolute; inset:0; background:var(--dim); z-index:25; }
+  .bsheet { position:absolute; left:0; right:0; bottom:0; background:var(--paper); border-radius:var(--r-info) var(--r-info) 0 0; padding:12px 14px 16px; z-index:26; display:flex; flex-direction:column; gap:6px; font-size:10px; }
+  .bsheet .t { font-size:12px; font-weight:500; }
+  .bsheet .sub { color:var(--sub); font-size:8.5px; }
+  .choice { display:flex; flex-direction:column; gap:6px; }
+  .choice button { text-align:left; background:var(--cream); border:0; border-radius:var(--r-info); padding:8px 10px; font:inherit; font-size:10px; cursor:pointer; color:inherit; }
+  .choice button span { display:block; color:var(--sub); font-size:8px; }
+  .closeb { background:none; border:0; font:inherit; font-size:9.5px; color:var(--sub); cursor:pointer; align-self:center; padding:4px; }
+  .snack { position:absolute; left:8px; right:8px; bottom:104px; background:var(--ink-strong); color:var(--paper); border-radius:var(--r-info); padding:7px 9px; font-size:9px; display:flex; justify-content:space-between; align-items:center; gap:6px; z-index:30; }
+  .snack button { background:none; border:0; color:var(--fill1); font:inherit; font-size:9px; font-weight:700; cursor:pointer; padding:0; white-space:nowrap; }
+  .toast { position:absolute; left:12px; right:12px; bottom:104px; background:var(--ink-strong); color:var(--paper); border-radius:12px; padding:6px 10px; font-size:9.5px; z-index:30; }
+  .hide { display:none !important; }
+  /* ---- 표 ---- */
+  table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-card); overflow:hidden; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--surface2); }
+  th { background:var(--surface2); }
+  .st { font-size:12px; padding:1px 8px; border-radius:var(--r-pill); background:var(--surface2); white-space:nowrap; }
+  #spec, #except, #fullflow { margin-top:32px; }
+  .state button { font:inherit; border:0; border-radius:var(--r-pill); padding:4px 12px; background:var(--surface2); cursor:pointer; margin:2px; }
+  .state button[aria-pressed="true"] { background:var(--ink-strong); color:var(--paper); }
+  .stwrap { display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; margin-top:10px; }
+  .stwrap .phone { margin:0; }
+  .stnote { max-width:520px; font-size:14px; background:var(--paper); border-radius:var(--r-card); padding:12px 16px; margin:0; }
+  .wide { overflow-x:auto; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>local-feed · VISIT-4 시안 — 방문 스탬프("다녀왔어요")·도서관 룩</h1>
+  <div class="how"><b>보는 법.</b> 화면 3개를 비교해 보세요. 휴대폰 안 <b>"다녀왔어요"</b> 버튼을 눌러 보면 그다음 모습이 바뀌어요. <b>"처음부터 다시"</b> 버튼으로 몇 번이든 다시 해 볼 수 있어요. 화면마다 아래에 <b>누르면 어떻게 이어지는지</b>를 적어 뒀어요. 노란 테두리가 <b>추천</b>이에요. 고르는 건 직접 해 주세요.</div>
+</header>
+<main>
+
+<!-- ===== 중심 요소 1 ===== -->
+<section class="element" id="el-stamp-choose" data-chosen="">
+  <h2>정할 것 1. "다녀왔어요"를 누른 뒤 나만 볼지·피드에 남길지 고르는 모양 <span class="status">결정 전</span></h2>
+  <div class="flow"><b>이미 정해져 있어요.</b> 그날 그 도서관에 처음 들어오면 피드 오른쪽 위에 "다녀왔어요" 버튼이 있어요. 눌러야 남고, 하루에 한 도서관 한 번만 남아요. 남길 때 <b>나만 볼지, 이 도서관 피드에 카드로 남길지</b> 정하고, 나중에 바꿀 수도 있어요. 정할 것은 <b>그 "나만 볼지·피드에 남길지"를 고르는 모양</b>이에요.</div>
+  <div class="pick">다시 보기: <select data-for="el-stamp-choose">
+    <option value="A">후보 A — 누르면 아래에서 고르는 창</option>
+    <option value="B">후보 B — 바로 남고 아래 안내에서 바꾸기</option>
+    <option value="C">후보 C — 버튼 옆 스위치로 미리 정하기</option>
+  </select></div>
+  <div class="cands">
+    <!-- 후보 A -->
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 누르면 아래에서 고르는 창 <span class="badge">추천</span></h3>
+      <div class="phone" data-cand="A">
+        <div class="hd"><button class="back">‹</button><div class="vname">정독도서관</div><div class="vinfo">320m · 오늘 09:00–18:00</div></div>
+        <div class="fhead"><span class="ftitle">이 도서관 이야기</span><div class="right"><button class="stamp" data-act="openA">다녀왔어요</button></div></div>
+        <div class="feed"><div class="col" data-col="1"><div class="pc f2" style="height:88px">오늘 읽은 문장</div><div class="gb"><div class="tag"><i></i>방명록</div>2층 창가 자리 오늘 햇살 좋아요<div class="meta">창가자리 · 5분 전</div></div></div><div class="col"><div class="pc f3" style="height:110px">2층 창가 추천</div><div class="pc f1" style="height:70px">밝은 밤</div><div class="pc s3" style="height:80px">사진</div></div></div>
+        <button class="fab" tabindex="-1">+</button>
+        <div class="shelf"><b>요즘 사람들이 읽은 책</b><div class="bks"><i></i><i></i><i></i></div><div class="plank"></div></div>
+        <div class="dimx hide" data-part="dim"></div>
+        <div class="bsheet hide" data-part="sheet">
+          <div class="t">오늘 정독도서관에 다녀왔어요</div>
+          <div class="sub">어떻게 남길까요? 나중에 바꿀 수 있어요.</div>
+          <div class="choice">
+            <button data-act="pick" data-vis="private">나만 보기<span>내 기록에만 남아요</span></button>
+            <button data-act="pick" data-vis="public">피드에 남기기<span>이 도서관 피드에 카드로 보여요</span></button>
+          </div>
+          <button class="closeb" data-act="cancel">닫기</button>
+        </div>
+        <div class="toast hide" data-part="toast"></div>
+      </div>
+      <button class="tbtn" data-act="reset" data-for="A">처음부터 다시</button>
+      <p>버튼을 누르면 아래에서 작은 창이 올라와요. 창에서 "나만 보기" 또는 "피드에 남기기"를 골라야 남아요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>"다녀왔어요" 누름 → 아래에서 고르는 창 → "피드에 남기기" 누름 → 창이 닫히고 버튼이 진하게 바뀜 → 피드 맨 위에 내 스탬프 카드. "닫기"를 누르면 아무것도 남지 않아요.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>창에 두 줄(제목 + 작은 설명)과 "닫기"</li><li>고르기 전에는 남지 않음 — 창을 닫으면 버튼 그대로</li><li>"나만 보기"를 고르면 피드는 그대로, 버튼만 진하게</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>누구에게 보일지 매번 분명하게 골라요. / 한 번 더 눌러야 남아요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-04 아래에서 올라오는 시트 (카카오맵 장소 카드, iOS 공유 시트)</p>
+      <p><b>추천 이유:</b> 피드에 남기면 다른 사람에게 보이는 일이라, 누를 때마다 "누구에게 보일지"를 한 번 확인하는 게 맞아요. 방명록 "+" 고르기 창과 같은 모양이라 익숙해요.</p>
+    </article>
+    <!-- 후보 B -->
+    <article class="cand" data-id="B">
+      <h3>후보 B — 바로 남고 아래 안내에서 바꾸기</h3>
+      <div class="phone" data-cand="B">
+        <div class="hd"><button class="back">‹</button><div class="vname">정독도서관</div><div class="vinfo">320m · 오늘 09:00–18:00</div></div>
+        <div class="fhead"><span class="ftitle">이 도서관 이야기</span><div class="right"><button class="stamp" data-act="stampB">다녀왔어요</button></div></div>
+        <div class="feed"><div class="col" data-col="1"><div class="pc f2" style="height:88px">오늘 읽은 문장</div><div class="gb"><div class="tag"><i></i>방명록</div>2층 창가 자리 오늘 햇살 좋아요<div class="meta">창가자리 · 5분 전</div></div></div><div class="col"><div class="pc f3" style="height:110px">2층 창가 추천</div><div class="pc f1" style="height:70px">밝은 밤</div><div class="pc s3" style="height:80px">사진</div></div></div>
+        <button class="fab" tabindex="-1">+</button>
+        <div class="shelf"><b>요즘 사람들이 읽은 책</b><div class="bks"><i></i><i></i><i></i></div><div class="plank"></div></div>
+        <div class="snack hide" data-part="snack"><span>나만 보기로 남겼어요</span><button data-act="toPublicB">피드에도 남기기</button></div>
+        <div class="toast hide" data-part="toast"></div>
+      </div>
+      <button class="tbtn" data-act="reset" data-for="B">처음부터 다시</button>
+      <p>버튼을 누르는 순간 "나만 보기"로 남아요. 아래에 몇 초 동안 안내가 뜨고, 거기서 "피드에도 남기기"를 누르면 피드에 카드로 보여요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>"다녀왔어요" 누름 → 바로 남음(버튼이 진하게) → 아래 안내 "나만 보기로 남겼어요 · 피드에도 남기기" → 누르면 피드 맨 위에 내 스탬프 카드. 안내는 5초 뒤 사라져요.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>누르는 한 번에 끝남 — 창이 뜨지 않음</li><li>피드에 남기려면 안내가 사라지기 전에 눌러야 함(놓치면 나중에 버튼을 다시 눌러 바꿈)</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>가장 빨라요. 실수로 남에게 보일 일이 없어요. / 피드에 남기고 싶은 사람은 사라지는 안내를 놓칠 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-53 바로 하고 안내에서 바꾸기 (지메일 "보관함으로 이동 · 실행 취소")</p>
+    </article>
+    <!-- 후보 C -->
+    <article class="cand" data-id="C">
+      <h3>후보 C — 버튼 옆 스위치로 미리 정하기</h3>
+      <div class="phone" data-cand="C">
+        <div class="hd"><button class="back">‹</button><div class="vname">정독도서관</div><div class="vinfo">320m · 오늘 09:00–18:00</div></div>
+        <div class="fhead"><span class="ftitle">이 도서관 이야기</span><div class="right"><span class="mini" data-part="mini">피드에도<button class="switch" data-act="switchC" aria-label="피드에도 남기기"></button></span><button class="stamp" data-act="stampC">다녀왔어요</button></div></div>
+        <div class="feed"><div class="col" data-col="1"><div class="pc f2" style="height:88px">오늘 읽은 문장</div><div class="gb"><div class="tag"><i></i>방명록</div>2층 창가 자리 오늘 햇살 좋아요<div class="meta">창가자리 · 5분 전</div></div></div><div class="col"><div class="pc f3" style="height:110px">2층 창가 추천</div><div class="pc f1" style="height:70px">밝은 밤</div><div class="pc s3" style="height:80px">사진</div></div></div>
+        <button class="fab" tabindex="-1">+</button>
+        <div class="shelf"><b>요즘 사람들이 읽은 책</b><div class="bks"><i></i><i></i><i></i></div><div class="plank"></div></div>
+        <div class="toast hide" data-part="toast"></div>
+      </div>
+      <button class="tbtn" data-act="reset" data-for="C">처음부터 다시</button>
+      <p>버튼 왼쪽에 작은 스위치 "피드에도"가 있어요. 스위치를 먼저 켜고 끈 다음, 버튼을 누르면 그대로 남아요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>(필요하면) "피드에도" 스위치 켬 → "다녀왔어요" 누름 → 바로 남음(버튼이 진하게, 스위치는 사라짐) → 스위치를 켰으면 피드 맨 위에 내 스탬프 카드.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>스위치는 처음엔 꺼짐(나만 보기)</li><li>피드 머리 오른쪽에 스위치 + 버튼 두 개가 나란히 — 자리가 좁아짐</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>창 없이 한 번에, 고른 대로 남아요. / 스위치가 작아서 켜져 있는지 모르고 누를 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-10 줄 하나 + 스위치 (iOS 설정, HIG Toggles)</p>
+    </article>
+  </div>
+</section>
+
+<!-- 중심 요소 2(이미 찍은 날 버튼·바꾸는 자리), 3(스탬프 카드 모양), 4(룩이 바뀌는 범위)는 1이 '확인'이 된 뒤에 같은 모양으로 추가한다 -->
+
+<!-- ===== 잘 안 될 때 (예외 네 장면, 1B 3단계) — 정할 것을 다 고른 뒤 한 번에 묻는다 ===== -->
+<section id="except">
+  <h2>잘 안 될 때 보이는 화면</h2>
+  <div class="state" id="exTabs">
+    <button aria-pressed="true" data-ex="0">인터넷이 끊김</button><button aria-pressed="false" data-ex="1">하나도 없음</button><button aria-pressed="false" data-ex="2">두 번 빠르게 누름</button><button aria-pressed="false" data-ex="3">로그인 안 함</button>
+  </div>
+  <div class="stwrap">
+    <div class="phone"><div class="hd"><button class="back">‹</button><div class="vname">정독도서관</div><div class="vinfo">320m · 오늘 09:00–18:00</div></div>
+      <div class="fhead"><span class="ftitle">이 도서관 이야기</span><div class="right"><button class="stamp" data-exbtn>다녀왔어요</button></div></div>
+      <div class="feed"><div class="col"><div class="pc f2" style="height:88px">오늘 읽은 문장</div></div><div class="col"><div class="pc f3" style="height:110px">2층 창가 추천</div></div></div>
+      <div class="shelf"><b>요즘 사람들이 읽은 책</b><div class="bks"><i></i><i></i><i></i></div><div class="plank"></div></div>
+      <div class="toast" data-exmsg></div></div>
+    <p class="stnote" data-exnote></p>
+  </div>
+</section>
+
+<!-- ===== 처음부터 끝까지 (세부 명세서 2. 유저 플로우와 같게) ===== -->
+<section id="fullflow">
+  <h2>처음부터 끝까지 이렇게 써요</h2>
+  <ol>
+    <li>사용자가 지도 홈에서 도서관을 누르면 동네한권이 그 도서관 방문 페이지를 연다.</li>
+    <li>동네한권이 그날 처음 들어온 사용자에게 피드 오른쪽 위 "다녀왔어요" 버튼을 보여 준다.</li>
+    <li>(정할 것 1을 고르면 여기를 이어서 쓴다)</li>
+  </ol>
+</section>
+
+<!-- ===== 명세 패널 (세부 명세서 확인 목록·결정 기록과 같게) ===== -->
+<section id="spec">
+  <h2>명세</h2>
+  <div class="wide"><table>
+    <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
+    <tr data-el="el-stamp-choose"><td>1. 공개 여부 고르는 모양</td><td>— (추천: 후보 A 아래에서 고르는 창)</td><td>—</td><td>—</td><td>(받기 전)</td><td>창: 제목 "오늘 {도서관}에 다녀왔어요", 작은 설명, "나만 보기"·"피드에 남기기", "닫기"</td><td>다녀왔어요 → 고르는 창 → 고르면 남음</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-stamp-done"><td>2. 이미 찍은 날 버튼·바꾸는 자리</td><td>—</td><td>—</td><td>—</td><td>(1 다음에)</td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-stamp-card"><td>3. 피드의 스탬프 카드 모양</td><td>—</td><td>—</td><td>—</td><td>(2 다음에)</td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-look"><td>4. 룩이 바뀌는 범위</td><td>—</td><td>—</td><td>—</td><td>(3 다음에)</td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
+    <tr><td>"다녀왔어요" 버튼 자리·모양</td><td>피드 머리 오른쪽, 무광 판 + 아래 받침, 곡률 9999(필)</td><td>—</td><td>—</td><td>이미 정해짐(V4-1)</td><td>글자 "다녀왔어요"</td><td>—</td><td><span class="st">확인(정해짐)</span></td></tr>
+    <tr><td>비로그인으로 누를 때</td><td>방명록과 같은 모양의 로그인 안내 창</td><td>—</td><td>—</td><td>묻지 않음(예외 화면에서 함께 봄)</td><td>"로그인하면 다녀왔어요를 남길 수 있어요"</td><td>로그인하기 / 닫기</td><td><span class="st">기본값(Claude)</span></td></tr>
+  </table></div>
+</section>
+</main>
+
+<script>
+  // 채택안 표시: section 의 data-chosen 에 후보 id → 검은 테두리 + "채택" 표시. 선택 상자로 탈락안을 다시 볼 수 있다.
+  function mark(el, id) {
+    el.querySelectorAll('.cand').forEach(function (c) {
+      c.classList.toggle('chosen', c.dataset.id === id);
+      var old = c.querySelector('.badge.adopted'); if (old) old.remove();
+      if (id && c.dataset.id === el.dataset.chosen) { var s = document.createElement('span'); s.className = 'badge adopted'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+    });
+    var sel = el.querySelector('select[data-for]'); if (sel && id) sel.value = id;
+  }
+  document.querySelectorAll('section.element').forEach(function (el) {
+    mark(el, el.dataset.chosen || '');
+    var sel = el.querySelector('select[data-for]');
+    if (sel) { if (!el.dataset.chosen) sel.insertAdjacentHTML('afterbegin', '<option value="" selected>(아직 고르지 않음)</option>');
+      sel.addEventListener('change', function () { mark(el, sel.value || el.dataset.chosen); }); }
+  });
+
+  // ---- 후보 휴대폰 동작 ----
+  var CARD = '<div class="sc" data-mine><div class="tag"><i></i>다녀왔어요</div><div class="seal">11.23</div>책벌레님이 다녀갔어요<div class="meta">방금</div></div>';
+  function part(ph, name) { return ph.querySelector('[data-part="' + name + '"]'); }
+  function show(ph, name, on) { var p = part(ph, name); if (p) p.classList.toggle('hide', !on); }
+  function toast(ph, text) { var t = part(ph, 'toast'); t.textContent = text; t.classList.remove('hide'); clearTimeout(t._t); t._t = setTimeout(function () { t.classList.add('hide'); }, 2200); }
+  function stamped(ph, vis) {
+    var b = ph.querySelector('.stamp'); b.classList.add('done'); b.textContent = '다녀왔어요 ✓';
+    if (vis === 'public' && !ph.querySelector('[data-mine]')) ph.querySelector('[data-col="1"]').insertAdjacentHTML('afterbegin', CARD);
+  }
+  var initial = {};
+  document.querySelectorAll('.phone[data-cand]').forEach(function (ph) { initial[ph.dataset.cand] = ph.innerHTML; });
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-act]'); if (!t) return;
+    var act = t.dataset.act;
+    if (act === 'reset') { var ph0 = document.querySelector('.phone[data-cand="' + t.dataset.for + '"]'); ph0.innerHTML = initial[t.dataset.for]; return; }
+    var ph = t.closest('.phone'); if (!ph) return;
+    var done = ph.querySelector('.stamp').classList.contains('done');
+    if (act === 'openA') { if (done) { toast(ph, '(이미 남긴 날 모양은 정할 것 2에서 봐요)'); return; } show(ph, 'dim', true); show(ph, 'sheet', true); }
+    if (act === 'cancel') { show(ph, 'dim', false); show(ph, 'sheet', false); }
+    if (act === 'pick') { show(ph, 'dim', false); show(ph, 'sheet', false); stamped(ph, t.dataset.vis); toast(ph, t.dataset.vis === 'public' ? '피드에 남겼어요' : '나만 보기로 남겼어요'); }
+    if (act === 'stampB') { if (done) { toast(ph, '(이미 남긴 날 모양은 정할 것 2에서 봐요)'); return; } stamped(ph, 'private'); var s = part(ph, 'snack'); s.classList.remove('hide'); clearTimeout(s._t); s._t = setTimeout(function () { s.classList.add('hide'); }, 5000); }
+    if (act === 'toPublicB') { show(ph, 'snack', false); stamped(ph, 'public'); toast(ph, '피드에 남겼어요'); }
+    if (act === 'switchC') { t.classList.toggle('on'); }
+    if (act === 'stampC') { if (done) { toast(ph, '(이미 남긴 날 모양은 정할 것 2에서 봐요)'); return; } var on = ph.querySelector('.switch').classList.contains('on'); show(ph, 'mini', false); stamped(ph, on ? 'public' : 'private'); toast(ph, on ? '피드에 남겼어요' : '나만 보기로 남겼어요'); }
+  });
+
+  // ---- 예외 화면 전환 (문구는 Claude 추천안, 정할 것을 다 고른 뒤 한 번에 묻는다) ----
+  var ex = [
+    { msg:'남기지 못했어요. 다시 눌러 주세요', btn:'다녀왔어요', note:'"다녀왔어요"를 눌렀는데 인터넷이 끊기면: 버튼은 그대로(안 남은 상태), 아래 한 줄 안내. 피드·책장은 그대로 보여요. 다시 누르면 다시 시도해요.' },
+    { msg:'', btn:'다녀왔어요', note:'아직 아무도 다녀가지 않은 도서관: 피드에 스탬프 카드가 하나도 없어도 화면은 평소와 같아요. 버튼은 그대로 있어요.' },
+    { msg:'피드에 남겼어요', btn:'다녀왔어요 ✓', note:'고르는 창에서 "피드에 남기기"를 빠르게 두 번 눌러도 스탬프는 하나, 피드 카드도 하나만 생겨요.' },
+    { msg:'로그인하면 다녀왔어요를 남길 수 있어요 · 로그인하기 / 닫기', btn:'다녀왔어요', note:'로그인하지 않은 사람이 버튼을 누르면: 아래에서 로그인 안내 창(방명록과 같은 모양). 피드·책장은 로그인 없이 그대로 봐요. 남의 스탬프 카드에는 바꾸는 메뉴가 없어요.' }
+  ];
+  var exMsg = document.querySelector('[data-exmsg]'), exNote = document.querySelector('[data-exnote]'), exBtn = document.querySelector('[data-exbtn]');
+  function setEx(i) { exMsg.textContent = ex[i].msg; exMsg.classList.toggle('hide', !ex[i].msg); exNote.textContent = ex[i].note; exBtn.textContent = ex[i].btn; exBtn.classList.toggle('done', i === 2); }
+  setEx(0);
+  document.querySelectorAll('#exTabs button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#exTabs button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      setEx(+b.dataset.ex);
+    });
+  });
+</script>
+</body>
+</html>
