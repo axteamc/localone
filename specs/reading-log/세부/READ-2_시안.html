@@ -166,6 +166,7 @@
   .openstat { margin-top:5px; padding:6px 10px; border-radius:12px; background:var(--cream); font-size:10px; }
   .openstat .row { justify-content:space-between; }
   .libcount { color:var(--sub); font-size:9px; }
+  .tline { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:1px 4px 0; font-size:7.5px; color:var(--sub); text-align:center; }
 </style>
 </head>
 <body>
@@ -179,7 +180,7 @@
 <!-- ===== 중심 요소 1 ===== -->
 <section class="element" id="el-top" data-chosen="A">
   <h2>정할 것 1. 책장 위쪽에 내 기록 숫자(전체·올해·이번 달)를 어떻게 둘까 <span class="status">확인</span></h2>
-  <div class="decided"><b>고른 것: 후보 A.</b> "A가 위에 책읽은숫자 제일 보기 깔끔하고 좋은데" — 제목 아래 한 줄 글자로 숫자 셋, 책장을 밀면 같이 올라가요. 차선은 없음.</div>
+  <div class="decided"><b>고른 것: 후보 A.</b> "A가 위에 책읽은숫자 제일 보기 깔끔하고 좋은데" — 제목 아래 한 줄 글자로 숫자 셋, 책장을 밀면 같이 올라가요. 차선은 없음. 불편한 점: "숫자가 작아서 체감은 덜될거같아"</div>
   <div class="flow"><b>정해진 것.</b> 위쪽 줄 오른쪽에 ⚙(배치 바꾸기)와 "전체 ⇄"가 있어요. 숫자는 전체 기록 수, 올해 읽은 수, 이번 달 읽은 수 세 가지예요. 정할 것은 <b>그 숫자를 책장 위에 어떤 모양으로 두느냐</b>예요. 세 화면 모두 같은 기록 12개(올해 9, 이번 달 2)예요.</div>
   <div class="pick">다시 보기: <select data-for="el-top">
     <option value="A">후보 A — 제목 아래 한 줄 글자, 책장과 같이 올라감</option>
@@ -292,6 +293,56 @@
   </div>
 </section>
 
+<!-- ===== 중심 요소 2 ===== -->
+<section class="element" id="el-preset">
+  <h2>정할 것 2. ⚙를 누르면 책장 배치를 무엇으로 바꿀 수 있게 할까 <span class="status">결정 전</span></h2>
+  <div class="flow"><b>정해진 것.</b> 처음 배치는 "최근 읽은 책이 위·왼쪽, 한 달 한 줄"이에요. 책을 꾹 눌러 같은 줄 안에서 자리를 바꾸는 건 세 화면 모두 같아요. 정할 것은 <b>⚙를 눌렀을 때 무엇을 고를 수 있느냐</b>예요. 세 화면 모두 같은 기록 12개예요.</div>
+  <div class="pick">다시 보기: <select data-for="el-preset">
+    <option value="A">후보 A — 아래 카드에서 묶는 단위(한 달·석 달·한 해)</option>
+    <option value="B">후보 B — 작은 메뉴에서 순서(최근·오래 전·내가 옮긴 자리)</option>
+    <option value="C">후보 C — 책장 설정 화면에 다 모아 두기</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 아래 카드에서 묶는 단위 고르기 <span class="badge">추천</span></h3>
+      <div class="phone"><div class="scr" data-screen="m"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-show="pa-m">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><span class="m">Nov</span><div class="cvrow"><button>소년이 온다</button><button>아몬드</button></div><span class="m">Oct</span><div class="cvrow"><button>작별하지 않는다</button><button>흰</button><button>파친코</button></div><span class="m">Sep</span><div class="cvrow"><button>채식주의자</button><button>희랍어 시간</button><button>시선으로부터</button></div><span class="m">Aug</span><div class="cvrow"><button>연년세세</button></div><span class="m">Dec 2025</span><div class="cvrow"><button>불편한 편의점</button><button>지구에서 한아뿐</button><button>달러구트 꿈 백화점</button></div></div><button class="fab">+</button><div class="sheet hide" id="pa-m"><b>책장 묶기</b><div class="li row" data-open="m" style="cursor:pointer"><span>● 한 달씩</span><span class="vsub" style="margin-left:auto">Nov · Oct · Sep …</span></div><div class="li row" data-open="q" style="cursor:pointer"><span>○ 석 달씩</span><span class="vsub" style="margin-left:auto">Sep–Nov · Jun–Aug …</span></div><div class="li row" data-open="y" style="cursor:pointer"><span>○ 한 해씩</span><span class="vsub" style="margin-left:auto">2026 · 2025</span></div></div><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="q"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-show="pa-q">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><span class="m">Sep–Nov</span><div class="cvrow"><button>소년이 온다</button><button>아몬드</button><button>작별하지 않는다</button></div><div class="cvrow"><button>흰</button><button>파친코</button><button>채식주의자</button></div><div class="cvrow"><button>희랍어 시간</button><button>시선으로부터</button></div><span class="m">Jun–Aug</span><div class="cvrow"><button>연년세세</button></div><span class="m">Dec 2025–Feb</span><div class="cvrow"><button>불편한 편의점</button><button>지구에서 한아뿐</button><button>달러구트 꿈 백화점</button></div></div><button class="fab">+</button><div class="sheet hide" id="pa-q"><b>책장 묶기</b><div class="li row" data-open="m" style="cursor:pointer"><span>○ 한 달씩</span><span class="vsub" style="margin-left:auto">Nov · Oct · Sep …</span></div><div class="li row" data-open="q" style="cursor:pointer"><span>● 석 달씩</span><span class="vsub" style="margin-left:auto">Sep–Nov · Jun–Aug …</span></div><div class="li row" data-open="y" style="cursor:pointer"><span>○ 한 해씩</span><span class="vsub" style="margin-left:auto">2026 · 2025</span></div></div><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="y"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-show="pa-y">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><span class="m">2026</span><div class="cvrow"><button>소년이 온다</button><button>아몬드</button><button>작별하지 않는다</button></div><div class="cvrow"><button>흰</button><button>파친코</button><button>채식주의자</button></div><div class="cvrow"><button>희랍어 시간</button><button>시선으로부터</button><button>연년세세</button></div><span class="m">2025</span><div class="cvrow"><button>불편한 편의점</button><button>지구에서 한아뿐</button><button>달러구트 꿈 백화점</button></div></div><button class="fab">+</button><div class="sheet hide" id="pa-y"><b>책장 묶기</b><div class="li row" data-open="m" style="cursor:pointer"><span>○ 한 달씩</span><span class="vsub" style="margin-left:auto">Nov · Oct · Sep …</span></div><div class="li row" data-open="q" style="cursor:pointer"><span>○ 석 달씩</span><span class="vsub" style="margin-left:auto">Sep–Nov · Jun–Aug …</span></div><div class="li row" data-open="y" style="cursor:pointer"><span>● 한 해씩</span><span class="vsub" style="margin-left:auto">2026 · 2025</span></div></div><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div></div>
+      <p>⚙를 누르면 아래에서 "책장 묶기" 카드가 올라와요. 한 달씩 / 석 달씩 / 한 해씩 중 하나를 누르면 책장 한 칸이 그만큼 묶여요. 순서는 늘 최근 읽은 책이 위예요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>⚙ → 아래 카드 → "석 달씩" → 카드가 닫히고 책장이 Sep–Nov, Jun–Aug처럼 석 달 칸으로 → 다시 ⚙ → "한 해씩" → 2026, 2025 두 칸.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>한 달씩: 칸 5개, 적게 읽은 달은 한 권만 덩그러니</li><li>석 달씩: 칸 3개, 첫 칸이 3줄로 꽉 참</li><li>한 해씩: 칸 2개, 올해 9권이 한눈에</li><li>고른 것은 다음에 탭을 열어도 그대로</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>조금 읽는 사람도 빈칸 없이 꽉 찬 책장을 봐요. / 오래 전 책부터 보는 순서는 못 바꿔요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-04 아래에서 올라오는 시트</p>
+      <p><b>추천 이유:</b> 큰 틀에서 "적게 읽으면 몇 달씩 묶어 1~2줄로"를 직접 말했어요. 그 생각을 그대로 고르는 칸으로 만든 거라서요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 작은 메뉴에서 순서 고르기</h3>
+      <div class="phone"><div class="scr" data-screen="new"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-menu="mb-new">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><span class="m">Nov</span><div class="cvrow"><button>소년이 온다</button><button>아몬드</button></div><span class="m">Oct</span><div class="cvrow"><button>작별하지 않는다</button><button>흰</button><button>파친코</button></div><span class="m">Sep</span><div class="cvrow"><button>채식주의자</button><button>희랍어 시간</button><button>시선으로부터</button></div><span class="m">Aug</span><div class="cvrow"><button>연년세세</button></div><span class="m">Dec 2025</span><div class="cvrow"><button>불편한 편의점</button><button>지구에서 한아뿐</button><button>달러구트 꿈 백화점</button></div></div><button class="fab">+</button><div class="menu" id="mb-new" style="top:30px;right:40px"><div data-open="new">✓ 최근 읽은 순</div><div data-open="old">　오래 전 읽은 순</div><div data-open="mine">　내가 옮긴 자리</div></div><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="old"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-menu="mb-old">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><span class="m">Dec 2025</span><div class="cvrow"><button>달러구트 꿈 백화점</button><button>지구에서 한아뿐</button><button>불편한 편의점</button></div><span class="m">Aug</span><div class="cvrow"><button>연년세세</button></div><span class="m">Sep</span><div class="cvrow"><button>시선으로부터</button><button>희랍어 시간</button><button>채식주의자</button></div><span class="m">Oct</span><div class="cvrow"><button>파친코</button><button>흰</button><button>작별하지 않는다</button></div><span class="m">Nov</span><div class="cvrow"><button>아몬드</button><button>소년이 온다</button></div></div><button class="fab">+</button><div class="menu" id="mb-old" style="top:30px;right:40px"><div data-open="new">　최근 읽은 순</div><div data-open="old">✓ 오래 전 읽은 순</div><div data-open="mine">　내가 옮긴 자리</div></div><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="mine"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-menu="mb-mine">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><span class="m">Nov</span><div class="cvrow"><button>아몬드</button><button>소년이 온다</button></div><span class="m">Oct</span><div class="cvrow"><button>흰</button><button>작별하지 않는다</button><button>파친코</button></div><span class="m">Sep</span><div class="cvrow"><button>채식주의자</button><button>희랍어 시간</button><button>시선으로부터</button></div><span class="m">Aug</span><div class="cvrow"><button>연년세세</button></div><span class="m">Dec 2025</span><div class="cvrow"><button>불편한 편의점</button><button>지구에서 한아뿐</button><button>달러구트 꿈 백화점</button></div></div><button class="fab">+</button><div class="menu" id="mb-mine" style="top:30px;right:40px"><div data-open="new">　최근 읽은 순</div><div data-open="old">　오래 전 읽은 순</div><div data-open="mine">✓ 내가 옮긴 자리</div></div><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div></div>
+      <p>⚙를 누르면 작은 메뉴가 떠요. 최근 읽은 순 / 오래 전 읽은 순 / 내가 옮긴 자리 중 하나를 고르면 책 순서가 바뀌어요. 한 칸은 늘 한 달이에요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>⚙ → 메뉴 → "오래 전 읽은 순" → 맨 위가 Dec 2025(처음 읽은 책) → 다시 ⚙ → "내가 옮긴 자리" → 꾹 눌러 바꿔 둔 순서(Nov: 아몬드가 앞).</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>오래 전 읽은 순: 첫 기록부터 쌓아 온 순서로 봄</li><li>내가 옮긴 자리: 한 번도 안 옮겼으면 최근 읽은 순과 같음</li><li>달 묶음은 바뀌지 않음</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>처음 읽은 책부터 거꾸로 돌아볼 수 있어요. / 적게 읽은 달은 여전히 한 권짜리 칸이 남아요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-11 머리 오른쪽 ⋯(더 보기) 메뉴 안 항목</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 책장 설정 화면에 다 모아 두기</h3>
+      <div class="phone"><div class="scr" data-screen="before"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-open="set">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><span class="m">Nov</span><div class="cvrow"><button>소년이 온다</button><button>아몬드</button></div><span class="m">Oct</span><div class="cvrow"><button>작별하지 않는다</button><button>흰</button><button>파친코</button></div><span class="m">Sep</span><div class="cvrow"><button>채식주의자</button><button>희랍어 시간</button><button>시선으로부터</button></div><span class="m">Aug</span><div class="cvrow"><button>연년세세</button></div><span class="m">Dec 2025</span><div class="cvrow"><button>불편한 편의점</button><button>지구에서 한아뿐</button><button>달러구트 꿈 백화점</button></div></div><button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="set"><div class="row"><button class="back" data-open="after">‹</button><span class="vname">책장 설정</span></div><div class="sec">묶기</div><div class="seg"><button>한 달</button><button class="on">석 달</button><button>한 해</button></div><div class="sec">순서</div><div class="seg"><button class="on">최근 읽은 순</button><button>오래 전 읽은 순</button></div><div class="li row" style="margin-top:10px"><span>책 제목 같이 보기</span><button class="switch on" style="margin-left:auto"></button></div><div class="li row"><span>내가 옮긴 자리 처음대로</span><button class="btn ghost" style="margin-left:auto;font-size:9px">되돌리기</button></div><div class="vsub" style="margin-top:8px">‹를 누르면 고른 대로 바뀐 책장이 보여요(이 시안은 석 달 + 제목 보기로 고른 상태)</div></div><div class="scr hide" data-screen="after"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost" data-open="set">⚙</button><button class="btn ghost">전체 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><span class="m">Sep–Nov</span><div class="cvrow"><button>소년이 온다</button><button>아몬드</button><button>작별하지 않는다</button></div><div class="tline"><span>소년이 온다</span><span>아몬드</span><span>작별하지 않는다</span></div><div class="cvrow"><button>흰</button><button>파친코</button><button>채식주의자</button></div><div class="tline"><span>흰</span><span>파친코</span><span>채식주의자</span></div><div class="cvrow"><button>희랍어 시간</button><button>시선으로부터</button></div><div class="tline"><span>희랍어 시간</span><span>시선으로부터</span></div><span class="m">Jun–Aug</span><div class="cvrow"><button>연년세세</button></div><div class="tline"><span>연년세세</span></div><span class="m">Dec 2025–Feb</span><div class="cvrow"><button>불편한 편의점</button><button>지구에서 한아뿐</button><button>달러구트 꿈 백화점</button></div><div class="tline"><span>불편한 편의점</span><span>지구에서 한아뿐</span><span>달러구트 꿈 백화점</span></div></div><button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div></div>
+      <p>⚙를 누르면 "책장 설정" 화면으로 넘어가요. 묶기, 순서, 책 제목 같이 보기, 옮긴 자리 되돌리기를 한곳에서 바꾸고 ‹로 돌아와요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>⚙ → 책장 설정 화면 → 묶기 "석 달"·제목 보기 켜기 → ‹ → 석 달 칸 + 표지 아래 제목이 보이는 책장.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>고를 것이 4줄 — 묶기 3개, 순서 2개, 스위치 1개, 되돌리기 버튼</li><li>바뀐 모습은 ‹로 돌아와야 보임</li><li>제목을 켜면 한 줄 높이가 커져 한 화면에 보이는 책이 줄어듦</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>원하는 대로 다 바꿀 수 있어요. / 고를 게 많고, 바꿀 때마다 화면을 오가야 해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-14 설정 화면 안 항목</p>
+    </article>
+  </div>
+</section>
+
 <!-- ===== 잘 안 될 때 (예외 네 장면) — 문구는 Claude 초안, 중심 요소를 정한 뒤 그 모양으로 맞춘다 ===== -->
 <section id="except">
   <h2>잘 안 될 때 보이는 화면</h2>
@@ -337,7 +388,7 @@
   <div class="wide"><table>
     <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
     <tr data-el="el-top"><td>1. 책장 위 내 기록 숫자</td><td>후보 A 제목 아래 한 줄 글자(전체 12 · 올해 9 · 이번 달 2), 책장과 같이 올라감</td><td>없음</td><td>B 큰 숫자 칸 셋(늘 그 자리), C 접힌 칸 내 기록 12권 ▾</td><td>"A가 위에 책읽은숫자 제일 보기 깔끔하고 좋은데"</td><td>숫자 셋: 전체·올해·이번 달(서울 날짜 기준), 하나도 없으면 0. 작은 글자 한 줄(--sub 색, 숫자만 --text 굵게). 도서관별 보기에서는 이름표 옆에 6권처럼 도서관마다 수</td><td>탭 열기 → 숫자 한 줄 + 책장 → 밀면 숫자 줄도 올라감 → 전체 ⇄ → 도서관별 책장(숫자 줄 그대로, 이름표 옆 권수)</td><td><span class="st">확인</span></td></tr>
-    <tr><td>2. ⚙ 배치 바꾸기에서 고르는 것</td><td>(다음에 봄)</td><td>—</td><td>—</td><td></td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-preset"><td>2. ⚙ 배치 바꾸기에서 고르는 것</td><td>(아직 고르지 않음)</td><td>—</td><td>—</td><td></td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>3. 도서관별 책장의 도서관 순서</td><td>(다음에 봄, 지금 화면은 임시로 기록 많은 순)</td><td>—</td><td>—</td><td></td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>4. 홈 하단 창 "내 최근 독서 기록" 자리·개수</td><td>(다음에 봄)</td><td>—</td><td>—</td><td></td><td>로그인했고 기록이 있을 때만 칸이 생김</td><td>—</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>한 달에 4권 이상</td><td>그 달 안에서 다음 줄로 넘김(한 줄 3권)</td><td>—</td><td>—</td><td>묻지 않음</td><td>지금 책장과 같음</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
