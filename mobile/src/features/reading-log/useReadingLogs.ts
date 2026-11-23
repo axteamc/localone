@@ -22,6 +22,7 @@ export function useReadingLogs(): {
   loadMore(): void;
   stats: ReadingStats | null;
   reload(): void;
+  retryStats(): void;
   /** 통계만 실패(숫자 줄 자리에 실패 문구 + 새로고침, 책장은 그대로 — 예외 #1) */
   statsFailed: boolean;
   /** 다음 묶음을 받는 중(책장 아래 작은 기다림 표시) */
@@ -42,16 +43,9 @@ export function useReadingLogs(): {
   const [allFailed, setAllFailed] = useState(false);
   const [allTick, setAllTick] = useState(0);
   const [moreLoading, setMoreLoading] = useState(false);
-  const genRef = useRef(0);
   const moreCtrlRef = useRef<AbortController | null>(null);
-  const loadingCursorRef = useRef<string | null>(null);
 
   useEffect(() => {
-    genRef.current += 1;
-    moreCtrlRef.current?.abort();
-    moreCtrlRef.current = null;
-    loadingCursorRef.current = null;
-    setMoreLoading(false);
     if (!owner) {
       setAllFailed(false);
       setAllLoading(false);
@@ -70,10 +64,7 @@ export function useReadingLogs(): {
       .finally(() => {
         if (!ctrl.signal.aborted) setAllLoading(false);
       });
-    return () => {
-      ctrl.abort();
-      moreCtrlRef.current?.abort();
-    };
+    return () => ctrl.abort();
   }, [owner, allTick]);
 
   // ── 한 도서관 책장: 마지막으로 연 도서관 응답만(러너 stale = 버림) ──
@@ -83,7 +74,6 @@ export function useReadingLogs(): {
 
   useEffect(() => {
     const runner = runnerRef.current;
-    genRef.current += 1;
     if (!owner || libraryId === null) {
       runner.cancel();
       setLib(null);
@@ -101,6 +91,14 @@ export function useReadingLogs(): {
   }, [owner, libraryId, libTick]);
 
   useEffect(() => () => runnerRef.current.cancel(), []);
+
+  useEffect(() => {
+    setMoreLoading(false);
+    return () => {
+      moreCtrlRef.current?.abort();
+      moreCtrlRef.current = null;
+    };
+  }, [owner, libraryId, allTick, libTick]);
 
   // ── 통계(#46) ──
   const [statsSlot, setStatsSlot] = useState<StatsSlot | null>(null);
@@ -161,19 +159,17 @@ export function useReadingLogs(): {
   }
 
   const loadMore = () => {
-    if (!owner || moreLoading) return;
+    if (!owner || moreCtrlRef.current) return;
     const cursor = libraryId !== null ? libShelf?.nextCursor ?? null : shelf.owner === owner ? shelf.nextCursor : null;
-    if (!cursor || loadingCursorRef.current === cursor) return;
-    const reqGen = genRef.current;
+    if (!cursor) return;
     const reqOwner = owner;
     const reqLib = libraryId;
     const ctrl = new AbortController();
     moreCtrlRef.current = ctrl;
-    loadingCursorRef.current = cursor;
     setMoreLoading(true);
     fetchReadingLogs(reqLib !== null ? { libraryId: reqLib, cursor } : { cursor }, ctrl.signal)
       .then((page) => {
-        if (ctrl.signal.aborted || genRef.current !== reqGen) return;
+        if (ctrl.signal.aborted) return;
         if (reqLib === null) {
           shelfStore.setPage(reqOwner, page, true);
           return;
@@ -186,22 +182,21 @@ export function useReadingLogs(): {
       })
       .catch(() => undefined) // 다음 묶음 실패는 다음 스크롤 때 다시 한다
       .finally(() => {
-        if (genRef.current === reqGen) {
-          loadingCursorRef.current = null;
+        if (moreCtrlRef.current === ctrl) {
+          moreCtrlRef.current = null;
           setMoreLoading(false);
         }
       });
   };
 
-  /** 실패한 것만 다시 받는다: 숫자 줄 새로고침은 #46만, 책장 다시 해 보기는 그 책장 #41만(+ 실패한 숫자) */
+  const retryStats = useCallback(() => setStatsTick((n) => n + 1), []);
   const reload = useCallback(() => {
-    if (statsFailed) setStatsTick((n) => n + 1);
     if (libraryId !== null) {
       if (libShelf?.failed) setLibTick((n) => n + 1);
     } else if (allFailed) {
       setAllTick((n) => n + 1);
     }
-  }, [statsFailed, libraryId, libShelf?.failed, allFailed]);
+  }, [libraryId, libShelf?.failed, allFailed]);
 
-  return { filter: { libraryId }, setFilter, items, status, hasMore, loadMore, stats, reload, statsFailed, moreLoading };
+  return { filter: { libraryId }, setFilter, items, status, hasMore, loadMore, stats, reload, retryStats, statsFailed, moreLoading };
 }

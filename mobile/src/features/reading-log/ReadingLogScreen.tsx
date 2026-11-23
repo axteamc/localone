@@ -274,7 +274,7 @@ export function ReadingLogScreen() {
   }
 
   const pick = (log: ReadingLog) => setPicked(userId ? { owner: userId, log } : null);
-  const statsLine = <StatsLine stats={logs.stats} failed={logs.statsFailed} onRefresh={logs.reload} />;
+  const statsLine = <StatsLine stats={logs.stats} failed={logs.statsFailed} onRefresh={logs.retryStats} />;
   const thisYear = new Date().getFullYear().toString();
   // 가로 줄: 3권 + 다음 표지 약 10%가 화면 오른쪽 끝에 보이는 폭(R2-O1). 넓은 웹은 앱 칼럼 폭(480, WebFrame)으로 잰다
   const frameWidth = Platform.OS === "web" ? Math.min(windowWidth, APP_MAX_WIDTH) : windowWidth;
