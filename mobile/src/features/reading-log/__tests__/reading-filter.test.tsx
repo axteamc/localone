@@ -149,6 +149,20 @@ describe("숫자 줄 (R2-O2, 예외 #1·#2)", () => {
     expect(screen.getByTestId("shelf-book-1")).toBeTruthy();
   });
 
+  test("stats retry leaves a failed shelf request alone", async () => {
+    fetchReadingStats.mockRejectedValueOnce(new Error("stats unavailable"));
+    fetchReadingLogs.mockRejectedValueOnce(new Error("shelf unavailable"));
+    await render(<ReadingLogScreen />);
+    await screen.findByText(TEXT.loadFailed);
+
+    await fireEvent.press(screen.getByText(TEXT.toggleAll));
+    await fireEvent.press(await screen.findByLabelText(TEXT.refresh));
+    await screen.findByTestId("stats-line");
+
+    expect(fetchReadingStats).toHaveBeenCalledTimes(2);
+    expect(fetchReadingLogs.mock.calls.filter(([q]) => q.libraryId === undefined)).toHaveLength(1);
+  });
+
   test("zero stats and empty library view", async () => {
     fetchReadingStats.mockResolvedValue({ total: 0, this_year: 0, this_month: 0, libraries: [] });
     logsAre({ all: [] });
@@ -358,6 +372,30 @@ describe("도서관별 보기 (R2-O1·R2-O3, C6)", () => {
 });
 
 describe("useReadingLogs 거르기 (C2·C6)", () => {
+  test("switching shelves aborts pending pagination and lets the new shelf paginate", async () => {
+    const stalePage = deferred<ReadingLogPage>();
+    fetchReadingLogs.mockImplementation((q) => {
+      if (q.libraryId === 101) {
+        return Promise.resolve(q.cursor ? page([LIB_101[1]!]) : page([LIB_101[0]!], "library-next"));
+      }
+      return q.cursor ? stalePage.promise : Promise.resolve(page(ALL, "all-next"));
+    });
+    const { result } = await renderHook(() => useReadingLogs());
+    await waitFor(() => expect(result.current.hasMore).toBe(true));
+    await act(async () => result.current.loadMore());
+    const oldSignal = fetchReadingLogs.mock.calls.find(([q]) => q.cursor === "all-next")?.[1];
+    expect(result.current.moreLoading).toBe(true);
+
+    await act(async () => result.current.setFilter(101));
+    expect(oldSignal?.aborted).toBe(true);
+    expect(result.current.moreLoading).toBe(false);
+    await act(async () => result.current.loadMore());
+    await act(async () => stalePage.resolve(page([ALL[2]!])));
+
+    expect(result.current.items.map((l) => l.id)).toEqual(["1", "11"]);
+    expect(result.current.moreLoading).toBe(false);
+  });
+
   test("filter switch shows last library only", async () => {
     const first = deferred<ReadingLogPage>();
     const second = deferred<ReadingLogPage>();
