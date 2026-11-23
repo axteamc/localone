@@ -32,8 +32,8 @@ export const EDIT_TEXT = {
   bioPlaceholder: "나를 한 줄로 소개해 보세요",
   bioTooLong: "한 줄 소개는 60자까지 쓸 수 있어요",
   discardTitle: "저장하지 않고 나갈까요? 고친 내용은 사라져요",
-  keepEditing: "계속 고치기",
-  discard: "버리기",
+  saveAndLeave: "저장하기",
+  leave: "나가기",
   photoMenu: "사진 바꾸기",
   takePhoto: "사진 찍기",
   pickPhoto: "앨범에서 고르기",
@@ -398,7 +398,10 @@ function Editor({ userId }: { userId: string }) {
 
       {confirmDiscard ? (
         <DiscardDialog
-          onKeep={() => setConfirmDiscard(false)}
+          onSave={() => {
+            setConfirmDiscard(false);
+            void save(); // 성공하면 내 정보로, 실패·입력 오류면 이 화면에 남아 안내(Y2-5)
+          }}
           onDiscard={() => {
             setConfirmDiscard(false);
             leave();
@@ -409,8 +412,8 @@ function Editor({ userId }: { userId: string }) {
   );
 }
 
-/** Y2-O3 나가기 확인 — READ-1 쓰기 화면 확인창과 같은 모양 */
-function DiscardDialog({ onKeep, onDiscard }: { onKeep: () => void; onDiscard: () => void }) {
+/** Y2-O3 나가기 확인 — [저장하기]는 "저장"과 같은 흐름, [나가기]는 저장 없이 닫기(2026-11-23 사용자 변경) */
+function DiscardDialog({ onSave, onDiscard }: { onSave: () => void; onDiscard: () => void }) {
   return (
     <View style={styles.scrim} accessibilityViewIsModal>
       <View style={styles.dialog} accessibilityRole="alert">
@@ -418,17 +421,17 @@ function DiscardDialog({ onKeep, onDiscard }: { onKeep: () => void; onDiscard: (
         <View style={styles.dialogRow}>
           <Pressable
             accessibilityRole="button"
-            onPress={onKeep}
+            onPress={onSave}
             style={({ pressed }) => [styles.dialogButton, ACT.secondary, pressed && ACT.secondaryPressed]}
           >
-            <Text style={styles.secondaryText}>{EDIT_TEXT.keepEditing}</Text>
+            <Text style={styles.secondaryText}>{EDIT_TEXT.saveAndLeave}</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
             onPress={onDiscard}
             style={({ pressed }) => [styles.dialogButton, ACT.primary, pressed && ACT.primaryPressed]}
           >
-            <Text style={[styles.primaryText, styles.dangerText]}>{EDIT_TEXT.discard}</Text>
+            <Text style={[styles.primaryText, styles.dangerText]}>{EDIT_TEXT.leave}</Text>
           </Pressable>
         </View>
       </View>

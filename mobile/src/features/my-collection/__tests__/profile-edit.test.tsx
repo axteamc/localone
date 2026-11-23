@@ -172,19 +172,39 @@ describe("MY-2-P2 프로필 수정 화면", () => {
   test("leaving dirty edit asks before discarding", async () => {
     await show();
     await type("bio-input", "고친 소개");
-    await fireEvent.press(screen.getByTestId("profile-edit-back"));
-    expect(screen.getByText(EDIT_TEXT.discardTitle)).toBeTruthy();
-    await fireEvent.press(screen.getByText(EDIT_TEXT.keepEditing));
-    expect(screen.queryByText(EDIT_TEXT.discardTitle)).toBeNull();
-    expect(valueOf("bio-input")).toBe("고친 소개");
-    expect(mockBack).not.toHaveBeenCalled();
-
-    // 기기 뒤로 가기도 같은 확인창
+    // 기기 뒤로 가기도 같은 확인창. [나가기]는 저장 없이 닫는다
     const ev = { preventDefault: jest.fn() };
     await act(async () => mockBeforeRemove!(ev));
     expect(ev.preventDefault).toHaveBeenCalled();
-    await fireEvent.press(screen.getByText(EDIT_TEXT.discard));
+    expect(screen.getByText(EDIT_TEXT.discardTitle)).toBeTruthy();
+    await fireEvent.press(screen.getByText(EDIT_TEXT.leave));
+    expect(updateMyProfile).not.toHaveBeenCalled();
     expect(mockBack).toHaveBeenCalledTimes(1);
+  });
+
+  test("save from leave dialog saves then goes back", async () => {
+    await show();
+    await type("bio-input", "고친 소개");
+    await fireEvent.press(screen.getByTestId("profile-edit-back"));
+    await fireEvent.press(screen.getByText(EDIT_TEXT.saveAndLeave));
+    await act(async () => undefined);
+    expect(updateMyProfile).toHaveBeenCalledTimes(1);
+    expect(updateMyProfile.mock.calls[0]?.[0]).toEqual({ bio: "고친 소개" });
+    expect(emitProfileSaved).toHaveBeenCalledTimes(1);
+    expect(mockBack).toHaveBeenCalledTimes(1);
+  });
+
+  test("failed save from leave dialog stays with typed values", async () => {
+    updateMyProfile.mockRejectedValueOnce(network());
+    await show();
+    await type("bio-input", "고친 소개");
+    await fireEvent.press(screen.getByTestId("profile-edit-back"));
+    await fireEvent.press(screen.getByText(EDIT_TEXT.saveAndLeave));
+    await act(async () => undefined);
+    expect(screen.queryByText(EDIT_TEXT.discardTitle)).toBeNull();
+    expect(screen.getByText(EDIT_TEXT.saveFailed)).toBeTruthy();
+    expect(valueOf("bio-input")).toBe("고친 소개");
+    expect(mockBack).not.toHaveBeenCalled();
   });
 
   test("leaving unchanged edit closes at once", async () => {
