@@ -162,23 +162,26 @@ describe("APP-0-P2 routes and tabs", () => {
     });
   });
 
-  test("tabs show home loans me in order", async () => {
+  // READ-1 P5 `reading tab is second`: 홈 → 독서 기록 → 대출·반납 → 내 정보 (R1-6)
+  test("reading tab is second", async () => {
     const view = await render(<TabsLayout />);
 
     expect(mockRecordedTabScreens.map((s) => s.name)).toEqual([
       "index",
+      "reading",
       "loans",
       "me",
     ]);
     expect(mockRecordedTabScreens.map((s) => s.options?.title)).toEqual([
       "홈",
+      "독서 기록",
       "대출·반납",
       "내 정보",
     ]);
     expect(view.getByTestId("tab-index").props.children).toBe("홈");
+    expect(view.getByTestId("tab-reading").props.children).toBe("독서 기록");
     expect(view.getByTestId("tab-loans").props.children).toBe("대출·반납");
     expect(view.getByTestId("tab-me").props.children).toBe("내 정보");
-    expect(view.queryByText(/독서\s*기록/)).toBeNull();
   });
 
   test("tabs hide the missing-icon glyph and center labels (#128)", async () => {

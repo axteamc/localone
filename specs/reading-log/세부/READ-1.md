@@ -91,6 +91,12 @@
 - [Claude가 정함] 불러오기 실패 문구 "기록을 불러오지 못했어요." [다시 해 보기], 지우기 실패 "지우지 못했어요. 다시 해 주세요.", 글자 수 넘침 안내 — 시안에 없던 상태라 기본값 — 계약 수정본 C3
 - [원문 반영] 원문에 없는데 넣은 것: 같은 책 대출을 묻는 카드. 원문에 있는데 뺀·바꾼 것: 없음 (별점 칸은 D 시안 확인으로 후보 B — 따로 칸 없이 감상으로 변경)
 - [Claude가 정함] #3·#4는 사용자 말 없이 초안 그대로 — 시안 #except — `../team/contracts/reading-log.md` C6
+- [구현 중 변경] #44 지우기의 `UPDATE posts SET reading_log_id = NULL`은 `posts.reading_log_id`가 아직 main에 없어(B LOCAL-3 마이그레이션) 칸이 있을 때만 실행 — LOCAL-3 머지 뒤 확인 없이 늘 실행으로 바꾼다(`TODO(연결)`) — `server/app/routers/reading_logs.py:267-288`. 시험은 LOCAL-3 C5 DDL로 칸을 잠시 만들어 확인 — `server/tests/test_reading_logs.py:192`
+- [Claude가 정함] 기록 만들기·고치기에서 책 확보가 `404`(제공자에도 없는 책)이면 C3대로 `422 detail="isbn13"`, 없는 도서관도 C3대로 `422 detail="library_id"`(대출 #20의 `404`와 다름) — `server/app/routers/reading_logs.py:117-122,218-226`
+- [Claude가 정함] 책장은 표지 3권 한 줄·한 달 한 줄(달이 3권을 넘으면 그 달 안에서 줄바꿈)·영어 월 표찰만 넣음. 통계 한 줄·꾹 눌러 자리 바꾸기·프리셋·도서관별 보기는 READ-2로 둠(큰 틀 결정 3·4, 명세 6절 "카드 모양·통계·도서관별 보기·프리셋은 READ-2") — `mobile/src/features/reading-log/ReadingLogScreen.tsx:1-4`
+- [Claude가 정함] 수정 화면은 새 경로 없이 기록 화면 안에서 쓰기 화면을 수정 모드로 바꿔 보여 줌(계약 P2 파일 목록 10개 유지) — `mobile/src/features/reading-log/ReadingLogDetail.tsx`
+- [Claude가 정함] 도서관 시트는 "도서관 없이 (집·카페)" + 내 대출에 나온 도서관 + 이름 찾기(`searchLibrariesByName`), 읽은 날 시트는 오늘·어제·일주일 전 + 날짜 쓰기(LOAN-2 `parseYmd`·`addDays` 재사용, 새 라이브러리 없음) — `mobile/src/features/reading-log/ReadingLogEditor.tsx`
+- [Claude가 정함] 같은 `client_request_id`가 동시에 두 번 들어와도 행 하나가 되게 앞 확인 + `ON CONFLICT DO NOTHING` 두 겹으로 둠(앞 확인만으로는 동시 요청을 못 막음) — `server/app/routers/reading_logs.py:236-262`
 
 ## 다음에 할 것
 
@@ -100,6 +106,7 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 (대기/진행/검토요청/완료) | 구현 근거 (`파일:줄`) 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| 파트 1 | `feat/reading-log-READ-1` | - | 대기 | - | - |
+| READ-1-P1 서버 | `feat/reading-log-READ-1` | #251 | 완료 | `server/migrations/versions/0018_reading_logs.py`(C5 + R1-O3 CHECK), `server/app/routers/reading_logs.py:149-326`(#41~#45), `server/app/main.py:159-163`(`[reading-log-A]`). `server/tests/test_reading_logs.py` 17개 통과, 서버 전체 613 passed(`pytest -W error`). 가드 제거 9건 모두 실패 확인 | `TODO(연결)` B LOCAL-3: `reading_logs.py:71`(`published_post_id` 늘 null, C7), `reading_logs.py:268`(posts.reading_log_id 있을 때만 끊기) |
+| READ-1-P2 탭·목록·쓰기·상세 | 같은 브랜치 | #251 | 완료 | 탭 `mobile/app/(tabs)/_layout.tsx:38-41`, 책장 `ReadingLogScreen.tsx:62`, 쓰기·수정 `ReadingLogEditor.tsx:150`(저장 `:291`, 대출 묻기 `:245`, 나갈 때 `:205`), 기록 화면 `ReadingLogDetail.tsx:48`(지우기 `:98`), 로그아웃 정리 `api.ts:184`. `reading-log.test.tsx` 24개 + `routes.test.tsx` 통과, 앱 전체 660 passed, `tsc` 통과, 웹 내보내기 통과. 가드 제거 12건 모두 실패 확인 | `TODO(연결)` B LOCAL-3: `ReadingLogDetail.tsx:231` |
 
-- **다음 세션 이어하기 메모**: 기획 + 계약 수정본(PR `[계약 수정본] READ-1`, 브랜치 `contract/A-READ-1`) 제출, 검토 대기. 다음 세부(READ-2)는 자동 시작하지 않음. 알림 #216·#227 닫기 권한 막힘(닫을 것)
+- **다음 세션 이어하기 메모**: READ-1 구현 끝(P1·P2), PR #251 검토 대기. READ-2는 계약 발행 전이라 시작하지 않음. 로컬 시험 DB는 5433이 다른 프로젝트에 쓰여 `DATABASE_URL=...@localhost:5435/localone_test`(컨테이너 `localone-read1-db`)로 돌렸다
