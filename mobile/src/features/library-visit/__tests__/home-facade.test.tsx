@@ -1,11 +1,13 @@
 // VISIT-1 홈 큐브 파사드 시험 (2026-11-18 "홈 큐브 배치"): 주인공·가장자리 걸침·기점 전체 보기·꾹 누르기 설정·큐브 눌러 방문 페이지.
 // 자리 계산(칸 나누기·기점·걸침·전체 보기·끌기)은 direction.test.ts가 순수 함수로 본다.
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import React from "react";
 import { StyleSheet } from "react-native";
 import * as api from "../deps";
 import type { HeroRule } from "../direction";
+import { cubeLidColors } from "../FacadeHome";
+import { CUBE_PALETTE } from "../../../theme/tokens";
 import { HomeScreen } from "../HomeScreen";
 import { theme } from "../../../theme";
 
@@ -354,12 +356,43 @@ describe("VISIT-1 first-hero setting changed on the visit page (L6)", () => {
   });
 });
 
-describe("H6 cube palette text", () => {
-  test("top-face name stays readable on every palette color (contrast 3+ for large text)", () => {
-    const { topInk } = require("../FacadeHome") as typeof import("../FacadeHome");
-    const { contrastRatio } = require("../../../theme") as typeof import("../../../theme");
-    const { CUBE_PALETTE } = require("../../../theme/tokens") as typeof import("../../../theme/tokens");
-    expect(CUBE_PALETTE.length).toBeGreaterThanOrEqual(12);
-    for (const { hex } of CUBE_PALETTE) expect(contrastRatio(hex, topInk(hex))).toBeGreaterThanOrEqual(3);
+describe("cube lid text", () => {
+  test("uses the approved ink for every palette fill and the closed fill", () => {
+    const darkInks = new Map([
+      ["marshmallow", "#51504D"],
+      ["neutral", "#535151"],
+      ["porcelain", "#505052"],
+      ["eggshell", "#504D4C"],
+      ["vanillaCanvas", "#4E4D4A"],
+    ]);
+    expect(CUBE_PALETTE).toHaveLength(20);
+    expect(CUBE_PALETTE.filter(({ name }) => darkInks.has(name))).toHaveLength(5);
+    CUBE_PALETTE.forEach(({ name, hex }, index) => {
+      expect(cubeLidColors(index)).toEqual({ fill: hex, ink: darkInks.get(name) ?? "#FFFFFF" });
+    });
+    expect(cubeLidColors("closed")).toEqual({ fill: theme.colors.pinClosed, ink: "#FFFFFF" });
+  });
+});
+
+describe("cube TODAY", () => {
+  test.each([
+    { closed: null, hours: "09:00~18:00", badge: "—", text: "09:00~18:00" },
+    { closed: true, hours: null, badge: "CLOSED", text: "오늘 휴관" },
+    { closed: false, hours: "09:00~18:00", badge: "OPEN", text: "09:00~18:00" },
+    { closed: null, hours: null, badge: "—", text: "운영시간 미확인" },
+    { closed: false, hours: null, badge: "OPEN", text: "운영시간 미확인" },
+  ])("renders $badge and $text independently", async ({ closed, hours, badge, text }) => {
+    const result = await actual.fetchLibrariesNearby(37.5815, 126.9831);
+    const [library] = result.items;
+    if (!library) throw new Error("Missing nearby test library");
+    m.fetchLibrariesNearby.mockResolvedValue(nearby([
+      { ...library, today: { ...library.today, is_closed: closed, hours_text: hours } },
+    ]));
+
+    await render(<HomeScreen />);
+    await screen.findByText(text);
+    const hero = within(screen.getByTestId("facade-hero"));
+    expect(hero.getByText(badge)).toBeOnTheScreen();
+    expect(hero.getByText(text)).toBeOnTheScreen();
   });
 });

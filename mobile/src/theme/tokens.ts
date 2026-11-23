@@ -76,38 +76,41 @@ export const LOOK_BASE_COLORS: Record<LookPreset, BaseColors> = {
   },
 };
 
+/** 채움 위 글자 후보 중 밝은 쪽(채움 위 글자는 대비로 자동 선택, 디자인_기준.md §2). */
+export const ON_FILL_LIGHT = "#FFFFFF";
+export const CLOSED_CUBE_LID_INK = ON_FILL_LIGHT;
+
 /**
  * 홈 큐브 윗면 색(2026-11-20 H6, D가 고른 20색). 룩과 무관한 고정값이고 휴관은 이 목록이 아니라 `pinClosed`.
  * 도서관 id로 한 색을 고르고 판에 같이 보이는 곳끼리는 겹치지 않게 한다(`direction.ts` `assignSpineTones`).
+ * 뚜껑 글자는 D안 고정색을 쓴다(큰·작은 이름 공통).
  * 순서를 바꾸면 도서관마다 색이 바뀌므로 새 색은 끝에 붙인다.
  */
 export const CUBE_PALETTE = [
-  { name: "bold", hex: "#EB5324" }, // 짙고 붉은 기 도는 주황
-  { name: "coral", hex: "#FF7850" },
-  { name: "marshmallow", hex: "#F4F1DE" },
-  { name: "neutral", hex: "#FFF6EE" },
-  { name: "porcelain", hex: "#F0F0F5" },
-  { name: "eggshell", hex: "#F0E6DC" },
-  { name: "vanillaCanvas", hex: "#EBE4D1" },
-  { name: "vanilla", hex: "#CDBEA0" },
-  { name: "indigoDrift", hex: "#232747" },
-  { name: "dark", hex: "#27324A" },
-  { name: "darkNavy", hex: "#001428" },
-  { name: "atlanticBlue", hex: "#26577C" },
-  { name: "ultramarine", hex: "#3778FF" },
-  { name: "light", hex: "#59BABD" },
-  { name: "complementary", hex: "#BFDAD3" },
-  { name: "lemonZest", hex: "#F5AF3D" },
-  { name: "citrusYellow", hex: "#FFC300" },
-  { name: "crimsonWhisper", hex: "#6B0A00" },
-  { name: "shuttleGray", hex: "#646E7D" },
-  { name: "ghostGray", hex: "#C8C8D2" },
+  { name: "bold", hex: "#EB5324", ink: ON_FILL_LIGHT }, // 짙고 붉은 기 도는 주황
+  { name: "coral", hex: "#FF7850", ink: ON_FILL_LIGHT },
+  { name: "marshmallow", hex: "#F4F1DE", ink: "#51504D" },
+  { name: "neutral", hex: "#FFF6EE", ink: "#535151" },
+  { name: "porcelain", hex: "#F0F0F5", ink: "#505052" },
+  { name: "eggshell", hex: "#F0E6DC", ink: "#504D4C" },
+  { name: "vanillaCanvas", hex: "#EBE4D1", ink: "#4E4D4A" },
+  { name: "vanilla", hex: "#CDBEA0", ink: ON_FILL_LIGHT },
+  { name: "indigoDrift", hex: "#232747", ink: ON_FILL_LIGHT },
+  { name: "dark", hex: "#27324A", ink: ON_FILL_LIGHT },
+  { name: "darkNavy", hex: "#001428", ink: ON_FILL_LIGHT },
+  { name: "atlanticBlue", hex: "#26577C", ink: ON_FILL_LIGHT },
+  { name: "ultramarine", hex: "#3778FF", ink: ON_FILL_LIGHT },
+  { name: "light", hex: "#59BABD", ink: ON_FILL_LIGHT },
+  { name: "complementary", hex: "#BFDAD3", ink: ON_FILL_LIGHT },
+  { name: "lemonZest", hex: "#F5AF3D", ink: ON_FILL_LIGHT },
+  { name: "citrusYellow", hex: "#FFC300", ink: ON_FILL_LIGHT },
+  { name: "crimsonWhisper", hex: "#6B0A00", ink: ON_FILL_LIGHT },
+  { name: "shuttleGray", hex: "#646E7D", ink: ON_FILL_LIGHT },
+  { name: "ghostGray", hex: "#C8C8D2", ink: ON_FILL_LIGHT },
 ] as const;
 
 /** 본문 글자색(디자인_기준.md §2 "본문 글자 #1D1D1F"). 룩과 무관. */
 export const TEXT_COLOR = "#1D1D1F";
-/** 채움 위 글자 후보 중 밝은 쪽(채움 위 글자는 대비로 자동 선택, 디자인_기준.md §2). */
-export const ON_FILL_LIGHT = "#FFFFFF";
 
 /** 파생 규칙(디자인_기준.md §2): 보조 글자 = bg 50% 어둡게, 구분선 = bg 13% 어둡게. */
 export const DERIVE = {

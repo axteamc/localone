@@ -12,8 +12,8 @@ import {
   View,
   type LayoutChangeEvent,
 } from "react-native";
-import { contrastRatio, mix, onFill, theme, type as T } from "../../theme";
-import { CUBE_PALETTE, ON_FILL_LIGHT } from "../../theme/tokens";
+import { mix, onFill, theme, type as T } from "../../theme";
+import { CLOSED_CUBE_LID_INK, CUBE_PALETTE } from "../../theme/tokens";
 import type { LatLng, LibrarySummary } from "./deps";
 import {
   CUBE_H,
@@ -75,20 +75,10 @@ const TEXT = {
   back: "원래 도서관 크게 보기",
 };
 
-function toneColor(tone: SpineTone): string {
-  return tone === "closed" ? C.pinClosed : (CUBE_PALETTE[tone] ?? CUBE_PALETTE[0]).hex;
-}
-
-/**
- * 윗면 글자(H6): 채움색이 섞인 글자. 밝은 색 위는 채움 40% + `inkStrong`, 어두운 색 위는 흰색 82% + 채움에서
- * 시작해 대비 4.5가 될 때까지 채움 비율을 5%씩 줄인다(주황·울트라마린 같은 중간 밝기에서도 읽히게).
- */
-export function topInk(fill: string): string {
-  const light = onFill(fill) === ON_FILL_LIGHT;
-  const at = (w: number) => (light ? mix(ON_FILL_LIGHT, fill, 1 - w) : mix(fill, C.inkStrong, w));
-  let w = light ? 0.18 : 0.4;
-  while (w > 0 && contrastRatio(fill, at(w)) < 4.5) w = Math.max(0, w - 0.05);
-  return at(w);
+export function cubeLidColors(tone: SpineTone): { fill: string; ink: string } {
+  if (tone === "closed") return { fill: C.pinClosed, ink: CLOSED_CUBE_LID_INK };
+  const { hex, ink } = CUBE_PALETTE[tone] ?? CUBE_PALETTE[0];
+  return { fill: hex, ink };
 }
 
 function statusOf(lib: LibrarySummary): string {
@@ -99,7 +89,7 @@ function statusOf(lib: LibrarySummary): string {
 
 function hoursOf(lib: LibrarySummary): string {
   if (lib.today.is_closed === true) return "오늘 휴관";
-  return lib.today.hours_text ?? "";
+  return lib.today.hours_text ?? "운영시간 미확인";
 }
 
 /** 윗면 이름 상자(큐브 기본 좌표): 110.85×110.85 정사각형을 등각 변환하면 윗면 마름모에 정확히 포개진다(시안 .face-top-box) */
@@ -145,11 +135,10 @@ type CubeProps = {
 /** C2 등각 큐브: 윗면 = 색 + 이름, 왼쪽 면 = 상태·거리·주소, 오른쪽 면 = 오늘·방위 */
 function IsoCube({ item, title, tone, place, anim, onPress, onLongPress }: CubeProps) {
   const { lib } = item;
-  const fill = toneColor(tone);
+  const { fill, ink } = cubeLidColors(tone);
   const hero = place.role === "hero";
   const label = hero ? `${lib.name} ${formatDistance(item.distanceM)}` : `${lib.name} 크게 보기`;
   const fs = topFont(title.big, title.small);
-  const ink = topInk(fill);
   const quiet = hero ? null : styles.quiet;
   return (
     <Animated.View
