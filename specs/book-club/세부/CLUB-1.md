@@ -94,6 +94,10 @@
 
 ## 검토 메모
 
+- [구현 중 변경] 마이그레이션 번호 `NNNN` → `0018`(main에 `0016`·`0017` 있음) — `server/migrations/versions/0018_clubs_constraints.py`
+- [Claude가 정함] `club_changed` 안내 대상에 `changed_at`을 넣어 바뀔 때마다 새 안내가 가게 함(알림함 "같은 안내 한 번" 규칙의 키, `server/app/services/inbox.py` 머리 설명) — `server/app/routers/clubs.py:339-342`
+- [Claude가 정함] 공개 `status`: 취소 > 끝남(`ends_at` 지남) > 마감(저장값 또는 시작 시각 지남, K1-7) > 열림 — `server/app/routers/clubs.py:102`
+
 - [Claude가 정함] K1-O8 내 댓글 지우기를 D 추천 "바로 지움"에서 확인창으로 — VISIT-3 방명록 지우기(⋯ → 확인창)와 같은 길 — `specs/local-feed/세부/VISIT-3.md` 0절
 - [Claude가 정함] 만든 사람의 "일정·장소 바꾸기"는 만들기 화면(결정 2)을 값 채운 채 재사용, 머리 "모임 고치기 · 저장" — K1-O2
 - [Claude가 정함] 끝난 모임(`ended`)의 버튼 자리는 CLUB-1에서 흐린 "끝난 모임", "기록·후기 쓰기"(큰 틀 결정 3)는 CLUB-2 — 큰 틀 5절 순서
@@ -108,8 +112,8 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 (대기/진행/검토요청/완료) | 구현 근거 (`파일:줄`) 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| CLUB-1-P1 서버 | `feat/book-club-CLUB-1` | - | 대기 | - | - |
+| CLUB-1-P1 서버 | `feat/book-club-CLUB-1` | (Draft) | 진행(테스트 통과, 최종 확인 대기) | `server/app/routers/clubs.py`(#50 `:259`, #52 `:312`, #53 `:349`, #54 `:366`, #55 `:392`, #56 `:418`, #57~#59 `:482`·`:521`·`:548`), `server/app/routers/feed.py:272,297,311`, `server/migrations/versions/0018_clubs_constraints.py`. 시험 `test_clubs.py` 21 + `test_club_participation.py` 8 통과, 가드 제거 12개 모두 빨강. 전체 624 통과·1 실패(B 시험 `test_feed_items` "모르는 kind club" 예시, #250) | `TODO(연결): CLUB-2` `is_restricted`(`clubs.py:51`), `to:B` #250 |
 | CLUB-1-P2 모임 화면·만들기 | `feat/book-club-CLUB-1` | - | 대기 | - | - |
 | CLUB-1-P3 피드 카드·입구 | `feat/book-club-CLUB-1` | - | 대기 | - | `TODO(연결): B` VISIT-3 |
 
-- **다음 세션 이어하기 메모**: 기획 끝, 계약 수정본 제출(검토 대기). 다음 세부 자동 시작 금지.
+- **다음 세션 이어하기 메모**: 구현 중. P1 서버 만들고 설명함, 주니어 "최종 테스트" 답 기다림 → 3단계(전체 시험·CI) 뒤 P2.

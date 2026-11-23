@@ -16,6 +16,7 @@ from sqlalchemy.engine import Connection
 from app.auth import CurrentUser, get_optional_user
 from app.common import ApiError, now_kst
 from app.db import run_db
+from app.routers.clubs import FEED_CLUB_COLUMNS, club_item
 from app.routers.guestbook import GUESTBOOK_COLUMNS, GUESTBOOK_JOINS, guestbook_item
 from app.routers.posts import (
     MSG_NOT_FOUND,
@@ -216,7 +217,7 @@ async def post_detail(
 # 정렬: 모든 종류를 합쳐 published_at DESC, kind ASC, id DESC. 커서는 base64url JSON [published_at, kind, id].
 # `#26`(게시물만, 홈 하단 창)은 바꾸지 않는다.
 
-FEED_ITEM_KINDS = ("guestbook", "post")  # kind ASC 순서. VISIT-4 stamp, CLUB-1 club이 더한다
+FEED_ITEM_KINDS = ("club", "guestbook", "post")  # kind ASC 순서. VISIT-4 stamp가 더한다(CLUB-1 club 더함)
 
 
 def encode_items_cursor(published_at: datetime, kind: str, item_id: Any) -> str:
@@ -268,6 +269,16 @@ def select_guestbook_page(c: Connection, library_id: int, after: tuple[datetime,
     return c.execute(text(sql), dict(args, lib=library_id, n=n)).all()
 
 
+def select_clubs_page(c: Connection, library_id: int, after: tuple[datetime, str, UUID] | None,
+                      n: int) -> list[Any]:
+    """CLUB-1: 모임 카드. 정렬 시각은 `clubs.created_at`(book-club C2 #32), 운영 숨김은 빼고 취소된 모임은 남긴다(K1-8)."""
+    cond, args = after_clause("c", "club", after)
+    cond = cond.replace("c.published_at", "c.created_at")
+    sql = (f"SELECT {FEED_CLUB_COLUMNS} FROM clubs c WHERE c.status <> 'hidden' AND c.library_id = :lib{cond} "
+           "ORDER BY c.created_at DESC, c.id DESC LIMIT :n")
+    return c.execute(text(sql), dict(args, lib=library_id, n=n)).all()
+
+
 @router.get("/libraries/{library_id}/feed")
 async def library_feed_items(
     request: Request,
@@ -283,6 +294,7 @@ async def library_feed_items(
             raise ApiError(404, "NOT_FOUND", MSG_NOT_FOUND, "library_id")
         merged = [("post", r) for r in select_posts_page(c, library_id, after, limit + 1)]
         merged += [("guestbook", r) for r in select_guestbook_page(c, library_id, after, limit + 1)]
+        merged += [("club", r) for r in select_clubs_page(c, library_id, after, limit + 1)]
         # 안정 정렬을 뒤 기준부터: id DESC → kind ASC → published_at DESC
         merged.sort(key=lambda kv: kv[1].id, reverse=True)
         merged.sort(key=lambda kv: kv[0])
@@ -296,6 +308,8 @@ async def library_feed_items(
     for kind, row in page:
         if kind == "post":
             items.append({"kind": "post", "post": feed_post(request, row, *flags)})
+        elif kind == "club":
+            items.append({"kind": "club", "club": club_item(row, int(row.joined_count))})
         else:
             items.append({"kind": "guestbook", "guestbook": guestbook_item(row, viewer)})
     next_cursor = None
