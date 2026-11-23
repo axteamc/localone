@@ -1,4 +1,4 @@
-// 하단 "내 정보" 탭 화면 — contracts/my-collection.md MY-1 (Y1~Y8, Y-O1~Y-O5, C6).
+// 하단 "내 정보" 탭 화면 — contracts/my-collection.md MY-1 (Y1~Y8, Y-O1~Y-O5, C6), MY-2 Y2-1(프로필 수정 화면)·Y2-O5(종).
 // 위 프로필(내리면 사라짐) → 3탭 바(맨 위에 붙음) → B PostCard 2열 메이슨리. 카드 메뉴는 B PostMenu 그대로.
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
@@ -96,7 +96,7 @@ export function MyCollectionScreen() {
       >
         <ProfileHeader
           state={my.profile}
-          onEdit={() => my.showNotice(MY_TEXT.editSoon)}
+          onEdit={() => router.push("/me/edit")} // Y2-1
           onRetry={my.retryProfile}
           // 설정 → 설정·로그아웃(auth.md AUTH-2 G6). 이 머리는 로그인했을 때만 보인다
           onSettings={() => router.push("/settings")}

@@ -3,6 +3,7 @@
 import { apiFetch } from "../../auth/apiFetch";
 import { ApiCallError } from "../../lib/publicApi";
 import type { FeedPost } from "../local-feed/api";
+import { buildImageFormData } from "../local-feed/imagePicker";
 
 export { ApiCallError };
 
@@ -26,9 +27,13 @@ export type MyCollectionPage = { items: MyCollectionPost[]; next_cursor: string 
 export type PageArgs = { cursor?: string | null; limit?: number };
 
 async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
+  return send<T>(path, { method: "GET" }, signal);
+}
+
+async function send<T>(path: string, init: RequestInit, signal?: AbortSignal): Promise<T> {
   let response: Response;
   try {
-    response = await apiFetch(`/api/v1/${path}`, { method: "GET", signal });
+    response = await apiFetch(`/api/v1/${path}`, { ...init, signal });
   } catch (error) {
     if (signal?.aborted) throw error;
     throw new ApiCallError(0, "NETWORK", "서버에 연결하지 못했어요.", "");
@@ -72,4 +77,30 @@ export function fetchMyReactions(page?: PageArgs, signal?: AbortSignal): Promise
 
 export function fetchMyBookmarks(page?: PageArgs, signal?: AbortSignal): Promise<MyCollectionPage> {
   return get<MyCollectionPage>(`me/bookmarks${pageQuery(page)}`, signal);
+}
+
+// ─────────── MY-2 (C2) ───────────
+
+export type ProfilePatch = { nickname?: string; bio?: string | null; avatar_path?: string | null };
+
+/** #38 `PATCH /api/v1/me/profile` — 보낸 칸만 바뀐다(Y2-5) */
+export function updateMyProfile(patch: ProfilePatch): Promise<MyProfile> {
+  return send<MyProfile>("me/profile", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+}
+
+/** #39 `POST /api/v1/uploads/avatar` — LOCAL-1 묶음(`image`)을 `file` 칸으로 옮겨 보낸다(플랫폼 분기는 imagePicker에만) */
+export async function uploadAvatar(file: { uri: string; mime: string }): Promise<{ avatar_path: string }> {
+  const [part] = (await buildImageFormData(file.uri)).getAll("image");
+  const form = new FormData();
+  form.append("file", part as Blob, "avatar.jpg");
+  return send<{ avatar_path: string }>("uploads/avatar", { method: "POST", body: form });
+}
+
+/** #47 `GET /api/v1/me/inbox/unread` (D M2-0-P1) */
+export function fetchInboxUnread(signal?: AbortSignal): Promise<{ has_unread: boolean }> {
+  return get<{ has_unread: boolean }>("me/inbox/unread", signal);
 }

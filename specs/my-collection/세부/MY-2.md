@@ -108,6 +108,6 @@
 | 파트 | 브랜치 | PR 번호 | 상태 (대기/진행/검토요청/완료) | 구현 근거 (`파일:줄`) 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | MY-2-P1 | `feat/my-collection-MY-2` | - | 진행 (구현 완료, PR 전) | `server/app/routers/my_collection.py:164-249`(`#38` `patch_my_profile` 185, `#39` `upload_avatar` 231), `server/tests/test_profile_edit.py` 18개 통과, 서버 전체 `uv run pytest -W error` 698 통과(2026-11-23) | - |
-| MY-2-P2 | `feat/my-collection-MY-2` | - | 대기 | - | - |
+| MY-2-P2 | `feat/my-collection-MY-2` | - | 진행 (구현 완료, 웹·Android 확인 전) | `mobile/src/features/my-collection/ProfileEditScreen.tsx`(수정 화면·저장 흐름), `InboxBell.tsx`(계정별 공유 읽지 않음), `ProfileHeader.tsx`(종→설정), `useMyCollection.ts`(`emitProfileSaved`), `api.ts`(`updateMyProfile`·`uploadAvatar`·`fetchInboxUnread`), `mobile/app/me/edit.tsx`. `tsc` 통과, `jest src/features/my-collection` 53 통과, `expo export --platform web` 통과(2026-11-23). 앱 전체 jest의 `library-visit/home-list` 1건 실패는 이 변경 전에도 있던 것(`home-facade.test.tsx` 색 코드) | `TODO(연결): C CLUB-2-P4` — `/inbox` 연결 전 종 숨김(`inboxLink.ready=false`), 홈 머리 띠 종은 그때 D |
 
-- **다음 세션 이어하기 메모**: 계약 D+A 확정판 발행(`../team` `72a6cd0`, PR #261·#268·#269 반영). MY-2-P1 서버 구현·테스트 완료(커밋됨, PR 전). 다음은 MY-2-P2 앱 — 허용 파일만, 홈 헤더 종 연결 제외(Y2-O6 분리), `/inbox` 연결 전 종 숨김(C7). P1·P2를 한 PR로 낸다.
+- **다음 세션 이어하기 메모**: 계약 D+A 확정판 발행(`../team` `72a6cd0`, PR #261·#268·#269 반영). MY-2-P1 서버·MY-2-P2 앱 구현·테스트 완료(커밋됨, PR 전). 남은 것: 웹·Android 손 확인 → P1·P2 한 PR 제출(`3_구현.md` 5단계 보고).
