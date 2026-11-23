@@ -81,7 +81,7 @@
 | 23 | `POST /api/v1/uploads/post-images` | 필수 | 직접 찍은 사진 올리기. 서버가 EXIF 위치를 지우고 저장 경로를 돌려준다 | LOCAL-01, NFR-05 | 동작 `확정` · 저장소·용량·형식 `미확인(임시)` Q-53 |
 | 24 | `POST /api/v1/posts` | 필수 | 올리기(이때 공개된다). 이미지 종류 사진/표지/단색 + M2(`LOCAL-3`) `template`(`minimal`·`ink`) 및 `reading_log_id`, 본문 없이도 됨 | LOCAL-01·02·07, AC-PUBLISH | `확정` (2026-11-19 D, C-75) |
 | 25 | `POST /api/v1/posts/{post_id}/withdraw` | 필수(작성자만) | 철회. 바로 목록·직접 주소에서 안 보인다 | LOCAL-01, R10 | `확정` |
-| 26 | `GET /api/v1/libraries/{library_id}/posts?sort=latest&cursor=` | 선택 | 그 도서관 공개 게시물 전용 피드(M1 방문 페이지 및 홈 하단 창 `VISIT-1b` `useHomeFeed`가 사용; M2 방문 페이지 혼합 피드는 `#32`로 분리) | LOCAL-03, VISIT-02·06 | 최신순·유지 `확정`(2026-11-19 D) · `sort=popular`는 `미확인(임시)` Q-31 · 파일럿 공개 범위 `미확인(임시)` Q-54 |
+| 26 | `GET /api/v1/libraries/{library_id}/posts?sort=latest&cursor=&expand=` | 선택 | 기본은 그 도서관의 공개 게시물. 홈 첫 조회에서 선택 `expand=region`으로 부족분을 같은 구 → 시·도 순으로 보충(M1 방문 페이지 및 홈 하단 창 `VISIT-1b` `useHomeFeed`가 사용; M2 방문 페이지 혼합 피드는 `#32`로 분리) | LOCAL-03, VISIT-02·06 | 범위별 최신순·홈 보충(2026-11-23 D) `확정`(2026-11-19 D) · `sort=popular`는 `미확인(임시)` Q-31 · 파일럿 공개 범위 `미확인(임시)` Q-54 |
 | 27 | `GET /api/v1/posts/{post_id}` | 선택 | 게시물 상세(본문·작성자 닉네임·공감 수·내 공감·내 북마크·책·M2 `from_reading_log`) | LOCAL-04·07 | `확정` · 철회·숨김은 `404 POST_NOT_AVAILABLE` |
 | 28 | `GET /api/v1/books/{isbn13}/posts?exclude=&cursor=` | 선택 | 같은 책의 다른 공개 게시물(다른 도서관 포함) | LOCAL-05 | `확정` |
 | 29 | `PUT /api/v1/posts/{post_id}/reaction` · `DELETE …/reaction` | 필수 | 공감 누르기·취소(몇 번 눌러도 결과 같음) | LOCAL-06, R14 | `확정` |

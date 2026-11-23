@@ -16,7 +16,7 @@ from sqlalchemy import event, inspect, text
 from sqlalchemy.exc import IntegrityError
 
 from app import policy
-from app.common import ApiError
+from app.common import ApiError, today_kst
 from app.main import create_app
 from app.routers.libraries import area_label_of, closed_today, today_hours
 from app.seed import seed_reference_data
@@ -111,6 +111,43 @@ def test_list_items_have_today_and_area_label(client, monkeypatch):
     assert [x["area_label"] for x in items] == ["화동", "사직동"]
     assert all(x["today"] == {"date": "2026-11-17", "is_closed": False,
                              "hours_text": "09:00~22:00", "holiday_unchecked": False} for x in items)
+
+
+@pytest.mark.parametrize("closed_text, operating_time, is_closed, expected_hours", [
+    ("공휴일", "월 07:00~12:00 / 화 09:00~18:00", None, "09:00~18:00"),
+    ("매주 화요일", "화 09:00~18:00", True, None),
+    ("매주 월요일", "화 09:00~18:00", False, "09:00~18:00"),
+    (None, "월 07:00~12:00", None, None),
+    ("매주 월요일", "화 29:00~99:99", False, None),
+])
+def test_today_hours_are_independent_of_unknown_closure(
+    client, db_engine, monkeypatch, closed_text, operating_time, is_closed, expected_hours,
+):
+    utc_on_previous_day = datetime.fromisoformat("2026-11-16T15:05:00+00:00")
+    monkeypatch.setattr("app.routers.libraries.today_kst", lambda: today_kst(utc_on_previous_day))
+    update = text("""
+        UPDATE libraries SET closed_text=:closed, operating_time_text=:hours WHERE id=101
+    """)
+    with db_engine.begin() as conn:
+        previous = conn.execute(text("""
+            SELECT closed_text AS closed, operating_time_text AS hours FROM libraries WHERE id=101
+        """)).mappings().one()
+        conn.execute(update, {"closed": closed_text, "hours": operating_time})
+
+    try:
+        listing = client.get("/api/v1/libraries?lat=0&lng=0")
+        detail = client.get("/api/v1/libraries/101")
+        assert listing.status_code == detail.status_code == 200
+        listed = next(item for item in listing.json()["items"] if item["id"] == 101)
+        assert listed["today"] == detail.json()["today"] == {
+            "date": "2026-11-17",
+            "is_closed": is_closed,
+            "hours_text": expected_hours,
+            "holiday_unchecked": is_closed is None,
+        }
+    finally:
+        with db_engine.begin() as conn:
+            conn.execute(update, dict(previous))
 
 
 @pytest.mark.parametrize("raw, day, expected", [

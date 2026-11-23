@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>홈 큐브 뚜껑 글자·색 페어링 재검토 시안</title>
+<style>
+  :root {
+    --bg: #E1E1DE;
+    --panel: #E9EAE7;
+    --paper: #EFF1F1;
+    --seam: #B6B6B3;
+    --text: #1D1D1F;
+    --sub: #5B5B57;
+    --accent: #2E333F;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 24px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Pretendard", sans-serif;
+    line-height: 1.45;
+  }
+  .wrap { max-width: 1320px; margin: 0 auto; }
+  h1 { font-size: 20px; margin: 0 0 6px; }
+  .lead { font-size: 13px; color: var(--sub); margin: 0 0 18px; }
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 18px;
+    align-items: center;
+  }
+  .tab {
+    border: 1px solid var(--seam);
+    background: var(--paper);
+    color: var(--text);
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .tab.active {
+    background: var(--accent);
+    color: #fff;
+    border-color: var(--accent);
+  }
+  .quick-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .quick-btn {
+    border: 1px solid var(--accent);
+    background: #fff;
+    color: var(--accent);
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .quick-btn:hover { background: #f3f3f0; }
+  .card-toggle {
+    border: 1px solid var(--seam);
+    background: var(--panel);
+    color: var(--text);
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    align-self: flex-end;
+  }
+  .card-toggle:hover { background: #e2e2de; }
+  .badge-rec {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: #F5AF3D;
+    color: #1D1D1F;
+    font-size: 11px;
+  }
+  .summary-box {
+    background: var(--paper);
+    border: 1px solid var(--seam);
+    border-radius: 10px;
+    padding: 14px 16px;
+    margin-bottom: 20px;
+    font-size: 13px;
+  }
+  .summary-box strong { font-weight: 700; }
+  .section-title {
+    font-size: 15px;
+    font-weight: 700;
+    margin: 22px 0 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .focus-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 14px;
+    margin-bottom: 24px;
+  }
+  .focus-card {
+    background: var(--paper);
+    border: 1px solid var(--seam);
+    border-radius: 10px;
+    padding: 12px 14px;
+  }
+  .focus-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+    margin-bottom: 10px;
+    font-weight: 600;
+  }
+  .focus-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 14px;
+  }
+  .card {
+    background: var(--paper);
+    border: 1px solid var(--seam);
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .card.warn { border-color: #EB5324; box-shadow: 0 0 0 1px #EB5324; }
+  .cube-stage {
+    height: 158px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--panel);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+  }
+  .iso-cube {
+    position: relative;
+    width: 176px;
+    height: 144px;
+  }
+  .face-top {
+    position: absolute;
+    left: 25.5px;
+    top: 10px;
+    width: 125px;
+    height: 125px;
+    transform: scaleY(0.577) rotate(45deg);
+    border: 1px solid rgba(28,30,36,0.22);
+  }
+  .top-box {
+    position: absolute;
+    left: 38px;
+    top: 22px;
+    width: 98px;
+    height: 98px;
+    padding: 7px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: flex-end;
+    transform: rotate(-30deg) skewX(30deg) scaleY(0.866);
+    pointer-events: none;
+  }
+  .top-small {
+    font-size: 8.5px;
+    font-weight: 600;
+    line-height: 1.1;
+    opacity: 0.88;
+    margin-bottom: 1px;
+  }
+  .top-big {
+    font-size: 20px;
+    font-weight: 600;
+    line-height: 1.08;
+    letter-spacing: 0.3px;
+  }
+  .face-left {
+    position: absolute;
+    left: 11px;
+    top: 72px;
+    width: 77px;
+    height: 52px;
+    background: #DFE0DD;
+    border: 1px solid #B6B6B3;
+    border-right: 0;
+    transform-origin: left top;
+    transform: skewY(30deg);
+  }
+  .face-right {
+    position: absolute;
+    left: 88px;
+    top: 116.4px;
+    width: 77px;
+    height: 52px;
+    background: #EFF1F1;
+    border: 1px solid #B6B6B3;
+    transform-origin: left top;
+    transform: skewY(-30deg);
+  }
+  .meta { font-size: 12px; display: flex; flex-direction: column; gap: 3px; }
+  .meta-row { display: flex; justify-content: space-between; align-items: center; }
+  .pill {
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    font-weight: 600;
+  }
+  .ok { background: #DDF0DF; color: #1F5C27; }
+  .bad { background: #FBE0D8; color: #9E2607; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--sub); }
+  .flat-preview {
+    height: 62px;
+    border-radius: 6px;
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    border: 1px solid rgba(0,0,0,0.08);
+  }
+  .flat-small { font-size: 10px; font-weight: 600; opacity: 0.88; }
+  .flat-big { font-size: 16px; font-weight: 600; line-height: 1.1; }
+  .flat-cr { font-size: 11px; margin-top: 4px; color: var(--sub); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>홈 큐브 뚜껑 글자·색 페어링 재검토 시안</h1>
+  <p class="lead">대상: <code>mobile/src/theme/tokens.ts</code> (<code>CUBE_PALETTE</code> 20색 + <code>pinClosed</code>) · <code>FacadeHome.tsx</code> (<code>topInk</code>)</p>
+
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-mode="whiteExcept5">D. 화이트 5종 제외 전부 흰 글자<span class="badge-rec">새 시안</span></button>
+    <button class="tab" data-mode="current">A. 현재 구현 (현행 topInk)</button>
+    <button class="tab" data-mode="recommended">B. 대비 확보 + 선명도 보정</button>
+    <button class="tab" data-mode="pure">C. 순수 고대비 (혼합 없음)</button>
+  </div>
+
+  <div class="quick-bar">
+    <button class="quick-btn" id="swapBtn" type="button">⇄ 현행(A) ↔ 새 시안(D) 번갈아 보기</button>
+    <button class="quick-btn" id="resetOverridesBtn" type="button" style="display:none">개별 전환 초기화</button>
+    <span class="lead" style="margin:0">각 카드 오른쪽 아래 버튼으로 개별 색상의 흰/어두운 글자를 바로 바꿔볼 수도 있습니다.</span>
+  </div>
+
+  <div class="summary-box" id="summary"></div>
+
+  <div class="section-title">핵심 재검토 대상 (중간 밝기 5색: 흰 글자 vs 어두운 글자 직접 비교)</div>
+  <div class="focus-grid" id="focusGrid"></div>
+
+  <div class="section-title">전체 21색 큐브 윗면 미리보기 (<span id="modeLabel"></span>)</div>
+  <div class="grid" id="paletteGrid"></div>
+</div>
+
+<script>
+const PALETTE = [
+  { name: "bold", hex: "#EB5324" },
+  { name: "coral", hex: "#FF7850" },
+  { name: "marshmallow", hex: "#F4F1DE" },
+  { name: "neutral", hex: "#FFF6EE" },
+  { name: "porcelain", hex: "#F0F0F5" },
+  { name: "eggshell", hex: "#F0E6DC" },
+  { name: "vanillaCanvas", hex: "#EBE4D1" },
+  { name: "vanilla", hex: "#CDBEA0" },
+  { name: "indigoDrift", hex: "#232747" },
+  { name: "dark", hex: "#27324A" },
+  { name: "darkNavy", hex: "#001428" },
+  { name: "atlanticBlue", hex: "#26577C" },
+  { name: "ultramarine", hex: "#3778FF" },
+  { name: "light", hex: "#59BABD" },
+  { name: "complementary", hex: "#BFDAD3" },
+  { name: "lemonZest", hex: "#F5AF3D" },
+  { name: "citrusYellow", hex: "#FFC300" },
+  { name: "crimsonWhisper", hex: "#6B0A00" },
+  { name: "shuttleGray", hex: "#646E7D" },
+  { name: "ghostGray", hex: "#C8C8D2" },
+  { name: "pinClosed (휴관)", hex: "#78736C" },
+];
+
+const WHITE = "#FFFFFF";
+const TEXT_DARK = "#1D1D1F";
+const INK_STRONG = "#2E333F";
+
+function parseHex(h) {
+  const n = parseInt(h.slice(1), 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function toHex(rgb) {
+  return "#" + rgb.map(c => Math.max(0, Math.min(255, Math.round(c))).toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+function mix(a, b, w) {
+  const [r1, g1, b1] = parseHex(a), [r2, g2, b2] = parseHex(b);
+  return toHex([r1 * w + r2 * (1 - w), g1 * w + g2 * (1 - w), b1 * w + b2 * (1 - w)]);
+}
+function lum(h) {
+  const ch = c => { const s = c / 255; return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
+  const [r, g, b] = parseHex(h);
+  return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b);
+}
+function cr(a, b) {
+  const [hi, lo] = [lum(a), lum(b)].sort((x, y) => y - x);
+  return (hi + 0.05) / (lo + 0.05);
+}
+function onFill(f) {
+  return cr(f, WHITE) >= cr(f, TEXT_DARK) ? WHITE : TEXT_DARK;
+}
+
+// A. 현재 코드 (FacadeHome.tsx)
+function topInkCurrent(fill) {
+  const light = onFill(fill) === WHITE;
+  const at = w => (light ? mix(WHITE, fill, 1 - w) : mix(fill, INK_STRONG, w));
+  let w = light ? 0.18 : 0.4;
+  while (w > 0 && cr(fill, at(w)) < 4.5) w = Math.max(0, w - 0.05);
+  return at(w);
+}
+
+// B. 추천: 어두운 글자 기준을 TEXT_DARK(#1D1D1F)로 두고, bold/ultramarine 등 중간톤은 흰색/검정 중 대비가 더 크고 명확한 쪽 선택 + 믹스 상한 축소
+function topInkRecommended(fill, name) {
+  // ultramarine은 흰색과 대비가 3.97, 검정은 4.24 — 둘 다 4.5 미만이지만 파랑 위 흰색(또는 검정) 비교 필요.
+  // 여기서는 일단 TEXT_DARK(#1D1D1F) 기준으로 4.5를 맞추되, max mix를 어두운 글자 0.24, 밝은 글자 0.12로 제한
+  const light = onFill(fill) === WHITE;
+  const at = w => (light ? mix(WHITE, fill, 1 - w) : mix(fill, TEXT_DARK, w));
+  let w = light ? 0.12 : 0.24;
+  while (w > 0 && cr(fill, at(w)) < 4.5) w = Math.max(0, w - 0.04);
+  return at(w);
+}
+
+// C. 순수 고대비: 혼합 없이 WHITE 또는 TEXT_DARK
+function topInkPure(fill) {
+  return onFill(fill);
+}
+
+// D. 화이트 계열 5종(marshmallow, neutral, porcelain, eggshell, vanillaCanvas)만 어두운 글자, 나머지 전부 흰색
+const WHITE_GROUP = new Set(["marshmallow", "neutral", "porcelain", "eggshell", "vanillaCanvas"]);
+function topInkWhiteExcept5(fill, name) {
+  if (WHITE_GROUP.has(name)) {
+    const at = w => mix(fill, TEXT_DARK, w);
+    let w = 0.24;
+    while (w > 0 && cr(fill, at(w)) < 4.5) w = Math.max(0, w - 0.04);
+    return at(w);
+  }
+  return WHITE;
+}
+
+const MODES = {
+  whiteExcept5: {
+    label: "D. 화이트 5종 제외 전부 흰 글자",
+    fn: topInkWhiteExcept5,
+    desc: `화이트 계열 5종(<code>marshmallow</code>, <code>neutral</code>, <code>porcelain</code>, <code>eggshell</code>, <code>vanillaCanvas</code>)만 어두운 글자(B안)를 쓰고, 나머지 16종은 전부 <code>#FFFFFF</code> 흰 글자를 적용한 시안입니다. 노랑·민트·연회색(<code>citrusYellow</code>, <code>lemonZest</code>, <code>complementary</code>, <code>vanilla</code>, <code>ghostGray</code>) 위 흰 글자 가독성을 함께 확인해 주세요.`
+  },
+  current: {
+    label: "A. 현재 구현",
+    fn: topInkCurrent,
+    desc: `현재 <code>FacadeHome.tsx</code>의 <code>topInk()</code> 결과입니다. <code>bold(#EB5324)</code>가 <strong>대비 3.49</strong>, <code>ultramarine(#3778FF)</code>가 <strong>대비 3.19</strong>로 WCAG 4.5 기준에 미달합니다. (어두운 글자에 <code>inkStrong(#2E333F)</code>를 써서 순검정보다 대비가 더 낮아짐)`
+  },
+  recommended: {
+    label: "B. 대비 확보 + 선명도 보정",
+    fn: topInkRecommended,
+    desc: `어두운 글자 기준을 <code>#1D1D1F</code>로 내려 <code>bold</code>(4.64)를 4.5 이상으로 끌어올리고, 밝은 배경 위 채움 혼합 비율을 40% → 24%로 줄여 글자가 뿌옇지 않게 보정합니다.`
+  },
+  pure: {
+    label: "C. 순수 고대비 (혼합 없음)",
+    fn: topInkPure,
+    desc: `채움색을 글자에 섞지 않고 <code>#FFFFFF</code> 또는 <code>#1D1D1F</code>만 사용합니다. 가독성은 가장 높지만, 파스텔 톤 윗면에서 톤온톤 느낌이 사라집니다.`
+  }
+};
+
+let activeMode = "whiteExcept5";
+const cardOverrides = {}; // { [name]: "white" | "dark" }
+
+function renderFocus() {
+  const focusNames = ["bold", "coral", "ultramarine", "light", "shuttleGray"];
+  const el = document.getElementById("focusGrid");
+  el.innerHTML = focusNames.map(n => {
+    const p = PALETTE.find(x => x.name === n);
+    const wCr = cr(p.hex, WHITE).toFixed(2);
+    const dCr = cr(p.hex, TEXT_DARK).toFixed(2);
+    return `
+      <div class="focus-card">
+        <div class="focus-head">
+          <span>${p.name}</span>
+          <span class="mono">${p.hex}</span>
+        </div>
+        <div class="focus-pair">
+          <div>
+            <div class="flat-preview" style="background:${p.hex}; color:${WHITE}">
+              <div class="flat-small">남구</div>
+              <div class="flat-big">문화정보</div>
+            </div>
+            <div class="flat-cr">흰색(#FFFFFF) · 대비 <strong>${wCr}</strong> ${wCr >= 4.5 ? "✅" : "⚠️"}</div>
+          </div>
+          <div>
+            <div class="flat-preview" style="background:${p.hex}; color:${TEXT_DARK}">
+              <div class="flat-small">남구</div>
+              <div class="flat-big">문화정보</div>
+            </div>
+            <div class="flat-cr">진한색(#1D1D1F) · 대비 <strong>${dCr}</strong> ${dCr >= 4.5 ? "✅" : "⚠️"}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+function setActiveTab(modeKey) {
+  activeMode = modeKey;
+  document.querySelectorAll(".tab").forEach(t => {
+    t.classList.toggle("active", t.dataset.mode === modeKey);
+  });
+  renderPalette(modeKey);
+}
+
+function renderPalette(modeKey) {
+  const mode = MODES[modeKey];
+  document.getElementById("summary").innerHTML = mode.desc;
+  document.getElementById("modeLabel").textContent = mode.label;
+  const resetBtn = document.getElementById("resetOverridesBtn");
+  resetBtn.style.display = Object.keys(cardOverrides).length > 0 ? "inline-block" : "none";
+
+  const grid = document.getElementById("paletteGrid");
+  grid.innerHTML = PALETTE.map(p => {
+    const ov = cardOverrides[p.name];
+    let ink = mode.fn(p.hex, p.name);
+    if (ov === "white") ink = WHITE;
+    else if (ov === "dark") ink = mix(p.hex, TEXT_DARK, 0.24);
+
+    const isLightInk = lum(ink) > 0.5;
+    const ratio = cr(p.hex, ink);
+    const pass = ratio >= 4.5;
+    return `
+      <div class="card ${pass ? "" : "warn"}">
+        <div class="cube-stage">
+          <div class="iso-cube">
+            <div class="face-left"></div>
+            <div class="face-right"></div>
+            <div class="face-top" style="background:${p.hex}"></div>
+            <div class="top-box" style="color:${ink}">
+              <div class="top-small">남구</div>
+              <div class="top-big">문화정보</div>
+            </div>
+          </div>
+        </div>
+        <div class="meta">
+          <div class="meta-row">
+            <strong>${p.name}${ov ? " (개별)" : ""}</strong>
+            <span class="pill ${pass ? "ok" : "bad"}">대비 ${ratio.toFixed(2)} ${pass ? "통과" : "미달"}</span>
+          </div>
+          <div class="meta-row mono">
+            <span>면 ${p.hex}</span>
+            <span>글자 ${ink}</span>
+          </div>
+        </div>
+        <button class="card-toggle" type="button" data-name="${p.name}" data-next="${isLightInk ? "dark" : "white"}">
+          ${isLightInk ? "어두운 글자로 보기" : "흰 글자로 보기"}
+        </button>
+      </div>
+    `;
+  }).join("");
+}
+
+document.getElementById("tabs").addEventListener("click", e => {
+  const btn = e.target.closest(".tab");
+  if (!btn) return;
+  setActiveTab(btn.dataset.mode);
+});
+
+document.getElementById("swapBtn").addEventListener("click", () => {
+  setActiveTab(activeMode === "whiteExcept5" ? "current" : "whiteExcept5");
+});
+
+document.getElementById("resetOverridesBtn").addEventListener("click", () => {
+  for (const k of Object.keys(cardOverrides)) delete cardOverrides[k];
+  renderPalette(activeMode);
+});
+
+document.getElementById("paletteGrid").addEventListener("click", e => {
+  const btn = e.target.closest(".card-toggle");
+  if (!btn) return;
+  cardOverrides[btn.dataset.name] = btn.dataset.next;
+  renderPalette(activeMode);
+});
+
+renderFocus();
+renderPalette("whiteExcept5");
+</script>
+</body>
+</html>
