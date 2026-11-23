@@ -22,6 +22,8 @@ export const SHELF_HEIGHT = 224; // V3-1
 export const SHELF_FADE_HEIGHT = 72; // V3-1 피드-책장 사이 띠
 const COVER_W = 104;
 const COVER_H = 150;
+const PAGE_INSET = 16;
+const BOOK_GAP = 16;
 const OPEN_LOCK_MS = 1000; // 책 연타: 책 화면은 한 번만(예외 #3)
 
 /** V3-O1 (2026-11-19 D 변경): 요즘 사람들이 읽은 책 → 테마 추천 → 인기 도서. 서버가 뺀 장은 건너뛴다 */
@@ -159,13 +161,19 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf }: Bookshel
             testID="shelf-pages"
             style={styles.pages}
           >
-            {pages.map((p) => (
-              <View key={p.kind} style={[styles.page, { width: width || undefined }]}>
-                {p.books.map((b) => (
-                  <BookCover key={b.isbn13} book={b} onPress={() => open(b.isbn13)} />
-                ))}
-              </View>
-            ))}
+            {pages.map((p) => {
+              const gaps = BOOK_GAP * (p.books.length - 1);
+              const coverWidth = width > 0
+                ? Math.max(1, Math.min(COVER_W, (width - PAGE_INSET * 2 - gaps) / p.books.length))
+                : COVER_W;
+              return (
+                <View key={p.kind} style={[styles.page, { width: width || undefined }]}>
+                  {p.books.map((b) => (
+                    <BookCover key={b.isbn13} book={b} width={coverWidth} onPress={() => open(b.isbn13)} />
+                  ))}
+                </View>
+              );
+            })}
           </ScrollView>
           <View style={styles.plank} />
         </>
@@ -174,23 +182,24 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf }: Bookshel
   );
 }
 
-function BookCover({ book, onPress }: { book: ShelfBook; onPress(): void }) {
+function BookCover({ book, width, onPress }: { book: ShelfBook; width: number; onPress(): void }) {
+  const compact = width < 84;
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${book.title} 책 화면 열기`}
       onPress={onPress}
-      style={({ pressed }) => [styles.book, pressed && styles.bookPressed]}
+      style={({ pressed }) => [styles.book, { width }, pressed && styles.bookPressed]}
     >
       {book.cover_url ? (
         <Image source={{ uri: book.cover_url }} style={styles.cover} accessibilityIgnoresInvertColors />
       ) : (
         // V3-O7: 표지 없으면 같은 크기의 글자 표지(위 저자, 아래 제목), 바탕 paper
-        <View style={[styles.cover, styles.textCover]}>
-          <Text style={styles.coverAuthor} numberOfLines={2}>
+        <View style={[styles.cover, styles.textCover, compact && styles.compactCover]}>
+          <Text style={styles.coverAuthor} numberOfLines={compact ? 1 : 2}>
             {book.author ?? ""}
           </Text>
-          <Text style={styles.coverTitle} numberOfLines={4}>
+          <Text style={[styles.coverTitle, compact && styles.compactTitle]} numberOfLines={compact ? 2 : 4}>
             {book.title}
           </Text>
         </View>
@@ -237,13 +246,18 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.surface3 },
   dotOn: { backgroundColor: C.inkStrong },
   pages: { flexGrow: 0 },
-  page: { flexDirection: "row", justifyContent: "center", alignItems: "flex-end", gap: 16, paddingTop: 8 },
-  book: { width: COVER_W, height: COVER_H, ...bookRadius, boxShadow: `0 6px 12px 0 ${C.shadowSoft}` },
+  page: {
+    flexDirection: "row", justifyContent: "center", alignItems: "flex-end",
+    gap: BOOK_GAP, paddingTop: 8, paddingHorizontal: PAGE_INSET,
+  },
+  book: { aspectRatio: COVER_W / COVER_H, ...bookRadius, boxShadow: `0 6px 12px 0 ${C.shadowSoft}` },
   bookPressed: { transform: [{ translateY: -4 }] },
-  cover: { width: COVER_W, height: COVER_H, ...bookRadius, overflow: "hidden", backgroundColor: C.paper },
+  cover: { width: "100%", height: "100%", ...bookRadius, overflow: "hidden", backgroundColor: C.paper },
   textCover: { padding: 10, justifyContent: "space-between", borderLeftWidth: 5, borderLeftColor: C.surface3 },
   coverAuthor: { fontSize: 11, color: C.inkMuted },
   coverTitle: { fontSize: 14, lineHeight: 18, fontWeight: "500", color: C.text },
+  compactCover: { padding: 6 },
+  compactTitle: { fontSize: 12, lineHeight: 15 },
   plank: { height: 7, marginHorizontal: 8, backgroundColor: C.inkStrong },
   message: { flex: 1, justifyContent: "center", alignItems: "flex-start", gap: 4, paddingHorizontal: 20 },
   messageTitle: { fontSize: 15, fontWeight: "500", color: C.text },

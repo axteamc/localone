@@ -28,6 +28,19 @@ POPULAR_LIBRARY_TTL = timedelta(days=3)  # 05 §3.1 `확정`: 도서관별은 �
 # 전국은 "하루 한 번"(05 §3.1 `확정`): 서울 날짜가 바뀌면 다시 받는다(provider_engine에서 날짜 비교)
 RECOMMENDATION_MAX_BOOKS = 20  # 02 §9 "LIB-0 조회 엔진 수치": 테마 책도 같은 상한
 
+# ── 방문 책장 (#31) ──
+SHELF_BOOKS_PER_PAGE = 4
+SHELF_LOCAL_THEME_MAX_BOOKS = 3
+SHELF_LOCAL_THEME_MIN_HOLDINGS = 1
+SHELF_COMMON_THEME_MIN_HOLDINGS = 2
+SHELF_THEME_MAX_PRIORITY = 3
+SHELF_HOLDINGS_LOOKAHEAD = timedelta(days=7)
+SHELF_HOLDINGS_TTL = timedelta(hours=72)
+SHELF_HOLDINGS_PAGE_SIZE = 100
+SHELF_POPULAR_COMIC_CLASSES = frozenset({"만화", "만화책", "학습만화", "웹툰"})
+SHELF_POPULAR_EXCLUDED_ISBNS: frozenset[str] = frozenset()
+SHELF_POPULAR_EXCLUDED_SERIES = ("빨간내복야코", "빨간 내복 야코", "백앤아")
+
 # ── 도서관 목록·소장 조회(06 #10·#12·#13) ──
 NEARBY_RADII_KM = (3, 5)  # 02 LIB-02 `확정`(O-39)
 NEARBY_DEFAULT_RADIUS_KM = 3  # 02 LIB-02 `확정`

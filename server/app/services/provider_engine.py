@@ -1,6 +1,7 @@
 """LIB-0: 도서·인기·도서관 조회 엔진. 외부 I/O는 트랜잭션 밖."""
 from __future__ import annotations
 
+import argparse
 import asyncio
 import hashlib
 import html
@@ -12,17 +13,19 @@ import sys
 import urllib.error
 import urllib.request
 from collections.abc import Callable, Iterable, Sequence
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 from typing import Any, Literal, Protocol, TypeVar
 from urllib.parse import urlencode
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection, Engine
+from sqlalchemy.exc import SQLAlchemyError
 from app import policy
 from app.common import ApiError, now_kst, today_kst
 from app.db import run_db
 from app.services.homepage_fix import fix_homepage, fix_region_code
+from app.services.theme_holdings import holdings_targets, replace_holdings
 from app.settings import Settings
 
 T = TypeVar("T")
@@ -210,20 +213,38 @@ def _store_libraries(
 
 
 def _main(argv: list[str]) -> int:
-    """`python -m app.services.provider_engine seed` | `sync-libraries <시군구 코드>...`"""
+    """`python -m app.services.provider_engine seed | sync-libraries | sync-theme-holdings`"""
     from sqlalchemy import create_engine
 
     from app.seed import seed_reference_data
     from app.settings import get_settings
 
-    if not argv or argv[0] not in {"seed", "sync-libraries"}:
+    if not argv or argv[0] not in {"seed", "sync-libraries", "sync-theme-holdings"}:
         print(_main.__doc__)
         return 2
+    if argv[0] == "sync-theme-holdings":
+        parser = argparse.ArgumentParser(prog="sync-theme-holdings")
+        parser.add_argument("--region", action="append", default=[], metavar="NN")
+        parser.add_argument("--max-calls", type=int, metavar="N")
+        args = parser.parse_args(argv[1:])
+        if any(not re.fullmatch(r"[0-9]{2}", region) for region in args.region):
+            parser.error("--region은 두 자리 광역 코드여야 해요")
+        if args.max_calls is not None and args.max_calls < 1:
+            parser.error("--max-calls는 1 이상이어야 해요")
     settings = get_settings()
     engine = create_engine(settings.database_url)
     try:
         if argv[0] == "seed":
             print(asyncio.run(run_db(engine, seed_reference_data)))
+        elif argv[0] == "sync-theme-holdings":
+            try:
+                status, report = asyncio.run(
+                    ProviderEngine(engine, build_providers(settings)).sync_theme_holdings(args.region, args.max_calls)
+                )
+            except SQLAlchemyError:
+                status, report = 1, {"error": "database_error"}
+            print(json.dumps(report, ensure_ascii=False))
+            return status
         else:
             codes = argv[1:]
             if not codes:
@@ -242,12 +263,22 @@ def _clean_text(raw: Any) -> str | None:
     return (raw.strip() or None) if isinstance(raw, str) else None
 
 
+@dataclass(frozen=True)
+class HoldingsPage:
+    page_no: int
+    page_size: int
+    total: int
+    lib_codes: tuple[str, ...]
+
+
 class LibraryDataProvider(Protocol):
     def book_exist(self, lib_code: str, isbn13: str) -> HoldingResult: ...
 
     def popular(self, lib_code: str | None, start: date, end: date, size: int) -> list[BookInfo]: ...
 
     def libraries(self, dtl_region: str, page: int, size: int) -> tuple[list[LibraryInfo], int]: ...
+
+    def holdings_page(self, isbn13: str, region: str, page: int, size: int) -> HoldingsPage: ...
 
 
 @dataclass(frozen=True)
@@ -281,6 +312,34 @@ class Data4LibraryClient:
         return HoldingResult(holding="yes", loanable=_yn(result.get("loanAvailable")))
 
 
+    def holdings_page(self, isbn13: str, region: str, page: int, size: int) -> HoldingsPage:
+        response = self._get("libSrchByBook", {"isbn": isbn13, "region": region, "pageNo": page, "pageSize": size})
+        numbers = []
+        for key in ("pageNo", "pageSize", "numFound", "resultNum"):
+            value = response.get(key)
+            if type(value) is int and value >= 0:
+                numbers.append(value)
+            elif isinstance(value, str) and re.fullmatch(r"[0-9]{1,12}", value):
+                numbers.append(int(value))
+            else:
+                raise ProviderError("소장 도서관 페이지 정보가 올바르지 않아요")
+        page_no, page_size, total, returned = numbers
+        libs = response.get("libs")
+        if libs is None and total == 0 and returned == 0:
+            libs = []
+        if not isinstance(libs, list) or len(libs) != returned:
+            raise ProviderError("소장 도서관 응답 건수가 일치하지 않아요")
+        codes = []
+        for entry in libs:
+            lib = entry.get("lib") if isinstance(entry, dict) else None
+            code = lib.get("libCode") if isinstance(lib, dict) else None
+            if type(code) is int and code >= 0:
+                code = str(code)
+            if not isinstance(code, str) or not re.fullmatch(r"[0-9]+", code):
+                raise ProviderError("소장 도서관 코드가 올바르지 않아요")
+            codes.append(code)
+        return HoldingsPage(page_no, page_size, total, tuple(codes))
+
     def popular(self, lib_code: str | None, start: date, end: date, size: int) -> list[BookInfo]:
         params: dict[str, Any] = {
             "startDt": start.isoformat(),
@@ -311,6 +370,7 @@ class Data4LibraryClient:
                         cover_url=https_cover(doc.get("bookImageURL")),
                         description=_description(doc.get("description")),
                         pub_year=_pub_year(doc.get("publication_year")),
+                        class_name=_clean_text(doc.get("class_nm")),
                     )
                 )
         return books
@@ -655,6 +715,85 @@ class ProviderEngine:
                 page += 1
         return counts
 
+    async def sync_theme_holdings(
+        self, regions: Sequence[str] = (), max_calls: int | None = None,
+    ) -> tuple[int, dict[str, Any]]:
+        provider = self.providers.library_data
+        targets = await self._db(lambda c: holdings_targets(c, today_kst(self.now_fn()), regions))
+        summary: dict[str, dict[str, int]] = {}
+        for target in targets:
+            counts = summary.setdefault(target.region, {
+                "targets": 0, "updated": 0, "empty": 0, "reused": 0,
+                "failed": 0, "unprocessed": 0, "unmatched_codes": 0, "requests": 0,
+            })
+            counts["targets"] += 1
+            counts["reused" if target.fresh else "unprocessed"] += 1
+        if provider is None:
+            report: dict[str, Any] = {"requests": 0, "regions": summary}
+            if any(counts["unprocessed"] for counts in summary.values()):
+                return 1, {**report, "stop_reason": "provider_not_configured"}
+            return 0, report
+        calls = 0
+        stop_reason = None
+        for target in targets:
+            if target.fresh:
+                continue
+            if max_calls is not None and calls >= max_calls:
+                stop_reason = "run_limit"
+                break
+            counts = summary[target.region]
+            try:
+                started = await self._db(lambda c: c.execute(text("SELECT clock_timestamp()")).scalar_one())
+                codes: set[str] = set()
+                page_no = 1
+                size = policy.SHELF_HOLDINGS_PAGE_SIZE
+                total = None
+                while True:
+                    try:
+                        page = await self._guarded_call(
+                            "data4library", policy.DATA4LIBRARY_DAILY_LIMIT,
+                            lambda: provider.holdings_page(target.isbn13, target.region, page_no, size),
+                        )
+                    except ProviderError:
+                        calls += 1
+                        counts["requests"] += 1
+                        raise
+                    calls += 1
+                    counts["requests"] += 1
+                    if page.page_no != page_no or not 1 <= page.page_size <= size:
+                        raise ProviderError("소장 도서관 페이지 순서나 크기가 올바르지 않아요")
+                    if total is None:
+                        total, size = page.total, page.page_size
+                    if page.total != total or page.page_size != size:
+                        raise ProviderError("소장 도서관 페이지 사이의 총건수 또는 크기가 달라졌어요")
+                    expected = min(size, total - (page_no - 1) * size)
+                    codes.update(page.lib_codes)
+                    if len(page.lib_codes) != expected or len(codes) != (page_no - 1) * size + expected:
+                        raise ProviderError("소장 도서관 페이지에 누락이나 중복이 있어요")
+                    if len(codes) == total:
+                        unmatched = await self._db(lambda c: replace_holdings(c, target, started, codes))
+                        counts["unprocessed"] -= 1
+                        if unmatched is None:
+                            counts["reused"] += 1
+                        else:
+                            counts["updated"] += 1
+                            counts["empty"] += int(not codes)
+                            counts["unmatched_codes"] += unmatched
+                        break
+                    pages_left = (total - len(codes) + size - 1) // size
+                    if max_calls is not None and calls + pages_left > max_calls:
+                        stop_reason = "run_limit"
+                        break
+                    page_no += 1
+            except ProviderLimitReached:
+                stop_reason = "daily_limit"
+                break
+            except (ProviderError, SQLAlchemyError):
+                counts["unprocessed"] -= 1
+                counts["failed"] += 1
+        incomplete = any(counts["failed"] or counts["unprocessed"] for counts in summary.values())
+        return int(incomplete), {"requests": calls, "regions": summary, "stop_reason": stop_reason}
+
 
 MSG_NOT_FOUND = "찾을 수 없어요."
 FallbackReason = Literal["not_configured", "limit", "provider_error", "no_data"]
@@ -721,6 +860,7 @@ class BookInfo:
     cover_url: str | None = None
     description: str | None = None
     pub_year: int | None = None
+    class_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -928,6 +1068,7 @@ class PopularResult:
     fetched_at: datetime
     stale: bool
     fallback_reason: FallbackReason | None
+    class_names: dict[str, str] = field(default_factory=dict)
 
 
 def _read_popular(conn: Connection, scope: str, library_id: int | None) -> PopularResult | None:
@@ -935,7 +1076,7 @@ def _read_popular(conn: Connection, scope: str, library_id: int | None) -> Popul
         text(
             """
             SELECT b.id, b.isbn13, b.title, b.author, b.publisher, b.cover_url, b.source, b.description, b.pub_year,
-                   p.period_label, p.fetched_at
+                   p.period_label, p.fetched_at, p.provider_class_name
             FROM popular_books_cache p JOIN books b ON b.id = p.book_id
             WHERE p.scope = :scope AND p.library_id IS NOT DISTINCT FROM :library_id
               AND b.isbn13 IS NOT NULL
@@ -954,6 +1095,7 @@ def _read_popular(conn: Connection, scope: str, library_id: int | None) -> Popul
         fetched_at=min(r.fetched_at for r in rows),
         stale=False,
         fallback_reason=None,
+        class_names={r.isbn13: r.provider_class_name for r in rows if r.provider_class_name},
     )
 
 
@@ -968,6 +1110,7 @@ def _store_popular(
     # 같은 범위를 동시에 갱신하면 DELETE·INSERT가 엇갈려 순위 UNIQUE에 걸린다 → 범위별로 직렬화
     conn.execute(text("SELECT pg_advisory_xact_lock(hashtext(:k))"), {"k": f"popular:{scope}:{library_id}"})
     records = upsert_books(conn, infos[: policy.POPULAR_SIZE], "data4library", fetched_at, overwrite=False)
+    class_names = {info.isbn13: info.class_name for info in infos[: policy.POPULAR_SIZE] if info.class_name}
     conn.execute(
         text("DELETE FROM popular_books_cache WHERE scope = :scope AND library_id IS NOT DISTINCT FROM :lid"),
         {"scope": scope, "lid": library_id},
@@ -976,8 +1119,9 @@ def _store_popular(
         conn.execute(
             text(
                 """
-                INSERT INTO popular_books_cache (scope, library_id, rank, book_id, period_label, fetched_at)
-                VALUES (:scope, :lid, :rank, :book_id, :label, :fetched_at)
+                INSERT INTO popular_books_cache
+                    (scope, library_id, rank, book_id, period_label, fetched_at, provider_class_name)
+                VALUES (:scope, :lid, :rank, :book_id, :label, :fetched_at, :class_name)
                 """
             ),
             {
@@ -987,9 +1131,10 @@ def _store_popular(
                 "book_id": record.id,
                 "label": label,
                 "fetched_at": fetched_at,
+                "class_name": class_names.get(record.isbn13),
             },
         )
-    return PopularResult(scope, library_id, label, records, fetched_at, False, None)
+    return PopularResult(scope, library_id, label, records, fetched_at, False, None, class_names)
 
 
 

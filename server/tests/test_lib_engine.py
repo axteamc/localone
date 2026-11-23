@@ -170,9 +170,12 @@ def test_calls_reserve_before_io_outside_transactions(reference_db):
 
 def test_data4library_popular_parser(monkeypatch):
     monkeypatch.setattr(pe, "_http_get_json", lambda *args: {"response": {"docs": [{"doc": {
-        "isbn13": isbn(), "bookname": "<b>이식</b>", "publication_year": "2014", "description": " <b>소개</b> "}}]}})
+        "isbn13": isbn(), "bookname": "<b>이식</b>", "publication_year": "2014", "description": " <b>소개</b> ",
+        "class_nm": " 만화 ",
+    }}]}})
     result = pe.Data4LibraryClient("key", "https://example.test", 5).popular(None, NOW.date(), NOW.date(), 20)
     assert result[0].title == "이식" and result[0].description == "소개" and result[0].pub_year == 2014
+    assert result[0].class_name == "만화"
 
 
 def test_data4library_request_does_not_ask_for_application_json(monkeypatch):

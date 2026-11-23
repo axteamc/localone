@@ -81,6 +81,22 @@ beforeEach(() => {
 });
 
 describe("VISIT-3-P2 책장", () => {
+  test("four covers fit a narrow shelf and the last one opens", async () => {
+    const onOpen = jest.fn();
+    const fourth = { isbn13: "9780000000100", title: "네 번째 책", author: null, cover_url: null };
+    const page = { ...POPULAR_PAGE, books: [...POPULAR_PAGE.books, fourth] };
+    await render(<Bookshelf libraryId={101} onOpenBook={onOpen} load={async () => ({ pages: [page] })} />);
+    await screen.findByText("인기 도서");
+    await fireEvent(screen.getByTestId("bookshelf"), "layout", { nativeEvent: { layout: { width: 320 } } });
+    const books = screen.getAllByLabelText(/책 화면 열기$/);
+    expect(books).toHaveLength(4);
+    for (const book of books) {
+      expect(book).toHaveStyle({ width: 60, aspectRatio: 104 / 150 });
+    }
+    await fireEvent.press(screen.getByLabelText("네 번째 책 책 화면 열기"));
+    expect(onOpen).toHaveBeenCalledWith(fourth.isbn13);
+  });
+
   test("shelf hides missing pages and never says loanable", async () => {
     await render(<Bookshelf libraryId={101} onOpenBook={jest.fn()} load={async () => SHELF_C7} />);
     expect(await screen.findByText("인기 도서")).toBeTruthy();
