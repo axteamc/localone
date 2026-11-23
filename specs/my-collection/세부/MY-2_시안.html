@@ -377,8 +377,8 @@
 
 <!-- ===== 중심 요소 3 ===== -->
 <section class="element" id="el-bell" data-chosen="C">
-  <h2>정할 것 3. 알림 아이콘을 어디에 둘까 <span class="status">반영 — 불편한 점 확인 중</span></h2>
-  <div class="decided"><b>고른 것: 후보 C.</b> "C가 제일인거같고 왜 좋냐면 알람을 어디서든 바로 확인할수 있다는점" · 차선 없음</div>
+  <h2>정할 것 3. 알림 아이콘을 어디에 둘까 <span class="status">확인</span></h2>
+  <div class="decided"><b>고른 것: 후보 C.</b> "C가 제일인거같고 왜 좋냐면 알람을 어디서든 바로 확인할수 있다는점" · 차선 없음 · 불편한 점: (홈을 열 때마다 점이 켜져 있으면) "거슬리긴 하지만 알람끄기 기능이 있으면 해결될거같은데"</div>
   <div class="flow"><b>정해진 것.</b> 알림 아이콘(종 🔔)을 누르면 알림함 화면으로 가요(알림함 화면은 다른 담당이 만들어요). 읽지 않은 알림이 있으면 종 옆에 <b>점 하나</b>만 보여요(숫자 없음). 정할 것은 <b>종이 어느 화면의 어디에 있느냐</b>예요. 휴대폰 위 "점 켜기" 스위치로 읽지 않은 알림이 있을 때 모습도 볼 수 있어요.</div>
   <div class="pick">다시 보기: <select data-for="el-bell">
     <option value="A">후보 A — 내 정보, 설정 ⚙ 왼쪽</option>
@@ -466,14 +466,14 @@
 <!-- ===== 잘 안 될 때 (예외 네 장면) ===== -->
 <section id="except">
   <h2>잘 안 될 때 보이는 화면</h2>
-  <p class="small">아래 화면은 추천안(후보 A) 모양으로 그렸어요. 문구는 다른 후보를 골라도 같아요.</p>
+  <p class="small">고른 모양(정할 것 1 A · 2 C · 3 C)으로 그렸어요. 휴대폰 안에는 실제 앱에 나오는 글자만 넣었고, 설명은 휴대폰 아래에 적었어요.</p>
   <div class="state" id="exTabs">
-    <button aria-pressed="true" data-ex="fail">인터넷이 끊김</button><button aria-pressed="false" data-ex="empty">처음이라 비어 있음</button><button aria-pressed="false" data-ex="double">저장 두 번 빠르게</button><button aria-pressed="false" data-ex="guest">로그인 안 함</button>
+    <button aria-pressed="true" data-ex="fail">인터넷이 끊김</button><button aria-pressed="false" data-ex="empty">처음이라 비어 있음</button><button aria-pressed="false" data-ex="double">저장 두 번 빠르게</button><button aria-pressed="false" data-ex="guest">로그인 안 함</button><button aria-pressed="false" data-ex="photo">사진을 못 올림</button><button aria-pressed="false" data-ex="nick">닉네임을 다 지움</button>
   </div>
   <div class="phone" id="exPhone" style="margin:8px 0 0">
     <div class="scr" data-ex-screen="fail">
       <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
-      <span class="av big"></span><div class="center small">사진 바꾸기</div>
+      <div style="position:relative;width:72px;margin:0 auto"><span class="av big"></span><span class="gear" style="position:absolute;right:-6px;bottom:0">✎</span></div>
       <div class="flabel">닉네임</div><div class="input">책 읽는 고양이</div><div class="count">8/40</div>
       <div class="flabel">한 줄 소개</div><div class="input">주말마다 정독도서관</div><div class="count">11/60</div>
       <div class="errcard">저장하지 못했어요<div class="small">인터넷 연결을 확인해 주세요. 고친 내용은 그대로 있어요.</div></div>
@@ -481,28 +481,41 @@
     </div>
     <div class="scr hide" data-ex-screen="empty">
       <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
-      <span class="av big none"></span><div class="center small">사진 고르기</div>
+      <div style="position:relative;width:72px;margin:0 auto"><span class="av big none"></span><span class="gear" style="position:absolute;right:-6px;bottom:0">✎</span></div>
       <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
       <div class="flabel">한 줄 소개</div><div class="input" style="color:var(--sub)">나를 한 줄로 소개해 보세요</div><div class="count">0/60</div>
-      <p class="small" style="margin-top:6px">아무것도 안 고치고 "저장"을 누르면 그냥 내 정보로 돌아가요.</p>
       <div class="savebar"><button class="btn">저장</button></div>
     </div>
     <div class="scr hide" data-ex-screen="double">
       <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
-      <span class="av big"></span><div class="center small">사진 바꾸기</div>
+      <div style="position:relative;width:72px;margin:0 auto"><span class="av big"></span><span class="gear" style="position:absolute;right:-6px;bottom:0">✎</span></div>
       <div class="flabel">닉네임</div><div class="input">책 읽는 고양이</div><div class="count">8/40</div>
       <div class="flabel">한 줄 소개</div><div class="input">주말마다 정독도서관</div><div class="count">11/60</div>
-      <p class="small" style="margin-top:6px">첫 번째 누름 뒤 버튼이 "저장 중…"으로 흐려져서 두 번째 누름은 아무 일도 없어요. 저장은 한 번만 돼요.</p>
       <div class="savebar"><button class="btn" disabled>저장 중…</button></div>
     </div>
     <div class="scr hide" data-ex-screen="guest">
       <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
       <p style="margin-top:40px" class="center">로그인하면 내 프로필을 고칠 수 있어요.</p>
       <div class="center"><button class="btn">로그인하기</button></div>
-      <p class="small center" style="margin-top:10px">남의 프로필을 고치는 길은 없어요. 고치는 화면은 늘 내 프로필만 열어요.</p>
+    </div>
+    <div class="scr hide" data-ex-screen="photo">
+      <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+      <div style="position:relative;width:72px;margin:0 auto"><span class="av big"></span><span class="gear" style="position:absolute;right:-6px;bottom:0">✎</span></div>
+      <div class="warn center">이 사진은 올릴 수 없어요. 다른 사진을 골라 주세요.</div>
+      <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
+      <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+      <div class="savebar"><button class="btn">저장</button></div>
+    </div>
+    <div class="scr hide" data-ex-screen="nick">
+      <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+      <div style="position:relative;width:72px;margin:0 auto"><span class="av big"></span><span class="gear" style="position:absolute;right:-6px;bottom:0">✎</span></div>
+      <div class="flabel">닉네임</div><div class="input"></div><div class="warn">닉네임을 1자 이상 써 주세요</div>
+      <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+      <div class="savebar"><button class="btn">저장</button></div>
     </div>
   </div>
-  <div class="flow" style="margin-top:10px"><b>그 밖에.</b> 닉네임을 다 지우고 저장하면 칸 아래에 <b>"닉네임을 1자 이상 써 주세요"</b>가 나오고 저장되지 않아요. 고친 게 있는데 ‹를 누르면 <b>"고친 내용을 버릴까요?"</b> [계속 고치기] [버리기]를 물어요.</div>
+  <div class="flow" style="margin-top:10px" id="exNote"></div>
+  <div class="flow" style="margin-top:10px"><b>그 밖에.</b> 고친 게 있는데 ‹를 누르면 "고친 내용을 버릴까요?" [계속 고치기] [버리기]를 물어요. 알림이 있는지 확인하지 못하면 종은 점 없이 그대로 보여요(따로 안내 없음).</div>
 </section>
 
 <!-- ===== 처음부터 끝까지 ===== -->
@@ -529,7 +542,7 @@
     <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
     <tr data-el="el-layout"><td>1. 수정 화면 배치</td><td>후보 A 한 화면에 모두 + 맨 아래 저장</td><td>후보 C 위로 올라오는 화면 + 위에 저장</td><td>후보 B 한 줄씩 눌러 고치기 ("왔다갔다 하는게 별로였어")</td><td>"A가 제일 편하고 알아보기 좋은데" / "사진이랑 입력칸이 한번에 보이고 입력하기 편하게 나와있어"</td><td>사진 72 원, 닉네임 /40, 소개 /60, 입력 칸 곡률 9</td><td>프로필 수정 → 고치는 화면 → 저장 → 내 정보</td><td><span class="st">확인</span></td></tr>
     <tr data-el="el-photo"><td>2. 사진 고르기·지우기</td><td>후보 C 사진 모서리 ✎ → 사진 옆 작은 메뉴</td><td>차선 없음</td><td>후보 A 아래에서 올라오는 작은 창 · 후보 B 사진 아래 버튼이 늘 보임</td><td>"C가 제일 보기 좋다고 생각하고 이해하기도 빠를거같아" / "볼펜모양 누르면 사진 설정하는기능"</td><td>찍기·앨범·지우기(사진 있을 때만), 안내 글자 없음</td><td>✎ 누름 → 사진 옆 메뉴 → 고름 → 저장</td><td><span class="st">확인</span></td></tr>
-    <tr data-el="el-bell"><td>3. 알림 아이콘 자리</td><td>후보 C 홈 머리 띠 오른쪽 + 내 정보 ⚙ 왼쪽</td><td>차선 없음</td><td>후보 A 내 정보 ⚙ 왼쪽만 · 후보 B 내 정보 머리 띠 오른쪽만</td><td>"C가 제일인거같고 왜 좋냐면 알람을 어디서든 바로 확인할수 있다는점"</td><td>종 24, 점 6px 하나, 숫자 없음</td><td>홈 🔔 또는 내 정보 🔔 → 알림함 화면</td><td><span class="st">반영(확인 중)</span></td></tr>
+    <tr data-el="el-bell"><td>3. 알림 아이콘 자리</td><td>후보 C 홈 머리 띠 오른쪽 + 내 정보 ⚙ 왼쪽</td><td>차선 없음</td><td>후보 A 내 정보 ⚙ 왼쪽만 · 후보 B 내 정보 머리 띠 오른쪽만</td><td>"C가 제일인거같고 왜 좋냐면 알람을 어디서든 바로 확인할수 있다는점"</td><td>종 24, 점 6px 하나, 숫자 없음</td><td>홈 🔔 또는 내 정보 🔔 → 알림함 화면</td><td><span class="st">확인</span></td></tr>
     <tr><td>한 줄 소개 길이</td><td>60자, 글자 수 표시</td><td>—</td><td>—</td><td>묻지 않음</td><td>60</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>저장 안 하고 나갈 때</td><td>"고친 내용을 버릴까요?" [계속 고치기] [버리기]</td><td>—</td><td>—</td><td>묻지 않음</td><td>고친 게 없으면 바로 닫힘</td><td>‹ → 확인창 → 버리기면 내 정보</td><td><span class="st">기본값(Claude)</span></td></tr>
   </table></div>
@@ -569,11 +582,21 @@
       document.querySelectorAll('[data-dot="' + sw.dataset.bell + '"]').forEach(function (d) { d.classList.toggle('off', on); /* 바깥 처리기가 나중에 on을 바꾸므로 누르기 전 상태 기준 */ });
     });
   });
-  // 예외 화면 전환: 탭을 누르면 휴대폰 안 화면이 바뀐다
+  // 예외 화면 전환: 탭을 누르면 휴대폰 안 화면과 아래 설명이 바뀐다
+  var exNotes = {
+    fail: '저장이 안 되면 고친 닉네임·소개·사진이 그대로 남고, 아래 버튼이 "다시 저장하기"로 바뀌어요. 누르면 같은 내용으로 다시 저장해요.',
+    empty: '처음 들어오면 사진은 기본 그림, 한 줄 소개 칸은 흐린 안내 글자만 있어요. 아무것도 안 고치고 "저장"을 누르면 저장 없이 내 정보로 돌아가요.',
+    double: '"저장"을 한 번 누르면 버튼이 "저장 중…"으로 흐려져서 두 번째 누름은 아무 일도 없어요. 저장은 한 번만 돼요.',
+    guest: '로그인하지 않고 이 화면 주소로 바로 들어오면 고치는 칸 대신 로그인 안내만 보여요. 남의 프로필을 고치는 길은 없어요.',
+    photo: '사진이 너무 크거나 사진이 아닌 파일이면 사진 아래에 한 줄 안내가 나오고, 사진은 그대로예요. 닉네임·소개 칸도 그대로예요.',
+    nick: '닉네임을 다 지우고 "저장"을 누르면 칸 아래에 안내가 나오고 저장되지 않아요. 41자부터는 칸에 더 써지지 않아요.'
+  };
+  var exNote = document.getElementById('exNote'); exNote.textContent = exNotes.fail;
   document.querySelectorAll('#exTabs button').forEach(function (b) {
     b.addEventListener('click', function () {
       document.querySelectorAll('#exTabs button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
       document.querySelectorAll('#exPhone [data-ex-screen]').forEach(function (s) { s.classList.toggle('hide', s.dataset.exScreen !== b.dataset.ex); });
+      exNote.textContent = exNotes[b.dataset.ex];
     });
   });
 </script>
