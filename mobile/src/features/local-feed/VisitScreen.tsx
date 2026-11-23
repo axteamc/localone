@@ -315,6 +315,16 @@ export function VisitScreen({
     setComposer(true);
   };
 
+  // CLUB-1 K1-O1: 고르기 창에서 "모임 만들기" → 만들기 화면. 로그인 확인은 고른 뒤(방명록과 같은 순서)
+  const openClub = () => {
+    setChooser(false);
+    if (status !== "signedIn") {
+      setLoginSheet(true);
+      return;
+    }
+    router.push({ pathname: "/clubs/new", params: { libraryId: String(libraryId) } });
+  };
+
   // 올린 방명록은 피드 맨 앞에. 같은 글이 이미 있으면 하나만(V3-9·예외 #3)
   const onGuestbookPosted = (item: GuestbookItem) => {
     setComposer(false);
@@ -477,6 +487,7 @@ export function VisitScreen({
           openCompose();
         }}
         onGuestbook={openGuestbook}
+        onClub={openClub}
       />
       <GuestbookLoginSheet visible={gbLogin} onClose={() => setGbLogin(false)} />
       {libraryId !== null ? (

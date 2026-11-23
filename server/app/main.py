@@ -150,11 +150,23 @@ def create_app(
     app.include_router(loans_router)
     # ── [/loan-assistant-C] ──
 
+    # ── [book-club-C] ──
+    from app.routers.clubs import router as clubs_router  # CLUB-1 #50~#59
+
+    app.include_router(clubs_router)
+    # ── [/book-club-C] ──
+
     # ── [my-collection-A] ──
     from app.routers.my_collection import router as my_collection_router
 
     app.include_router(my_collection_router)
     # ── [/my-collection-A] ──
+
+    # ── [reading-log-A] ──
+    from app.routers.reading_logs import router as reading_logs_router  # READ-1 #41~#45
+
+    app.include_router(reading_logs_router)
+    # ── [/reading-log-A] ──
 
     # ── [m2-core-D] ──
     from app.routers.inbox import router as inbox_router  # M2-0-P1 알림함 #47~#49

@@ -46,6 +46,7 @@ function splitColumnsBy<T>(items: T[], ratio: (item: T) => number): [T[], T[]] {
 export function feedItemHeightRatio(item: FeedItem): number {
   if (isPostItem(item)) return cardHeightRatio(item.post);
   if (isGuestbookItem(item)) return guestbookHeightRatio(item.guestbook);
+  if (item.kind === "club") return 1.15;
   return 0;
 }
 

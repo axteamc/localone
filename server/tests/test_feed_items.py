@@ -143,8 +143,8 @@ def test_feed_items_post_shape_is_feed_post(client, auth, db_engine):
 @pytest.mark.parametrize("params,field", [
     ({"cursor": "깨진값"}, "cursor"),
     ({"cursor": "bm90LWEtY3Vyc29y"}, "cursor"),  # "not-a-cursor"
-    ({"cursor": "WyIyMDI2LTExLTE5VDAzOjAwOjAwKzAwOjAwIiwiY2x1YiIsIjAwMDAwMDAwLTAwMDAtNDAwMC04MDAwLTAwMDAwMDAwMDAwYSJd"},
-     "cursor"),  # 모르는 kind "club"
+    ({"cursor": "WyIyMDI2LTExLTE5VDAzOjAwOjAwKzAwOjAwIiwic3RhbXAiLCIwMDAwMDAwMC0wMDAwLTQwMDAtODAwMC0wMDAwMDAwMDAwMGEiXQ=="},
+     "cursor"),  # 모르는 kind "stamp"
     ({"limit": 0}, "limit"),
     ({"limit": 51}, "limit"),
 ])

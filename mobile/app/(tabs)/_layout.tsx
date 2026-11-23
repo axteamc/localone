@@ -36,6 +36,10 @@ export default function TabsLayout() {
         options={{ title: "홈", ...headerOptions("HOME"), tabBarLabel: ({ focused }) => <TabLabel focused={focused}>홈</TabLabel> }}
       />
       <Tabs.Screen
+        name="reading"
+        options={{ title: "독서 기록", ...headerOptions("READING"), tabBarLabel: ({ focused }) => <TabLabel focused={focused}>독서 기록</TabLabel> }}
+      />
+      <Tabs.Screen
         name="loans"
         options={{ title: "대출·반납", ...headerOptions("LOANS"), tabBarLabel: ({ focused }) => <TabLabel focused={focused}>대출·반납</TabLabel> }}
       />

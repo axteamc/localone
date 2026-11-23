@@ -92,7 +92,25 @@
 
 ## 7. D 피드백
 
+- PR #252 리뷰(2026-11-23, `[D→C]` #255): ① 로그인 뒤 같은 모임 복귀·계정 전환 때 다시 읽기 → 계정 전환은 고침(예외 #4), 복귀는 `login.tsx`가 허용 파일 밖이라 `to:D` #256 ② 만든 사람을 참가자 수·정원에서 뺌 → 고침(K1-O4) ③ 고치기 뒤 상세 다시 읽기 → 고침, 시각 옆 "바뀜"은 응답 필드가 없어 #256(결정 3) ④ 댓글 더 보기 한 번만·늦은 페이지 버림 → 고침. Alembic 0018 순서 #256
+
 ## 검토 메모
+
+- [구현 중 변경] 만든 사람이 "모임에 참가"를 누르면 참가 행을 만들지 않고 `200`(지금 모임 그대로), 상세·정원·피드·안내 대상에서 만든 사람의 참가 행을 뺌 — PR #252 리뷰 2, K1-O4 — `server/app/routers/clubs.py` `COUNT_JOINED`·`SELECT_PARTICIPANTS`·`join_club`
+- [Claude가 정함] 만든 사람 화면의 주 버튼 자리는 흐린 "내가 만든 모임" — `ClubScreen.tsx` `MainButton`
+
+- [계약 보완 필요] CLUB-1-P3 허용 파일에 `local-feed/api.ts`(`feedItemKey`)·`LibraryFeed.tsx`(`feedItemHeightRatio`)·`GuestbookComposer.tsx`(`ComposeChooser`)가 없어 `+` 고르기 "모임 만들기" 줄과 둘째 묶음부터의 모임 카드 열쇠를 못 맞춤 → `to:B` #253, `VisitScreen.tsx` `openClub` `TODO(연결): B`
+- [Claude가 정함] 모임 카드 누르기는 `LibraryFeed`(B 파일) 대신 `FeedItemCard` 안 `ClubFeedCard`가 직접 `/clubs/[clubId]`로 이동 — 허용 파일 안에서 K1-11 충족
+- [Claude가 정함] 모양이 맞지 않는 `club` 항목(id·name·status 없음)은 모르는 종류처럼 그리지 않음 — B 시험 `feed item card ignores unknown kinds` 뜻 유지
+- [처리 못 함] CI `서버 시험` 1건 실패 = B 시험 `test_feed_items` 예시가 `club`(#250 대기)
+
+- [Claude가 정함] 만들기 화면 날짜·시각은 새 라이브러리 없이 글자 칸("2026-11-28"·"14:00", 끝 시각 선택, 같은 날)으로 받음 — C4 "DueDateSheet와 같은 방식", `parseYmd` 재사용 — `mobile/src/features/book-club/ClubEditor.tsx`
+- [Claude가 정함] 책 찾기는 `ComposeScreen`의 `BookFinder`가 내보내지지 않은 B 파일 안 함수라 `ClubEditor` 안에 작은 찾기를 둠(`searchBooks` 그대로) — `ClubEditor.tsx` `BookFinder`
+- [Claude가 정함] 주니어에게 보여 줄 때 만들기 화면은 로그인 확인을 임시로 끈 사본으로 띄움(웹에서 로그인 불가), 커밋 안 함
+
+- [구현 중 변경] 마이그레이션 번호 `NNNN` → `0018`(main에 `0016`·`0017` 있음) — `server/migrations/versions/0018_clubs_constraints.py`
+- [Claude가 정함] `club_changed` 안내 대상에 `changed_at`을 넣어 바뀔 때마다 새 안내가 가게 함(알림함 "같은 안내 한 번" 규칙의 키, `server/app/services/inbox.py` 머리 설명) — `server/app/routers/clubs.py:339-342`
+- [Claude가 정함] 공개 `status`: 취소 > 끝남(`ends_at` 지남) > 마감(저장값 또는 시작 시각 지남, K1-7) > 열림 — `server/app/routers/clubs.py:102`
 
 - [Claude가 정함] K1-O8 내 댓글 지우기를 D 추천 "바로 지움"에서 확인창으로 — VISIT-3 방명록 지우기(⋯ → 확인창)와 같은 길 — `specs/local-feed/세부/VISIT-3.md` 0절
 - [Claude가 정함] 만든 사람의 "일정·장소 바꾸기"는 만들기 화면(결정 2)을 값 채운 채 재사용, 머리 "모임 고치기 · 저장" — K1-O2
@@ -108,8 +126,8 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 (대기/진행/검토요청/완료) | 구현 근거 (`파일:줄`) 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| CLUB-1-P1 서버 | `feat/book-club-CLUB-1` | - | 대기 | - | - |
-| CLUB-1-P2 모임 화면·만들기 | `feat/book-club-CLUB-1` | - | 대기 | - | - |
-| CLUB-1-P3 피드 카드·입구 | `feat/book-club-CLUB-1` | - | 대기 | - | `TODO(연결): B` VISIT-3 |
+| CLUB-1-P1 서버 | `feat/book-club-CLUB-1` | #252 | 완료(주니어 확인) | `server/app/routers/clubs.py`(#50 `:259`, #52 `:312`, #53 `:349`, #54 `:366`, #55 `:392`, #56 `:418`, #57~#59 `:482`·`:521`·`:548`), `server/app/routers/feed.py:272,297,311`, `server/migrations/versions/0018_clubs_constraints.py`. 시험 `test_clubs.py` 21 + `test_club_participation.py` 8 통과, 가드 제거 12개 모두 빨강. 전체 624 통과·1 실패(B 시험 `test_feed_items` "모르는 kind club" 예시, #250) | `TODO(연결): CLUB-2` `is_restricted`(`clubs.py:51`), `to:B` #250 |
+| CLUB-1-P2 모임 화면·만들기 | `feat/book-club-CLUB-1` | #252 | 완료(주니어 확인) | `mobile/src/features/book-club/ClubScreen.tsx`(`CLUB_TEXT`, `MainButton`, 확인창), `ClubEditor.tsx`(접힘·미정·고치기), `api.ts`, `ClubCard.tsx`(`formatClubWhen`), `mobile/app/clubs/[clubId].tsx`·`new.tsx`. `club.test.tsx` 19 통과, book-club+local-feed 171 통과, tsc·web export 통과. 가드 제거 7개 중 6 빨강(모임 취소 이유 빈칸 `if (!why)`는 버튼 비활성과 겹친 이중 방어라 살아남음) | - |
+| CLUB-1-P3 피드 카드·입구 | `feat/book-club-CLUB-1` | #252 | 완료(주니어 확인) | `mobile/src/features/book-club/ClubCard.tsx`(`ClubCard`, `CARD_TEXT`), `mobile/src/features/local-feed/FeedItemCard.tsx`(`club` 분기 `ClubFeedCard`), `VisitScreen.tsx`(`openClub`). `club-card.test.tsx` 5 통과, book-club+local-feed 176 통과 | `TODO(연결): B` `+` 고르기 줄·`feedItemKey`·높이 #253 |
 
-- **다음 세션 이어하기 메모**: 기획 끝, 계약 수정본 제출(검토 대기). 다음 세부 자동 시작 금지.
+- **다음 세션 이어하기 메모**: PR #252 리뷰(#255) 중 ②·③(다시 읽기)·④·계정 전환 고쳐 올림. 남은 것: D #256(로그인 복귀·바뀜 필드·0018 순서), B #250·#253 → `onClub` 연결·둘째 묶음 확인·CI ok.
