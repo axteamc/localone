@@ -139,6 +139,12 @@
   .exdesc { max-width:560px; font-size:13.5px; }
   .rv { min-height:40px; } .rv .ph { color:var(--sub); }
   .sub-btn[disabled] { opacity:.55; }
+  .att { display:flex; align-items:center; justify-content:space-between; background:var(--paper); border-radius:var(--r-info); padding:5px 8px; margin-bottom:4px; font-size:10px; }
+  .att .seg2 { display:flex; gap:3px; }
+  .att .seg2 button { font:inherit; font-size:9px; border:1px solid var(--seam); background:var(--panel-frosted); border-radius:var(--r-pill); padding:1px 7px; cursor:pointer; }
+  .att .seg2 button.on { background:var(--ink-strong); color:var(--paper); border-color:var(--ink-strong); }
+  .tag2 { font-size:8.5px; color:var(--sub); }
+  .step { font-size:9px; color:var(--sub); margin:8px 0 2px; }
 </style>
 </head>
 <body>
@@ -205,7 +211,61 @@
   </div>
 </section>
 
-<!-- 중심 요소 2~6은 1이 '확인'이 된 뒤에 같은 모양으로 추가한다:
+<!-- ===== 중심 요소 2: 출석 확인과 불참 판정 ===== -->
+<section class="element" id="el-attend" data-chosen="">
+  <h2>정할 것 2. 누가 "안 왔다"를 정하고, 언제 불참이 되나 <span class="status">결정 전</span></h2>
+  <div class="flow"><b>정해진 것.</b> 참가 신청·실제로 왔는지·불참은 서로 다른 거예요. 만든 사람이 출석을 확인할 수 있지만, <b>만든 사람 표시만으로나 시간이 지났다는 이유만으로 불참을 정하거나 벌을 주지 않아요.</b> 취소된 모임·일정이 바뀐 것 때문에는 불참이 생기지 않아요. 불참이 쌓이면 3일·7일·30일·참가 불가 순서로 참가가 막혀요.<br>
+  <b>정할 것.</b> 끝난 모임에서 "안 온 사람"이 불참이 되기까지의 길이에요. 세 화면 모두 참가 신청 3명 중 "달"이 안 온 모임이에요. 만든 사람 화면에서 "출석 확인 보내기"를 누르고, "달에게 보이는 화면"도 눌러 보세요.</div>
+  <div class="pick">다시 보기: <select data-for="el-attend">
+    <option value="A">후보 A — 만든 사람 표시 → 관리자 확인</option>
+    <option value="B">후보 B — 본인 "참석했어요" + 만든 사람 표시 → 관리자 확인</option>
+    <option value="C">후보 C — 만든 사람 표시 → 본인에게 사정 묻기 → 관리자 확인</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 만든 사람이 표시하고 관리자가 확인 <span class="badge">추천</span></h3>
+      <div class="phone"><div class="scr" data-screen="host"><div class="hd"><button class="back">‹</button> <span class="vname">출석 확인 · 만든 사람</span></div><div class="cs"><div class="step">참가 신청 3명 · 모임이 끝났어요</div><div class="att"><span>해바라기</span><span class="seg2"><button class="on" data-mark>왔어요</button><button data-mark>안 왔어요</button></span></div><div class="att"><span>민트</span><span class="seg2"><button class="on" data-mark>왔어요</button><button data-mark>안 왔어요</button></span></div><div class="att"><span>달</span><span class="seg2"><button data-mark>왔어요</button><button class="on" data-mark>안 왔어요</button></span></div><div class="msg">"출석 확인 보내기"를 누르면 "안 왔어요"인 사람은 관리자 확인으로 넘어가요.</div><button class="main-btn" data-open="sent">출석 확인 보내기</button></div></div><div class="scr hide" data-screen="sent"><div class="hd"><button class="back" data-open="host">‹</button> <span class="vname">출석 확인 · 보냄</span></div><div class="cs"><div class="msg">"안 왔어요"로 표시한 1명(달)은 <b>관리자 확인을 기다려요</b>. 관리자가 맞다고 하면 불참 1회가 돼요. 아직 불참은 아니에요.</div><button class="sub-btn" data-open="mine">"달"에게 보이는 화면</button></div></div><div class="scr hide" data-screen="mine"><div class="hd"><button class="back" data-open="sent">‹</button> <span class="vname">모임 기록 · 달</span></div><div class="cs"><div class="msg"><b>출석 확인 결과를 기다리고 있어요</b><br>만든 사람이 "안 왔어요"로 표시했어요. 관리자가 확인한 뒤 알려 드릴게요.<button class="sub-btn">재검토 요청하기</button></div></div></div></div>
+      <p>끝난 모임의 기록 화면에서 만든 사람이 참가자마다 "왔어요/안 왔어요"를 골라 보내요. "안 왔어요"는 관리자가 확인해야 불참이 돼요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>모임 끝남 → 만든 사람 기록 화면 "출석 확인" → 참가자마다 고름 → 보내기 → 관리자 확인 → 불참 1회 + 본인에게 알림함 안내 → 본인은 재검토 요청 가능.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>참가자는 따로 누를 것이 없어요</li><li>관리자 확인 전에는 "결과를 기다리고 있어요"로만 보여요</li><li>기본값은 모두 "왔어요"(만든 사람이 안 온 사람만 바꿈)</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>참가자 손이 안 가고 단순해요. / 관리자가 모든 불참을 하나씩 봐야 해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-52 확인창(두 버튼) — 되돌리기 어려운 일을 한 번 더 확인 (HIG Alerts)</p>
+      <p><b>추천 이유:</b> 처음에 원하신 "참가 신청하고 안 오는 사람 체크"와 가장 같고, 만든 사람 표시만으로 정하지 않는다는 규칙을 관리자 확인으로 지켜요. 참가자 말도 듣고 싶다면 C가 나아요.</p>
+    </article>
+
+    <article class="cand" data-id="B">
+      <h3>후보 B — 본인 "참석했어요" + 만든 사람 확인</h3>
+      <div class="phone"><div class="scr" data-screen="host"><div class="hd"><button class="back">‹</button> <span class="vname">출석 확인 · 만든 사람</span></div><div class="cs"><div class="step">참가 신청 3명 · 모임이 끝났어요</div><div class="att"><span>해바라기<span class="tag2"> · 본인 "참석했어요"</span></span><span class="seg2"><button class="on" data-mark>왔어요</button><button data-mark>안 왔어요</button></span></div><div class="att"><span>민트<span class="tag2"> · 본인 "참석했어요"</span></span><span class="seg2"><button class="on" data-mark>왔어요</button><button data-mark>안 왔어요</button></span></div><div class="att"><span>달</span><span class="seg2"><button data-mark>왔어요</button><button class="on" data-mark>안 왔어요</button></span></div><div class="msg">본인이 "참석했어요"를 누른 사람은 이름 옆에 보여요. 엇갈리거나 둘 다 안 왔다는 사람만 관리자 확인으로 넘어가요.</div><button class="main-btn" data-open="sent">출석 확인 보내기</button></div></div><div class="scr hide" data-screen="sent"><div class="hd"><button class="back" data-open="host">‹</button> <span class="vname">출석 확인 · 보냄</span></div><div class="cs"><div class="msg">본인이 "참석했어요"라고 했는데 "안 왔어요"로 표시한 사람, 둘 다 안 왔다고 한 사람 모두 <b>관리자 확인을 기다려요</b>. 지금은 달 1명이에요.</div><button class="sub-btn" data-open="mine">"달"에게 보이는 화면</button></div></div><div class="scr hide" data-screen="mine"><div class="hd"><button class="back" data-open="sent">‹</button> <span class="vname">모임 기록 · 달</span></div><div class="cs"><div class="msg"><b>출석 확인 결과를 기다리고 있어요</b><br>"참석했어요"를 누르지 않았고 만든 사람도 "안 왔어요"로 표시했어요. 관리자가 확인한 뒤 알려 드릴게요.<button class="sub-btn">참석했어요</button></div></div></div></div>
+      <p>참가자는 모임 뒤 기록 화면에서 "참석했어요"를 누르고, 만든 사람은 명단에서 확인해요. 둘을 맞춰 보고 안 왔다는 쪽만 관리자가 확인해요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>모임 끝남 → 참가자 "참석했어요" 누름 → 만든 사람 "출석 확인" → 엇갈림·안 옴만 관리자 확인 → 불참 1회 + 본인 안내.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>기록 화면 맨 위에 참가자용 "참석했어요" 버튼이 하나 더 생겨요</li><li>만든 사람 명단에 본인 체크 여부가 함께 보여요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>본인 기록도 남아 더 정확해요. / 참가자가 한 번 더 눌러야 하고, 깜빡하면 엇갈려 보여요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-13 아이콘 하나 누르면 채워짐(상태 표시) — "참석했어요" 체크</p>
+    </article>
+
+    <article class="cand" data-id="C">
+      <h3>후보 C — 만든 사람 표시 뒤 본인에게 사정 묻기</h3>
+      <div class="phone"><div class="scr" data-screen="host"><div class="hd"><button class="back">‹</button> <span class="vname">출석 확인 · 만든 사람</span></div><div class="cs"><div class="step">참가 신청 3명 · 모임이 끝났어요</div><div class="att"><span>해바라기</span><span class="seg2"><button class="on" data-mark>왔어요</button><button data-mark>안 왔어요</button></span></div><div class="att"><span>민트</span><span class="seg2"><button class="on" data-mark>왔어요</button><button data-mark>안 왔어요</button></span></div><div class="att"><span>달</span><span class="seg2"><button data-mark>왔어요</button><button class="on" data-mark>안 왔어요</button></span></div><div class="msg">"안 왔어요"인 사람에게 먼저 "사정이 있었나요?"를 물어요.</div><button class="main-btn" data-open="sent">출석 확인 보내기</button></div></div><div class="scr hide" data-screen="sent"><div class="hd"><button class="back" data-open="host">‹</button> <span class="vname">출석 확인 · 보냄</span></div><div class="cs"><div class="msg">"안 왔어요"로 표시한 1명(달)에게 <b>"사정이 있었나요?"</b>를 물어요. 사정을 적으면 불참으로 세지 않고, 3일 안에 답이 없으면 관리자 확인을 기다려요.</div><button class="sub-btn" data-open="mine">"달"에게 보이는 화면</button></div></div><div class="scr hide" data-screen="mine"><div class="hd"><button class="back" data-open="sent">‹</button> <span class="vname">모임 기록 · 달</span></div><div class="cs"><div class="msg"><b>사정이 있었나요?</b><br>만든 사람이 "안 왔어요"로 표시했어요. 사정을 적으면 불참으로 세지 않아요. (3일 안에)<div class="cm rv"><span class="ph">예) 갑자기 아파서 못 갔어요</span></div><button class="sub-btn">보내기</button></div></div></div></div>
+      <p>만든 사람이 "안 왔어요"로 표시하면 그 사람에게 사정을 묻고, 사정을 적으면 불참으로 세지 않아요. 답이 없을 때만 관리자가 확인해요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>모임 끝남 → 만든 사람 표시 → "달"의 알림함에 "사정이 있었나요?" → 적으면 불참 아님 / 3일 안에 답 없으면 관리자 확인 → 불참 1회.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>안 온 사람에게 사정 적는 칸이 생겨요(3일 안에)</li><li>사정을 적으면 관리자에게도 넘어가지 않아요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>사정이 있던 사람이 억울하지 않아요. / 누구나 사정을 적으면 불참이 거의 안 생겨요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-12 알맞은 순간에 한 번 묻는 카드 (지도 "집으로 저장할까요?")</p>
+    </article>
+
+  </div>
+</section>
+
+<!-- 중심 요소 3~6은 2가 '확인'이 된 뒤에 같은 모양으로 추가한다:
      2 출석 확인과 불참 판정(K2-O1·O2) · 3 불참 횟수 세는 법과 4회째(K2-O3) · 4 제한이 걸리는 범위(K2-O4) · 5 댓글 운영 제한 기간(K2-O5) · 6 알림함 화면(K2-O8) -->
 
 <!-- ===== 잘 안 될 때 (예외, 1B 3단계) — 기록 화면 기준. 중심 요소를 다 정한 뒤 다시 본다 ===== -->
@@ -236,8 +296,8 @@
   <h2>명세</h2>
   <div class="wide-t"><table>
     <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
-    <tr data-el="el-record"><td>1. 기록 화면에서 먼저 보이는 것</td><td>A 기록 → 후기 → 다음 모임</td><td>없음</td><td>B 후기 칸 맨 위, C 다음 모임 맨 위</td><td>"기록이 먼저 보이는 게 좋아요. 그날 모임을 돌아볼 수 있어서요" · 불편한 점: (받는 중)</td><td>맨 위 기록 카드(책 표지·이름·날짜 시각·끝난 모임·장소·참가 수·내 참가/참석), 곡률 9 → 내 후기 칸(나만 보기 기본, 2000자) → 다음 모임(만든 사람은 권하는 카드, 참가자는 이미 만든 다음 모임 + 만들기 버튼)</td><td>모임 화면 기록·후기 쓰기 → 그날 기록 → 아래 후기 쓰기·저장 → 게시물로 올리기 → 더 내려 다음 모임</td><td><span class="st">확인</span></td></tr>
-    <tr><td>2. 출석 확인과 불참 판정</td><td>(1이 정해진 뒤 시안으로 봄)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-record"><td>1. 기록 화면에서 먼저 보이는 것</td><td>A 기록 → 후기 → 다음 모임</td><td>없음</td><td>B 후기 칸 맨 위, C 다음 모임 맨 위</td><td>"기록이 먼저 보이는 게 좋아요. 그날 모임을 돌아볼 수 있어서요" · 불편한 점: 다음 모임이 맨 아래라 찾기 어려워요</td><td>맨 위 기록 카드(책 표지·이름·날짜 시각·끝난 모임·장소·참가 수·내 참가/참석), 곡률 9 → 내 후기 칸(나만 보기 기본, 2000자) → 다음 모임(만든 사람은 권하는 카드, 참가자는 이미 만든 다음 모임 + 만들기 버튼)</td><td>모임 화면 기록·후기 쓰기 → 그날 기록 → 아래 후기 쓰기·저장 → 게시물로 올리기 → 더 내려 다음 모임</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-attend"><td>2. 출석 확인과 불참 판정</td><td>— (추천: 후보 A 만든 사람 표시 → 관리자 확인)</td><td>—</td><td>—</td><td>(받기 전)</td><td>기본은 모두 왔어요, 안 왔어요만 바꿈</td><td>모임 끝남 → 만든 사람 출석 확인 → 관리자 확인 → 불참 1회 → 본인 알림함 안내</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>3. 불참 횟수 세는 법과 4회째</td><td>(2 뒤)</td><td>—</td><td>—</td><td>—</td><td>3일·7일·30일·참가 불가(정해짐)</td><td>—</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>4. 제한이 걸리는 범위</td><td>(3 뒤)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
     <tr><td>5. 댓글 운영 제한 기간</td><td>(4 뒤)</td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td><td><span class="st">결정 전</span></td></tr>
@@ -269,7 +329,7 @@
     var body = order.map(function (k) { return part(k, host); }).join('');
     ph.innerHTML = '<div class="scr" data-screen="rec">' + HEAD + '<div class="cs">' + body + '</div><div class="toast" id="t' + Math.random().toString(36).slice(2) + '"></div></div>';
   }
-  document.querySelectorAll('.cand .phone').forEach(draw);
+  document.querySelectorAll('#el-record .cand .phone').forEach(draw);
   document.querySelectorAll('[data-host]').forEach(function (b) {
     b.addEventListener('click', function () {
       var ph = b.closest('.cand').querySelector('.phone');
@@ -290,6 +350,17 @@
     }
     if (e.target.closest('[data-share]')) say('후기를 게시물로 올렸어요. 원래 후기는 그대로 나만 봐요');
     if (e.target.closest('[data-next]')) say('다음 모임 만들기 화면이 열려요(이름·책·장소 채워짐, 날짜만 새로)');
+  });
+
+  document.addEventListener('click', function (e) {
+    var m = e.target.closest('[data-mark]'); if (!m) return;
+    m.parentNode.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === m); });
+  });
+  // 휴대폰 안 화면 바꾸기
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-open]'); if (!t) return;
+    var ph = t.closest('.phone'); if (!ph) return;
+    ph.querySelectorAll('.scr[data-screen]').forEach(function (x) { x.classList.toggle('hide', x.dataset.screen !== t.dataset.open); });
   });
 
   // 채택안 표시
