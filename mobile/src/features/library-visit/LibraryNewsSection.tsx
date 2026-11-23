@@ -103,7 +103,13 @@ export function LibraryNewsSection(props: LibraryNewsSectionProps) {
             {columns.map((col, c) => (
               <View key={c} style={[styles.column, { width: cardWidth }]}>
                 {col.map((post) => (
-                  <PostCard key={post.id} post={post} width={cardWidth} onPress={onPressPost} />
+                  <PostCard
+                    key={post.id}
+                    post={post}
+                    width={cardWidth}
+                    onPress={onPressPost}
+                    showLibraryName={post.library_id !== news.activeId}
+                  />
                 ))}
               </View>
             ))}

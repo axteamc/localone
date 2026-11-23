@@ -3,6 +3,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
+import { WebHorizontalControls, useWebHorizontalScroll } from "../../lib/WebHorizontalControls";
 import { createLatestRunner } from "../../lib/latest";
 import { fetchRecommendations, type RecommendationResponse } from "../../lib/publicApi";
 import { actionColors, cardSurface, theme, type } from "../../theme";
@@ -35,6 +36,7 @@ export function SearchEntry({ onOpenBook }: { onOpenBook(isbn13: string): void }
     books: [],
   });
   const recent = recentState.owner === userId ? recentState.books : [];
+  const recentScroll = useWebHorizontalScroll(recent.length > 0);
   const currentUser = useRef(userId);
   currentUser.current = userId;
   const loadSeq = useRef(0); // 가장 마지막에 시작한 읽기만 화면에 반영한다
@@ -97,21 +99,26 @@ export function SearchEntry({ onOpenBook }: { onOpenBook(isbn13: string): void }
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={styles.wrap}>
       {recent.length > 0 && (
         <View testID="recent-section">
-          <View style={styles.head}>
+          <View style={[styles.head, styles.recentHead]}>
             <Text style={styles.headText} numberOfLines={1}>
               최근 본 도서
             </Text>
-            <Pressable accessibilityRole="button" onPress={() => void clearAll()} hitSlop={8}>
-              <Text style={styles.headSub} numberOfLines={1}>
-                전체 삭제
-              </Text>
-            </Pressable>
+            <View style={styles.recentActions}>
+              <Pressable accessibilityRole="button" onPress={() => void clearAll()} hitSlop={8}>
+                <Text style={styles.headSub} numberOfLines={1}>
+                  전체 삭제
+                </Text>
+              </Pressable>
+              <WebHorizontalControls label="최근 본 도서" {...recentScroll.edges} onMove={recentScroll.onMove} />
+            </View>
           </View>
           <ScrollView
+            {...recentScroll.scrollProps}
             horizontal
             showsHorizontalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={styles.pills}
+            testID="recent-books-scroll"
           >
             {recent.map((b) => (
               <View key={b.isbn13} style={styles.pill}>
@@ -191,6 +198,8 @@ const styles = StyleSheet.create({
   wrap: { paddingHorizontal: 16, paddingBottom: 24 },
   head: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline", gap: 8, marginTop: 20, marginBottom: 10 },
   headTight: { marginBottom: 2 },
+  recentHead: { alignItems: "center" },
+  recentActions: { flexDirection: "row", alignItems: "center", gap: 12 },
   headText: { ...type.title, flexShrink: 1 },
   headSub: { fontSize: 13, fontWeight: "400", color: c.textSub },
   basis: { ...type.gauge, marginBottom: 10 },

@@ -1,6 +1,7 @@
 // MY-1-P2 내 정보 화면 — contracts/my-collection.md MY-1 P5 (잠금 7행 + 열린 14행)
+// MY-2-P2 내 정보 쪽(수정 화면 열기·팔로우 없음·알림 종·저장 반영) — MY-2 P5
 import { afterEach, beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import React from "react";
 import { useAuth } from "../../../auth/AuthProvider";
 import { ApiCallError } from "../../../lib/publicApi";
@@ -10,7 +11,8 @@ import * as api from "../api";
 import type { MyCollectionPage, MyCollectionPost, MyProfile } from "../api";
 import { FAKE_PROFILE, fakePage, fakePost } from "../__fakes__/myCollectionApi";
 import { MyCollectionScreen } from "../MyCollectionScreen";
-import { MY_TEXT } from "../useMyCollection";
+import { MY_TEXT, emitProfileSaved } from "../useMyCollection";
+import { INBOX_TEXT, InboxBell, inboxLink, resetInboxUnreadForTest } from "../InboxBell";
 
 // 시험 환경(node)에서만 쓰는 모듈 — 앱 tsconfig에 node 타입이 없어 여기서만 선언한다(home-list.test.tsx와 같음)
 declare const __dirname: string;
@@ -23,13 +25,20 @@ const path = require("path") as { resolve(...p: string[]): string; join(...p: st
 const mockPush = jest.fn();
 const mockNavigate = jest.fn();
 let mockFocus: (() => void) | null = null;
+const mockFocusAll = new Set<() => void>(); // 화면이 다시 보일 때 모든 useFocusEffect(목록 + 종)
 jest.mock("expo-router", () => {
   const ReactLib = require("react");
   return {
     useRouter: () => ({ push: mockPush, navigate: mockNavigate, back: jest.fn(), replace: jest.fn() }),
     useFocusEffect: (cb: () => void) => {
-      mockFocus = cb;
-      ReactLib.useEffect(() => cb(), [cb]);
+      if (!mockFocus) mockFocus = cb; // 맨 처음(useMyCollection) 것만 — MY-1 테스트용
+      ReactLib.useEffect(() => {
+        mockFocusAll.add(cb);
+        cb();
+        return () => {
+          mockFocusAll.delete(cb);
+        };
+      }, [cb]);
     },
   };
 });
@@ -43,6 +52,7 @@ jest.mock("../api", () => ({
   fetchMyPosts: jest.fn(),
   fetchMyReactions: jest.fn(),
   fetchMyBookmarks: jest.fn(),
+  fetchInboxUnread: jest.fn(),
 }));
 jest.mock("../../local-feed/api", () => ({
   ...jest.requireActual<object>("../../local-feed/api"),
@@ -54,6 +64,7 @@ const fetchMyProfile = jest.mocked(api.fetchMyProfile);
 const fetchMyPosts = jest.mocked(api.fetchMyPosts);
 const fetchMyReactions = jest.mocked(api.fetchMyReactions);
 const fetchMyBookmarks = jest.mocked(api.fetchMyBookmarks);
+const fetchInboxUnread = jest.mocked(api.fetchInboxUnread);
 const setReaction = jest.mocked(feedApi.setReaction);
 const setBookmark = jest.mocked(feedApi.setBookmark);
 const mockedUseAuth = jest.mocked(useAuth);
@@ -116,6 +127,9 @@ function scrollEvent(y: number) {
 beforeEach(() => {
   jest.clearAllMocks();
   mockFocus = null;
+  inboxLink.ready = false;
+  resetInboxUnreadForTest();
+  fetchInboxUnread.mockResolvedValue({ has_unread: false });
   setAuth("signedIn");
   fetchMyProfile.mockResolvedValue(FAKE_PROFILE);
   fetchMyPosts.mockResolvedValue(fakePage([fakePost("p1"), fakePost("p2")]));
@@ -280,18 +294,14 @@ describe("MY-1-P2 잠금 테스트", () => {
 });
 
 describe("MY-1-P2 열린 테스트(명세 결정·예외)", () => {
-  test("profile header hides bio when null and edit button shows coming soon notice", async () => {
+  // MY-2 Y2-1로 "프로필 수정은 곧 열려요" 안내는 수정 화면 열기로 바뀌었다(아래 MY-2-P2 테스트)
+  test("profile header hides bio when null", async () => {
     fetchMyProfile.mockResolvedValue({ ...FAKE_PROFILE, bio: null });
     await show();
     expect(screen.getByText(FAKE_PROFILE.nickname)).toBeTruthy();
     expect(screen.queryByTestId("profile-bio")).toBeNull();
-    await fireEvent.press(screen.getByText(MY_TEXT.editProfile));
-    await fireEvent.press(screen.getByText(MY_TEXT.editProfile));
-    expect(screen.getAllByText(MY_TEXT.editSoon)).toHaveLength(1);
     expect(fetchMyProfile).toHaveBeenCalledTimes(1);
     expect(fetchMyPosts).toHaveBeenCalledTimes(1);
-    expect(mockPush).not.toHaveBeenCalled();
-    expect(mockNavigate).not.toHaveBeenCalled();
   });
 
   test("empty tab shows tab specific notice and button navigates home", async () => {
@@ -796,4 +806,118 @@ test("fake page matches MyCollectionPost shape", () => {
     "published_at", "my_reaction", "my_bookmark", "item_kind", "collected_at",
   ];
   expect(Object.keys(fakePost("x")).sort()).toEqual([...keys].sort());
+});
+
+async function focusAll() {
+  await act(async () => {
+    for (const cb of [...mockFocusAll]) cb();
+  });
+}
+
+describe("MY-2-P2 내 정보 쪽", () => {
+  test("edit button opens edit screen", async () => {
+    await show();
+    await fireEvent.press(screen.getByText(MY_TEXT.editProfile));
+    expect(mockPush).toHaveBeenCalledWith("/me/edit");
+    expect(screen.queryByText("프로필 수정은 곧 열려요")).toBeNull();
+  });
+
+  test("no follow button or follower count", async () => {
+    inboxLink.ready = true;
+    await show();
+    expect(screen.queryByText(/팔로우/)).toBeNull();
+    expect(screen.queryByText(/팔로워/)).toBeNull();
+    expect(screen.queryByText(/팔로잉/)).toBeNull();
+  });
+
+  test("inbox bell is hidden until inbox route is connected", async () => {
+    await show();
+    expect(screen.queryByTestId("inbox-bell")).toBeNull();
+    expect(fetchInboxUnread).not.toHaveBeenCalled();
+  });
+
+  test("inbox bell shows dot only", async () => {
+    inboxLink.ready = true;
+    fetchInboxUnread.mockResolvedValue({ has_unread: true });
+    await show();
+    await waitFor(() => expect(screen.getAllByTestId("inbox-dot")).toHaveLength(1));
+    const bell = screen.getByTestId("inbox-bell");
+    expect(within(bell).queryByText(/\d/)).toBeNull(); // 숫자 없음
+    await fireEvent.press(screen.getByLabelText(INBOX_TEXT.bell));
+    expect(mockPush).toHaveBeenCalledWith("/inbox");
+  });
+
+  test("signed out does not call inbox unread", async () => {
+    inboxLink.ready = true;
+    setAuth("signedOut");
+    await render(<MyCollectionScreen />);
+    await act(async () => undefined);
+    expect(fetchInboxUnread).not.toHaveBeenCalled();
+  });
+
+  test("bell sits left of settings and hides dot on failure", async () => {
+    inboxLink.ready = true;
+    fetchInboxUnread.mockResolvedValue({ has_unread: true });
+    await show();
+    await waitFor(() => expect(screen.getByTestId("inbox-dot")).toBeTruthy());
+    const labels = within(screen.getByTestId("profile-actions"))
+      .getAllByRole("button")
+      .map((b) => b.props.accessibilityLabel);
+    expect(labels).toEqual([INBOX_TEXT.bell, MY_TEXT.settings]);
+
+    fetchInboxUnread.mockRejectedValue(network());
+    await focusAll();
+    await waitFor(() => expect(screen.queryByTestId("inbox-dot")).toBeNull());
+    expect(screen.getByTestId("inbox-bell")).toBeTruthy(); // 종은 그대로
+    expect(screen.queryByTestId("my-notice")).toBeNull(); // 안내 없음(예외 #7)
+  });
+
+  test("bells agree after reading and account switch", async () => {
+    inboxLink.ready = true;
+    fetchInboxUnread.mockResolvedValue({ has_unread: true });
+    const Two = () => (
+      <>
+        <InboxBell />
+        <InboxBell />
+      </>
+    );
+    const view = await render(<Two />);
+    await waitFor(() => expect(screen.getAllByTestId("inbox-dot")).toHaveLength(2));
+
+    // 알림함에서 읽고 돌아옴 → 두 종이 같이 꺼진다
+    fetchInboxUnread.mockResolvedValue({ has_unread: false });
+    await focusAll();
+    await waitFor(() => expect(screen.queryAllByTestId("inbox-dot")).toHaveLength(0));
+
+    // A 조회 진행 중 B로 전환 → 늦은 A 응답은 B 점을 바꾸지 않는다
+    const lateA = deferred<{ has_unread: boolean }>();
+    fetchInboxUnread.mockReturnValueOnce(lateA.promise);
+    await focusAll();
+    const forB = deferred<{ has_unread: boolean }>();
+    fetchInboxUnread.mockReturnValue(forB.promise);
+    setAuth("signedIn", USER_B);
+    await view.rerender(<Two />);
+    await act(async () => lateA.resolve({ has_unread: true }));
+    expect(screen.queryAllByTestId("inbox-dot")).toHaveLength(0);
+    await act(async () => forB.resolve({ has_unread: false }));
+    expect(screen.queryAllByTestId("inbox-dot")).toHaveLength(0);
+    expect(screen.getAllByTestId("inbox-bell")).toHaveLength(2);
+  });
+
+  test("saved profile shows on my page", async () => {
+    await show();
+    const saved: MyProfile = { ...FAKE_PROFILE, nickname: "새이름", bio: "새 소개", updated_at: "2026-11-23T10:00:00+09:00" };
+    await act(async () => emitProfileSaved(USER_A, saved));
+    expect(screen.getByText("새이름")).toBeTruthy();
+    expect(screen.getByText("새 소개")).toBeTruthy();
+    expect(screen.getByText(MY_TEXT.saved)).toBeTruthy();
+  });
+
+  test("old account save is ignored on my page", async () => {
+    setAuth("signedIn", USER_B);
+    await show();
+    await act(async () => emitProfileSaved(USER_A, { ...FAKE_PROFILE, nickname: "A의 새이름" }));
+    expect(screen.queryByText("A의 새이름")).toBeNull();
+    expect(screen.queryByText(MY_TEXT.saved)).toBeNull();
+  });
 });

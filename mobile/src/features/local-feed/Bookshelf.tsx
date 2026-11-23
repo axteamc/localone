@@ -1,10 +1,11 @@
 // VISIT-3-P2 오늘의 서가(책장) — contracts/local-feed.md VISIT-3 V3-1~V3-5, V3-O1·V3-O2·V3-O7, 명세 결정 1
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   Image,
   LayoutChangeEvent,
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +14,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { createLatestRunner } from "../../lib/latest";
+import { WebHorizontalControls } from "../../lib/WebHorizontalControls";
 import { theme } from "../../theme";
 import { fetchShelf, type ShelfBook, type ShelfKind, type ShelfPage, type ShelfResponse } from "./api";
 
@@ -53,10 +55,19 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf }: Bookshel
   const runner = useRef(createLatestRunner()).current;
   const [state, setState] = useState<ShelfState>({ kind: "loading" });
   const [index, setIndex] = useState(0);
+  const pageIndex = useRef(0);
   const [width, setWidth] = useState(0);
   const scroller = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const opening = useRef(false);
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const web = Platform.OS === "web";
+  const pages = state.kind === "ok" ? state.pages : [];
+  const lastIndex = Math.max(0, pages.length - 1);
+
+  const selectPage = useCallback((i: number) => {
+    pageIndex.current = i;
+    setIndex(i);
+  }, []);
 
   const reload = useCallback(async () => {
     setState({ kind: "loading" });
@@ -68,11 +79,18 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf }: Bookshel
 
   // 처음 열 때·도서관을 바꿀 때 늘 첫 장(V3-O1). 늦게 온 앞 도서관 응답은 버린다
   useEffect(() => {
-    setIndex(0);
+    selectPage(0);
     scroller.current?.scrollTo?.({ x: 0, animated: false });
     void reload();
     return () => runner.cancel();
-  }, [reload, runner]);
+  }, [reload, runner, selectPage]);
+
+  // The web scroll offset is in pixels. Realign it to the same page after resize.
+  useLayoutEffect(() => {
+    if (web && width > 0) {
+      scroller.current?.scrollTo({ x: Math.min(pageIndex.current, lastIndex) * width, animated: false });
+    }
+  }, [lastIndex, web, width]);
 
   useEffect(
     () => () => {
@@ -82,13 +100,14 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf }: Bookshel
   );
 
   const goTo = (i: number) => {
-    setIndex(i);
-    scroller.current?.scrollTo?.({ x: i * width, animated: true });
+    if (i < 0 || i > lastIndex || (web && width <= 0)) return;
+    selectPage(i);
+    scroller.current?.scrollTo?.({ x: i * width, animated: !web });
   };
 
   const onScrollEnd = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     if (width <= 0) return;
-    setIndex(Math.round(e.nativeEvent.contentOffset.x / width));
+    selectPage(Math.max(0, Math.min(lastIndex, Math.round(e.nativeEvent.contentOffset.x / width))));
   };
 
   const open = (isbn13: string) => {
@@ -100,8 +119,7 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf }: Bookshel
     onOpenBook(isbn13);
   };
 
-  const pages = state.kind === "ok" ? state.pages : [];
-  const current = pages[Math.min(index, Math.max(pages.length - 1, 0))];
+  const current = pages[Math.min(index, lastIndex)];
 
   return (
     <View
@@ -135,6 +153,12 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf }: Bookshel
                 {current.basis_label}
               </Text>
             ) : null}
+            <WebHorizontalControls
+              label="오늘의 서가"
+              canGoBack={width > 0 && index > 0}
+              canGoForward={width > 0 && index < lastIndex}
+              onMove={(direction) => goTo(pageIndex.current + direction)}
+            />
           </View>
           {pages.length > 1 ? (
             <View style={styles.dots} testID="shelf-dots">
@@ -144,6 +168,7 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf }: Bookshel
                   accessibilityRole="button"
                   accessibilityLabel={`${i + 1}번째 책장: ${p.title}`}
                   accessibilityState={{ selected: i === index }}
+                  {...(web && i === index ? { "aria-current": "page" } : {})}
                   testID={`shelf-dot-${i}`}
                   onPress={() => goTo(i)}
                   hitSlop={10}
@@ -157,7 +182,9 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf }: Bookshel
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={onScrollEnd}
+            onMomentumScrollEnd={web ? undefined : onScrollEnd}
+            onScroll={web ? onScrollEnd : undefined}
+            scrollEventThrottle={web ? 16 : undefined}
             testID="shelf-pages"
             style={styles.pages}
           >
@@ -241,7 +268,7 @@ const styles = StyleSheet.create({
     paddingTop: 10,
   },
   title: { flexShrink: 1, fontSize: 14, fontWeight: "500", color: C.text },
-  basis: { fontSize: 11, color: C.inkMuted },
+  basis: { flexShrink: 1, fontSize: 11, color: C.inkMuted, marginLeft: "auto" },
   dots: { flexDirection: "row", gap: 6, paddingHorizontal: 16, paddingTop: 6 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.surface3 },
   dotOn: { backgroundColor: C.inkStrong },

@@ -30,6 +30,7 @@ from app.services.provider_engine import isbn13_is_valid
 
 FEED_LIMIT_DEFAULT = 20  # H2
 FEED_LIMIT_MAX = 50
+HOME_FEED_MIN = 6
 MSG_POST_NOT_AVAILABLE = "더 이상 공개되지 않는 게시물이에요."
 
 router = APIRouter(prefix="/api/v1")
@@ -120,7 +121,27 @@ def page_response(request: Request, rows: list[Any], flags: tuple[set[Any], set[
 LimitQuery = Query(FEED_LIMIT_DEFAULT, ge=1, le=FEED_LIMIT_MAX)
 
 
-# ─────────── #26 방문 페이지 피드 ───────────
+# ─────────── #26 도서관 게시물과 홈 지역 보충 ───────────
+
+
+def select_region_posts(
+    c: Connection, library_id: int, library: Any, remaining: int
+) -> list[Any]:
+    district = []
+    if library.dtl_region_code:
+        district = select_page(
+            c, "p.library_id <> :lib AND l.dtl_region_code = :code",
+            {"lib": library_id, "code": library.dtl_region_code}, None, remaining,
+        )[:remaining]
+        remaining -= len(district)
+    if remaining <= 0 or not library.region_code:
+        return district
+    province = select_page(
+        c, "p.library_id <> :lib AND l.region_code = :code AND NOT (p.id = ANY(:seen))",
+        {"lib": library_id, "code": library.region_code, "seen": [r.id for r in district]},
+        None, remaining,
+    )[:remaining]
+    return district + province
 
 
 @router.get("/libraries/{library_id}/posts")
@@ -130,20 +151,32 @@ async def library_feed(
     sort: str = "latest",
     cursor: str | None = None,
     limit: int = LimitQuery,
+    expand: str | None = None,
     viewer: CurrentUser | None = Depends(get_optional_user),
 ) -> dict[str, Any]:
     if sort != "latest":
         raise validation_error("sort")  # H1 (Q-31 전)
     after = decode_cursor(cursor)
+    if expand is not None and (expand != "region" or after is not None):
+        raise validation_error("expand")
 
-    def tx(c: Connection) -> tuple[list[Any], tuple[set[Any], set[Any]]]:
-        if not c.execute(text("SELECT 1 FROM libraries WHERE id = :id"), {"id": library_id}).first():
+    def tx(c: Connection) -> tuple[list[Any], list[Any], tuple[set[Any], set[Any]]]:
+        library = c.execute(
+            text("SELECT dtl_region_code, region_code FROM libraries WHERE id = :id"),
+            {"id": library_id},
+        ).one_or_none()
+        if library is None:
             raise ApiError(404, "NOT_FOUND", MSG_NOT_FOUND, "library_id")
         rows = select_page(c, "p.library_id = :lib", {"lib": library_id}, after, limit)
-        return rows, my_flags(c, viewer, [r.id for r in rows[:limit]])
+        remaining = min(HOME_FEED_MIN, limit) - len(rows)
+        extra = select_region_posts(c, library_id, library, remaining) if expand and remaining > 0 else []
+        flags = my_flags(c, viewer, [r.id for r in rows[:limit] + extra])
+        return rows, extra, flags
 
-    rows, flags = await run_db(request.app.state.engine, tx)
-    return page_response(request, rows, flags, limit)
+    rows, extra, flags = await run_db(request.app.state.engine, tx)
+    page = page_response(request, rows, flags, limit)
+    page["items"].extend(feed_post(request, r, *flags) for r in extra)
+    return page
 
 
 # ─────────── #28 같은 책 이어 읽기 ───────────

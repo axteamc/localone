@@ -125,3 +125,9 @@
 | LOCAL-2-P2 | 완료 | `server/app/routers/reactions.py:17-85` | `test_reactions.py` 15 통과, 서버 전체 `-W error` 통과, 가드 제거 4종 확인 | P3 |
 | LOCAL-2-P3 | 완료 | `mobile/src/features/local-feed/PostCard.tsx`, `LibraryFeed.tsx`, `PostMenu.tsx`, `share.ts`, `VisitScreen.tsx`(기본 피드·스크롤 끝 다음 묶음) | `feed.test.tsx` 15 통과, 앱 전체 254 통과(`routes.test`는 변경 전과 같은 AsyncStorage 실패, #129), tsc 통과, 가드 제거 4종 확인 | P4 |
 | LOCAL-2-P4 | 완료 | `mobile/app/posts/[postId].tsx`, `PostDetail.tsx`, `ReactionButton.tsx`, `SameBookPosts.tsx`, `api.ts`(`fetchPost`·`fetchBookPosts`·내림 알림) | `detail.test.tsx` 18 + `feed.test.tsx` 16 통과, 앱 277 통과(`routes.test` #129), 서버 325 통과, tsc·web export 통과, 가드 제거 5종 확인 | 끝 |
+
+## 2026-11-23 D 개정
+
+홈 소식의 첫 조회에 지역 보충을 제공한다. 다른 관 소식에 홈 전용 출처 필을 붙인다. 상세 이어 읽기는 보충 없이, 방문 혼합 피드는 선택 관 기준으로 조회한다.
+
+단계와 발행 기준은 [홈·피드 진행 기록](../../../개발산출물/진행_홈_피드_개선.md)을 참조한다.
