@@ -179,6 +179,60 @@ async def list_reading_logs(
     }
 
 
+# ─────────── #46 기초 통계 (READ-2) ───────────
+# 본인 기록만 센다(R2-4). 날짜는 읽은 날, 없으면 쓴 날의 서울 날짜(#41 책장 위치와 같다). 기록이 없으면 모두 0(R2-3).
+# `/{log_id}`보다 먼저 등록해야 "stats"가 기록 id로 읽히지 않는다.
+
+STATS_COUNTS = text(
+    "SELECT count(*) AS total, "
+    "count(*) FILTER (WHERE date_trunc('year', d) = date_trunc('year', CAST(:today AS date))) AS this_year, "
+    "count(*) FILTER (WHERE date_trunc('month', d) = date_trunc('month', CAST(:today AS date))) AS this_month "
+    "FROM (SELECT coalesce(read_on, (created_at AT TIME ZONE 'Asia/Seoul')::date) AS d "
+    "FROM reading_logs WHERE user_id = :uid) t"
+)
+# R2-O3: 첫 줄은 가장 최근에 읽은 도서관 하나(마지막 읽은 날 DESC → 그 날짜 기록의 created_at DESC → id ASC),
+# 둘째 줄부터 count DESC, library_id ASC. 도서관 없는 기록은 넣지 않는다(R2-2).
+STATS_LIBRARIES = text(
+    "WITH dated AS ("
+    " SELECT library_id, created_at,"
+    " coalesce(read_on, (created_at AT TIME ZONE 'Asia/Seoul')::date) AS d"
+    " FROM reading_logs WHERE user_id = :uid AND library_id IS NOT NULL"
+    "), per_library AS ("
+    " SELECT DISTINCT ON (library_id) library_id, d AS last_read_on, created_at,"
+    " count(*) OVER (PARTITION BY library_id) AS count"
+    " FROM dated ORDER BY library_id, d DESC, created_at DESC"
+    "), ranked AS ("
+    " SELECT *, row_number() OVER (ORDER BY last_read_on DESC, created_at DESC, library_id ASC) AS recent_rank"
+    " FROM per_library"
+    ") "
+    "SELECT r.library_id, l.name, r.count, r.last_read_on "
+    "FROM ranked r JOIN libraries l ON l.id = r.library_id "
+    "ORDER BY (r.recent_rank = 1) DESC, r.count DESC, r.library_id ASC"
+)
+
+
+@router.get("/stats")
+async def reading_stats(request: Request, user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    today = today_kst()
+
+    def tx(c: Connection) -> tuple[Any, list[Any]]:
+        counts = c.execute(STATS_COUNTS, {"uid": user.id, "today": today}).one()
+        libraries = c.execute(STATS_LIBRARIES, {"uid": user.id}).all()
+        return counts, libraries
+
+    counts, libraries = await run_db(request.app.state.engine, tx)
+    return {
+        "total": int(counts.total),
+        "this_year": int(counts.this_year),
+        "this_month": int(counts.this_month),
+        "libraries": [
+            {"library_id": int(r.library_id), "name": r.name, "count": int(r.count),
+             "last_read_on": r.last_read_on.isoformat()}
+            for r in libraries
+        ],
+    }
+
+
 # ─────────── #42 하나 ───────────
 
 

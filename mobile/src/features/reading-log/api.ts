@@ -87,6 +87,20 @@ export function fetchReadingLogs(
   return send<ReadingLogPage>(`me/reading-logs${query ? `?${query}` : ""}`, { method: "GET" }, signal);
 }
 
+/** #46 응답(READ-2 C3). `libraries`는 기록이 있는 도서관만, 첫 줄은 가장 최근에 읽은 도서관(R2-O3) */
+export type ReadingStatsLibrary = { library_id: number; name: string; count: number; last_read_on: string };
+export type ReadingStats = {
+  total: number;
+  this_year: number;
+  this_month: number;
+  libraries: ReadingStatsLibrary[];
+};
+
+/** #46 `GET /api/v1/me/reading-logs/stats` — 본인 기록만, 기록이 없으면 모두 0(R2-3·R2-4) */
+export function fetchReadingStats(signal?: AbortSignal): Promise<ReadingStats> {
+  return send<ReadingStats>("me/reading-logs/stats", { method: "GET" }, signal);
+}
+
 /** #42 `GET /api/v1/me/reading-logs/{log_id}` — 남의 것·없는 것은 같은 404 */
 export function fetchReadingLog(logId: string, signal?: AbortSignal): Promise<ReadingLog> {
   return send<ReadingLog>(logPath(logId), { method: "GET" }, signal);
