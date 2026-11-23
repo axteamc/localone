@@ -129,6 +129,22 @@ describe("VISIT-3-P3 혼합 피드", () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/posts/[postId]", params: { postId: "p1", libraryId: "101" } });
   });
 
+  test("visit feed keeps a valid club card and opens its detail", async () => {
+    await enter([
+      { kind: "club", club: {
+        id: "c1", library_id: 101, name: "[시연] 동네 책 이야기", starts_at: null, place: null,
+        status: "open", participant_count: 0, capacity: null, published_at: "2026-11-19T10:00:00+09:00",
+      } },
+      gbItem(gb("g1")),
+      postItem(post("p1")),
+    ]);
+    const clubCard = await screen.findByTestId("club-card-c1");
+    expect(screen.getByTestId("guestbook-card-g1")).toBeTruthy();
+    expect(screen.getByTestId("post-card-p1")).toBeTruthy();
+    await fireEvent.press(clubCard);
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/clubs/[clubId]", params: { clubId: "c1" } });
+  });
+
   test("library switch drops late feed response", async () => {
     const first = deferred<api.FeedItemPage>();
     const second = deferred<api.FeedItemPage>();

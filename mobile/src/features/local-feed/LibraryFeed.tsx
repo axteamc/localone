@@ -1,5 +1,5 @@
 // 방문 페이지 2열 메이슨리 피드(contracts/local-feed.md LOCAL-2 H1·H4·H10·H13).
-// VISIT-3-P3부터 #32 혼합 피드(게시물 + 방명록, FeedItem)를 그린다(V3-8). 불러오기·다음 쪽은 VisitScreen이 하고
+// #32 혼합 피드(게시물·방명록·모임)를 그린다. 불러오기·다음 쪽은 VisitScreen이 하고
 // 여기서는 받은 목록 그리기·카드 메뉴(게시물 메뉴 / 내 방명록 지우기)만 한다.
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -18,7 +18,7 @@ import {
   type GuestbookItem,
   type PostReactionPatch,
 } from "./api";
-import { FeedItemCard } from "./FeedItemCard";
+import { FeedItemCard, isClubItem } from "./FeedItemCard";
 import { GUESTBOOK_CARD_TEXT, GuestbookMenu, guestbookHeightRatio } from "./GuestbookCard";
 import { cardHeightRatio, PostCard } from "./PostCard";
 import { LoginPrompt, PostMenu } from "./PostMenu";
@@ -46,7 +46,7 @@ function splitColumnsBy<T>(items: T[], ratio: (item: T) => number): [T[], T[]] {
 export function feedItemHeightRatio(item: FeedItem): number {
   if (isPostItem(item)) return cardHeightRatio(item.post);
   if (isGuestbookItem(item)) return guestbookHeightRatio(item.guestbook);
-  if (item.kind === "club") return 1.15;
+  if (isClubItem(item)) return 1.15;
   return 0;
 }
 
@@ -145,6 +145,7 @@ export function LibraryFeed({ items, onNotice, onReload }: LibraryFeedProps) {
           return [changed[p.id] ? { kind: "post", post: { ...p, ...changed[p.id] } } : item];
         }
         if (isGuestbookItem(item)) return gone.has(item.guestbook.id) ? [] : [item];
+        if (isClubItem(item)) return [item];
         return []; // 모르는 종류는 그리지 않는다
       }),
     [items, changed, hidden, gone]
