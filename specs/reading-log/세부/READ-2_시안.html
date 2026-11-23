@@ -405,7 +405,7 @@
 <!-- ===== 중심 요소 4 ===== -->
 <section class="element" id="el-home" data-chosen="A">
   <h2>정할 것 4. 홈 하단 창에 "내 최근 독서 기록"을 어디에, 몇 권 둘까 <span class="status">확인</span></h2>
-  <div class="decided"><b>고른 것: 후보 A.</b> "A가 홈에는 어울리는데 B도 아깝다 싶을정도로 지금 대여중인 도서가 있으면 저렇게 뜨고 아니면 A처럼 뜨는거 좋을거같은데" — 인기 도서 바로 아래, 표지 최대 5권 옆으로 넘김. 차선: 후보 B. "지금 빌린 책 카드"는 빌린 책 이야기라 나중 목록에 적어 뒀어요.</div>
+  <div class="decided"><b>고른 것: 후보 A.</b> "A가 홈에는 어울리는데 B도 아깝다 싶을정도로 지금 대여중인 도서가 있으면 저렇게 뜨고 아니면 A처럼 뜨는거 좋을거같은데" — 인기 도서 바로 아래, 표지 최대 5권 옆으로 넘김. 차선: 후보 B. "지금 빌린 책 카드"는 빌린 책 이야기라 나중 목록에 적어 뒀어요. 불편한 점: "언제 읽었는지 확인하려면 결국 눌러봐야 하는점 정도?"</div>
   <div class="flow"><b>정해진 것.</b> 홈 하단 창에는 지금 "이 동네 인기 도서" 한 줄과 그 아래 "도서관 소식"이 있고, 이 순서와 동작은 그대로예요. 로그인했고 기록이 하나라도 있을 때만 "내 최근 독서 기록" 칸이 생겨요(없으면 칸 자체가 없어요). 기록을 누르면 그 기록 화면으로 가요. 정할 것은 <b>그 칸의 자리와 보이는 개수·모양</b>이에요. 세 화면 모두 같은 기록이에요.</div>
   <div class="pick">다시 보기: <select data-for="el-home">
     <option value="A">후보 A — 인기 도서 아래, 표지 최대 5권 옆으로 넘김</option>
@@ -453,11 +453,11 @@
   </div>
 </section>
 
-<!-- ===== 잘 안 될 때 (예외 네 장면) — 문구는 Claude 초안, 중심 요소를 정한 뒤 그 모양으로 맞춘다 ===== -->
+<!-- ===== 잘 안 될 때 (예외 네 장면 + 홈 칸) — 문구는 Claude 초안, 결정 1~4 모양에 맞춤 ===== -->
 <section id="except">
   <h2>잘 안 될 때 보이는 화면</h2>
   <div class="state" id="exTabs">
-    <button aria-pressed="true" data-ex="x0">인터넷이 끊김</button><button aria-pressed="false" data-ex="x1">하나도 없음</button><button aria-pressed="false" data-ex="x2">두 번 빠르게 누름</button><button aria-pressed="false" data-ex="x3">로그인 안 함</button>
+    <button aria-pressed="true" data-ex="x0">인터넷이 끊김</button><button aria-pressed="false" data-ex="x1">하나도 없음</button><button aria-pressed="false" data-ex="x2">두 번 빠르게 누름</button><button aria-pressed="false" data-ex="x3">로그인 안 함</button><button aria-pressed="false" data-ex="x4">홈 칸이 안 생길 때</button>
   </div>
   <p class="exnote" id="exNote"></p>
   <div class="phone" id="exPhone" style="margin:8px 0 0">
@@ -472,12 +472,13 @@
       <button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
     <div class="scr hide" data-ex-screen="x2"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost">도서관별 ⇄</button></span></div>
       <div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div>
-        <button class="libtag" style="--lib-c:var(--lib-1)">마포중앙도서관 <span class="libcount">6권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-1)"><button>소년이 온다</button><button>흰</button><button>파친코</button><button>채식주의자</button></div>
-        <button class="libtag" style="--lib-c:var(--lib-2)">서대문도서관 <span class="libcount">3권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-2)"><button>아몬드</button><button>시선으로부터</button><button>불편한 편의점</button></div></div>
+        <button class="libtag" style="--lib-c:var(--lib-2)">서대문도서관 <span class="libcount">2권 · 최근 11월 22일</span> ›</button><div class="hrow" style="--lib-c:var(--lib-2)"><button>아몬드</button><button>불편한 편의점</button></div>
+        <button class="libtag" style="--lib-c:var(--lib-1)">마포중앙도서관 <span class="libcount">5권 · 최근 11월 19일</span> ›</button><div class="hrow" style="--lib-c:var(--lib-1)"><button>소년이 온다</button><button>흰</button><button>파친코</button><button>채식주의자</button><button>연년세세</button></div></div>
       <button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
     <div class="scr hide" data-ex-screen="x3"><div class="vname">독서 기록</div>
       <div class="vbody" style="height:150px;margin-top:14px">로그인하면 나만 보는 독서 기록을 남길 수 있어요.</div>
       <button class="btn" style="background:var(--fill1);color:var(--text);width:100%;padding:8px">로그인하기</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
+    <div class="scr hide" data-ex-screen="x4"><div class="facade">도서관 큐브 판 (지금 홈 그대로)</div><div class="hsheet"><div class="grip"></div><div class="sec">이 동네 인기 도서 <span class="vsub">마포중앙도서관 기준</span></div><div class="covers"><i></i><i></i><i></i><i></i><i></i></div><div class="sec">자주 가는 도서관 소식</div><div class="two-col" style="margin-top:6px"><div class="note-post">책 모임 후기</div><div class="note-post">이번 주 신간</div><div class="note-post">열람실 자리 팁</div><div class="note-post">어린이 코너</div></div></div><div class="tabbar"><b>홈</b><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div></div>
   </div>
 </section>
 
@@ -538,10 +539,11 @@
     if (t.dataset.toast) { var m = document.getElementById(t.dataset.toast); m.classList.add('on'); clearTimeout(m._t); m._t = setTimeout(function () { m.classList.remove('on'); }, 2000); }
   });
   // 예외 화면 전환 — 탭마다 실제 화면이 바뀐다
-  var exNote = { x0: '숫자만 못 불러왔을 때: 책장은 그대로 보이고, 숫자 자리만 안내와 "다시 해 보기"로 바뀌어요.',
+  var exNote = { x0: '숫자만 못 불러왔을 때: 책장은 그대로 보이고, 숫자 자리만 안내와 "다시 해 보기"로 바뀌어요. 책장을 못 불러오면 지금처럼 "기록을 불러오지 못했어요." + "다시 해 보기"예요.',
                  x1: '도서관을 고른 기록이 하나도 없을 때 도서관별 보기: 숫자는 0, 책장 자리에 한 줄 안내, + 버튼은 그대로예요.',
-                 x2: '"전체 ⇄"를 빠르게 여러 번 눌러도 마지막으로 누른 보기(여기서는 도서관별)만 보여요. 앞의 보기가 늦게 덮어쓰지 않아요.',
-                 x3: '로그인 안 하고 탭을 열면: 책장·숫자 대신 안내 한 줄과 로그인 버튼. 홈 하단 창에는 "내 최근 독서 기록" 칸이 아예 생기지 않아요.' };
+                 x2: '"전체 ⇄"나 이름표를 빠르게 여러 번 눌러도 마지막으로 누른 보기(여기서는 도서관별, 최근 읽은 도서관이 위)만 보여요. 앞의 보기가 늦게 덮어쓰지 않아요.',
+                 x3: '로그인 안 하고 탭을 열면: 책장·숫자 대신 안내 한 줄과 로그인 버튼. 홈 하단 창에는 "내 최근 독서 기록" 칸이 아예 생기지 않아요.',
+                 x4: '홈 하단 창에서 로그인 안 했거나, 기록이 하나도 없거나, 기록을 못 불러왔을 때: "내 최근 독서 기록" 칸이 통째로 없어요. 빈 자리나 안내 글도 없고, 인기 도서와 소식은 그대로예요.' };
   function showEx(id) {
     document.querySelectorAll('#exTabs button').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.ex === id); });
     document.querySelectorAll('#exPhone [data-ex-screen]').forEach(function (s) { s.classList.toggle('hide', s.dataset.exScreen !== id); });
