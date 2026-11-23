@@ -1,6 +1,6 @@
 // 프로필 수정 화면(/me/edit) — contracts/my-collection.md MY-2 Y2-1~Y2-5, Y2-O1~Y2-O4, C3 문구, C6, P4 앱 저장 흐름.
 // 한 화면에 위 가운데 사진(원 72) → 닉네임 칸 → 한 줄 소개 칸 → 맨 아래 "저장" 하나(시안 #el-layout 후보 A).
-import { useNavigation, useRouter } from "expo-router";
+import { useNavigation, usePreventRemove, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -134,7 +134,7 @@ function Editor({ userId }: { userId: string }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const alive = useRef(true);
-  const leaving = useRef(false);
+  const [leaving, setLeaving] = useState(false);
 
   useEffect(() => {
     alive.current = true;
@@ -159,47 +159,46 @@ function Editor({ userId }: { userId: string }) {
     void load();
   }, [load]);
 
-  const stateRef = useRef({ original, nickname, bio });
-  stateRef.current = { original, nickname, bio };
-  const isDirty = () => {
-    const s = stateRef.current;
-    if (!s.original) return false;
-    return s.nickname !== s.original.nickname || s.bio !== (s.original.bio ?? "") || photoRef.current.kind !== "keep";
-  };
+  const dirty = original !== null && (
+    nickname !== original.nickname || bio !== (original.bio ?? "") || photo.kind !== "keep"
+  );
+  const disablePrevention = usePreventRemove(!leaving && (dirty || saving), () => {
+    if (!savingRef.current) setConfirmDiscard(true);
+  });
 
-  const leave = useCallback(() => {
-    leaving.current = true;
-    leaveScreen();
-  }, [leaveScreen]);
-
-  // Y2-O3: 바뀐 칸이 있을 때만 묻는다. 기기 뒤로 가기·제스처도 같다
-  const onBack = () => (isDirty() ? setConfirmDiscard(true) : leave());
   useEffect(() => {
-    const nav = navigation as unknown as
-      | {
-          setOptions?: (o: Record<string, unknown>) => void;
-          addListener?: (e: string, cb: (ev: { preventDefault: () => void }) => void) => () => void;
-        }
-      | undefined;
-    nav?.setOptions?.({ headerShown: false });
-    const off = nav?.addListener?.("beforeRemove", (ev) => {
-      if (leaving.current || !isDirty()) return;
-      ev.preventDefault();
-      setConfirmDiscard(true);
-    });
-    return () => off?.();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    navigation.setOptions({ headerShown: false });
   }, [navigation]);
+
+  function allowLeave() {
+    setLeaving(true);
+    disablePrevention();
+  }
+
+  function leave() {
+    allowLeave();
+    leaveScreen();
+  }
+
+  const onBack = () => {
+    if (savingRef.current) return;
+    if (dirty) setConfirmDiscard(true);
+    else leave();
+  };
 
   const shownAvatar =
     photo.kind === "new" ? photo.uri : photo.kind === "remove" ? null : original?.avatar_url ?? null;
 
   async function choose(source: PickSource) {
     setMenuOpen(false);
-    const picked = await pickPostImage(source);
-    if (!picked || !alive.current) return;
-    setPhoto({ kind: "new", uri: picked.uri, path: null }); // 다른 사진을 고르면 앞 경로는 버린다
-    setErrors((e) => ({ ...e, photo: undefined }));
+    try {
+      const picked = await pickPostImage(source);
+      if (!picked || !alive.current || savingRef.current) return;
+      setPhoto({ kind: "new", uri: picked.uri, path: null });
+      setErrors((e) => ({ ...e, photo: undefined }));
+    } catch {
+      if (alive.current && !savingRef.current) setErrors((e) => ({ ...e, photo: EDIT_TEXT.photoRejected }));
+    }
   }
 
   function removePhoto() {
@@ -211,14 +210,14 @@ function Editor({ userId }: { userId: string }) {
   async function save() {
     if (savingRef.current || !original) return; // 연타 막기(예외 #3)
     const nick = nickname.trim();
-    if (nick.length === 0) {
+    if (nickname !== original.nickname && nick.length === 0) {
       setErrors((e) => ({ ...e, nickname: EDIT_TEXT.nicknameEmpty })); // 예외 #6, 호출 없음
       return;
     }
     const patch: ProfilePatch = {};
-    if (nick !== original.nickname) patch.nickname = nick;
+    if (nickname !== original.nickname && nick !== original.nickname) patch.nickname = nick;
     const nextBio = bio.trim() || null; // 공백만이면 null(Y2-3)
-    if (nextBio !== original.bio) patch.bio = nextBio;
+    if (bio !== (original.bio ?? "") && nextBio !== original.bio) patch.bio = nextBio;
     const chosen = photoRef.current;
     if (chosen.kind === "remove" && original.avatar_url !== null) patch.avatar_path = null;
     const needsPhoto = chosen.kind === "new";
@@ -229,6 +228,8 @@ function Editor({ userId }: { userId: string }) {
 
     savingRef.current = true;
     setSaving(true);
+    setMenuOpen(false);
+    setConfirmDiscard(false);
     setFailed(false);
     setErrors({});
     try {
@@ -257,7 +258,7 @@ function Editor({ userId }: { userId: string }) {
       } catch (e) {
         if (!alive.current) return;
         if (e instanceof ApiCallError && e.code === "ACCOUNT_WITHDRAWN") {
-          leaving.current = true;
+          allowLeave();
           router.replace("/login"); // C6 탈퇴 경합
           return;
         }
@@ -323,6 +324,7 @@ function Editor({ userId }: { userId: string }) {
             <Pressable
               accessibilityRole="button"
               accessibilityLabel={EDIT_TEXT.photoMenu}
+              disabled={saving}
               onPress={() => setMenuOpen((o) => !o)}
               style={({ pressed }) => [styles.pencil, pressed && ACT.secondaryPressed]}
               testID="photo-pencil"
@@ -342,6 +344,7 @@ function Editor({ userId }: { userId: string }) {
 
         <Text style={styles.label}>{EDIT_TEXT.nickname}</Text>
         <TextInput
+          editable={!saving}
           value={nickname}
           onChangeText={(t) => {
             setNickname(t);
@@ -359,6 +362,7 @@ function Editor({ userId }: { userId: string }) {
 
         <Text style={styles.label}>{EDIT_TEXT.bio}</Text>
         <TextInput
+          editable={!saving}
           value={bio}
           onChangeText={(t) => {
             setBio(t);

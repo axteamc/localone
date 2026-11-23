@@ -14,21 +14,20 @@ import * as my from "../useMyCollection";
 const mockPush = jest.fn();
 const mockBack = jest.fn();
 const mockReplace = jest.fn();
-let mockBeforeRemove: ((ev: { preventDefault: () => void }) => void) | null = null;
+let mockPreventRemove = false;
+let mockOnBlockedRemove: (() => void) | undefined;
+const mockDisablePrevention = jest.fn();
+const mockNavigation = { setOptions: jest.fn() };
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, back: mockBack, replace: mockReplace, canGoBack: () => true }),
   useNavigation: () => mockNavigation,
+  usePreventRemove: (prevent: boolean, onBlocked: () => void) => {
+    mockPreventRemove = prevent;
+    mockOnBlockedRemove = onBlocked;
+    return mockDisablePrevention;
+  },
   useFocusEffect: () => undefined,
 }));
-const mockNavigation = {
-  setOptions: jest.fn(),
-  addListener: (event: string, cb: (ev: { preventDefault: () => void }) => void) => {
-    if (event === "beforeRemove") mockBeforeRemove = cb;
-    return () => {
-      mockBeforeRemove = null;
-    };
-  },
-};
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")
 );
@@ -108,7 +107,8 @@ const valueOf = (testID: string) => screen.getByTestId(testID).props.value;
 
 beforeEach(() => {
   jest.clearAllMocks();
-  mockBeforeRemove = null;
+  mockPreventRemove = false;
+  mockOnBlockedRemove = undefined;
   setAuth("signedIn");
   fetchMyProfile.mockResolvedValue(FAKE_PROFILE);
   updateMyProfile.mockImplementation(async (patch) => ({ ...FAKE_PROFILE, ...patch }) as MyProfile);
@@ -134,6 +134,14 @@ describe("MY-2-P2 프로필 수정 화면", () => {
     await fireEvent.press(screen.getByTestId("profile-save"));
     expect(updateMyProfile).toHaveBeenCalledTimes(1);
     expect(screen.getByText(EDIT_TEXT.saving)).toBeTruthy();
+    expect(screen.getByTestId("nickname-input").props.editable).toBe(false);
+    expect(screen.getByTestId("bio-input").props.editable).toBe(false);
+    expect(screen.getByLabelText(EDIT_TEXT.photoMenu)).toBeDisabled();
+    await fireEvent.press(screen.getByTestId("profile-edit-back"));
+    expect(screen.queryByText(EDIT_TEXT.discardTitle)).toBeNull();
+    expect(mockPreventRemove).toBe(true);
+    await act(async () => mockOnBlockedRemove?.());
+    expect(screen.queryByText(EDIT_TEXT.discardTitle)).toBeNull();
     await act(async () => pending.resolve({ ...FAKE_PROFILE, nickname: "새이름" }));
   });
 
@@ -143,6 +151,15 @@ describe("MY-2-P2 프로필 수정 화면", () => {
     await save();
     expect(updateMyProfile).toHaveBeenCalledTimes(1);
     expect(updateMyProfile.mock.calls[0]?.[0]).toEqual({ bio: "책 좋아해요" });
+  });
+
+  test("editing the nickname preserves an untouched legacy bio", async () => {
+    const legacyBio = `  ${"book".repeat(20)}  `;
+    fetchMyProfile.mockResolvedValueOnce({ ...FAKE_PROFILE, bio: legacyBio });
+    await show();
+    await type("nickname-input", "새이름");
+    await save();
+    expect(updateMyProfile).toHaveBeenCalledWith({ nickname: "새이름" });
   });
 
   test("blank bio is sent as null", async () => {
@@ -173,11 +190,12 @@ describe("MY-2-P2 프로필 수정 화면", () => {
     await show();
     await type("bio-input", "고친 소개");
     // 기기 뒤로 가기도 같은 확인창. [나가기]는 저장 없이 닫는다
-    const ev = { preventDefault: jest.fn() };
-    await act(async () => mockBeforeRemove!(ev));
-    expect(ev.preventDefault).toHaveBeenCalled();
+    expect(mockPreventRemove).toBe(true);
+    await act(async () => mockOnBlockedRemove?.());
     expect(screen.getByText(EDIT_TEXT.discardTitle)).toBeTruthy();
     await fireEvent.press(screen.getByText(EDIT_TEXT.leave));
+    expect(mockDisablePrevention).toHaveBeenCalledTimes(1);
+    expect(mockPreventRemove).toBe(false);
     expect(updateMyProfile).not.toHaveBeenCalled();
     expect(mockBack).toHaveBeenCalledTimes(1);
   });
@@ -231,6 +249,18 @@ describe("MY-2-P2 프로필 수정 화면", () => {
     expect(screen.getByText(EDIT_TEXT.pickPhoto)).toBeTruthy();
     expect(screen.queryByText(EDIT_TEXT.removePhoto)).toBeNull();
     expect(screen.queryByText(EDIT_TEXT.takePhoto)).toBeNull();
+  });
+
+  test("photo picker failure keeps the input and shows a photo field error", async () => {
+    pickPostImage.mockRejectedValueOnce(new Error("image processing failed"));
+    await show();
+    await type("bio-input", "고친 소개");
+    await fireEvent.press(screen.getByLabelText(EDIT_TEXT.photoMenu));
+    await fireEvent.press(screen.getByText(EDIT_TEXT.pickPhoto));
+    expect(screen.getByText(EDIT_TEXT.photoRejected)).toBeTruthy();
+    expect(valueOf("bio-input")).toBe("고친 소개");
+    expect(uploadAvatar).not.toHaveBeenCalled();
+    expect(updateMyProfile).not.toHaveBeenCalled();
   });
 
   test("removing photo sends avatar_path null only", async () => {
