@@ -303,6 +303,7 @@
 <!-- ===== 중심 요소 2 ===== -->
 <section class="element" id="el-preset" data-chosen="B">
   <h2>정할 것 2. ⚙를 누르면 책장 배치를 무엇으로 바꿀 수 있게 할까 <span class="status">확인</span></h2>
+  <p>순서 메뉴와 자리 옮기기는 별도 계약 승인 대기이며, 이번 발행 범위는 최근 읽은 순 책장이에요.</p>
   <div class="decided"><b>고른 것: 후보 B.</b> "나는 B가 제일 좋은거같은데 오래전에 읽었던 책도 제대로 확인 가능하고 순서대로란 생각도 들어" — ⚙ → 작은 메뉴에서 최근 읽은 순 / 오래 전 읽은 순 / 내가 옮긴 자리. 한 칸은 늘 한 달. 차선은 없음. 불편한 점: "많아지면 번거롭고 불편할수 있겠지만 그만큼 읽은책이 쌓인느낌이나서 좋을거같은데"</div>
   <div class="flow"><b>정해진 것.</b> 처음 배치는 "최근 읽은 책이 위·왼쪽, 한 달 한 줄"이에요. 책을 꾹 눌러 같은 줄 안에서 자리를 바꾸는 건 세 화면 모두 같아요. 정할 것은 <b>⚙를 눌렀을 때 무엇을 고를 수 있느냐</b>예요. 세 화면 모두 같은 기록 12개예요.</div>
   <div class="pick">다시 보기: <select data-for="el-preset">
@@ -352,14 +353,15 @@
 </section>
 
 <!-- ===== 중심 요소 3 ===== -->
-<section class="element" id="el-libsort" data-chosen="B">
+<section class="element" id="el-libsort" data-chosen="D">
   <h2>정할 것 3. 도서관별 책장에서 어느 도서관을 맨 위에 둘까 <span class="status">확인</span></h2>
-  <div class="decided"><b>고른 것: 후보 B.</b> "B가 좋은거같아 최근에 읽은책을 바로 확인할수 있다는점이 좋은거같아" — 가장 최근에 읽은 책이 있는 도서관이 맨 위, 이름표 옆에 권수와 마지막으로 읽은 날. 차선은 없음. 불편한 점: "도서관 순서가 바뀌는건 헷갈릴거같아"</div>
+  <div class="decided"><b>고른 것: 후보 D.</b> 가장 최근에 읽은 도서관 하나를 맨 위에 두고 그 줄에만 최근 날짜를 붙여요. 둘째 줄부터는 기록이 많은 도서관 순이에요.</div>
   <div class="flow"><b>정해진 것.</b> "전체 ⇄"를 누르면 도서관마다 색이 다른 책장 줄이 쌓여요. 한 줄은 옆으로 밀어 보고, 이름표 ›를 누르면 그 도서관 책만 봐요. 기록이 있는 도서관만 나와요. 정할 것은 <b>도서관 줄의 위아래 순서</b>예요. 세 화면 모두 같은 기록(도서관 4곳, 도서관 없이 쓴 2권은 "전체"에만)이에요.</div>
   <div class="pick">다시 보기: <select data-for="el-libsort">
     <option value="A">후보 A — 기록 많은 도서관이 위</option>
     <option value="B">후보 B — 최근에 읽은 도서관이 위</option>
     <option value="C">후보 C — 이름 가나다순</option>
+      <option value="D">후보 D — 첫 줄만 최근, 아래는 기록 많은 순</option>
   </select></div>
   <div class="cands">
     <article class="cand recommended" data-id="A">
@@ -398,6 +400,15 @@
       <span class="lbl">얻는 것 / 포기하는 것</span>
       <p>찾는 도서관 자리를 외울 수 있어요. / 많이 다닌 곳·요즘 다닌 곳이 순서로는 안 보여요.</p>
       <span class="lbl">표준 근거</span><p>표준 근거: P-33 가로로 넘기는 띠(캐러셀)</p>
+    </article>
+    <article class="cand" data-id="D">
+      <h3>후보 D — 첫 줄만 최근, 아래는 기록 많은 순</h3>
+      <div class="phone"><div class="scr" data-screen="lib"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">도서관별 ⇄</button></span></div><div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div><button class="libtag" style="--lib-c:var(--lib-2)" data-open="one-sdm">서대문도서관 <span class="libcount">2권 · 최근 11월 22일</span> ›</button><div class="hrow" style="--lib-c:var(--lib-2)"><button>아몬드</button><button>불편한 편의점</button></div><button class="libtag" style="--lib-c:var(--lib-1)" data-open="one-mapo">마포중앙도서관 <span class="libcount">5권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-1)"><button>소년이 온다</button><button>흰</button><button>파친코</button><button>채식주의자</button><button>연년세세</button></div><button class="libtag" style="--lib-c:var(--lib-4)" data-open="one-gs">강서도서관 <span class="libcount">2권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-4)"><button>시선으로부터</button><button>희랍어 시간</button></div><button class="libtag" style="--lib-c:var(--lib-3)" data-open="one-ep">은평구립도서관 <span class="libcount">1권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-3)"><button>작별하지 않는다</button></div></div><button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div><div class="scr hide" data-screen="one-sdm"><div class="row"><button class="back" data-open="lib">‹</button><span class="vname">서대문도서관</span><span class="vsub" style="margin-left:auto">2권</span></div><div style="height:4px;border-radius:2px;background:var(--lib-2);margin:2px 0 6px"></div><div class="cvrow"><button>아몬드</button><button>불편한 편의점</button></div><button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div></div>
+      <p>첫 줄은 최근에 읽은 서대문도서관이고 이름표에 11월 22일을 보여요. 그 아래에는 권수가 많은 마포중앙, 강서, 은평 순으로 나와요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>"전체 ⇄" → 서대문 2권 · 최근 11월 22일 → 마포중앙 5권 → 강서 2권 → 은평 1권. 서대문 ›를 누르면 서대문에서 읽은 책을 봐요.</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>최근에 읽은 곳과 기록이 많은 곳을 함께 볼 수 있어요. 아래 줄의 최근 날짜는 이름표에 표시하지 않아요.</p>
     </article>
   </div>
 </section>
@@ -470,10 +481,10 @@
       <div class="statline">전체 <b>0</b> · 올해 <b>0</b> · 이번 달 <b>0</b></div>
       <div class="vbody" style="height:150px;margin-top:14px">도서관에서 읽은 기록이 아직 없어요.<br>기록을 쓸 때 도서관을 고르면 여기 꽂혀요.</div>
       <button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
-    <div class="scr hide" data-ex-screen="x2"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">⚙</button><button class="btn ghost">도서관별 ⇄</button></span></div>
+    <div class="scr hide" data-ex-screen="x2"><div class="topbar"><span class="vname">독서 기록</span><span class="topr"><button class="btn ghost">도서관별 ⇄</button></span></div>
       <div class="scroll" style="top:36px"><div class="statline">전체 <b>12</b> · 올해 <b>9</b> · 이번 달 <b>2</b></div>
         <button class="libtag" style="--lib-c:var(--lib-2)">서대문도서관 <span class="libcount">2권 · 최근 11월 22일</span> ›</button><div class="hrow" style="--lib-c:var(--lib-2)"><button>아몬드</button><button>불편한 편의점</button></div>
-        <button class="libtag" style="--lib-c:var(--lib-1)">마포중앙도서관 <span class="libcount">5권 · 최근 11월 19일</span> ›</button><div class="hrow" style="--lib-c:var(--lib-1)"><button>소년이 온다</button><button>흰</button><button>파친코</button><button>채식주의자</button><button>연년세세</button></div></div>
+        <button class="libtag" style="--lib-c:var(--lib-1)">마포중앙도서관 <span class="libcount">5권</span> ›</button><div class="hrow" style="--lib-c:var(--lib-1)"><button>소년이 온다</button><button>흰</button><button>파친코</button><button>채식주의자</button><button>연년세세</button></div></div>
       <button class="fab">+</button><div class="tabbar"><span>홈</span><b>독서 기록</b><span>대출·반납</span><span>내 정보</span></div></div>
     <div class="scr hide" data-ex-screen="x3"><div class="vname">독서 기록</div>
       <div class="vbody" style="height:150px;margin-top:14px">로그인하면 나만 보는 독서 기록을 남길 수 있어요.</div>
@@ -487,12 +498,9 @@
   <h2>처음부터 끝까지 이렇게 써요</h2>
   <ol>
     <li>사용자가 하단 "독서 기록" 탭을 누르면 동네한권이 내 책장(표지 면, 최근 읽은 책이 위·왼쪽)과 제목 아래 한 줄 글자로 내 기록 숫자(전체·올해·이번 달)를 보여 준다. 사용자가 책장을 밀어 올리면 숫자 줄도 같이 올라간다.</li>
-    <li>사용자가 오른쪽 위 "전체 ⇄"를 누르면 동네한권이 도서관별 책장(도서관마다 색, 한 줄에 옆으로 밀기)으로 바꿔 보여 준다. 동네한권은 가장 최근에 읽은 책이 있는 도서관을 맨 위에 두고, 이름표 옆에 권수와 마지막으로 읽은 날을 붙인다.</li>
+    <li>사용자가 오른쪽 위 "전체 ⇄"를 누르면 동네한권이 도서관별 책장(도서관마다 색, 한 줄에 옆으로 밀기)으로 바꿔 보여 준다. 동네한권은 가장 최근에 읽은 도서관 하나를 맨 위에 두고, 그 이름표에 권수와 최근 날짜를 붙인다. 둘째 줄부터는 나머지 도서관을 기록 많은 순으로 보여 주고 권수만 붙인다. 읽은 날이 없으면 기록을 만든 서울 날짜를 사용한다. 최근 날짜가 같으면 그 날짜 기록을 더 늦게 남긴 도서관이 먼저고, 시각도 같으면 도서관 ID 오름차순이다. 둘째 줄부터 권수가 같으면 도서관 ID 오름차순이다.</li>
     <li>사용자가 도서관 이름표 ›를 누르면 동네한권이 그 도서관에서 읽은 책만 책장으로 보여 준다.</li>
     <li>사용자가 다시 "도서관별 ⇄"를 누르면 동네한권이 전체 책장으로 돌아간다.</li>
-    <li>사용자가 ⚙를 누르면 동네한권이 작은 메뉴(최근 읽은 순·오래 전 읽은 순·내가 옮긴 자리)를 띄운다.</li>
-    <li>사용자가 "오래 전 읽은 순"을 고르면 동네한권이 처음 읽은 책이 맨 위·왼쪽에 오도록 책장을 다시 꽂는다(한 칸은 한 달).</li>
-    <li>사용자가 책을 꾹 눌러 같은 줄 안에서 옮기면 동네한권이 그 자리를 기억하고, 사용자가 "내가 옮긴 자리"를 고르면 동네한권이 옮겨 둔 순서로 보여 준다.</li>
     <li>사용자가 홈 하단 창을 올리면 동네한권이 "이 동네 인기 도서" 한 줄 바로 아래에 "내 최근 독서 기록" 표지를 최근 것부터 최대 5권 보여 준다(로그인했고 기록이 있을 때만).</li>
     <li>사용자가 그 표지를 누르면 동네한권이 그 기록 화면을 연다.</li>
   </ol>
@@ -505,7 +513,7 @@
     <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
     <tr data-el="el-top"><td>1. 책장 위 내 기록 숫자</td><td>후보 A 제목 아래 한 줄 글자(전체 12 · 올해 9 · 이번 달 2), 책장과 같이 올라감</td><td>없음</td><td>B 큰 숫자 칸 셋(늘 그 자리), C 접힌 칸 내 기록 12권 ▾</td><td>"A가 위에 책읽은숫자 제일 보기 깔끔하고 좋은데"</td><td>숫자 셋: 전체·올해·이번 달(서울 날짜 기준), 하나도 없으면 0. 작은 글자 한 줄(--sub 색, 숫자만 --text 굵게). 도서관별 보기에서는 이름표 옆에 6권처럼 도서관마다 수</td><td>탭 열기 → 숫자 한 줄 + 책장 → 밀면 숫자 줄도 올라감 → 전체 ⇄ → 도서관별 책장(숫자 줄 그대로, 이름표 옆 권수)</td><td><span class="st">확인</span></td></tr>
     <tr data-el="el-preset"><td>2. ⚙ 배치 바꾸기에서 고르는 것</td><td>후보 B 작은 메뉴에서 순서 고르기</td><td>없음</td><td>A 아래 카드에서 묶는 단위, C 책장 설정 화면에 다 모아 두기</td><td>"나는 B가 제일 좋은거같은데 오래전에 읽었던 책도 제대로 확인 가능하고 순서대로란 생각도 들어"</td><td>메뉴 3줄(최근 읽은 순 기본 ✓, 오래 전 읽은 순, 내가 옮긴 자리), 한 칸은 늘 한 달, 고른 순서는 다음에도 그대로</td><td>⚙ → 메뉴 → 오래 전 읽은 순 → 맨 위가 처음 읽은 책 / 내가 옮긴 자리 → 꾹 눌러 바꿔 둔 순서</td><td><span class="st">확인</span></td></tr>
-    <tr data-el="el-libsort"><td>3. 도서관별 책장의 도서관 순서</td><td>후보 B 최근에 읽은 도서관이 위</td><td>없음</td><td>A 기록 많은 도서관이 위, C 이름 가나다순</td><td>"B가 좋은거같아 최근에 읽은책을 바로 확인할수 있다는점이 좋은거같아"</td><td>마지막으로 읽은 날이 최근인 도서관부터(같으면 먼저 생긴 도서관), 이름표에 권수 · 최근 날짜</td><td>전체 ⇄ → 최근 읽은 도서관 줄이 맨 위 → 새 기록을 쓰면 그 도서관이 맨 위로 → 이름표 › → 그 도서관 책장</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-libsort"><td>3. 도서관별 책장의 도서관 순서</td><td>후보 D 첫 줄만 최근, 아래는 기록 많은 순</td><td>없음</td><td>A 기록 많은 순, B 최근 순, C 이름 가나다순</td><td>가장 위만 최근 읽은 도서관으로 하고 최근 날짜도 표기. 2번째 줄부턴 기록 많은 도서관이 위</td><td>첫 줄만 권수 · 최근 날짜, 아래는 권수만</td><td>전체 ⇄ → 최근 도서관 → 나머지는 권수 순 → 이름표 › → 그 도서관 책장</td><td><span class="st">확인(D 수정)</span></td></tr>
     <tr data-el="el-home"><td>4. 홈 하단 창 "내 최근 독서 기록" 자리·개수</td><td>후보 A 인기 도서 아래, 표지 최대 5권 옆으로 넘김</td><td>후보 B 맨 위, 가장 최근 1권 한 줄 카드</td><td>C 인기 도서 아래, 최근 3권 줄 목록</td><td>"A가 홈에는 어울리는데 B도 아깝다 싶을정도로 지금 대여중인 도서가 있으면 저렇게 뜨고 아니면 A처럼 뜨는거 좋을거같은데"</td><td>칸 제목 내 최근 독서 기록, 표지 최대 5권(최근 기록 순), 인기 도서와 같은 표지 크기, 로그인했고 기록이 있을 때만 칸이 생김</td><td>홈 하단 창 → 인기 도서 → 내 최근 독서 기록 표지 줄 → 표지 → 그 기록 화면 → ‹ → 홈</td><td><span class="st">확인</span></td></tr>
     <tr><td>한 달에 4권 이상</td><td>그 달 안에서 다음 줄로 넘김(한 줄 3권)</td><td>—</td><td>—</td><td>묻지 않음</td><td>지금 책장과 같음</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
     <tr><td>책장 위 카드</td><td>지금 카드 그대로(표지·제목·저자·감상 첫 줄·읽은 날·어디서 + "기록 자세히 보기")</td><td>—</td><td>—</td><td>묻지 않음</td><td>—</td><td>책 → 카드 → 기록 화면</td><td><span class="st">기본값(Claude)</span></td></tr>
