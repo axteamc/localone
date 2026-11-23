@@ -1,0 +1,788 @@
+# 내 정보 모음 (`my-collection`) 기술 계약서
+
+> 이 파일은 A의 내 정보 모음(`my-collection`, 하단 `"내 정보"` 탭 `/me`, 실제 파일 `mobile/app/(tabs)/me.tsx` — 요청서 표기 `my.tsx`의 현행 구현 경로) 계약서다. Step은 **MY-1**(상단 프로필 + 3탭: 내 게시물 / 좋아요 / 북마크 조회)부터 시작한다.
+> 상태: **D 확정판 — 2026-11-18 발행(기획 PR #167 + 계약 수정본 PR #169 승인·머지).** 아래 원래 안내는 기준선 당시 기록이다. 기준선 당시: **1차 계약서 — D 기준선(2026-11-17, 검토 전·구현 착수 불가).** 큰 틀·세부 명세(`specs/my-collection/명세서.md`) 및 시안 작성 전 단계다. D가 정한 경로·인증·DTO 스키마·오류 코드·테이블 전제·담당 파일·가짜 값·파트를 먼저 고정(**잠금 칸**)하고, 화면 배치·문구·빈 상태·상호작용 세부(**열린 칸**)를 명시한다. A의 AI는 `../team/prompts/2_계약_보완.md`에 따라 기획(명세서 + 시안)과 함께 열린 칸을 채운 계약 수정본 PR을 제출하고, D가 양쪽을 함께 검토·승인한 뒤 발행한다.
+> **2026-11-18 페이지 디자인 1차(코드 레포 C-74, 병렬 작업 L3a·L3b, 코드 레포 `DESIGN.md` 결정 기록 "내 정보 프로필·3탭 머리 구성과 수집 목록 표현"·"페이지 적용 레시피"):** MY-1 Y-O1·Y-O2·Y-O3·Y-O4의 **화면 칸**만 바꿨다. 프로필·탭 바탕 `bg` → 유리판 `panelFrosted`, 닉네임 17/500 → `type.title` 22/400 `inkSoft` + 계기판 `MEMBER · PROFILE`, 빈 탭 회색 원 아이콘 없앰·`inkStrong` 채움 버튼 → 보조 버튼(비로그인 `"로그인"`은 무광 판 주 버튼), `"취소함"` 표시·되돌리기 안내 → 무광 면. 게시물 카드 `PostCard` 곡률 18·2열은 그대로. **API·필드·테이블·에러 코드·정렬은 바뀌지 않는다.** 반영 코드는 L4(코드 레포 `개발산출물/병렬작업_페이지디자인/진행_L4_내정보.md`). 이전 줄은 git 이력(이 파일의 이 커밋 직전)에 있다.
+> 공통 함수·인증·하단 탭 틀은 [`core.md`](core.md) · [`auth.md`](auth.md), 피드 카드(`PostCard`)와 `FeedPost`·`posts`·`post_reactions`·`post_bookmarks` 원본은 [`local-feed.md`](local-feed.md)다.
+
+## Pre-flight 5대 관문 (코드 레포 `origin/main` `cb25785` · `team` `af21532`)
+
+| 관문 | 확인한 것 (`file:line`) | 이 계약서의 처리 (잠금 조건) | 미해결 / 후속 |
+| :--- | :--- | :--- | :--- |
+| ① 격리·권한·호환 | `server/app/auth.py:132-146`(`lock_active_user`), `:163-173`(`nickname_of`), `:176-184`(`get_current_user`), `server/app/common.py:11-23`(`ApiError`·`error_response`), `server/app/main.py:89-92`(422 쉼표 `detail`), `server/migrations/versions/0001_users.py:41`·`0003_user_profiles.py:13-24`(`user_profiles` RLS 활성·정책 0개) | 4개 엔드포인트 모두 필수 인증(`Depends(get_current_user)`). 요청 쿼리·경로의 `user_id` 미수신·무시, 모든 SQL에 `user_id = :uid` 본인 소유만 조회. 좋아요·북마크 비공개, 팔로워 수/목록·타인 프로필 노출 금지(C-46 F1·F2). `user_profiles` RLS 유지·정책 0개 | `05`·`06`은 M1 동결이라 본 기능이 M2/C-46 확장으로 4개 `/me/*` 경로와 `user_profiles` 2컬럼(`bio`, `avatar_url`)을 선행 고정 |
+| ② 동시성·트랜잭션·외부 I/O | `server/app/db.py:16-28`(`run_db`), `mobile/src/lib/latest.ts:6-25`(`createLatestRunner`), `mobile/src/auth/apiFetch.ts:72-116`(`apiFetch`), `mobile/src/auth/AuthProvider.tsx:253-259`(`useAuth`) | MY-1 서버 4개 `GET`은 읽기 전용(`run_db` 내 읽기, 외부 I/O 없음). 목록은 `(정렬 시각 DESC, post_id DESC)` 복합 커서로 동률 중복·누락 차단(`H-ARCH-10`). 앱은 프로필용·탭 목록용 `createLatestRunner` 2개로 탭 전환·새로고침·`userId` 변경 경합 폐기(`AC-RACE`) | `registerSignOutCleanup`은 `AUTH-2` 미구현(`TODO(연결): D(AUTH-2)`). 프로필 편집 쓰기(`lock_active_user`·EXIF)는 후속 Step(`MY-2`) |
+| ③ 전제 실재성 | `origin/main` `cb25785` 확인: `server/app/auth.py:163-227`, `0003_user_profiles.py:13-24`(`user_id`, `nickname`, `updated_at`만 있음), `mobile/app/(tabs)/_layout.tsx:18-21`(`index`·`loans`·`me`), `mobile/app/(tabs)/me.tsx:1-69`(스텁), `mobile/src/__tests__/routes.test.tsx:23-27,149-163`, `mobile/src/theme/tokens.ts:31-143`, `mobile/src/features/library-visit/__fakes__/PostCard.tsx:9-46` | **`mobile/app/(tabs)/my.tsx`는 존재하지 않으며 현행 실제 파일은 `mobile/app/(tabs)/me.tsx`**(`/me`, `"내 정보"`). `MY-1-P2`는 `me.tsx`를 교체한다. `posts`·`post_reactions`·`post_bookmarks`·`PostCard`는 B `LOCAL-1`(#126 OPEN)·`LOCAL-2` 머지 전 C7 가짜 값/가짜 카드 + `TODO(연결): B` | `user_profiles`의 `bio`·`avatar_url`은 `MY-1-P1` 마이그레이션으로 추가 |
+| ④ 담당·공유 파일 충돌 | `mobile/app/(tabs)/_layout.tsx:18-21`(D 소유, 3탭 고정), `mobile/app/(tabs)/me.tsx:1`(기존 `TODO(연결): D(AUTH-2)` 스텁), `mobile/src/__tests__/routes.test.tsx:149-163`(`MeTabScreen` 스텁 단언), `server/app/main.py:50-58,99-111` | `_layout.tsx` 수정 금지(탭 이름 `"me"`/`"내 정보"` 유지). `me.tsx`는 `MY-1-P2`에서 A가 교체. `routes.test.tsx`는 `HomeScreen`과 동일하게 `MyCollectionScreen` mock으로 정합 유지. `main.py`는 `# ── [my-collection-A] ──` 블록만 사용. Step 1개 = 브랜치 `feat/my-collection-MY-1` = PR 1개 | `AUTH-2` 로그아웃·설정 진입 자리는 C7 및 열린 칸(Y-O1)에서 조율 |
+| ⑤ 승인·확장 게이트 | 근거: `../team/기능_배정.md` A(F4), `개발산출물/명세/SNS_검색_프로필_상세결정.md` C-46 F1·F2·F4·D3·D4·D5·§8-5, GitHub Issue #130 | C-46 §8-5 팔로우 대상·효과 미결이므로 `MY-1`에는 팔로우 테이블·API·타인 프로필을 열지 않음. C-46 D3 방문 기록 카드 북마크는 `VISIT-4` 전까지 `item_kind: "post"`만 수용(`TODO(연결): VISIT-4`). 새 라이브러리 없음 | 기획(명세서+시안)과 열린 칸 계약 수정본 동시 PR 제출 후 D 승인·발행 필요 |
+
+---
+
+## MY-1 내 정보 모음 (상단 프로필 · 3탭: 내 게시물 / 좋아요 / 북마크)
+
+- **담당 역할**: A (서버 파트 포함) · **대상 브랜치**: `main`
+- **기준 명세서**: `specs/my-collection/명세서.md`, `specs/my-collection/세부/MY-1.md`, 시안 `specs/my-collection/세부/MY-1_시안.html` (기획 PR #167, Issue #130)
+- **판**: **D 확정판(2026-11-18)** — 1차 D 기준선(2026-11-17) + A 열린 칸 보완(PR #169) + D 보완(캐시 맞추기·결과 불명 수렴·재시도 문구·B 머지 현행화·`PostMenu` `failText`)
+- **기준선**: `B2` 이후 M2/C-46 확장 — D 1차 기준선
+- **선행 설계**: `../team/기능_배정.md` A절(M2 배정안, F4), `개발산출물/명세/SNS_검색_프로필_상세결정.md` C-46(F1·F2·F4·D3·D4·D5), `local-feed.md` LOCAL-1/LOCAL-2 C3·C5, `05 §3.1 user_profiles`, `06 §3` 공통 오류 코드
+- **작성자**: D (시니어)
+- **상태**: **발행 — 구현 착수 가능**(`3_구현.md`). 파트 머리말 4칸의 계약서 커밋 SHA를 확인한 뒤 시작한다.
+- **발행 본문 SHA**: `d00b205c896ff54871c5e13350ef3fa449636f55`
+
+
+### 계약
+
+#### C1. 결정
+
+##### 잠금 결정 (D 기준선 고정 — A는 변경 불가)
+
+| # | 결정 | 상태 | 근거 |
+| :--- | :--- | :--- | :--- |
+| Y1 | **화면 골격과 3탭 순서 · 기본 탭**: 하단 `"내 정보"` 탭(`/me`, 실제 파일 `mobile/app/(tabs)/me.tsx`)은 **상단 프로필 영역 + 하단 3탭(`내 게시물` / `좋아요` / `북마크`)**으로 구성한다. 최초 진입 시 기본 선택 탭은 **`내 게시물`**이다 | 확정 (C-46 F2) | `SNS_검색_프로필_상세결정.md` F2, `기능_배정.md` A절 |
+| Y2 | **소유권 격리 · 비공개 원칙**: 4개 엔드포인트(`GET /api/v1/me/profile`, `/me/posts`, `/me/reactions`, `/me/bookmarks`)는 모두 **필수 인증(`get_current_user`)**이며 토큰의 `user.id` 본인 데이터만 조회한다. 요청에 타인 `user_id`를 받지 않으며 보내도 무시한다. **좋아요·북마크 탭은 본인만 조회하는 비공개 수집 탭**이며 타인의 모음·팔로워 수·팔로워 목록을 노출하지 않는다 | 확정 (C-46 F1·F2) | `PROJECT.md` §3-4, `SNS_검색_프로필_상세결정.md` F1·F2·§4, `05 §4` |
+| Y3 | **탭별 필터 · 정렬 · 재공개 복원 · 커서 규격**: ① `내 게시물`: `p.user_id = :uid AND p.status = 'published'`만 **`p.published_at DESC, p.id DESC`**(철회·숨김 제외). ② `좋아요`: `post_reactions`와 `posts` 조인 중 **`p.status = 'published'`**인 글만 **`pr.created_at DESC, p.id DESC`**(최근 좋아요순). ③ `북마크`: `post_bookmarks`와 `posts` 조인 중 **`p.status = 'published'`**인 글만 **`pb.saved_at DESC, p.id DESC`**(최근 저장순, 해제 후 재저장 시 `saved_at` 갱신으로 맨 앞). 철회·운영 숨김된 게시물은 목록에서 자리표시 없이 숨기되 연결 행(`post_reactions`·`post_bookmarks`)은 유지해 재공개 시 원래 시각 순서로 복원한다(C-46 D5). 커서는 `(정렬 시각 ISO, post_id UUID)` base64url JSON, `limit` 기본 20(1~50) | 확정 (C-46 D4·D5) / 커서·limit 기본값(Claude) | `SNS_검색_프로필_상세결정.md` D4·D5, `local-feed.md` H2·H6, `H-ARCH-10` |
+| Y4 | **B의 `PostCard` 재사용 및 `TODO(연결)` 규칙**: 3탭 모두 피드 목록은 2열 메이슨리(`columnGap` 12, 좌우 패딩 12)에 **B의 `PostCard`(`mobile/src/features/local-feed/PostCard.tsx`, props `{ post: FeedPost; onPress(postId); onMenu?(post); width }`)를 그대로 재사용**한다(카드를 새로 디자인하지 않음). 카드를 누르면 `/posts/[postId]`(게시물 상세)로 이동한다. B의 `LOCAL-2`(`PostCard.tsx`, `#26~#30`) 및 서버 `MY-1-P1` 머지 전에는 C7 가짜 카드·가짜 데이터 + `// TODO(연결): B LOCAL-2` / `// TODO(연결): A MY-1-P1`을 달고 구현한다 | 확정 (C-61, H4·H12) | `local-feed.md` H4·H12·C2, `CLAUDE.md` 10절, Issue #130 |
+| Y5 | **상단 프로필 정보와 팔로우 경계**: 상단 프로필은 `avatar_url`(없으면 기본 아바타), `nickname`(`user_profiles.nickname`), `bio`(한 줄 소개, `null` 가능), `"프로필 수정"` 버튼 자리를 둔다. **`팔로워 수`·`팔로워/팔로잉 목록`은 만들지 않는다**(C-46 F1). 팔로우 버튼의 대상·효과(글 모아 보기·알림)는 C-46 §8-5 미결이므로 **`MY-1`에서는 본인 `/me` 상단에 팔로우 버튼을 두지 않고** 팔로우 테이블·API는 후속 Step(`MY-2` 또는 타인 프로필)으로 분리한다 | 확정 (C-46 F1) / `MY-1` 범위 분리 기본값(Claude) | `SNS_검색_프로필_상세결정.md` F1·§8-5, `02 §3` |
+| Y6 | **D3 방문 기록 카드 북마크 연계 경계**: C-46 D3("방문 기록 카드도 북마크 대상에 포함")을 수용할 수 있도록 C3 `MyCollectionPost`에 `item_kind: "post"` 필드를 고정한다. 단 `VISIT-4`가 아직 없으므로 `MY-1`에서는 `posts`만 조회하고 방문 기록 가짜 테이블·더미 카드를 만들지 않는다(`TODO(연결): VISIT-4 D3`) | 확정 (C-46 D3) / 경계 기본값(Claude) | `SNS_검색_프로필_상세결정.md` D3, `05 §3.2` |
+| Y7 | **비로그인 처리 · 계정 전환 · 로그아웃 정화**: 비로그인(`status === "signedOut"`)에서는 `/me/profile`, `/me/posts`, `/me/reactions`, `/me/bookmarks`를 **호출하지 않고** 로그인 안내만 보인다. `userId`가 바뀌거나 로그아웃되면 진행 중인 `createLatestRunner` 요청을 모두 취소하고 이전 계정의 프로필·3탭 목록 상태를 즉시 비운다(`registerSignOutCleanup`은 `AUTH-2` 머지 전 `TODO(연결): D(AUTH-2)`) | 확정 (NFR-01, AUTH-02) | `SNS_검색_프로필_개정.md` §3, `core.md` APP-0 C2 |
+| Y8 | **색·곡률 토큰 및 공통 코드 원칙**: 모든 색·곡률은 `mobile/src/theme/tokens.ts`의 `theme.colors.*`·`theme.radii.*`만 사용한다(화면 파일 내 `#RRGGBB`·`rgb(`·숫자 곡률 하드코딩 금지). 기능 코드에 `Platform.OS`·`*.ios.tsx`·`*.android.tsx`·`*.web.tsx`를 두지 않는다 | 확정 (`PROJECT.md` §3-11·14) | `mobile/src/theme/tokens.ts`, `DEF-019` |
+
+##### 열린 칸 (A가 기획·시안 작성 후 `2_계약_보완.md`로 채울 결정 — 아래 빈 칸만 채우고 행 추가 가능)
+
+| # | 열린 항목 (A 결정 대상) | 결정 내용 (A 채움) | 상태 (A 채움) | 근거 (A 채움) |
+| :--- | :--- | :--- | :--- | :--- |
+| Y-O1 | **상단 프로필 배치·요소 상세**: 아바타 크기/모양, 닉네임·한 줄 소개(`bio === null`일 때 숨김 또는 안내 문구), `"프로필 수정"` 버튼 위치·눌렀을 때(`MY-2` 전 `"준비 중이에요"` 안내 등), 기존 `me.tsx`의 로그인/로그아웃·설정 자리와의 배치 | **왼쪽 사진 + 옆에 이름(시안 `#el-1` 후보 A 채택)**: 머리줄 왼쪽 `"내 정보"` 제목, 오른쪽 설정 `⚙` 버튼(30×30, 누르면 설정·로그아웃 자리 — `AUTH-2` 전 `TODO(연결): D(AUTH-2)`, 연결 전에는 눌러도 아무 화면도 열지 않는다). 그 아래 프로필 행: 원형 아바타 64(`avatar_url === null`이면 `theme.colors.surface3` 원 + 사람 아이콘 — 2026-11-18 C-74: 무광 판 원 `panelLit` + 1px `seamHairline`) 왼쪽, 오른쪽 세로로 계기판 `MEMBER · PROFILE`(`type.gauge`) → `nickname`(`type.title` 22/400 `inkSoft`, 2026-11-18 C-74 개정 — 이전 17 굵게) → `bio`(13, `theme.colors.textSub`) → `"프로필 수정"` 보조 버튼(`actionColors().secondary`, `theme.radii.control`, 한 줄 고정 — 이전 테두리 버튼). **프로필 영역 바탕은 유리판 `panelFrosted`**(2026-11-18 C-74 개정 — 이전 `theme.colors.bg`, 위 `MY` 머리 띠·아래 목록과 갈라져 보이던 띠 없앰). `⚙`·`↻ 새로고침`도 보조 버튼. `bio === null`이면 소개 줄을 숨긴다(안내 문구 없음). `"프로필 수정"`을 누르면 `MY-2` 전까지 화면 아래 짧은 안내 `"프로필 수정은 곧 열려요"` 2초(화면 이동 없음, API 호출 없음). 아래로 내리면 프로필 행은 위로 스크롤되어 사라지고 3탭 바가 맨 위에 붙는다(Y-O2) | 확인 (사용자 A, 2026-11-18) / `bio` 숨김·수정 안내·`⚙` 자리 기본값(Claude) | `specs/my-collection/세부/MY-1.md` 결정 1, 시안 `specs/my-collection/세부/MY-1_시안.html` `#el-1` |
+| Y-O2 | **3탭 전환 바 모양 · 스크롤 · 탭 재조회 정책**: 탭 바 스타일(밑줄/알약 등), 탭 전환 시 이미 불러온 탭 캐시 유지 vs 전환마다 재조회 여부(단, 늦은 응답은 `createLatestRunner` 필수) | **글자 + 밑줄형 탭 바**: 3칸 균등, 글자 14, 선택 탭은 500 + 아래 2 두께 `theme.colors.inkStrong` 밑줄, 바 아래 1 두께 `theme.colors.seamHairline`, 바 바탕 `panelFrosted`, 글자 한 줄 고정(2026-11-18 C-74 개정 — 이전 바탕 `bg`·아래 선 `divider`). 탭 바는 프로필 아래에 있다가 내리면 화면 맨 위에 붙는다(sticky). **캐시**: 한 번 불러온 탭의 목록(`items`·`next_cursor`)은 같은 계정·같은 화면 수명 동안 기억해 다시 눌렀을 때 그대로 보이고 재조회하지 않는다. 화면을 아래로 당기면(당겨서 새로고침) 지금 탭과 프로필을 처음부터 다시 불러온다. 게시물 상세에서 돌아와 화면이 다시 보이면 지금 탭만 조용히 다시 불러온다(받기 전까지 기존 카드 유지). 모든 조회는 `listRunner`/`profileRunner`를 거쳐 늦은 응답을 버린다(M-#6). **[D 보완] 캐시 맞추기**: 어떤 게시물의 `my_reaction`/`my_bookmark`가 바뀌면(이 화면 카드 메뉴 성공·되돌리기 성공, 또는 B `onPostReaction` 알림 — 상세 화면 등 다른 곳에서 바꾼 것) ⓐ 세 탭 캐시에 있는 그 게시물의 해당 필드를 모두 새 값으로 바꾸고, ⓑ 그 변화로 모음이 달라지는 수집 탭(`my_reaction` → `좋아요`, `my_bookmark` → `북마크`)이 **지금 보는 탭이 아니면** 그 탭 캐시를 버린다(다음에 누를 때 첫 페이지부터 다시 불러옴, 스켈레톤). 지금 보는 탭에서 해제한 카드는 Y-O4 흐림·되돌리기 흐름을 따르고, 지금 보는 탭에 새로 켜진 게시물은 다음 당겨서 새로고침·상세 복귀 재조회 때 반영된다. B `onPostWithdrawn` 알림이 오면 세 탭 캐시에서 그 게시물을 지운다. 되돌리기(`PUT`)도 같은 규칙을 따른다 | 기본값(Claude) — 중심 아님(플로우·첫눈 불변), 세부 명세 검토 메모 `[Claude가 정함]` | `specs/my-collection/세부/MY-1.md` 0절 기본값, 시안 명세 패널 "탭 바 모양"·"탭 오갈 때" |
+| Y-O3 | **각 탭 빈 상태(0건) 화면 구성**: ① `내 게시물` 0건 안내 문구·일러스트/아이콘·이동 버튼 ② `좋아요` 0건 안내 문구·이동 버튼 ③ `북마크` 0건 안내 문구·이동 버튼 (가짜 게시물 생성 금지) | **탭별 안내 + `"가까운 도서관 둘러보기"` 버튼(시안 `#el-3` 후보 A 채택, 화살표 없음)**: 프로필·탭 바는 그대로 두고 카드 자리 가운데에 **(2026-11-18 C-74 개정, 레시피 "빈 화면" — 이전: 원형 아이콘(56, `surface2`) → 굵은 안내 → 보조 한 줄 → `inkStrong` 채움 버튼)** 안내 한 줄(`type.title` 22/400 `inkSoft`) → 보조 한 줄(`theme.colors.textSub`, 또는 계기판 한 줄) → 보조 버튼(`actionColors().secondary`, `theme.radii.control`, 한 줄 고정). 그림·색 덩어리(원형 아이콘)는 두지 않는다. **비로그인 화면**은 제목 `type.title` 22/400 `inkSoft` + 계기판 `SIGN IN REQUIRED` + `"로그인"` 주 버튼(`actionColors().primary` 무광 판, `/loans` 비로그인과 같게 — 이전 `inkStrong` 채움). 아이콘·문구는 C3 열린 문구 행. 버튼은 세 탭 모두 `router.navigate("/")`(홈 탭)로 간다. 가짜 게시물·추천 게시물을 채우지 않는다 | 확인 (사용자 A, 2026-11-18) | `specs/my-collection/세부/MY-1.md` 결정 3·예외 #2, 시안 `#el-3` |
+| Y-O4 | **3탭 카드 메뉴(`onMenu`) 및 좋아요·북마크 해제 반영**: 목록에서 `PostCard` 길게 누르기/웹 호버 메뉴 연결 시, 좋아요 탭에서 좋아요 취소하거나 북마크 탭에서 북마크 해제한 뒤 목록 즉시 제거 여부 (API는 B `#29`·`#30`만 사용) | **흐리게 남고 "되돌리기", 4초 뒤 함께 빠짐(시안 `#el-2` 합친 안 D 채택)**: 카드 길게 누르기/웹 호버 `⋯`는 `PostCard`의 `onMenu`로 B의 카드 작은 창(`local-feed.md` H10: `♡ 좋아요`·`🔖 북마크`·`↗ 공유` + 책 줄)을 그대로 연다. ① `좋아요` 탭에서 켜진 `♡`를 누르면 `DELETE /posts/{id}/reaction`(#29)을 즉시 보내고, 성공하면 그 카드를 자리에 그대로 두되 흐리게(불투명도 0.45) + 좌상단 `"취소함"` 표시로 바꾸고 화면 아래에 `"좋아요를 취소했어요"` + `"되돌리기"` 안내를 4초 보인다(**2026-11-18 C-74 개정:** `"취소함"` 표시와 아래 안내 바는 `inkStrong` 채움 대신 무광 면 `panelLit` + 1px `seamHairline` + 아래 2px 받침, 곡률 9, 글자 `inkStrong`). ② 4초 안에 `"되돌리기"`를 누르면 `PUT /posts/{id}/reaction`을 보내고 성공 시 카드를 원래 모습으로 되돌린다(같은 자리 유지). ③ 4초가 지나면 안내와 흐린 카드를 함께 목록에서 지운다. ④ 흐린 카드는 한 번에 하나만 둔다: 4초 안에 다른 카드를 또 취소하면 앞서 흐려 둔 카드는 즉시 지우고 새 카드만 흐리게 + 안내를 새로 4초. ⑤ `북마크` 탭의 `🔖` 해제도 같은 동작(`DELETE/PUT /posts/{id}/bookmark` #30, 안내 `"북마크를 해제했어요"`). ⑥ `내 게시물` 탭 카드의 `♡`·`🔖`는 상태만 바꾸고 목록에서 빼지 않는다. 같은 카드에 진행 중인 요청이 있으면 다음 누름을 무시한다(C6 열린 행). **[D 보완] 연결 책임**: 작은 창은 B `PostMenu`(`mobile/src/features/local-feed/PostMenu.tsx`, B 파일 수정 금지)를 그대로 띄운다. 해제 `DELETE`와 같은 버튼 연타 막기는 `PostMenu`가 하고, MY는 `onChange(postId, patch)`를 받아 지금 수집 탭의 필드가 `false`가 되면 창을 닫고 ① 흐림 흐름을 시작하며, Y-O2 캐시 맞추기 + `emitPostReaction(postId, patch)`로 다른 피드에도 알린다. `onNotice(text)`는 그대로 화면 아래 2초 안내로 보인다. **해제 실패 문구는 시안대로 MY 문구**를 쓴다: `PostMenu`에 선택 prop `failText?(kind: "reaction" | "bookmark", e: unknown): string`을 추가하고(없으면 지금처럼 `toggleFailText(e)` — 홈·방문 페이지 동작 불변), MY는 `좋아요`·`북마크` 탭에서 그 탭의 해제(`좋아요` 탭 `reaction`, `북마크` 탭 `bookmark`)가 실패하면 C3 MY 실패 문구를, 그 밖의 누름은 `toggleFailText(e)`를 돌려준다. **되돌리기 `PUT`은 MY가 `setReaction(postId, true)`/`setBookmark(postId, true)`(B `api.ts` import)로 직접 보내고**, 진행 중이면 다음 누름을 무시한다. 같은 카드의 4초 타이머는 되돌리기를 누르는 즉시 끈다. 실패 처리(확정 실패 / 결과 불명)는 C6 예외 #5 | 확인 (사용자 A, 2026-11-18) / 4초·불투명도 값·`내 게시물` 탭 처리 기본값(Claude) | `specs/my-collection/세부/MY-1.md` 결정 2·예외 #3·#5, 시안 `#el-2` |
+| Y-O5 | **로딩 · 오류 · 다음 페이지(`next_cursor`) 불러오기 방식**: 상단 프로필/탭별 로딩 스켈레톤·문구, 실패 시 오류 문구 + `"다시 시도"`(부분 실패 시 나머지 영역 유지), `next_cursor !== null`일 때 끝까지 스크롤 vs `"더 보기"` 버튼 | **로딩**: 처음 불러오는 동안 프로필 자리(원 + 회색 줄 2개)와 카드 자리(2열 회색 상자 4개, `theme.colors.surface2`, `theme.radii.card`)에 빈 모양(스켈레톤)을 보이고, 받으면 바로 바꾼다(문구 없음). **실패(부분 실패 유지)**: 실패한 영역만 C3 실패 문구 + `"↻ 새로고침"` 테두리 버튼(아이콘 글자 왼쪽, 홈 `VISIT-1`·`VISIT-1b`와 같은 표현). 프로필 실패 → 프로필 자리 한 줄, 탭·카드 유지. 탭 목록 실패 → 카드 자리, 프로필·탭 바 유지. 누르면 실패 영역만 다시 부른다. **다음 페이지**: `next_cursor !== null`이면 끝까지 내렸을 때 자동으로 이어 불러온다(버튼 없음, 중복 호출 방지). 이어 불러오는 중에는 맨 아래 `"불러오는 중…"`, 실패하면 맨 아래 `"더 불러오지 못했어요"` + `"↻ 새로고침"`(보이던 카드 유지)이며, 맨 아래에서 한 번 더 끝까지 내려도 같은 재시도를 한다. `next_cursor === null`이면 맨 아래 `"모두 봤어요"` | 확인 (사용자 A, 2026-11-18: 실패 화면·아이콘 왼쪽·한 번 더 내려 재시도) / 스켈레톤·자동 이어 불러오기 기본값(Claude) | `specs/my-collection/세부/MY-1.md` 예외 #1·#6, 시안 `#except` ①②③⑧ |
+
+#### C2. 엔드포인트 / 주요 함수 (잠금)
+
+| 메서드·경로 (`/api/v1` 접두어) | 인증 필요 | 성공 상태 | 날짜 형식 | 목록이면 페이지·정렬 | 같은 요청을 연타·재시도하면 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `GET /api/v1/me/profile` | 필수 (`get_current_user`) | `200` | `updated_at`: ISO 8601 `+09:00` (서울) | N/A (단건 본인 프로필) | N/A (읽기만, 몇 번 해도 같음) |
+| `GET /api/v1/me/posts?cursor=&limit=` | 필수 (`get_current_user`) | `200` | `published_at`·`collected_at`: ISO 8601 `+09:00` (서울) | `limit` 기본 20(1~50), 정렬 `p.published_at DESC, p.id DESC`, 커서 `(published_at, id)` base64url | N/A (읽기만, 몇 번 해도 같음) |
+| `GET /api/v1/me/reactions?cursor=&limit=` | 필수 (`get_current_user`) | `200` | `published_at`·`collected_at`: ISO 8601 `+09:00` (서울) | `limit` 기본 20(1~50), 정렬 `pr.created_at DESC, p.id DESC`, 커서 `(created_at, post_id)` base64url | N/A (읽기만, 몇 번 해도 같음) |
+| `GET /api/v1/me/bookmarks?cursor=&limit=` | 필수 (`get_current_user`) | `200` | `published_at`·`collected_at`: ISO 8601 `+09:00` (서울) | `limit` 기본 20(1~50), 정렬 `pb.saved_at DESC, p.id DESC`, 커서 `(saved_at, post_id)` base64url | N/A (읽기만, 몇 번 해도 같음) |
+
+- 서버 함수(`server/app/routers/my_collection.py`, A):
+  - `async def get_my_profile(request: Request, user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]`
+  - `async def list_my_posts(request: Request, cursor: str | None = None, limit: int = 20, user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]`
+  - `async def list_my_reactions(request: Request, cursor: str | None = None, limit: int = 20, user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]`
+  - `async def list_my_bookmarks(request: Request, cursor: str | None = None, limit: int = 20, user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]`
+- 앱 함수(`mobile/src/features/my-collection/api.ts`, A):
+  - `fetchMyProfile(signal?: AbortSignal): Promise<MyProfile>`
+  - `fetchMyPosts(page?: { cursor?: string | null; limit?: number }, signal?: AbortSignal): Promise<MyCollectionPage>`
+  - `fetchMyReactions(page?: { cursor?: string | null; limit?: number }, signal?: AbortSignal): Promise<MyCollectionPage>`
+  - `fetchMyBookmarks(page?: { cursor?: string | null; limit?: number }, signal?: AbortSignal): Promise<MyCollectionPage>`
+
+#### C3. 요청·응답 필드와 화면 문구
+
+##### DTO 스키마 (잠금 — 필드 추가·삭제·이름 변경 불가)
+
+| 구분 | 필드/키 | 타입 | 필수 | 설명 |
+| :--- | :--- | :--- | :--- | :--- |
+| 요청 (`/me/posts`·`/reactions`·`/bookmarks`) | `cursor` | `str \| null` | N | base64url JSON `[ts_iso, post_id_uuid]`. 깨진 값·형식 불일치는 `422 VALIDATION_ERROR`, `detail="cursor"` |
+| 요청 (`/me/posts`·`/reactions`·`/bookmarks`) | `limit` | `int` | N | 기본 `20`, 허용 `1 <= limit <= 50`. 범위 밖은 `422 VALIDATION_ERROR`, `detail="limit"` |
+| 요청 (공통) | `user_id` 등 쿼리/본문 | — | — | **무시**(토큰 `sub`만 사용, Y2) |
+| 응답 (`GET /me/profile`) `MyProfile` | `user_id` | `str (UUID)` | Y | 본인 식별자 (`user.id`) |
+| `MyProfile` | `nickname` | `str` | Y | `user_profiles.nickname` (행 없으면 `"이웃"`, `nickname_of` 규칙) |
+| `MyProfile` | `bio` | `str \| null` | Y | 한 줄 소개 (`user_profiles.bio`, 없으면 `null`) |
+| `MyProfile` | `avatar_url` | `str \| null` | Y | 프로필 사진 `https://` 주소 (`user_profiles.avatar_url`, 없으면 `null`) |
+| `MyProfile` | `updated_at` | `str (ISO, +09:00)` | Y | `user_profiles.updated_at` (행 없으면 `users.created_at`) |
+| 응답 (목록 3개) `MyCollectionPage` | `items` | `MyCollectionPost[]` | Y | 목록 배열 (없으면 `[]`) |
+| `MyCollectionPage` | `next_cursor` | `str \| null` | Y | 다음 페이지 커서 (끝이면 `null`) |
+| `MyCollectionPost` (`FeedPost` 호환) | `id` | `str (UUID)` | Y | `posts.id` |
+| `MyCollectionPost` | `library_id` | `int` | Y | `posts.library_id` |
+| `MyCollectionPost` | `library_name` | `str` | Y | `libraries.name` |
+| `MyCollectionPost` | `image_kind` | `"photo" \| "cover" \| "color"` | Y | `posts.image_kind` |
+| `MyCollectionPost` | `image_url` | `str \| null` | Y | `photo`: 저장소 공개 주소, `cover`: 책 표지 주소, `color`: `null` (`local-feed.md` C3 동일) |
+| `MyCollectionPost` | `image_color` | `str \| null` | Y | `color`일 때만 색 토큰 이름 |
+| `MyCollectionPost` | `overlay_text` | `str \| null` | Y | 이미지 위 글자 |
+| `MyCollectionPost` | `book` | `{ isbn13: str; title: str; author: str \| null } \| null` | Y | 카드 메뉴 책·저자 검색 줄용 |
+| `MyCollectionPost` | `published_at` | `str (ISO, +09:00)` | Y | `posts.published_at` |
+| `MyCollectionPost` | `my_reaction` | `bool` | Y | 본인의 공감 여부 (`/me/reactions`는 항상 `true`) |
+| `MyCollectionPost` | `my_bookmark` | `bool` | Y | 본인의 북마크 여부 (`/me/bookmarks`는 항상 `true`) |
+| `MyCollectionPost` | `item_kind` | `"post"` | Y | `MY-1`에서는 `"post"` 고정 (C-46 D3 방문 기록 카드 확장 대비, Y6) |
+| `MyCollectionPost` | `collected_at` | `str (ISO, +09:00)` | Y | `/me/posts`: `published_at`, `/me/reactions`: `post_reactions.created_at`, `/me/bookmarks`: `post_bookmarks.saved_at` |
+
+##### 잠금 화면 문구
+
+| 구분 | 대상 | 타입 | 필수 | 고정 문구 |
+| :--- | :--- | :--- | :--- | :--- |
+| 화면 문구 | 하단 탭 이름 | — | — | `"내 정보"` (`core.md` K13, `_layout.tsx:20`) |
+| 화면 문구 | 3탭 라벨 순서 | — | — | `"내 게시물"` · `"좋아요"` · `"북마크"` (Y1, C-46 F2) |
+| 화면 문구 | 비로그인 로그인 버튼 | — | — | `"로그인"` (`→ /login`, 기존 `routes.test.tsx:153` 호환) |
+
+##### 열린 화면 문구 (A가 명세·시안 작성 후 빈 칸 채움)
+
+| 구분 | 대상 (명세서/열린 칸 ID) | 타입 | 필수 | 설명·고정 문구 (A 채움) |
+| :--- | :--- | :--- | :--- | :--- |
+| 화면 문구 | 비로그인 안내 문구 (`Y-O1`) | — | — | 굵게 `"로그인하면 내 정보를 볼 수 있어요"` + 보조 `"내가 올린 게시물과 좋아요·북마크한 게시물을 모아 봐요"` + 잠금 `"로그인"` 버튼. 프로필·탭 바·카드는 그리지 않는다 (예외 #4, 시안 `#except` ⑦) |
+| 화면 문구 | 상단 프로필 수정 버튼 및 미구현 안내 (`Y-O1`) | — | — | 버튼 `"프로필 수정"`. 누르면 아래 안내 `"프로필 수정은 곧 열려요"` 2초 (`MY-2` 전, 결정 1) |
+| 화면 문구 | 한 줄 소개(`bio`) 미설정 시 표시 (`Y-O1`) | — | — | N/A: 문구 없음 — `bio === null`이면 소개 줄 자체를 숨긴다 (결정 1, 사용자 "자기소개 없을 때 칸 절약되는 거 나쁘지 않은 거 같아") |
+| 화면 문구 | `내 게시물` 탭 빈 상태 문구·버튼 (`Y-O3`) | — | — | 아이콘 `✎` · `"아직 올린 게시물이 없어요"` · `"도서관 방문 페이지에서 첫 글을 올려 보세요"` · 버튼 `"가까운 도서관 둘러보기"` (결정 3) |
+| 화면 문구 | `좋아요` 탭 빈 상태 문구·버튼 (`Y-O3`) | — | — | 아이콘 `♡` · `"아직 좋아요한 게시물이 없어요"` · `"마음에 드는 게시물에 ♡를 누르면 여기 모여요"` · 버튼 `"가까운 도서관 둘러보기"` (결정 3) |
+| 화면 문구 | `북마크` 탭 빈 상태 문구·버튼 (`Y-O3`) | — | — | 아이콘 `🔖` · `"아직 북마크한 게시물이 없어요"` · `"다시 보고 싶은 게시물을 북마크하면 여기 모여요"` · 버튼 `"가까운 도서관 둘러보기"` (결정 3) |
+| 화면 문구 | 상단 프로필 / 각 탭 조회 실패 문구·재시도 (`Y-O5`) | — | — | 프로필 `"내 정보를 불러오지 못했어요"`, 탭 목록 `"게시물을 불러오지 못했어요"`, 버튼 `"↻ 새로고침"` (예외 #1). [D 결정 2026-11-18] 잠금 M-#7·P5의 `"다시 시도"`를 홈(`VISIT-1`·`VISIT-1b`)과 같은 `"↻ 새로고침"`으로 맞춤 |
+| 화면 문구 | 좋아요 취소·북마크 해제 안내와 되돌리기 (`Y-O4`) | — | — | `"좋아요를 취소했어요"` / `"북마크를 해제했어요"` + `"되돌리기"`(4초), 흐린 카드 표시 `"취소함"` (결정 2) |
+| 화면 문구 | 좋아요 취소·북마크 해제·되돌리기 실패 (`Y-O4`) | — | — | `"좋아요를 취소하지 못했어요. 다시 해 주세요"` / `"북마크를 해제하지 못했어요. 다시 해 주세요"` / `"되돌리지 못했어요"` 2초 (예외 #5, 시안 문구 그대로 — [D 결정 2026-11-18]). 해제 실패 문구는 `PostMenu` 선택 prop `failText`로 넘긴다(Y-O4). 수집 탭의 해제가 아닌 누름(예: `좋아요` 탭에서 `🔖` 켜기) 실패는 B `toggleFailText` 문구 |
+| 화면 문구 | 다음 페이지 불러오는 중 / 목록 끝 문구 (`Y-O5`) | — | — | 불러오는 중 `"불러오는 중…"`(말줄임표는 실제 화면 문자열), 실패 `"더 불러오지 못했어요"` + `"↻ 새로고침"`, 끝 `"모두 봤어요"` (예외 #1) |
+
+#### C4. 플랫폼 분기 표 (잠금)
+
+해당 없음: iOS·Android·웹 공통 React Native 코드로 작성한다. `PostCard` 길게 누르기/웹 호버와 공유 분기는 B `local-feed`(`PostCard.tsx`, `share.ts`)가 담당하며 `my-collection` 코드에 `Platform.OS`·`*.ios.tsx`·`*.android.tsx`·`*.web.tsx`를 두지 않는다(Y8).
+
+#### C5. 테이블 (잠금)
+
+**1) `user_profiles` 확장** — 역할: 내 정보 상단 표시 프로필(`nickname`, `bio`, `avatar_url`) · 소유자 컬럼: `user_id` · 담당 마이그레이션: `0003_user_profiles.py`는 이미 push되었으므로 `MY-1-P1`에서 새 순번 파일(`NNNN_user_profiles_bio_avatar.py`, 머지 시 `head` 이후)로 `ALTER TABLE` 추가(`H-GIT-04`)
+
+| 컬럼 | 타입 | NULL | 기본값 | 키·제약 (PK/FK/UNIQUE/CHECK) | 설명 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `user_id` | `uuid` | 아니오 | 없음 | PK, FK → `users.id` | 기존(`0003_user_profiles.py:16`) |
+| `nickname` | `text` | 아니오 | 없음 | CHECK `char_length(btrim(nickname)) BETWEEN 1 AND 40` | 기존(`0003_user_profiles.py:18,21`) |
+| `bio` | `text` | 예 | 없음 (`NULL`) | CHECK `bio IS NULL OR char_length(btrim(bio)) BETWEEN 1 AND 160` | **신규(`MY-1-P1`)**: 한 줄 소개 (최대 160자) |
+| `avatar_url` | `text` | 예 | 없음 (`NULL`) | CHECK `avatar_url IS NULL OR avatar_url LIKE 'https://%'` | **신규(`MY-1-P1`)**: 프로필 사진 `https://` 주소 |
+| `updated_at` | `timestamptz` | 아니오 | `now()` | — | 기존(`0003_user_profiles.py:19`) |
+
+| 삭제 동작 | 값 |
+| :--- | :--- |
+| 이 테이블의 행을 지울 때 | 지우지 않는다. 탈퇴 때 익명화는 `AUTH-3` 계약서(`core.md` SRV-0 C5) |
+| 부모(`users`)가 지워질 때 | `NO ACTION` (`0003_user_profiles.py` 그대로) |
+| 허용하지 않는 값 | 공백만 있는 `bio`·161자 이상 `bio` · `https://`가 아닌 `avatar_url` → CHECK 거부 (`test_user_profiles_bio_avatar_checks`) |
+| 행 수준 보안(RLS) | `0003_user_profiles.py:24`의 `ENABLE ROW LEVEL SECURITY` 유지, 정책 없음 + `test_user_profiles_rls_enabled` |
+
+**2) 조회 대상 기존/B 소유 테이블 (A가 수정·생성하지 않음 — 잠금)**
+
+- `posts` (`local-feed.md` LOCAL-1 C5 `0004_posts.py`): `WHERE p.user_id = :uid AND p.status = 'published'`, 정렬 `p.published_at DESC, p.id DESC`
+- `post_reactions` (`local-feed.md` LOCAL-2 C5, 실제 파일 `0006_post_reactions_bookmarks.py` — [D 보완] 기준선의 `0005`는 머지 순서로 바뀜): `WHERE pr.user_id = :uid AND p.status = 'published'`, 정렬 `pr.created_at DESC, p.id DESC`
+- `post_bookmarks` (`local-feed.md` LOCAL-2 C5, 실제 파일 `0006_post_reactions_bookmarks.py`): `WHERE pb.user_id = :uid AND p.status = 'published'`, 정렬 `pb.saved_at DESC, p.id DESC`
+- `users` (`0001_users.py`), `libraries`·`books` (`0002_public_reference.py`)
+- 팔로우 테이블은 C-46 §8-5 미결에 따라 `MY-1`에서 만들지 않는다(Y5).
+
+#### C6. 검증과 에러 처리
+
+##### 잠금 오류 처리 (`M-#1` ~ `M-#7`)
+
+| 예외 # | 발생 조건 | HTTP 상태 / 에러 `code` | 화면 문구·동작 | 기록 무변경 보장 |
+| :--- | :--- | :--- | :--- | :--- |
+| `M-#1` | 토큰 없음·깨짐·만료·미등록 / 비로그인 상태에서 `/me` 진입 | `401` / `AUTH_REQUIRED` · `AUTH_INVALID` · `AUTH_EXPIRED` · `AUTH_NOT_REGISTERED` | 앱: 비로그인 상태는 API 요청 0번, 로그인 안내 + `"로그인"`(`→ /login`) 표시 | DB·기기 무변경 |
+| `M-#2` | 탈퇴한 계정 (`users.status = 'withdrawn'`) | `403` / `ACCOUNT_WITHDRAWN` | `"탈퇴한 계정이에요."` | 무변경 |
+| `M-#3` | 잘못된 `cursor`(깨진 base64url·JSON·잘못된 ISO/UUID 타입) 또는 `limit` 범위 밖(`< 1`·`> 50`) | `422` / `VALIDATION_ERROR`, `detail="cursor"` 또는 `"limit"` | 서버: `"요청 형식이 올바르지 않아요."` | 무변경 |
+| `M-#4` | 쿼리/헤더로 타인의 `user_id`를 전달 (`?user_id=<other>`) | 무시하고 `200` (본인 데이터만 반환) | 본인 프로필·본인 3탭 목록만 표시 (타인 데이터 노출 0건) | 타인 데이터 접근 0 |
+| `M-#5` | 내가 쓴 글 또는 좋아요·북마크한 글이 `withdrawn`·`hidden` 상태임 | `200` (목록에서 제외) | 자리표시 카드 없이 숨김. 연결 행(`post_reactions`·`post_bookmarks`)은 유지되어 재공개 시 원래 순서로 복원 | 연결 행 무변경 |
+| `M-#6` | 탭 빠르게 전환(`내 게시물` ↔ `좋아요` ↔ `북마크`)·새로고침 연타·계정 전환 중 늦은 응답 | 늦은 `200` 또는 늦은 오류 | `createLatestRunner`가 이전 요청 취소·`stale` 폐기(`AC-RACE`), 현재 선택 탭·계정 화면 무변경 | — |
+| `M-#7` | 네트워크 끊김(`status 0`)·서버 `503 DB_UNAVAILABLE` | `503` / `DB_UNAVAILABLE` 또는 `NETWORK` | 실패한 영역(상단 프로필 또는 활성 탭 목록)만 오류 안내 + `"↻ 새로고침"`([D 결정 2026-11-18] 기준선 `"다시 시도"`에서 변경, 홈과 같게), 정상 영역 유지 | 기기 상태 무변경 |
+
+##### 열린 예외/동작 행 (A가 명세서 예외 표 작성 후 빈 칸 채움)
+
+| 명세서 예외 # (A 채움) | 발생 조건 | HTTP / `code` | 화면 변화·유지 영역 (A 채움) | 기록 무변경 보장 (A 채움) |
+| :--- | :--- | :--- | :--- | :--- |
+| 예외 #2 (결정 3) | 각 탭 조회 결과가 `items: []` (0건) | `200` (`items: []`) | 프로필·탭 바 유지, 카드 자리만 탭별 빈 안내 + `"가까운 도서관 둘러보기"`(→ 홈 탭). 다른 탭 캐시는 그대로 | 조회만 함. DB·기기 무변경, 가짜 게시물 0 |
+| 결정 1 | `"프로필 수정"` 버튼 누름 (`MY-1` 범위) | N/A: 기기 내 처리 | 화면 이동 없이 아래 `"프로필 수정은 곧 열려요"` 2초. 연타해도 안내는 하나만 | API 호출 0, DB·기기 무변경 |
+| 결정 2 | 카드 메뉴에서 좋아요 취소 또는 북마크 해제 후 수집 탭 반영 | B `#29`·`#30` (`200`) | `DELETE` 성공 → 카드 자리 유지 + 흐림 + `"취소함"`, 아래 안내 + `"되돌리기"` 4초 → 4초 뒤 카드·안내 함께 제거. 4초 안에 다른 카드 취소 시 앞 흐린 카드 즉시 제거. `"되돌리기"` → `PUT` 성공 시 같은 자리 원래 모습(다음 재조회 때는 B 계약대로 새 시각 기준 맨 앞) | 서버 행은 B #29·#30 결과만 반영(`DELETE` 행 0개, `PUT` 행 1개). 다른 카드 무변경. [D 보완] 다른 탭 캐시는 Y-O2 캐시 맞추기(같은 게시물 필드 갱신, 모음이 달라진 다른 수집 탭 캐시는 버림) |
+| 예외 #3 | 같은 카드의 `♡`/`🔖` 또는 `"되돌리기"`를 빠르게 두 번 누름 | N/A: 기기 내 처리 (진행 중 요청 1개만) | 첫 누름만 보내고 응답 전 같은 카드 누름은 무시. 흐린 카드·안내 하나만 | 요청 1회, 행 수는 B 멱등 규칙 그대로 |
+| 예외 #5 (확정 실패) | [D 보완] 좋아요 취소·북마크 해제 `DELETE` 또는 되돌리기 `PUT`에 서버가 **4xx 오류로 답함**(B `H-#3`·`H-#4` 등) | B `#29`·`#30` `4xx` | `DELETE`: 카드를 흐리게 하지 않고 원래대로 + `"좋아요를 취소하지 못했어요. 다시 해 주세요"`(북마크: `"북마크를 해제하지 못했어요. 다시 해 주세요"`) 2초. `PUT`: `"되돌리지 못했어요"` 2초 후 흐린 카드 제거 | 서버가 처리하지 않았다고 답한 경우만 "서버 행 무변경"으로 본다. `DELETE` 확정 실패 → 기기 목록 그대로, `PUT` 확정 실패 → 서버는 해제 상태라 카드 제거가 맞음 |
+| 예외 #5 (결과 불명) | [D 보완] 같은 요청이 **응답 없이 끊김(`status 0`, `NETWORK`) 또는 `5xx`**(`503 DB_UNAVAILABLE` 포함 — 커밋 뒤 응답만 잃었을 수 있음) | `NETWORK` / `5xx` | 안내는 확정 실패와 같다(`DELETE`: 카드 원래대로 + `"좋아요를 취소하지 못했어요. 다시 해 주세요"`(북마크: `"북마크를 해제하지 못했어요. 다시 해 주세요"`), `PUT`: `"되돌리지 못했어요"` 2초). 단 카드를 지우거나 남기는 것을 기기 혼자 정하지 않고, 안내 뒤 **지금 탭을 조용히 첫 페이지부터 다시 불러와**(Y-O2 상세 복귀와 같은 방식: 응답 전 기존 카드 유지, 흐린 카드는 그 자리에서 보통 모습으로) 서버 목록대로 맞추고, 모음이 달라졌을 수 있는 다른 수집 탭 캐시는 버린다. 다시 불러오기도 실패하면 M-#7 실패 안내 | 서버 행은 B #29·#30 멱등 규칙대로 어느 쪽이든 1회 반영 가능 — 기기는 기존 `GET`(`/me/reactions`·`/me/bookmarks`) 결과로 수렴. 새 API·B 파일 변경 없음 |
+| [D 보완] 캐시 맞추기 | 다른 탭 카드 메뉴 또는 게시물 상세에서 같은 게시물의 좋아요·북마크를 바꿈(B `onPostReaction`), 또는 상세에서 글을 내림(B `onPostWithdrawn`) | N/A: 기기 내 처리 | 세 탭 캐시의 같은 게시물 필드를 새 값으로 바꿈. 모음이 달라진 수집 탭이 지금 탭이 아니면 캐시를 버려 다음 진입 때 첫 페이지부터 다시 불러옴. 내린 글은 세 탭에서 지움 | 서버 요청 추가 0(다음 진입 때만 조회). 옛 `my_bookmark`·`my_reaction`으로 다음 메뉴 동작을 반대로 보내지 않음 |
+| 예외 #1 | 다음 페이지 조회 실패 | `503 DB_UNAVAILABLE` / `NETWORK` | 보이던 카드 유지, 맨 아래 `"더 불러오지 못했어요"` + `"↻ 새로고침"`. 버튼 또는 맨 아래에서 한 번 더 내리면 같은 `next_cursor`로 재시도 | 기기 목록·커서 무변경 |
+
+#### C7. 다른 기능과 닿는 곳과 `TODO(연결)` 가짜 값
+
+| 의존 대상 | 필요한 것 | `main` 연결 상태 및 `TODO(연결)` 가짜 값 규칙 |
+| :--- | :--- | :--- |
+| D `AUTH-1` · `SRV-0` | `get_current_user`, `nickname_of`, `useAuth`, `apiFetch` | `origin/main` `cb25785`에 **머지 완료** — 그대로 import해 사용 |
+| D `APP-0` | `theme`, `onFill`, `createLatestRunner`, `mobile/app/(tabs)/me.tsx` 스텁 | `origin/main` `cb25785`에 **머지 완료** — `MY-1-P2`가 `(tabs)/me.tsx` 스텁을 교체 |
+| D `AUTH-2` | `registerSignOutCleanup`, 설정·로그아웃 연결 | 미구현 — 부르지 않고 `// TODO(연결): D(AUTH-2) registerSignOutCleanup` 주석 + `useAuth().userId` 변화로 상태 초기화 |
+| B `LOCAL-1` · `LOCAL-2` (서버) | `posts`, `post_reactions`, `post_bookmarks` 테이블(`0004_posts.py`·`0006_post_reactions_bookmarks.py`) | [D 보완] `origin/main` `e54da73`에 **머지 완료** — 시험용 테이블 없이 실제 마이그레이션(`alembic upgrade head`) 위에서 시험. `MY-1-P1` 새 마이그레이션은 머지 시점 `head` 다음 순번(2026-11-18 발행 시점 `head` = `0008_loans.py` → `0009_…`부터, 머지 전에 다시 확인) |
+| B `LOCAL-2-P3` · `P4` (앱) | `PostCard` (`mobile/src/features/local-feed/PostCard.tsx`), `PostMenu`(`PostMenu.tsx`), `setReaction`·`setBookmark`·`onPostReaction`·`emitPostReaction`·`onPostWithdrawn`(`api.ts`), `/posts/[postId]` | [D 보완] `origin/main` `e54da73`에 **머지 완료** — 가짜 카드·가짜 메뉴 없이 실제 `PostCard`(`onMenu` 사용)·`PostMenu`를 import. B 파일은 `PostMenu.tsx`에 선택 prop `failText` 추가만 허용(Y-O4, 기본값 = 지금 동작, 발행 때 `local-feed.md` C2에도 기록). 연결 책임은 Y-O4 `[D 보완] 연결 책임`. local-feed C2의 "A가 `onMenu` 없이 쓴다"는 홈 하단 창 이야기이며 내 정보 화면은 `onMenu`를 쓴다. 상세 경로 `/posts/[postId]`는 B `PostDetail` |
+| A `MY-1-P1` → `MY-1-P2` (앱 단독 선행 시) | `GET /api/v1/me/profile` · `/me/posts` · `/me/reactions` · `/me/bookmarks` 가짜 응답 | `MyProfile` 가짜: `{"user_id":"00000000-0000-4000-8000-00000000000a","nickname":"이웃-0000","bio":"동네 도서관 산책을 좋아해요","avatar_url":null,"updated_at":"2026-11-17T09:00:00+09:00"}` / `MyCollectionPage` 가짜: `{"items":[{"id":"7c9e6679-7425-40de-944b-e07fc1f90ae7","library_id":101,"library_name":"정독도서관","image_kind":"color","image_url":null,"image_color":"fill2","overlay_text":"마음에 남은 문장","book":{"isbn13":"9788936434120","title":"소년이 온다","author":"한강"},"published_at":"2026-11-15T19:20:00+09:00","my_reaction":true,"my_bookmark":false,"item_kind":"post","collected_at":"2026-11-16T10:00:00+09:00"}],"next_cursor":null}` + `// TODO(연결): A MY-1-P1` |
+| A `VISIT-4` (M2 후속) | 방문 기록 카드 북마크 통합(C-46 D3) | 미구현 — `item_kind: "post"`만 지원하고 `TODO(연결): VISIT-4 D3` |
+
+---
+
+### 구현 계획
+
+#### P1. 확인한 기존 코드 전제 (`origin/main` `cb25785` 기준)
+
+| 참조 대상 | 실제 경로와 줄 (`file:line`) | 재사용할 심볼·시그니처·역할 |
+| :--- | :--- | :--- |
+| 사용자 검증·닉네임 | `server/app/auth.py:163-173`(`nickname_of`), `:176-184`(`get_current_user`) | 그대로 import해 사용 |
+| 트랜잭션·오류·시각 | `server/app/db.py:16-28`(`run_db`), `server/app/common.py:11-37`(`ApiError`, `error_response`, `now_kst`) | 그대로 import해 사용 |
+| 라우터 등록·422 | `server/app/main.py:50-58,89-111` | `# ── [my-collection-A] ──` 블록으로 라우터 등록 |
+| 선행 마이그레이션 | `server/migrations/versions/0003_user_profiles.py:13-24` | `user_profiles` 테이블과 RLS 유지, 새 순번 파일로 `bio`·`avatar_url` 추가 |
+| 하단 탭·내 정보 스텁 | `mobile/app/(tabs)/_layout.tsx:18-21`, `mobile/app/(tabs)/me.tsx:1-69`, `mobile/src/__tests__/routes.test.tsx:23-27,149-163` | `_layout.tsx`는 `"me"`(`"내 정보"`) 유지. `me.tsx` 교체 및 `routes.test.tsx` `HomeScreen` 방식 mock 정합 |
+| 앱 인증·통신·러너·토큰 | `mobile/src/auth/AuthProvider.tsx:253-259`(`useAuth`), `mobile/src/auth/apiFetch.ts:72-116`(`apiFetch`), `mobile/src/lib/latest.ts:6-25`(`createLatestRunner`), `mobile/src/theme/tokens.ts:31-143`(`theme`, `onFill`) | 그대로 import해 사용 |
+| 가짜 카드 패턴 | `mobile/src/features/library-visit/__fakes__/PostCard.tsx:9-46` | [D 보완] B `PostCard` 머지 완료로 쓰지 않음(참고만) |
+| [D 보완] B 카드·메뉴·반응 (`origin/main` `e54da73`) | `mobile/src/features/local-feed/PostCard.tsx:17-24`, `PostMenu.tsx:61-102`, `api.ts:102-147,167-194`, `server/migrations/versions/0006_post_reactions_bookmarks.py` | `PostCard`·`PostMenuProps { post; signedIn; authLoading?; onClose; onChange(postId, patch); onNotice(text); onLoginNeeded }`(+ MY-1-P2가 선택 prop `failText?` 추가, `PostMenu.tsx:96-97` `catch`에서 `onNotice(failText ? failText(kind, e) : toggleFailText(e))`)·`toggleFailText`, `setReaction(postId, on)`·`setBookmark(postId, on)`, `onPostReaction`·`emitPostReaction`·`onPostWithdrawn` 그대로 import |
+
+#### P2. Step 및 파트 분할 표 (잠금 칸과 열린 칸 명시)
+
+> Step 하나 = 브랜치 `feat/my-collection-MY-1` 하나 = PR 하나. `MY-1-P1` 검증·커밋·CI 확인 후 같은 브랜치에 `MY-1-P2`를 이어서 커밋한다.
+
+##### 잠금 칸 vs 열린 칸 구분 표
+
+| 구분 | 대상 절 · 항목 | 상태 | 안내 |
+| :--- | :--- | :--- | :--- |
+| **잠금 칸** (D 기준선 고정) | Pre-flight, C1 `Y1~Y8`, C2 엔드포인트·함수 시그니처, C3 `MyProfile`·`MyCollectionPage`·`MyCollectionPost` DTO 및 잠금 문구, C4, C5 `user_profiles` 확장·B 테이블 참조, C6 `M-#1~M-#7`, C7 의존/가짜 값, P1, P2 브랜치·허용 파일 목록·10칸 머리말 구조, P3, P4 골격, P5 기본 18개 테스트 | **잠금** | A는 이 칸의 이름·필드·오류 코드·파일 목록·파트 경계를 바꾸지 않는다 |
+| **열린 칸** (A 채움 대상) | C1 `Y-O1~Y-O5`, C3 열린 화면 문구 8행, C6 열린 예외/동작 3행, P2 아래 "A 보완 확인 항목", P5 `MY-1-P2` 명세·시안 기반 추가 테스트 행 | **열린 칸** | A의 AI가 기획(명세서+시안) 완료 후 `2_계약_보완.md` 규칙에 맞춰 빈 칸 채움 및 행 추가로 보완해 계약 수정본 PR 제출 |
+
+##### 파트 분할과 담당 파일 (허용 파일 목록 잠금)
+
+| 파트 | 브랜치 | 수정/생성 허용 파일(전수, 잠금) | 완료 시 확인할 항목 (잠금 + 열린 칸) |
+| :--- | :--- | :--- | :--- |
+| `MY-1-P1` 서버: 내 프로필 및 3탭 모음 조회 API | `feat/my-collection-MY-1` | `server/migrations/versions/NNNN_user_profiles_bio_avatar.py`, `server/app/routers/my_collection.py`, `server/app/main.py`(`# ── [my-collection-A] ──` 블록만), `server/tests/test_my_collection.py` | 잠금: `Y1~Y3·Y5·Y6, C2~C3, C5, M-#1~#5, P5 MY-1-P1 시험` |
+| `MY-1-P2` 앱: 내 정보 화면 (상단 프로필 + 3탭 2열 피드) | `feat/my-collection-MY-1` (같은 PR) | `mobile/app/(tabs)/me.tsx`, `mobile/src/features/my-collection/MyCollectionScreen.tsx`, `mobile/src/features/my-collection/ProfileHeader.tsx`, `mobile/src/features/my-collection/CollectionTabs.tsx`, `mobile/src/features/my-collection/api.ts`, `mobile/src/features/my-collection/useMyCollection.ts`, `mobile/src/features/my-collection/__fakes__/myCollectionApi.ts`, `mobile/src/features/my-collection/__tests__/my-collection.test.tsx`, `mobile/src/features/local-feed/PostMenu.tsx`([D 보완] 선택 prop `failText` 추가만), `mobile/src/__tests__/routes.test.tsx`, `specs/my-collection/명세서.md`(또는 `specs/my-collection/세부/MY-1.md` 구현 진행 상태) | 잠금: `Y1·Y4·Y5·Y7·Y8, M-#1·#6·#7, P5 MY-1-P2 시험` + A 보완(열린 칸 채움) |
+
+| 열린 칸 (A 보완): `MY-1-P2` 완료 시 추가 확인할 명세서 결정·예외 ID (A 채움) | |
+| :--- | :--- |
+| `MY-1-P2` 명세서 결정·예외 ID | `specs/my-collection/세부/MY-1.md` 결정 1(Y-O1)·결정 2(Y-O4)·결정 3(Y-O3), 예외 #1~#6(Y-O5·C6 열린 행), 기본값(Claude) Y-O2 탭 바·캐시·당겨서 새로고침·상세 복귀 재조회(P5 `revisiting loaded tab...`·`pull to refresh...`·`returning from post detail...`). 추가 P5 `MY-1-P2` 열린 테스트 11행 + [D 보완] 3행(캐시 맞추기·결과 불명 수렴·`PostMenu` `failText` 기본값 유지) |
+
+##### 파트 머리말 — MY-1-P1 / MY-1-P2 (Step 하나 = 브랜치 `feat/my-collection-MY-1` 하나 = PR 하나)
+
+| 칸 | `MY-1-P1` | `MY-1-P2` |
+| :--- | :--- | :--- |
+| 1. 태스크 ID | `MY-1-P1` | `MY-1-P2` |
+| 2. 담당 역할 | A | A |
+| 3. 기준선 버전 | B2 이후 M2/C-46 확장 (`MY-1` D 확정판 2026-11-18) | 같음 |
+| 4. 계약서 커밋 | `d00b205c896ff54871c5e13350ef3fa449636f55` (MY-1 D 확정판 본문 커밋) | 같음 |
+| 5. 선행 태스크 | 기획 명세서·시안 PR + 계약 수정본 PR 모두 D 승인·발행 완료. ([D 보완] B 테이블은 `main`에 있음 — 실제 마이그레이션 위에서 검증) | 같은 브랜치·PR 안 `MY-1-P1` 구현·검증·커밋·CI 확인 완료 ([D 보완] B `PostCard`·`PostMenu`는 `main`에 있음 — 실제 import) |
+| 6. 수정 허용 파일 | 위 표 `MY-1-P1` 4개 경로만 | 위 표 `MY-1-P2` 11개 경로만 (`_layout.tsx` 수정 금지. B 파일은 `PostMenu.tsx`의 선택 prop `failText` 추가만 — 기존 props·문구·동작 변경 금지, `npx jest --runInBand src/features/local-feed` 통과 유지; [D 보완] B `PostCard` 머지로 `__fakes__/PostCard.tsx` 제외, `PostMenu.tsx` 추가) |
+| 7. 금지된 결정 | 타인 `user_id` 쿼리 허용 금지. 팔로워 수/목록·타인 프로필·이메일 노출 금지. 팔로우 테이블·프로필 수정 `PATCH` API 임의 추가 금지 | `mobile/app/(tabs)/my.tsx` 신규 탭 파일 생성 금지(`me.tsx` 교체). `PostCard` 재디자인·색/곡률 하드코딩·`Platform.OS` 금지. 비로그인 시 `/me/*` 호출 금지 |
+| 8. 완료 조건 | `Y1~Y3·Y5·Y6`, `C2~C3`, `C5`, `M-#1~#5`, `P5 MY-1-P1` 시험 통과 | `Y1·Y4·Y5·Y7·Y8`, `Y-O1~O5`, `M-#1·#6·#7`, `P5 MY-1-P2` 시험 통과 + 웹·Android 확인 |
+| 9. 검증 명령 | 루트 `docker compose up -d --wait db` → `server`에서 `APP_ENV=test python -m uv run alembic upgrade head` → `APP_ENV=test python -m uv run pytest -W error` | `mobile`에서 `npm ci` → `npx tsc --noEmit` → `npx jest --runInBand src/features/my-collection src/features/local-feed src/__tests__/routes.test.tsx` → `npx expo export --platform web` |
+| 10. 보고 형식 | `../prompts/3_구현.md` 5단계 | 같음 |
+
+#### P3. 새 라이브러리 (잠금)
+
+| 쪽 | 패키지·허용 버전 | 용도 | 설정·플랫폼 대체 동작 |
+| :--- | :--- | :--- | :--- |
+| 서버 | 없음 | — | N/A |
+| 앱 | 없음 | — | N/A |
+
+#### P4. 핵심 흐름 골격 (의사코드 20~40줄)
+
+```python
+# server/app/routers/my_collection.py — 본인 격리 + 상태 필터 + 동률 안전 복합 커서(H-ARCH-10)
+def decode_cursor(cursor: str | None) -> tuple[datetime, UUID] | None:
+    if cursor is None:
+        return None
+    try:
+        raw = json.loads(base64.urlsafe_b64decode(cursor + "=="))
+        ts = datetime.fromisoformat(raw[0])
+        if ts.tzinfo is None:
+            raise ValueError("tz required")
+        return ts, UUID(raw[1])
+    except Exception as exc:
+        raise ApiError(422, "VALIDATION_ERROR", "요청 형식이 올바르지 않아요.", "cursor") from exc
+
+@router.get("/api/v1/me/profile")
+async def get_my_profile(request: Request, user: CurrentUser = Depends(get_current_user)):
+    def tx(c: Connection):
+        row = c.execute(text("""
+            SELECT u.id AS user_id, u.created_at, p.nickname, p.bio, p.avatar_url, p.updated_at
+            FROM users u LEFT JOIN user_profiles p ON p.user_id = u.id
+            WHERE u.id = :uid"""), {"uid": user.id}).one()
+        return {
+            "user_id": str(row.user_id),
+            "nickname": row.nickname or "이웃",
+            "bio": row.bio,
+            "avatar_url": row.avatar_url,
+            "updated_at": now_kst(row.updated_at or row.created_at).isoformat(timespec="seconds"),
+        }
+    return await run_db(request.app.state.engine, tx)
+
+# /me/posts · /me/reactions · /me/bookmarks 공통 패턴 (예: /me/bookmarks)
+# WHERE pb.user_id = :uid AND p.status = 'published'
+#   AND (:after_ts IS NULL OR (pb.saved_at, p.id) < (:after_ts, :after_id))
+# ORDER BY pb.saved_at DESC, p.id DESC LIMIT :limit_plus_one
+```
+
+```ts
+// mobile/src/features/my-collection/useMyCollection.ts — 이중 러너 + 비로그인/계정전환 정화
+const profileRunner = useMemo(() => createLatestRunner(), []);
+const listRunner = useMemo(() => createLatestRunner(), []);
+
+useEffect(() => {
+  profileRunner.cancel();
+  listRunner.cancel();
+  if (authStatus !== "signedIn" || !userId) {
+    resetAllState();                               // 비로그인/계정 전환 시 이전 목록·프로필 즉시 비움(Y7)
+    return;
+  }
+  void loadProfile();
+  void loadTab("posts", null);                     // 최초 기본 탭은 항상 "내 게시물"(Y1)
+  return () => { profileRunner.cancel(); listRunner.cancel(); };
+}, [authStatus, userId]);
+
+async function selectTab(tab: CollectionTab) {
+  setActiveTab(tab);
+  if (cache[tab]) return;                          // [D 보완] Y-O2: 이미 읽은 탭은 재조회 0(캐시를 버린 탭만 다시 부름)
+  await loadTab(tab, null);                        // listRunner가 이전 탭 늦은 응답 폐기(M-#6)
+}
+
+// [D 보완] Y-O2 캐시 맞추기: 같은 게시물 필드 갱신 + 모음이 달라진 다른 수집 탭 캐시 버림
+function applyPatch(postId: string, patch: PostReactionPatch) {
+  patchAllTabs(postId, patch);
+  if (patch.my_reaction !== undefined && activeTab !== "reactions") dropCache("reactions");
+  if (patch.my_bookmark !== undefined && activeTab !== "bookmarks") dropCache("bookmarks");
+}
+useEffect(() => onPostReaction(applyPatch), [activeTab]);
+useEffect(() => onPostWithdrawn(removeFromAllTabs), []);
+```
+
+#### P5. 필수 테스트 (단언 왜곡 금지 · 잡아야 할 버그)
+
+##### 잠금 기본 테스트 (`MY-1-P1` · `MY-1-P2`)
+
+| 파트 | 테스트 이름 | 준비 (Given) | 실행 (When) | 기대 단언 (Then) | 잡아야 할 버그 (가드를 빼면 실패할 것) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `MY-1-P1` | `test_me_profile_returns_own_profile_without_follower_or_email` | A 프로필(`nickname`, `bio`, `avatar_url`) | A로 `GET /api/v1/me/profile` | `200`, C3 `MyProfile` 5필드 전수, `follower_count`·`email` 키 없음 | 비허용 필드 노출 (Y5) |
+| `MY-1-P1` | `test_me_profile_fallback_when_profile_row_absent` | `users`만 있고 `user_profiles` 없음 | `GET /api/v1/me/profile` | `200`, `nickname == "이웃"`, `bio is None`, `avatar_url is None` | 행 미생성 시 500 |
+| `MY-1-P1` | `test_me_posts_returns_only_own_published_posts` | A 공개 2·철회 1, B 공개 1 | A로 `GET /api/v1/me/posts` | `200`, A 공개 2개만 최신순, B·철회 없음, `item_kind == "post"` | 소유자·`status='published'` 조건 누락 (Y2·Y3) |
+| `MY-1-P1` | `test_me_reactions_and_bookmarks_isolate_owner_and_order` | A·B 각각 공감/북마크(북마크 재저장 포함) | A로 `/me/reactions`·`/me/bookmarks` | A 항목만 각각 `created_at`·`saved_at` 내림차순, 재저장 항목 맨 앞 | 타인 모음 노출·게시물 작성일 정렬 오기 (Y2·Y3) |
+| `MY-1-P1` | `test_me_collections_hide_withdrawn_and_restore_on_republish` | A가 북마크한 글이 `withdrawn` → 다시 `published` | `/me/bookmarks` 두 번 | 첫 조회에 제외(행은 유지), 재공개 뒤 원래 `saved_at` 순서로 복원 | 철회 시 연결 행 삭제 또는 숨김 글 노출 (C-46 D5) |
+| `MY-1-P1` | `test_me_collections_ignore_other_user_id_query_param` | A·B 데이터 | A가 `?user_id=<B_id>` | `200`, A 데이터만 반환, B 데이터 0건 | 쿼리 `user_id` 신뢰 (M-#4) |
+| `MY-1-P1` | `test_me_collections_cursor_no_dup_no_gap_on_ties` | 같은 `saved_at` 북마크 5건 | `limit=2`로 끝까지 순회 | 5건 정확히 1번씩, 마지막 `next_cursor is None` | 동률 시 `id` 타이브레이커 누락 (`H-ARCH-10`) |
+| `MY-1-P1` | `test_me_collections_invalid_cursor_and_limit_are_422` | — | `cursor=bad!`, `limit=0`, `limit=51` | `422 VALIDATION_ERROR`, `detail="cursor"` / `"limit"` | 커서 파싱 500 노출 (M-#3) |
+| `MY-1-P1` | `test_me_endpoints_require_auth_and_block_withdrawn` | 토큰 없음 / 탈퇴 계정 | 4개 `/me/*` 호출 | `401 AUTH_REQUIRED` / `403 ACCOUNT_WITHDRAWN` | 인증·계정 상태 검사 누락 (M-#1·M-#2) |
+| `MY-1-P1` | `test_user_profiles_bio_avatar_checks_and_rls` | — | 공백 `bio`, 161자 `bio`, `http://` `avatar_url` INSERT + 카탈로그 조회 | `IntegrityError` 3건, `relrowsecurity = true`, 정책 0 | CHECK·RLS 누락 (`H-ARCH-01`) |
+| `MY-1-P2` | `signed out renders login prompt without calling me endpoints` | `useAuth` `signedOut` | `/me` 화면 렌더 → `"로그인"` 누름 | `fetchMyProfile`·`fetchMyPosts` 등 호출 0번, `router.push("/login")` | 비로그인 시 API 호출 (Y7) |
+| `MY-1-P2` | `initial load selects my posts tab first and renders 3 tabs in order` | `signedIn` A | 화면 렌더 | 탭 3개 순서(`"내 게시물"`·`"좋아요"`·`"북마크"`), `"내 게시물"` 활성 + `fetchMyPosts` 호출 | 기본 탭 오기 (Y1) |
+| `MY-1-P2` | `tab switch drops late response from previous tab` | `좋아요` deferred, `북마크` 즉시 완료 | `좋아요` → `북마크` → `좋아요` 뒤늦게 resolve | 화면은 `북마크` 결과 유지, `좋아요` 데이터 덮어쓰기 없음 | `createLatestRunner` 누락 (`AC-RACE`, M-#6) |
+| `MY-1-P2` | `account change or sign out clears previous user profile and lists` | A 로그인 데이터 표시 | `userId` B로 변경 또는 `signedOut` 전환 | 이전 A 닉네임·목록 즉시 비움, 진행 중 요청 취소 | 계정 전환 시 타인/이전 목록 잔존 (Y7) |
+| `MY-1-P2` | `post card press navigates to post detail without rendering follow counts` | 3탭 게시물 카드 1건 | 카드 누름 + 화면 텍스트 검사 | `router.push({ pathname: "/posts/[postId]", params: { postId } })`, `"팔로워"`·`"팔로잉"` 텍스트 없음 | 상세 경로 오기·금지 지표 노출 (Y4·Y5) |
+| `MY-1-P2` | `section errors are isolated and retry refetches failed section only` | 프로필 503 / 탭 목록 200 (및 반대) | `"↻ 새로고침"` 누름([D 결정 2026-11-18] 기준선 `"다시 시도"`에서 변경) | 정상 영역은 유지, 실패 영역만 오류 안내·재조회 | 전체 화면 먹통 (M-#7) |
+| `MY-1-P2` | `no hard-coded colors radii or platform branches in my-collection` | — | `src/features/my-collection/*.ts(x)` 검사 | `#[0-9A-Fa-f]{3,8}`·`rgb(`·`Platform.OS` 0건 | 토큰·플랫폼 규칙 위반 (Y8) |
+
+##### 열린 테스트 자리 (A가 `Y-O1~O5` 채운 뒤 명세서 결정·예외 ID를 연결해 행 추가)
+
+| 파트 | 테스트 이름 (A 채움) | 준비 (Given) | 실행 (When) | 기대 단언 (Then) | 잡아야 할 버그 (가드를 빼면 실패할 것) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `MY-1-P2` | `profile header hides bio when null and edit button shows coming soon notice` | `bio: null` 프로필 | 렌더 → `"프로필 수정"` 두 번 누름 | 소개 줄 없음, `"프로필 수정은 곧 열려요"` 1개, `/me/*` 추가 호출 0, `router.push` 0 | `bio` 빈 줄·안내 중복·수정 화면 이동 (결정 1) |
+| `MY-1-P2` | `empty tab shows tab specific notice and button navigates home` | 3탭 각각 `items: []` | 탭마다 렌더 → `"가까운 도서관 둘러보기"` 누름 | 탭별 C3 빈 문구, 가짜 카드 0, `router.navigate("/")` | 빈 탭 문구 오기·가짜 게시물 (결정 3·예외 #2) |
+| `MY-1-P2` | `unlike dims card with undo then removes it after 4 seconds` | `좋아요` 탭 카드 2개, #29 `DELETE` 200, fake timers | 카드 `onMenu` → `♡` 누름 → 3.9초 / 4초 진행 | 3.9초: 카드 남음 + `"취소함"` + `"좋아요를 취소했어요"`; 4초: 카드·안내 제거, 나머지 1개 유지 | 즉시 제거·타이머 누락·다른 카드 제거 (결정 2) |
+| `MY-1-P2` | `undo within 4 seconds restores card in place via reaction put` | 위와 같음, #29 `PUT` 200 | `♡` 취소 → 2초 뒤 `"되돌리기"` | `PUT` 1회, 카드 같은 자리·흐림 해제, 4초 지나도 유지 | 되돌리기 미전송·자리 이동 (결정 2) |
+| `MY-1-P2` | `second cancel within 4 seconds removes previously dimmed card immediately` | `좋아요` 탭 카드 3개 | 카드1 취소 → 1초 뒤 카드2 취소 | 카드1 즉시 제거, 카드2만 흐림, 안내 1개 | 흐린 카드 누적 (결정 2) |
+| `MY-1-P2` | `bookmark tab unbookmark follows same dim and undo flow` | `북마크` 탭, #30 `DELETE`/`PUT` | `🔖` 해제 → `"되돌리기"` | `"북마크를 해제했어요"`, `DELETE`·`PUT` 각 1회, 카드 복원 | 북마크 탭 분기 누락 (결정 2) |
+| `MY-1-P2` | `double press on same card sends one request and failed delete keeps card` | #29 `DELETE` deferred 후 reject | 같은 카드 `♡` 2번 → reject | `DELETE` 1회, 카드 흐려지지 않음, `"좋아요를 취소하지 못했어요. 다시 해 주세요"` ([D 보완] `PostMenu` `failText`로 전달; 같은 탭에서 `🔖` 켜기 실패는 `toggleFailText` 문구) | 진행 중 가드 누락·실패 시 카드 사라짐 (예외 #3·#5) |
+| `MY-1-P2` | `next page failure keeps cards and retries same cursor` | 1쪽 `next_cursor: "c1"`, 2쪽 첫 호출 503 후 200 | 끝까지 스크롤 → 실패 → `"↻ 새로고침"` / 한 번 더 끝 도달 | 1쪽 카드 유지, `"더 불러오지 못했어요"`, 재시도 `cursor === "c1"`, 성공 후 이어 붙임·중복 0, 끝이면 `"모두 봤어요"` | 실패 시 목록 비움·커서 전진·중복 요청 (예외 #1) |
+| `MY-1-P2` | `revisiting loaded tab reuses cached items and cursor without refetch` | `signedIn` A, `내 게시물` 1쪽(`next_cursor: "p1"`)·`좋아요` 1쪽(`next_cursor: "r1"`) 각각 한 번 불러옴 | `내 게시물` → `좋아요` → `내 게시물` → `좋아요` 다시 누름 → `좋아요` 끝까지 스크롤 | 다시 누를 때 `fetchMyPosts`·`fetchMyReactions` 추가 호출 0(각 첫 1회만), 카드 목록·순서 그대로, 스켈레톤 0; 끝 도달 시 다음 요청 `cursor === "r1"` | 탭 전환마다 무조건 재조회(깜빡임)·커서 초기화로 1쪽 중복 (Y-O2 캐시, 명세 0절 기본값) |
+| `MY-1-P2` | `pull to refresh refetches active tab first page and profile only` | `내 게시물`·`좋아요`·`북마크` 모두 불러옴, 활성 `좋아요`는 2쪽까지 이어 붙임 | 피드를 아래로 당김(`onRefresh`) → 응답 resolve | `fetchMyProfile` 1회 + `fetchMyReactions` `cursor === null` 1회, `fetchMyPosts`·`fetchMyBookmarks` 0회; 응답 뒤 `좋아요` 목록을 1쪽 응답으로 교체(2쪽 카드 잔존 0)·`next_cursor` 갱신, 새로고침 표시 꺼짐 | 다른 탭까지 재조회·기존 커서로 이어 붙여 중복·프로필 미갱신·새로고침 표시 안 꺼짐 (Y-O2 당겨서 새로고침, 명세 0절 기본값) |
+| `MY-1-P2` | `returning from post detail silently refetches active tab keeping cards until response` | `좋아요` 탭 카드 2개 표시, `내 게시물`도 불러옴, 복귀 시 `fetchMyReactions` deferred | 카드 눌러 상세 이동 → 화면 다시 보임(focus) → deferred resolve(카드 1개) | resolve 전: 기존 카드 2개 그대로, 스켈레톤·빈 안내 0, `fetchMyReactions` `cursor === null` 1회, `fetchMyPosts`·`fetchMyProfile` 0회; resolve 뒤 카드 1개로 교체. 첫 진입 focus에서는 최초 조회 외 추가 호출 0 | 복귀 재조회 누락(상세에서 바꾼 상태 미반영)·응답 전 카드 비움·다른 탭/프로필 재조회·첫 진입 중복 요청 (Y-O2 상세 복귀, 명세 검토 메모 `[Claude가 정함]`) |
+| `MY-1-P2` | `reaction change elsewhere patches same post in all tabs and drops changed collection cache` | [D 보완] `내 게시물`·`좋아요`·`북마크` 모두 불러옴, 게시물 P가 `내 게시물`·`북마크`에 있음(`my_bookmark: true`), 활성 `내 게시물` | P 메뉴에서 `🔖` 해제 성공(`onChange(P, { my_bookmark: false })`) → `북마크` 탭 누름 / 별도로 `emitPostReaction(P, { my_reaction: true })` 후 `좋아요` 탭 누름 | `북마크` 진입 시 `fetchMyBookmarks` `cursor === null` 1회 + 응답 전 스켈레톤(옛 P 카드 0); `내 게시물` 캐시의 P는 `my_bookmark === false`; `좋아요` 진입 시 `fetchMyReactions` 재조회 1회; 모음이 안 바뀐 탭 재조회 0 | 캐시가 해제한 글을 계속 보여 줌·옛 `my_bookmark`로 다음 메뉴가 반대 요청 (Y-O2 캐시 맞추기, PR #169 리뷰) |
+| `MY-1-P2` | `unknown result on unlike or undo reconciles with silent refetch instead of guessing` | [D 보완] `좋아요` 탭 카드 2개. ① `DELETE`가 `status 0`으로 reject ② `DELETE` 200 후 `"되돌리기"` `PUT`이 `503`으로 reject ③ `PUT`이 `404`로 reject; 재조회 `fetchMyReactions` deferred | 각 경우 실행 → 재조회 resolve(①은 P 없음, ②는 P 있음) | ①②: 안내 뒤 `fetchMyReactions` `cursor === null` 1회, 응답 전 기존 카드 유지, resolve 뒤 서버 목록대로(①: P 제거, ②: P 보통 모습으로 남음), `내 게시물` 캐시 그대로. ③: `"되돌리지 못했어요"` 뒤 재조회 0, P 제거 | 결과 불명을 "서버 무변경"으로 단정해 카드를 남기거나 지움·확정 실패에도 불필요 재조회 (예외 #5, PR #169 리뷰) |
+| `MY-1-P2` | `post menu without failText keeps default fail text` | [D 보완] B `PostMenu`를 `failText` 없이 렌더(홈·방문 페이지와 같음), `setReaction` reject(`status 0`) | `♡` 누름 | `onNotice`가 `"지금은 처리하지 못했어요. 다시 시도해 주세요."`(`MENU_TEXT.failed`)로 1회 호출, `failText`를 주면 그 반환값으로 1회 | 선택 prop 추가가 B 기본 문구를 바꿈·`failText` 무시 (Y-O4 `failText`) |
+
+## MY-2 프로필 수정(사진·닉네임·한 줄 소개)·알림함 아이콘
+
+- **담당 역할**: A (서버 파트 포함) · **대상 브랜치**: `main`
+- **기준 명세서**: `specs/my-collection/세부/MY-2.md`, 시안 `specs/my-collection/세부/MY-2_시안.html` (세부 기획 때 작성)
+- **판**: 1차 D 기준선(M2 밑그림, 2026-11-19)
+- **선행 설계**: C-46 F1(사진·닉네임·한 줄 소개·프로필 편집, 팔로워 수·목록 없음)·§8-5(팔로우 대상·효과 미결)·C-47 G1(알림함은 홈 또는 내 정보의 알림 아이콘), MY-1 Y5·Y-O1(`"프로필 수정"` 버튼 자리, `MY-2` 전 `"프로필 수정은 곧 열려요"`), 05 §3.1 `user_profiles`(`nickname` CHECK 1~40자, `bio`·`avatar_url`은 `0010`), NFR-05(사진 위치 정보 지움)
+- **작성자**: D (시니어)
+- **상태**: **D 기준선 — 검토 전·구현 착수 불가.**
+- **발행 본문 SHA**: 
+- **A 수정본(2026-11-23)**: 세부 기획 `specs/my-collection/세부/MY-2.md` 결정 1~3·예외 #1~#7로 열린 칸만 채움. **검토 전·구현 착수 불가.** 홈 알림 아이콘(Y2-O6)은 P2 파일 목록 밖이라 PR 쟁점 1 — D 판단 전 구현 안 함
+
+
+### Pre-flight 5대 관문 (코드 레포 `main` `761b4a1` · `team` `b4220e9`)
+
+| 관문 | 확인한 것 (`file:line`) | 이 계약서의 처리 (잠금 조건) | 미해결 / 후속 |
+| :--- | :--- | :--- | :--- |
+| ① 격리·권한·호환 | `server/app/auth.py:132`(`lock_active_user`)·`:180`, `0003_user_profiles.py:21`(닉네임 CHECK), `0010_user_profiles_bio_avatar.py` | 수정은 본인 프로필만(경로에 사용자 id 없음, `/me/profile`). 사진은 본인 경로에만 저장. 팔로우는 이 Step에서 만들지 않는다(C1 Y2-6) | 팔로우 대상·효과(§8-5) |
+| ② 동시성·트랜잭션·외부 I/O | `server/app/db.py:16`, `server/app/services/post_storage.py`(EXIF 지우기·저장), `server/app/routers/posts.py:47`(`reencode_without_exif`) | 사진 다시 쓰기·저장소 올리기는 `run_db` **밖**, 그 뒤 트랜잭션 안에서 `lock_active_user` → 부분 갱신. 보내지 않은 칸은 그대로 둔다 | 없음 |
+| ③ 전제 실재성 | `server/app/routers/my_collection.py`(MY-1 `GET /me/profile`), `mobile/src/features/my-collection/ProfileHeader.tsx` | 있는 것: 조회 경로·프로필 머리. 새로 만들 것: `PATCH /me/profile`, `POST /uploads/avatar`, `ProfileEditScreen` | 없음 |
+| ④ 담당·공유 파일 | `server/app/main.py:141-145`(`[my-collection-A]`), `server/app/services/post_storage.py:19,30,57`(B·D) | `post_storage.py`는 `put(path, data, content_type)`·`public_url(path)`가 이미 임의 `path` 문자열(`avatars/<user_id>/<uuid>.jpg`)을 그대로 받으므로 **고치지 않고 읽기 전용으로 함수만 부른다**(2026-11-19 D 확인) | 없음 |
+| ⑤ 승인·확장 | 06 M1 동결, C-47 G1 | 새 경로 `#38`·`#39` 확정해 06 반영. 알림함 화면은 B CLUB-2, 서버는 D M2-0-P1, 내 정보 아이콘·읽지 않음 점은 A MY-2로 확정(2026-11-19 D) | 없음 |
+
+### 계약
+
+#### C1. 결정
+
+| # | 결정 | 상태 | 근거 |
+| :--- | :--- | :--- | :--- |
+| Y2-1 | 내 정보의 `"프로필 수정"`을 누르면 **프로필 수정 화면**이 열린다(MY-1의 `"프로필 수정은 곧 열려요"` 안내를 대신함). 고칠 수 있는 것: 사진·닉네임·한 줄 소개 | 확정 | C-46 F1, MY-1 Y-O1 |
+| Y2-2 | 닉네임은 앞뒤 공백을 뺀 1~40자(DB CHECK 그대로). 중복은 허용 | 확정(길이) / 중복 허용 기본값(Claude) | `0003_user_profiles.py:21`, Q-55 |
+| Y2-3 | 한 줄 소개는 비울 수 있다(`null`이면 MY-1처럼 줄을 숨김). 길이 상한은 열린 칸 | 확정(비우기) | MY-1 Y-O1 |
+| Y2-4 | 사진은 직접 고르고(카메라·앨범), **서버가 위치 정보(EXIF)를 지우고** 다시 저장한다. 사진 지우기도 된다(`avatar_url` `null`) | 확정 | NFR-05, LOCAL-1 사진 규칙 |
+| Y2-5 | 저장은 **보낸 칸만** 바꾼다. 실패하면 화면의 입력값을 지우지 않는다 | 확정 | `2_계약_보완.md` §3 부분 갱신 |
+| Y2-6 | **팔로우는 이 Step에서 만들지 않는다.** 팔로워 수·목록은 어디에도 없다(F1). 팔로우 버튼의 대상·효과(§8-5)는 남의 공개 프로필 화면이 생길 때 정한다 | 확정(수·목록 없음) / 범위 분리 기본값(Claude) | C-46 F1·§8-5, MY-1 Y5 |
+| Y2-7 | 내 정보 머리에 **알림 아이콘**을 둔다. 누르면 `router.push("/inbox")`(알림함, B CLUB-2). 읽지 않은 알림이 있으면 점 하나(개수 숫자 없음) | 확정 (C-47 G1, 2026-11-19 D) | C-47 G1 |
+
+##### 열린 칸 (A가 기획·시안 작성 후 채울 결정)
+
+| # | 열린 칸 | D 추천(참고) | 채택 결정 | 상태 | 근거(명세 ID) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| Y2-O1 | 수정 화면 배치(사진 위·입력 칸 아래 / 한 줄씩 누르면 고치기) | 사진 위, 닉네임·소개 입력 칸 아래, 맨 아래 `"저장"` | `/me/edit`는 옆에서 밀려 들어오는 화면(왼쪽 위 `‹`). 한 화면에 위 가운데 사진(원 72), 그 아래 `"닉네임"` 칸(글자 수 `n/40`)·`"한 줄 소개"` 칸(글자 수 `n/60`), 맨 아래 붙은 `"저장"` 하나로 고친 칸을 한 번에 저장. 저장 성공이면 내 정보로 돌아가 `"저장했어요"` 토스트, 내 정보 머리를 응답 `MyProfile`로 바꿈 | 확정(사용자) | MY-2 결정 1, 시안 `#el-layout` 후보 A |
+| Y2-O2 | 한 줄 소개 길이 상한 | 60 | 앞뒤 공백 뺀 0~60자. 앱 칸은 60자에서 더 써지지 않음. 공백만이면 `null`로 보냄(줄 숨김, Y2-3). 서버는 61자 이상 `422 detail="bio"` | 기본값(Claude) | MY-2 0절 기본값, 예외 #6 |
+| Y2-O3 | 저장하지 않고 나갈 때 | 확인창 `"고친 내용을 버릴까요?"` | 처음 값과 다른 칸(사진 포함)이 있을 때만 `‹`·뒤로 제스처에서 확인창 `"고친 내용을 버릴까요?"` [`"계속 고치기"`] [`"버리기"`]. 바뀐 칸이 없으면 바로 닫힘 | 기본값(Claude) | MY-2 0절 기본값, 유저 플로우 5 |
+| Y2-O4 | 사진 고르기·지우기 모양 | 사진 누르면 작은 창 `"사진 고르기"`·`"사진 지우기"` | 사진 원 오른쪽 아래 모서리의 작은 연필(✎) 버튼(접근성 이름 `"사진 바꾸기"`)을 누르면 사진 바로 옆에 작은 메뉴 `"사진 찍기"`·`"앨범에서 고르기"`·`"사진 지우기"`. `"사진 찍기"`는 `canUseCamera()`가 참일 때만, `"사진 지우기"`는 지금 사진이 있을 때만. 사진 밑 안내 글자 없음. 고르면 사진 자리만 미리 바뀌고 `"저장"` 때 반영, 지우면 기본 그림 | 확정(사용자) | MY-2 결정 2, 시안 `#el-photo` 후보 C |
+| Y2-O5 | 알림 아이콘 위치(⚙ 왼쪽 / 프로필 행 오른쪽) | ⚙ 왼쪽 | 내 정보 프로필 줄 오른쪽 위, ⚙ 바로 왼쪽에 같은 크기 종(`InboxBell`). 읽지 않음이면 종 오른쪽 위 점 하나 | 확정(사용자) | MY-2 결정 3, 시안 `#el-bell` 후보 C |
+| Y2-O6 | 홈에도 알림 아이콘을 둘지(C-47 G1 "홈 또는 내 정보") | 내 정보에만 | 홈에도 둔다: 홈 머리 띠(`"HOME"`) 오른쪽 끝에 같은 `InboxBell`, 점은 두 곳이 같은 `#47` 값. **홈 머리 띠 파일이 P2 목록 밖 → PR 쟁점 1, D 판단 전에는 내 정보 종만 구현** | 확정(사용자) / 파일 범위 D 판단 대기 | MY-2 결정 3, 시안 `#el-bell` 후보 C |
+
+#### C2. 엔드포인트 / 주요 함수
+
+| 메서드·경로 (`/api/v1`) | 인증 | 성공 상태 | 날짜 형식 | 목록 | 연타·재시도 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `PATCH /me/profile` (#38, A) | 필수 | `200` (갱신 후 `Profile`) | `updated_at`: ISO 8601 `+09:00` | — | 같은 값 다시 보내도 같은 결과 |
+| `POST /uploads/avatar` (#39, A) | 필수 | `201` `{ "avatar_path": str }` | — | — | 올릴 때마다 새 경로(앞 경로는 저장 안 하면 쓰이지 않음) |
+| `GET /me/inbox/unread` (#47, **D** M2-0-P1) | 필수 | `200` `{ "has_unread": bool }` | — | — | N/A |
+
+앱 함수 (`mobile/src/features/my-collection/api.ts`):
+
+- `updateMyProfile(patch: { nickname?: string; bio?: string | null; avatar_path?: string | null }): Promise<MyProfile>`
+- `uploadAvatar(file: { uri: string; mime: string }): Promise<{ avatar_path: string }>`
+
+부품:
+
+- `mobile/src/features/my-collection/ProfileEditScreen.tsx`: `export function ProfileEditScreen(): JSX.Element`
+- 경로: `mobile/app/me/edit.tsx`(새 파일, `ProfileEditScreen`만 내보냄)
+- `mobile/src/features/my-collection/InboxBell.tsx`: `export function InboxBell(): JSX.Element` — `#47` 읽고 점 표시, 누르면 `/inbox`
+
+#### C3. 요청·응답 필드와 화면 문구
+
+| 구분 | 필드/키 | 타입 | 필수 | null 허용 | 설명·고정 문구 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 요청(#38) | `nickname` | `str` | N | N | 보냈으면 1~40자, 밖이면 `422`, `detail="nickname"` |
+| 요청(#38) | `bio` | `str` | N | Y | `null`이면 지움. 길이 Y2-O2, 밖이면 `422`, `detail="bio"` |
+| 요청(#38) | `avatar_path` | `str` | N | Y | `#39`가 준 값만. 남의 경로·모르는 형식이면 `422`, `detail="avatar_path"`. `null`이면 사진 지움 |
+| 요청(#38) | (빈 본문) | — | — | — | 아무 칸도 없으면 `422`, `detail="body"` |
+| 응답(#38) | (본문) | MY-1 `MyProfile` 그대로(`nickname`, `bio`, `avatar_url`, `updated_at`) | Y | N | 저장 뒤 앱이 내 정보 머리를 이 값으로 바꾼다(Y2-O1) |
+| 요청(#39) | `file` | `multipart` 이미지 | Y | N | 형식·크기는 LOCAL-1 `#23`과 같은 상한 |
+| 응답(#39) | `avatar_path` | `str` | Y | N | `avatars/<user_id>/<uuid>.jpg` 꼴(서버가 만듦) |
+| 화면 문구 | 화면 제목 | — | — | — | `"프로필 수정"` |
+| 화면 문구 | 저장 버튼 | — | — | — | `"저장"` |
+| 화면 문구 | 저장 실패 | — | — | — | 칸 아래 카드 `"저장하지 못했어요"` / `"인터넷 연결을 확인해 주세요. 고친 내용은 그대로 있어요."`, 아래 버튼이 `"다시 저장하기"`로 바뀜(예외 #1) |
+| 화면 문구 | 닉네임 길이 안내 | — | — | — | 칸 아래 글자 수 `"<n>/40"`, 빈 칸으로 저장하면 칸 아래 `"닉네임을 1자 이상 써 주세요"`(예외 #6). 41자부터 칸에 더 써지지 않음 |
+| 화면 문구 | 나가기 확인 (`Y2-O3`) | — | — | — | `"고친 내용을 버릴까요?"` [`"계속 고치기"`] [`"버리기"`] |
+| 화면 문구 | 사진 메뉴 (`Y2-O4`) | — | — | — | `"사진 찍기"` · `"앨범에서 고르기"` · `"사진 지우기"`(사진 있을 때만). 연필 버튼 접근성 이름 `"사진 바꾸기"` |
+| 화면 문구 | 저장 성공 | — | — | — | 내 정보로 돌아가 토스트 `"저장했어요"` |
+| 화면 문구 | 저장 중 | — | — | — | 버튼 `"저장 중…"`(흐림, 눌러도 무시 — 예외 #3. 말줄임표는 실제 화면 문자열) |
+| 화면 문구 | 한 줄 소개 빈 칸 | — | — | — | 흐린 안내 글자 `"나를 한 줄로 소개해 보세요"`, 글자 수 `"<n>/60"` |
+| 화면 문구 | 한 줄 소개 서버 거절(`422 bio`) | — | — | — | 칸 아래 `"한 줄 소개는 60자까지 쓸 수 있어요"` |
+| 화면 문구 | 비로그인 | — | — | — | `"로그인하면 내 프로필을 고칠 수 있어요."` [`"로그인하기"`] → `/login`(예외 #4) |
+| 화면 문구 | 사진 올리기 거절(`413`·`422 file`) | — | — | — | 사진 아래 `"이 사진은 올릴 수 없어요. 다른 사진을 골라 주세요."`(예외 #5) |
+| 화면 문구 | 알림 아이콘 접근성 이름 | — | — | — | `"알림함"` |
+
+#### C4. 플랫폼 분기 표
+
+| 분기 지점 | 공통 처리 | iOS | Android | 웹 | 모아 둘 곳 | 확인 |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| 사진 고르기 | LOCAL-1 `mobile/src/features/local-feed/imagePicker.ts`를 그대로 부른다 | 같음 | 같음 | 파일 고르기 | 새 분기 없음 | 세 플랫폼 사진 고르기 |
+
+#### C5. 테이블
+
+`해당 없음: 새 테이블·컬럼 없음.` `user_profiles`의 `nickname`·`bio`·`avatar_url`(`0003`·`0010`)을 갱신만 한다.
+
+| 열린 제약 | 컬럼 | 값 (A 채움) |
+| :--- | :--- | :--- |
+| `bio` 길이 CHECK 추가 여부 | `bio` | 추가 안 함 — 이 Step은 마이그레이션이 없다(C5 `해당 없음`). 0~60자는 `#38` 서버 검사로 막는다(Y2-O2) |
+
+#### C6. 검증과 에러 처리
+
+| 명세서 예외 # | 발생 조건 | HTTP / `code` / `detail` | 화면에서 바뀌는 영역 | 유지되는 영역 | 기록 보장 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 끊김 | 저장·사진 올리기 실패 | `ApiCallError` | 칸 아래 실패 카드(C3 저장 실패), 버튼 `"다시 저장하기"` | 입력값 전부(Y2-5) | 프로필 그대로 |
+| 예외 #7 알림 확인 실패 | `#47` 실패·끊김 | `ApiCallError` | 종은 점 없이 보임(안내 없음) | 종·화면 전체 | N/A: 읽기 |
+| 빈 결과 | 아무것도 안 고치고 저장 | 앱은 부르지 않음 | 화면 닫기 | — | — |
+| 연타 | 저장 두 번 | 두 번째는 앱이 막음 | — | — | 같은 값 |
+| 비로그인 | 수정 화면 직접 주소 | `401` | 로그인 안내 | — | 무변경 |
+| 입력 오류 | 길이 밖·빈 본문·남의 `avatar_path` | `422` / 필드명 | 칸 아래 안내 | 입력값 | 무변경 |
+| 사진 너무 큼·형식 | `#39` | LOCAL-1 `#23`과 같은 코드 | 사진 칸 안내 | 다른 칸 | 무변경 |
+| 탈퇴 경합 | 탈퇴 처리 중 저장 | `lock_active_user` 뒤 `401 ACCOUNT_WITHDRAWN`(AUTH-3) | 로그인 화면 | — | 무변경 |
+
+> 끊김 행의 “프로필 그대로”는 #39에서 중단됐거나 #38이 명시적으로 거절된 경우에 해당한다. #38 전송 뒤 응답이 유실되면 반영 여부는 불명이며, 입력을 유지하고 같은 변경 칸과 경로로 다시 저장한다.
+
+#### C7. 다른 기능과 닿는 곳과 `TODO(연결)` 가짜 값
+
+| 의존 대상 | 필요한 것 | 상대 머지 전 가짜 값 |
+| :--- | :--- | :--- |
+| D `core` M2-0-P1 | `#47` 읽지 않음 | `TODO(연결): D` — `{"has_unread": false}` |
+| B CLUB-2 | `/inbox` 화면 | 경로가 없으면 아이콘을 그리지 않는다(빈 화면 만들지 않음) |
+| B LOCAL-1 | `imagePicker.ts`, `post_storage.py` | 있음 |
+
+### 구현 계획
+
+#### P1. 확인한 기존 코드 전제
+
+| 참조 대상 | 실제 경로와 줄 | 심볼·시그니처 | 있음 / 앞으로 만듦 |
+| :--- | :--- | :--- | :--- |
+| 프로필 조회 | `server/app/routers/my_collection.py` | `GET /me/profile` | 있음 |
+| 사진 처리 | `server/app/routers/posts.py:47`, `server/app/services/post_storage.py` | `reencode_without_exif(data) -> (bytes, w, h)` | 있음 |
+| 프로필 머리 | `mobile/src/features/my-collection/ProfileHeader.tsx` | — | 있음 |
+| 사진 고르기 | `mobile/src/features/local-feed/imagePicker.ts` | — | 있음 |
+
+> 위 기준선의 CLUB-2 담당 B 표기는 이전 배정이다. 현재 team `기능_배정.md`와 `contracts/book-club.md`의 CLUB-2-P4에 따라 `/inbox`는 C가 담당하며, 코드 기준 `b94fa56`에는 이 경로가 없다.
+
+#### P2. 파트 분할과 담당 파일
+
+| 파트 | 브랜치 | 수정/생성 허용 파일(전수) | 완료 시 확인할 명세서 항목 |
+| :--- | :--- | :--- | :--- |
+| `MY-2-P1` 서버 | `feat/my-collection-MY-2` | `server/app/routers/my_collection.py`(`#38`·`#39` 추가), `server/tests/test_profile_edit.py` | Y2-2~Y2-5, C6 |
+| `MY-2-P2` 앱 | 같은 브랜치 | `mobile/app/me/edit.tsx`, `mobile/src/features/my-collection/ProfileEditScreen.tsx`, `ProfileHeader.tsx`, `InboxBell.tsx`, `api.ts`, `__tests__/profile-edit.test.tsx` | Y2-1·Y2-6·Y2-7, Y2-O1~Y2-O6 |
+
+> **D 검토 쟁점 — P2 파일 범위 승인 대기.** 기존 "프로필 수정" 버튼의 동작은 `MyCollectionScreen.tsx`의 `onEdit`이 결정하며, 복귀 포커스의 `useMyCollection.ts`는 목록만 다시 읽는다. 버튼 이동·저장 결과와 토스트를 연결할 이 두 파일과 기존 테스트 `__tests__/my-collection.test.tsx`의 임시 안내 단언을 수정 범위에 포함할지 D가 확정한다. 홈 종 결정(Y2-O6)은 `mobile/app/(tabs)/_layout.tsx`의 홈 헤더와 두 종의 계정별 상태 공유 위치를 함께 확정한다. 위 잠금 목록은 승인 전까지 그대로 둔다.
+
+> **D 검토 쟁점 — #39 발급 경로 확인.** 현재 저장소 어댑터는 `put`·`public_url`만 제공한다. `public_url`은 파일 존재를 확인하지 않으므로, C3의 미발급 경로 거절을 충족할 방법과 필요한 P1 파일 범위를 D가 확정한다.
+
+##### 파트 머리말 — MY-2-P1 · P2 (공통)
+
+| 칸 | 값 |
+| --- | --- |
+| 1. 태스크 ID | `MY-2-P1` / `MY-2-P2` |
+| 2. 담당 역할 | A |
+| 3. 기준선 버전 | M2 D 기준선 |
+| 4. 계약서 커밋 | N/A: 검토 전 수정본(D 발행 후 본문 SHA 기록) |
+| 5. 선행 태스크 | MY-1 머지(있음). `#47`은 D `M2-0-P1` 전이면 C7 가짜 값 |
+| 6. 수정 허용 파일 | 위 표 |
+| 7. 금지된 결정 | 팔로우 표·경로·버튼 금지(Y2-6). 팔로워 수 금지. `post_storage.py` 수정 금지 |
+| 8. 완료 조건 | 파트 표 항목 + P5 + 웹·Android |
+| 9. 검증 명령 | 서버 `uv run pytest`, 앱 `npx tsc --noEmit` → `npx jest --runInBand src/features/my-collection` → `npx expo export --platform web` |
+| 10. 보고 형식 | `../prompts/3_구현.md` 5단계 |
+
+#### P3. 새 라이브러리
+
+| 쪽 | 패키지 | 용도 | 설정 |
+| --- | --- | --- | --- |
+| 서버·앱 | 없음 | — | — |
+
+#### P4. 핵심 흐름 골격
+
+```python
+# my_collection.py — #38 부분 갱신
+async def patch_my_profile(body: ProfilePatch, user: CurrentUser = Depends(get_current_user)):
+    fields = body.model_dump(exclude_unset=True)               # 보낸 칸만 (Y2-5)
+    if not fields: raise ApiError(422, "VALIDATION_ERROR", "바꿀 내용이 없어요", "body")
+    # 열린 칸 Y2-O2: bio 길이 검사를 여기에 둔다
+    if "nickname" in fields: fields["nickname"] = check_len(fields["nickname"], 1, 40, "nickname")   # 앞뒤 공백 뺀 뒤
+    if fields.get("bio") is not None: fields["bio"] = (fields["bio"].strip() or None)              # 공백만이면 null(Y2-3)
+    if fields.get("bio") is not None and len(fields["bio"]) > 60: raise validation_error("bio")    # Y2-O2
+    if "avatar_path" in fields and fields["avatar_path"] is not None:
+        ensure_own_avatar_path(fields["avatar_path"], user.id)  # avatars/<user.id>/ 로 시작하지 않으면 422
+    def tx(c):
+        lock_active_user(c, user.id)
+        update_profile(c, user.id, fields)                      # SET 절은 fields 키만
+        return select_profile(c, user.id)
+    return my_profile(await run_db(engine, tx))
+
+# #39 — 읽기·EXIF 지우기·저장소 올리기는 run_db 밖, DB 쓰기 없음
+```
+
+- **#38 사진 경로 검사(C3).** 인증 사용자의 정확한 `avatars/<user_id>/<uuid>.jpg` 형식과 #39 발급 조건을 확인한다. 사용자 경로 접두사만 같은 미발급·형식 불일치 경로도 `422 detail="avatar_path"`로 거절한다. 소유권 확인을 위한 저장소 I/O가 필요하면 DB 트랜잭션 밖에서 처리하며, 실패하면 갱신하지 않는다.
+- **앱 저장 흐름(Y2-O1·Y2-5).** 진행 중 연타를 즉시 막고, 닉네임 검사와 변경 칸 비교 후 값이 같으면 호출 없이 닫는다. 사진을 새로 고른 경우에는 #39에서 받은 경로를 현재 선택에 묶어 보관하고, #38의 `avatar_path`에 넣는다. 같은 선택을 다시 저장하면 보관한 경로를 `avatar_path`에 다시 넣고 #39를 다시 부르지 않는다. 다른 사진을 고르거나 지우면 이전 경로를 버린다. 지우기는 `avatar_path: null`만 보내고, 사진에 변경이 없으면 그 필드를 생략한다. #38 성공 시 현재 계정의 내 정보 머리를 응답으로 갱신하고 "저장했어요"를 보여 준다.
+- **응답과 실패.** #39의 413·422 file은 일반 422 처리보다 먼저 사진 칸 문구로 연결한다. LOCAL-1 사진 디코더의 `422 detail="image"`는 #39에서 C3의 `detail="file"`로 변환한다. #38의 필드 오류는 해당 칸에 연결하고, 전송 실패는 C6의 다시 저장하기로 연결한다. #38 요청 뒤 응답이 유실되면 서버 적용 여부는 불명이다. 입력값을 유지하고, 재시도 때 동일한 변경 칸과 사진 경로를 보낸다.
+- **계정 변경.** 화면 이탈 또는 계정 변경 뒤 완료된 응답은 새 화면·계정에 반영하지 않는다. 특히 이전 계정의 #39가 늦게 끝났을 때 #38을 이어 보내지 않고, 늦은 #38 응답은 프로필과 토스트에 반영하지 않는다(MY-1 Y7 계정 격리).
+- **알림함 연결(Y2-O5·O6).** 최신 코드 기준 #47은 #212로 머지됐다. C7에 따라 CLUB-2-P4의 `/inbox`가 연결되기 전에는 종을 숨긴다. 두 위치가 연결된 뒤에는 현재 계정의 읽지 않음 결과 하나를 공유한다. 알림함에서 돌아오면 갱신하고, 실패 또는 계정 전환 시 이전 점을 지운다. 비로그인 상태에서 #47을 호출하지 않는다.
+
+#### P5. 필수 테스트
+
+| 파트 | 테스트 이름 | 준비 | 실행 | 기대 단언 | 잡아야 할 버그 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| MY-2-P1 | `patch keeps fields not sent` | 닉네임·소개·사진 있음 | `{nickname:"새이름"}`만 | 소개·사진 그대로 | 부분 갱신 |
+| MY-2-P1 | `patch rejects other users avatar path` | B의 경로 | A가 `avatar_path`=B 경로 | `422`, `detail="avatar_path"`, 무변경 | 남의 사진 쓰기 |
+| MY-2-P1 | `avatar upload strips exif location` | GPS 있는 JPEG | `#39` | 저장 파일에 GPS 없음 | NFR-05 |
+| MY-2-P1 | `nickname length bounds` | — | 빈 글자·41자 | `422`, `detail="nickname"` | DB CHECK 전에 막기 |
+| MY-2-P1 | `profile edit requires auth` | 비로그인 | `#38`·`#39` | `401` | 익명 수정 |
+| MY-2-P2 | `failed save keeps typed values` | `#38` 503 | 저장 | 입력값 그대로, 실패 문구 | Y2-5 |
+| MY-2-P2 | `no follow button or follower count` | — | 렌더 | `"팔로우"`·`"팔로워"` 글자 없음 | Y2-6 |
+| MY-2-P2 | `inbox bell shows dot only` | `has_unread:true` | 렌더 | 점 1개, 숫자 없음, 누르면 `/inbox` | Y2-7 |
+| MY-2-P1 | `patch rejects unissued own avatar path` | 인증 사용자 접두사 아래에 미발급 UUID 경로와 형식 불일치 경로 | 각 경로로 #38 | `422 detail="avatar_path"`, 프로필 무변경 | C3, 접두사만 검사 |
+| MY-2-P1 | `bio length and blank` | 소개 있음 | `bio`=61자 / `"   "` / 60자 | 61자 `422 detail="bio"`·행 무변경, 공백만은 저장 후 `bio:null`, 60자는 `200` | Y2-O2·Y2-3, 길이 검사 빠지면 61자가 저장됨 |
+| MY-2-P1 | `empty patch body is 422` | 프로필 있음 | `{}` | `422 detail="body"`, `updated_at` 그대로 | C3 빈 본문, `if not fields` 빠지면 `200` |
+| MY-2-P1 | `avatar null removes photo` | 사진 있음 | `{avatar_path:null}` | `200`, `avatar_url:null`, 닉네임·소개 그대로 | Y2-4·Y2-5 |
+| MY-2-P1 | `avatar upload rejects too large or not image` | 10MB 넘는 파일 / 글자 파일 | `#39` | `413 PAYLOAD_TOO_LARGE` / `422 detail="file"`, 저장소 올리기 0회 | 예외 #5, 크기·형식 검사 빠지면 저장소에 올라감 |
+| MY-2-P1 | `patch after withdrawal is 401` | 탈퇴 처리 중 사용자 | `#38` | `401 ACCOUNT_WITHDRAWN`, 행 무변경 | C6 탈퇴 경합, `lock_active_user` 빠지면 `200` |
+| MY-2-P2 | `edit button opens edit screen` | 내 정보 로그인 | `"프로필 수정"` 누름 | `router.push("/me/edit")`, `"프로필 수정은 곧 열려요"` 안내 없음 | Y2-1 |
+| MY-2-P2 | `unchanged save closes without call` | 처음 값 그대로 | `"저장"` | `updateMyProfile`·`uploadAvatar` 0회, 화면 닫힘 | 예외 #2, diff 검사 빠지면 호출 1회 |
+| MY-2-P2 | `double save sends once` | 닉네임 고침, `#38` 대기 중 | `"저장"` 두 번 | `updateMyProfile` 1회, 버튼 `"저장 중…"` | 예외 #3, `saving` 가드 빠지면 2회 |
+| MY-2-P2 | `save sends only changed fields` | 소개만 고침 | `"저장"` | 요청 본문 키가 `bio` 하나 | Y2-5, diff 빠지면 모든 칸 전송 |
+| MY-2-P2 | `empty nickname is blocked` | 닉네임 다 지움 | `"저장"` | `"닉네임을 1자 이상 써 주세요"`, API 0회 | 예외 #6 |
+| MY-2-P2 | `leaving dirty edit asks before discarding` | 소개 고침 | `‹` | `"고친 내용을 버릴까요?"`, `"계속 고치기"`면 값 그대로 / 안 고쳤으면 바로 닫힘 | Y2-O3 |
+| MY-2-P2 | `photo menu from pencil` | 사진 있음 / 없음 | `"사진 바꾸기"`(✎) 누름 | 메뉴 `"앨범에서 고르기"` 있음, `"사진 지우기"`는 사진 있을 때만, 사진 밑 안내 글자 없음 | Y2-O4 |
+| MY-2-P2 | `retry after failed profile save reuses uploaded path` | `#39` 성공, `#38` 응답 유실 | `"다시 저장하기"` | `uploadAvatar` 1회, 두 번의 `#38`에 동일한 `avatar_path`와 변경 칸 | 예외 #1, 경로 보관 빠지면 사진 두 번 올림 |
+| MY-2-P2 | `rejected photo keeps other fields` | `#39` 413 또는 `422 detail="file"` | 사진 고른 뒤 `"저장"` | 사진 아래 `"이 사진은 올릴 수 없어요. 다른 사진을 골라 주세요."`, 사진·닉네임·소개 입력값 그대로, `#38` 호출 0회 | 예외 #5 |
+| MY-2-P2 | `signed out edit shows login prompt` | 비로그인 | `/me/edit` 렌더 | `"로그인하면 내 프로필을 고칠 수 있어요."`, API 0회 / 고치는 중 로그아웃되면 같은 안내로 바뀜 | 예외 #4, 계정 전환 |
+| MY-2-P2 | `saved profile shows on my page` | 저장 성공 | 내 정보로 돌아옴 | 머리에 새 닉네임·소개, 토스트 `"저장했어요"` | Y2-O1 |
+| MY-2-P2 | `bell sits left of settings and hides dot on failure` | `/inbox` 연결, 이전 #47은 true | 내 정보에서 #47 다시 호출 → 실패 | 종이 ⚙ 왼쪽, 이전 점 제거, 안내 없음 | Y2-O5, 예외 #7 |
+| MY-2-P2 | `old account save is ignored` | A의 #39 또는 #38 진행 중 | B로 전환 후 A 응답 완료 | #39가 늦으면 #38 0회, #38이 늦으면 B 머리·토스트 무변경 | 계정 경합 |
+| MY-2-P2 | `bells agree after reading and account switch` | 홈 헤더 범위 승인 및 `/inbox` 연결, A는 읽지 않음 있음 | 홈 → 알림함에서 읽음 → 내 정보와 홈 확인 → B로 전환 중 A 응답 완료 | 처음 양쪽 점 표시, 읽음 반영 후 양쪽 점 제거, A 응답은 B 점을 바꾸지 않음 | Y2-O6, 두 위치 상태 불일치·계정 경합 |
+
+## MY-3 내 정보 "도서관 방문 모음"
+
+- **담당 역할**: A (서버 파트 포함) · **대상 브랜치**: `main`
+- **기준 명세서**: `specs/my-collection/세부/MY-3.md`, 시안 `specs/my-collection/세부/MY-3_시안.html` (세부 기획 때 작성)
+- **판**: 1차 D 기준선(M2 밑그림, 2026-11-19). 코드 레포 PR #204의 D 초안(`contracts/proposals/my-collection/MY-3.md`)을 이 기준선으로 옮겼다(초안 파일은 주니어 수정본 자리라 코드 레포에서 지움)
+- **선행 설계**: 코드 레포 `00_기획_원본.md` 제안 표 "도서관마다 고유 색(넓은 팔레트)과 내 정보 도서관 방문 모음"(D 2026-11-18), `DESIGN.md` 제안 "내 정보 도서관 방문 모음 + 그 화면 전용 큐브 팔레트", 04 "방문 스탬프"·"방명록 글", 02 VISIT-03·VISIT-05·USR-02·AC-ISOLATION, Q-44, Q-45
+- **작성자**: D (시니어)
+- **상태**: **D 기준선 — 검토 전·구현 착수 불가.** 선행: VISIT-3·VISIT-4 계약 발행, Q-45 ①②
+- **발행 본문 SHA**: 
+
+
+### Pre-flight 5대 관문 (코드 레포 `main` `761b4a1` · `team` `b4220e9`)
+
+| 관문 | 확인한 것 (`file:line`) | 이 계약서의 처리 (잠금 조건) | 미해결 / 후속 |
+| :--- | :--- | :--- | :--- |
+| ① 격리·권한·호환 | 이 파일 MY-1 Y2(`/me/*` 필수 인증·본인만), 02 USR-02·AC-ISOLATION | 필수 인증, 요청에 `user_id`를 받지 않음, 남의 모음은 볼 길이 없음. 응답에 `user_id` 없음 | 없음 |
+| ② 동시성·트랜잭션·외부 I/O | `server/app/db.py:16`(`run_db`), `mobile/src/lib/latest.ts:6` | 읽기 전용, 외부 I/O 없음. 앱은 `createLatestRunner`로 늦은 응답 버림(MY-1 Y7과 같게) | 없음 |
+| ③ 전제 실재성 | 방명록·방문 스탬프 표 **없음**(05 §10, 코드 검색 0건 2026-11-19) | 원천 표는 VISIT-3(`guestbook_entries`)·VISIT-4(`visit_stamps`·`stamp_bookmarks`)가 만든다. 없는 동안은 C7 가짜 값 | `미구현: VISIT-3·VISIT-4` |
+| ④ 담당·공유 파일 | `mobile/src/features/my-collection/MyCollectionScreen.tsx`(MY-1), `mobile/src/features/library-visit/FacadeHome.tsx`(`IsoCube` 파일 안 함수), `shortName.ts`(`cubeNames`) | MY-1 3탭 구조는 유지하고 `북마크` 탭에 `item_kind="stamp"`(C-46 D3~D5, MY-1 Y6)를 합친다. `FacadeHome.tsx`는 A 담당 파일이므로 `IsoCube`를 내보내는 리팩터를 허용한다(2026-11-19 D 확정 — 홈 파사드 동작·시험 무변경 유지) | M3-O1 |
+| ⑤ 승인·확장 | 06 M1 동결 | 새 `GET /me/visited-libraries`(#40) 1개 확정해 06 반영(2026-11-19 D 확정) | 없음 |
+
+### 계약
+
+#### C1. 결정
+
+| # | 결정 | 상태 | 근거 |
+| :--- | :--- | :--- | :--- |
+| M3-1 | 내 정보에 **"도서관 방문 모음"**을 둔다. 내가 **방문 스탬프를 찍었거나 방명록 글을 남긴 도서관**을 큐브(홈과 같은 C2 등각 큐브, 윗면 = 색 + 줄인 이름 `shortName.ts` `cubeNames`)로 모아 보여 준다 | 확인 (D 아이디어 2026-11-18, L6 2026-11-19 "계약 초안까지 지금") | 00 제안 표, DESIGN 제안 |
+| M3-2 | 모음에 들어가는 기준 = 스탬프 1개 이상 **또는** 철회·숨김되지 않은 방명록 글 1개 이상. 방문 페이지에 들어온 것만(기기 `visits`, C-56 방문 멘트용)으로는 들어가지 않는다 | 미확인(임시: 추천안) — Q-45 ①(입장만으로 찍히는지)에 따라 스탬프 쪽 뜻이 바뀜 | 05 §6 "방문 횟수는 M2 스탬프와 별개 값" |
+| M3-3 | Q-44 "내 발자취"(독서 기록의 도서관별 보기, READ-2)와 **겹치지 않는다**. 방문 모음은 기록 내용이 아니라 "다녀간 도서관"만 모은다. 큐브를 누르면 그 도서관의 방문 페이지(`/libraries/[libraryId]`)로 간다 | 기본값(Claude) — 누른 뒤 이동처는 세부 기획에서 바꿀 수 있음 | 02 READ-02, Q-44 |
+| M3-4 | **색**: 이 화면 전용 팔레트(D가 직접 넣는 색 목록, 중복 허용). 도서관마다 `library_id`로 늘 같은 색(목록 길이로 나눈 나머지). 홈 큐브 색 규칙(거리순 `fill1~3`)·VISIT-07 도서관 룩은 **바꾸지 않고 섞지 않는다**. 팔레트는 앱 상수라 서버 필드 없음 | 확인(분리·중복 허용, D 2026-11-18) / 배정 방식(나머지) 기본값(Claude) | DESIGN 제안 |
+| M3-5 | 본인만 본다. 남의 모음·다른 사람이 몇 곳 모았는지는 어디에도 보이지 않는다 | 확인 | MY-1 Y2, 02 USR-02 |
+| M3-6 | 정렬: 마지막으로 다녀간 날(스탬프 날짜·방명록 글 날짜 중 늦은 것) 최신 순, 같으면 `library_id` 오름차순 | 기본값(Claude) | — |
+| M3-7 | **북마크 탭 방문 기록 카드 연결(C-46 D3~D5, MY-1 Y6)**: `GET /api/v1/me/bookmarks`가 `post_bookmarks`(`item_kind: "post"`, `p.status = 'published'`)와 `stamp_bookmarks`(`item_kind: "stamp"`, `vs.visibility = 'public'`)를 합쳐 `(collected_at DESC, item_kind ASC, id DESC)` 복합 커서로 돌려준다(기존 `[ts, id]` 2-원소 커서도 하위 호환 파싱). 비공개로 바뀐 스탬프는 목록에서 숨기되 `stamp_bookmarks` 행은 유지해 다시 공개되면 원래 `saved_at` 순서로 복원한다. 앱 `북마크` 탭은 `item_kind === "stamp"`이면 B의 `StampCard`로 그리고 해제·되돌리기는 `#69`를 쓴다 | 확정 (C-46 D3~D5, 2026-11-19 D) | C-46 D3~D5, MY-1 Y6 |
+
+##### 열린 칸 (A가 기획·시안 작성 후 채울 결정)
+
+| # | 열린 칸 | D 추천(참고) | 채택 결정 | 상태 | 근거(명세 ID) |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| M3-O1 | 내 정보 안의 자리: MY-1 3탭 옆 4번째 탭 / 프로필 아래 가로 띠 / 별도 화면 | 프로필 아래 가로 띠(큐브 3~4개 + `"모두 보기"`) — 3탭을 그대로 둠 | | | |
+| M3-O2 | 큐브 옆면에 무엇을 적나(스탬프 수·처음 다녀간 날·방명록 수) | 오른쪽 면 `STAMP n`, 왼쪽 면 처음 날짜 | | | |
+| M3-O3 | 빈 상태 문구 | `"도서관에 다녀왔어요를 누르면 여기에 모여요"` | | | |
+| M3-O4 | 팔레트 색 목록(개수·값) | D가 직접 넣음 | | | |
+| M3-O5 | `"모두 보기"` 화면 배치(격자 열 수·이어 받기) | 3열 격자, 끝까지 내리면 이어 받기 | | | |
+
+#### C2. 엔드포인트 / 주요 함수
+
+| 메서드·경로 (`/api/v1`) | 인증 | 성공 상태 | 날짜 형식 | 목록 페이지·정렬·동률 | 연타·재시도 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| `GET /me/visited-libraries?cursor=&limit=` (#40, A) | 필수 (`get_current_user`) | `200` | `first_on`·`last_on`: `YYYY-MM-DD`(서울) | `limit` 기본 30(1~60), 정렬 `last_on DESC, library_id ASC`, 커서 `(last_on, library_id)` base64url | N/A (읽기만) |
+| `GET /me/bookmarks?cursor=&limit=` (MY-1 경로 확장, A) | 필수 (`get_current_user`) | `200` | `collected_at`: ISO 8601 `+09:00` | `limit` 기본 20(1~50), 정렬 `collected_at DESC, item_kind ASC, id DESC`, 커서 `[collected_at, item_kind, id]` base64url (기존 `[collected_at, id]` 2-원소 커서도 호환) | N/A |
+
+- 앱 함수: `mobile/src/features/my-collection/api.ts` `fetchVisitedLibraries(cursor?: string | null, signal?: AbortSignal): Promise<VisitedLibrariesPage>`
+- 순수 함수: `mobile/src/features/my-collection/visitPalette.ts` `collectionTone(libraryId: number, palette: readonly string[]): string`
+- 부품: `mobile/src/features/my-collection/VisitedLibraries.tsx` `export function VisitedLibraries(props: { onOpenLibrary(libraryId: number): void }): JSX.Element`
+
+#### C3. 요청·응답 필드와 화면 문구
+
+| 구분 | 필드/키 | 타입 | 필수 | null 허용 | 설명·고정 문구 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 요청 | `cursor` | `str` | N | Y | base64url JSON `[last_on, library_id]`. 깨지면 `422 VALIDATION_ERROR`, `detail="cursor"` |
+| 요청 | `limit` | `int` | N | N | 1~60, 밖이면 `422`, `detail="limit"` |
+| 응답 | `items[].library` | `{id, name, address, area_label}` | Y | N | `LibrarySummary`의 일부(이름 줄이기에 주소·`area_label`이 필요, `shortName.ts` `cubeNames`) |
+| 응답 | `items[].stamp_days` | `int` | Y | N | 스탬프 찍은 날 수(0 이상). Q-45 ① 결정 뒤 뜻 확정 |
+| 응답 | `items[].guestbook_count` | `int` | Y | N | 철회·숨김 아닌 내 방명록 글 수 |
+| 응답 | `items[].first_on` | `str` | Y | N | 처음 다녀간 서울 날짜 |
+| 응답 | `items[].last_on` | `str` | Y | N | 마지막 다녀간 서울 날짜(M3-6 정렬 기준) |
+| 응답 | `next_cursor` | `str` | Y | Y | 다음 쪽 없으면 `null` |
+| 응답(`/me/bookmarks`) `MyCollectionStamp` | `item_kind` | `"stamp"` | Y | N | C-46 D3·M3-7. `item_kind="post"`는 MY-1 `MyCollectionPost` 그대로 |
+| `MyCollectionStamp` | `id`, `library_id`, `library_name`, `stamped_on`, `author_nickname`, `published_at`, `mine`, `my_bookmark`, `collected_at` | `StampItem` + `library_name: str` + `collected_at: str` | Y | N | `my_bookmark`는 항상 `true`, `collected_at` = `stamp_bookmarks.saved_at` |
+| 화면 문구 | 제목 | — | — | — | `"도서관 방문 모음"` (M3-1) |
+| 화면 문구 | 빈 상태 (`M3-O3`) | — | — | — | |
+| 화면 문구 | 불러오기 실패 | — | — | — | `"불러오지 못했어요"` + `"↻ 다시 시도"` |
+| 화면 문구 | 비로그인 | — | — | — | N/A: MY-1 비로그인 화면이 내 정보 전체를 대신함 |
+
+- 응답에 `user_id`·다른 사람 정보 없음(M3-5).
+
+#### C4. 플랫폼 분기 표
+
+`N/A: 홈 큐브(FacadeHome)와 같은 View + transform 그리기라 세 플랫폼 같은 코드.`
+
+#### C5. 테이블
+
+`해당 없음: 새 테이블 없음.` 방명록 글·방문 스탬프 표는 VISIT-3·VISIT-4가 만든다. 이 Step은 두 표를 읽기만 한다. 탈퇴 처리는 D M2-0-P5.
+
+#### C6. 검증과 에러 처리
+
+| 명세서 예외 # | 발생 조건 | HTTP / `code` / `detail` | 화면에서 바뀌는 영역 | 유지되는 영역 | 기록 보장 |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| 예외 #1 | 비로그인 | 앱은 호출하지 않음(MY-1 Y7). 서버 직접 호출은 `401 AUTH_REQUIRED` | MY-1 비로그인 화면 | — | 없음 |
+| 예외 #2 | 깨진 `cursor`·범위 밖 `limit` | `422 VALIDATION_ERROR` / `cursor`·`limit` | 없음(앱은 서버가 준 커서만 씀) | 전부 | 없음 |
+| 예외 #3 | 네트워크·서버 오류 | — | 모음 자리만 실패 문구 + 다시 시도 | 3탭·프로필 | 없음 |
+| 예외 #4 | 모은 도서관 0곳 | `200`, `items: []` | 빈 상태 문구(M3-O3) | 전부 | 없음 |
+| 예외 #5 | 연타(다시 시도 두 번·탭 오가기) | 늦은 `200` | 마지막 요청만 반영 | — | 없음 |
+
+#### C7. 다른 기능과 닿는 곳과 `TODO(연결)` 가짜 값
+
+| 의존 대상 | 필요한 함수/데이터 | 상대 머지 전 가짜 값 |
+| :--- | :--- | :--- |
+| B VISIT-4 방문 스탬프 | `visit_stamps`·`stamp_bookmarks`, `#69`, `StampCard.tsx` | `TODO(연결): B` — `{"items":[{"library":{"id":101,"name":"정독도서관","address":"서울특별시 종로구 북촌로5길 48 (화동)","area_label":"화동"},"stamp_days":3,"guestbook_count":0,"first_on":"2026-11-02","last_on":"2026-11-18"},{"library":{"id":103,"name":"남산도서관","address":"서울특별시 용산구 소월로 109","area_label":null},"stamp_days":0,"guestbook_count":1,"first_on":"2026-11-10","last_on":"2026-11-10"}],"next_cursor":null}` |
+| B VISIT-3 방명록 | `guestbook_entries`(철회·숨김 제외) | 위와 같은 가짜 값 |
+| A library-visit | `shortName.ts` `cubeNames`(L6), `FacadeHome.tsx` `IsoCube` | 있음 — `IsoCube` 내보내기 리팩터 허용(2026-11-19 D 확정) |
+
+### 구현 계획
+
+#### P1. 확인한 기존 코드 전제
+
+| 참조 대상 | 실제 경로와 줄 | 심볼·시그니처 | 있음 / 앞으로 만듦 |
+| :--- | :--- | :--- | :--- |
+| 이름 줄이기 | `mobile/src/features/library-visit/shortName.ts` | `cubeNames(libs)` | 있음(L6, 2026-11-19 v2: `{big, small}` 쌍 반환, 주소로 지역 판정 — library-visit C2) |
+| 큐브 그리기 | `mobile/src/features/library-visit/FacadeHome.tsx` | `IsoCube`(파일 안 함수) | 있음 — `MY-3-P2`에서 `export` 리팩터 허용(2026-11-19 D 확정) |
+| 내 정보 화면 | `mobile/src/features/my-collection/MyCollectionScreen.tsx` | — | 있음(MY-1) |
+| 스탬프·방명록 표 | — | `visit_stamps`, `stamp_bookmarks`, `guestbook_entries` | 앞으로 만듦(VISIT-4·VISIT-3) |
+
+#### P2. 파트 분할과 담당 파일
+
+| 파트 | 브랜치 | 수정/생성 허용 파일(전수) | 완료 시 확인할 명세서 항목 |
+| :--- | :--- | :--- | :--- |
+| `MY-3-P1` 서버 | `feat/my-collection-MY-3` | `server/app/routers/my_collection.py`(`#40` 추가 + `/me/bookmarks`에 `stamp_bookmarks` 합치기), `server/tests/test_me_visited_libraries.py` | M3-2·M3-5~M3-7, 예외 #1·#2·#4 |
+| `MY-3-P2` 앱 | 같은 브랜치 | `mobile/src/features/my-collection/api.ts`, `visitPalette.ts`, `VisitedLibraries.tsx`, `MyCollectionScreen.tsx`(방문 모음 자리 + 북마크 탭 `StampCard` 분기), `useMyCollection.ts`(스탬프 북마크 해제·되돌리기 `#69`), `mobile/src/features/library-visit/FacadeHome.tsx`(`IsoCube` 내보내기 리팩터 허용), `mobile/src/features/my-collection/__tests__/visited-libraries.test.tsx` | M3-1·M3-3·M3-4·M3-7, 예외 #3·#4·#5 |
+
+##### 파트 머리말 — MY-3-P1 · P2 (공통)
+
+| 칸 | 값 |
+| --- | --- |
+| 1. 태스크 ID | `MY-3-P1` / `MY-3-P2` |
+| 2. 담당 역할 | A |
+| 3. 기준선 버전 | M2 D 기준선 |
+| 4. 계약서 커밋 | |
+| 5. 선행 태스크 | B VISIT-3·VISIT-4 머지(서버). 앱은 그 전이면 C7 가짜 값 |
+| 6. 수정 허용 파일 | 위 표 |
+| 7. 금지된 결정 | 홈 색 규칙·룩 변경 금지(M3-4). MY-1 3탭 변경 금지 |
+| 8. 완료 조건 | 파트 표 항목 + P5 + 웹·Android |
+| 9. 검증 명령 | MY-2와 같음 |
+| 10. 보고 형식 | `../prompts/3_구현.md` 5단계 |
+
+#### P3. 새 라이브러리
+
+| 쪽 | 패키지 | 용도 | 설정 |
+| --- | --- | --- | --- |
+| 서버·앱 | 없음 | — | — |
+
+#### P4. 핵심 흐름 골격
+
+```sql
+-- #40: 스탬프·방명록을 도서관별로 합친다 (본인만)
+WITH s AS (SELECT library_id, count(*) AS stamp_days, min(stamped_on) AS f, max(stamped_on) AS l
+           FROM visit_stamps WHERE user_id = :uid GROUP BY library_id),
+     g AS (SELECT library_id, count(*) AS guestbook_count,
+                  min((published_at AT TIME ZONE 'Asia/Seoul')::date) AS f,
+                  max((published_at AT TIME ZONE 'Asia/Seoul')::date) AS l
+           FROM guestbook_entries WHERE user_id = :uid AND status = 'published' GROUP BY library_id)
+SELECT library_id, coalesce(s.stamp_days,0), coalesce(g.guestbook_count,0),
+       least(s.f, g.f) AS first_on, greatest(s.l, g.l) AS last_on
+FROM s FULL JOIN g USING (library_id)
+-- 커서 조건 (last_on, library_id) → ORDER BY last_on DESC, library_id ASC LIMIT :limit + 1
+```
+
+```ts
+// visitPalette.ts
+export function collectionTone(libraryId: number, palette: readonly string[]): string {
+  return palette[((libraryId % palette.length) + palette.length) % palette.length];   // M3-4
+}
+```
+
+#### P5. 필수 테스트
+
+| 파트 | 테스트 이름 | 확인하는 것 |
+| :--- | :--- | :--- |
+| MY-3-P1 | `visited libraries list only stamp or guestbook libraries` | 스탬프·방명록 없는 도서관(기기 방문만)은 안 나옴(M3-2) |
+| MY-3-P1 | `visited libraries sort by last day then id` | M3-6 정렬·커서 동률 |
+| MY-3-P1 | `visited libraries require auth and never take user_id` | 401, 쿼리 `user_id` 무시(M3-5) |
+| MY-3-P1 | `withdrawn guestbook does not count` | 철회·숨김 글 제외 |
+| MY-3-P1 | `bookmarks merge posts and public stamps and restore on republish` | `post_bookmarks`·`stamp_bookmarks`가 `saved_at DESC`로 합쳐지고, 비공개 스탬프는 숨겼다가 재공개 시 원래 `saved_at` 순서로 복원(M3-7, C-46 D3~D5) |
+| MY-3-P2 | `collection palette is stable per library and independent of home fill` | 같은 id 같은 색, 홈 `fill1~3` 값을 쓰지 않음(M3-4) |
+| MY-3-P2 | `collection cubes use short names` | 윗면은 `cubeNames` 결과, 접근성 이름은 원래 이름 |
+| MY-3-P2 | `late response after retry is dropped` | 다시 시도 두 번, 첫 응답 늦게 → 마지막 것만(예외 #5) |
+| MY-3-P2 | `bookmark tab renders stamp card and unbookmark uses stamp endpoint` | `item_kind="stamp"`는 `StampCard`로 그리고 해제·되돌리기는 `#69` 호출(M3-7) |
