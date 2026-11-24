@@ -1,6 +1,6 @@
 # YES24 스테디셀러·인기도서 큐레이션 및 구매 연동 진행 (M2 이후 후속)
 
-- **상태:** **4단계 완료 — 5단계(Y-6) 개정 방향 선택 및 로컬 계약 초안 작성, 초안 승인·발행 대기**. 운영 반영은 별도 지시에 따른다.
+- **상태:** **4단계 완료 — 5단계(Y-6) 계약 확정·발행 완료(2026-11-24 D, [Y-6_계약개정안.md](명세/Y-6_계약개정안.md), team `2843458`), 구현 대기**. YES24 1단계 K23도 같은 커밋에서 다시 써서 원격 반영(원 `cb25a44`는 미반영·폐기). 운영 반영은 별도 지시에 따른다.
 - **기준 SHA:**
   - 설계 시점(2026-11-24): 코드 `2ccc0db951dcba4e0bc354946984a8adc619cd48`, team `64b9d9e8705c2ced9aa54a33fa98f4beeeb811a7`
   - **1단계 계약 확정(2026-11-24, C-81):** 코드 `main` `9f05e2021fdcff11f98a5b326691b546d35c65d1`(단일 `alembic head = 0025_reports_constraints`), **team 계약 발행 SHA `cb25a44e9eab502b3a7646c7e2c732390b86eef4`**(로컬 커밋, 원격 push 대기)
@@ -22,7 +22,7 @@
 | **2. DB·엔진·CLI 구현** | 1단계 선행. 새 Alembic 리비전(`books_source_check` `'yes24'` 추가, `curated_books_cache`·`book_purchase_links` 생성·RLS), `settings.py`·`policy.py`·`Yes24Client`·`ProviderEngine.curated_books`·`sync-yes24-curated` CLI 구현 | `server/`: `uv run alembic upgrade head && uv run alembic downgrade -1 && uv run alembic upgrade head`, `uv run pytest -W error tests/test_lib_engine.py tests/test_yes24_curated.py` | 마이그레이션 왕복·RLS(`relrowsecurity=true`, 정책 0개)·성인물/URL/ISBN일치/한도/빈 응답 보호 테스트 및 핵심 가드 변이 5곳 실패 확인 | **완료 (2026-11-24)** |
 | **3. API(`#9`/`#15`)·서가 테마 연결** | 2단계 선행. `#9 /books/recommendations` YES24 스테디셀러 연결·정보나루 폴백(양쪽 stale 시 YES24 stale 유지), `#15 /books/{isbn13}/purchase-link` 직링크(`kind="product"`)·검색 폴백 구현, `sync-yes24-curated --print-isbns` → `ops/shelf-themes` + `sync-theme-holdings` 연동 확인 | `server/`: `uv run pytest -W error tests/test_books.py tests/test_looks_shelf.py tests/test_yes24_curated.py` | `#9` 하위 호환·폴백, `#15` 직링크/폴백, 기존 도서관별 `#31` 회귀 0건(108 passed) 통과 | **완료 (2026-11-24)** |
 | **4. 모바일 타입·출처 표기·검증** | 3단계 선행. `Book.source`, `PurchaseLink.kind` 확장. 홈 하단 창(VISIT-1b)·검색 진입의 `#9` YES24 추천 섹션에 `출처: YES24`를 한 번 표기 | `mobile/`: `npx tsc --noEmit`, `npx jest --runInBand`. 구현·진행 기록을 각각 `Owner: D` 커밋으로 기록하고 [PR #302](https://github.com/axteamc/localone/pull/302)에 반영 | 타입 검사 통과, Jest 49개 스위트·870개 테스트 통과 | **완료 (2026-11-24)** |
-| **5. 도서 상세 시안·배치 개편 (Y-6, 후속)** | 4단계 선행. 도서 상세·단일 조회는 기존 API 재사용. 도서관 미지정 예정·일괄 조회·일괄 빌림은 아래 결정 후 관련 계약 개정 | [최신 HTML 시안](시안/Y-6_도서상세_YES24_시안.html), 설계명세 §5.5·§6, 아래 구현 범위 | 시안·계약 일치, 승인된 변경 구현, 경로별 검증 및 최신 PR HEAD 필수 CI 확인 | **시안·계약 대조 완료, 구현 대기** |
+| **5. 도서 상세 시안·배치 개편 (Y-6, 후속)** | 4단계 선행. 도서 상세·단일 조회는 기존 API 재사용. 도서관 미지정 예정·일괄 조회·일괄 빌림은 아래 결정 후 관련 계약 개정 | [최신 HTML 시안](시안/Y-6_도서상세_YES24_시안.html), 설계명세 §5.5·§6, 아래 구현 범위 | 시안·계약 일치, 승인된 변경 구현, 경로별 검증 및 최신 PR HEAD 필수 CI 확인 | **계약 발행 완료(team `2843458`), 구현 대기** |
 
 ---
 
@@ -58,16 +58,14 @@
 ## Y-6 다음 작업
 
 1. **기획 완료** — 최신 도서 상세 시안, 필 버튼·카드 선택, 기존 대출·반납 탭을 사용한다. 도서관 미지정 예정·일괄 조회·일괄 빌림의 개정 방향을 선택했다.
-2. **계약 및 명세 작성 중** — 로컬 비교본과 초안을 한 번에 검토한다. `#70` 일괄 조회 API, ISBN 최대 100개, 호출 총 40건·동시 8건과 예외 동작을 확인한 뒤 계약과 명세를 함께 확정한다. Y-6에 지정된 승인·발행 조건을 확인한다. team 원격 접근은 현재 미확인이다.
-3. **구현 대기** — 확정한 계약과 시안대로 화면·API·예정 저장과 일괄 동작을 연결하고 위 표적 검증을 실행한다.
-4. **주니어 AI 마무리 대기** — 구현 결과와 미검증 범위를 받아 필요한 회귀·플랫폼 검증 및 기록을 마무리한다. 작업 브랜치의 커밋·push·PR과 최신 HEAD 필수 CI를 확인한다. 머지·배포는 별도 지시를 따른다.
+2. **계약 내용 확정 (2026-11-24 D, mac)** — [Y-6_계약개정안.md](명세/Y-6_계약개정안.md) Y6-1~Y6-8. `#70 POST /api/v1/me/loan-plans/availability`(로그인·예정 ID), `libSrchByBook` 소장 1차 + 상위 후보 `bookExist`, ISBN 20권, 요청당 40건·동시 8건 공유, 항상 200 + `complete`·`unknown_pairs`, 정렬 소장 → 대출 가능 → 거리 → ID. Windows의 `.git/y6-contract-review/` 비교본은 이 문서로 대체한다.
+3. **team 발행 완료 (2026-11-24 mac)** — team `28434580a8db4a2fa0b0ba426b3df1805a005e2a`. `cb25a44`는 원격 어디에도 없어 사용자 지시로 덮어쓰기 발행. 02·05·06·C-84 반영.
+4. **구현 대기** — 확정한 계약과 시안대로 화면·API·예정 저장과 일괄 동작을 연결하고 위 표적 검증을 실행한다.
+5. **주니어 AI 마무리 대기** — 구현 결과와 미검증 범위를 받아 필요한 회귀·플랫폼 검증 및 기록을 마무리한다. 작업 브랜치의 커밋·push·PR과 최신 HEAD 필수 CI를 확인한다. 머지·배포는 별도 지시를 따른다.
 
 ```text
-Y-6 2단계(계약 및 명세 작성)부터 이어서 진행해줘.
-갱신된 AGENTS.md를 읽고 feat/yes24-y6-book-detail / 0635aa9의 브랜치·HEAD·status·diff를 확인해.
-기존 미커밋 명세·시안·규칙 변경과 ../team의 cb25a44 및 my-collection.md 변경을 보존해.
-이 진행 문서와 .git/y6-contract-review/comparison.diff를 기준으로 남은 계약 결정만 묶어서 확인해.
-계약과 명세를 함께 확정하고 승인·발행 조건이 확인되면 구현과 표적 검증까지 이어가.
-주니어 AI 마무리에는 남은 회귀, 커밋·push·PR과 최신 HEAD 필수 CI를 넘겨.
-머지·배포는 별도 지시를 따라.
+Y-6 구현 파트 1(서버 #70·미지정 예정·마이그레이션)을 시작해. 나는 D야.
+먼저 읽어: 개발산출물/인수인계_메모.md, 개발산출물/명세/Y-6_계약개정안.md, ../team/contracts/book-search.md LIB-3b, core.md K24.
+git: git -C ../team pull --ff-only(발행 2843458 이후), 코드는 feat/yes24-y6-book-detail.
+범위: server/ 정책·엔진·loan_plans 라우터·0027 마이그레이션·관련 테스트. 모바일은 파트 2.
 ```

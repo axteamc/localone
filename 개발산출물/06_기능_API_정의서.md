@@ -64,8 +64,9 @@
 
 | # | 메서드·경로 | 인증 | 목적 | 요구사항 | 상태 |
 | --- | --- | --- | --- | --- | --- |
-| 16 | `GET /api/v1/me/loan-plans` | 필수 | 내 빌릴 예정 목록 | LIB-05 | `확정` |
-| 17 | `POST /api/v1/me/loan-plans` | 필수 | 책 + 도서관으로 예정 저장(같은 조합은 한 건) | LIB-05, AC-PLAN | `확정` |
+| 16 | `GET /api/v1/me/loan-plans` | 필수 | 내 빌릴 예정 목록. `include_unassigned=true`일 때만 도서관 미지정 예정 포함(`library: null`, C-84) | LIB-05 | `확정` |
+| 17 | `POST /api/v1/me/loan-plans` | 필수 | 책 + 도서관으로 예정 저장(같은 조합은 한 건). `library_id` 생략·`null`이면 도서관 미지정 예정(같은 책 한 건, C-84) | LIB-05, AC-PLAN | `확정` |
+| 70 | `POST /api/v1/me/loan-plans/availability` | 필수 | 빌릴 예정 여러 권(예정 ID, 생략 시 활성 전체, 서로 다른 ISBN 20권까지)의 주변 소장 일괄 조회. `libSrchByBook` 소장 1차 + 상위 후보 `bookExist`, 요청당 40건·동시 8건 공유. 항상 `200` + `complete`·`unknown_pairs`, 소장 권수 → 대출 가능 권수 → 거리 → ID로 최대 3곳(표시는 거리순). 초과 `422 detail="plan_ids"`, 남의 예정 `404` | LIB-05, AC-PLAN | `확정` (2026-11-24 D, C-84, `book-search.md` LIB-3b·`core.md` K24) |
 | 18 | `DELETE /api/v1/me/loan-plans/{plan_id}` | 필수 | 예정 해제(상태를 `released`로) | LIB-05 | `확정` · 행을 지울지 상태만 바꿀지는 `기본값(Claude)`(상태) |
 | 19 | `GET /api/v1/me/loans?status=` | 필수 | 내 대출(대출 중·지난 대출). D-day·연체는 서버가 계산해 준다. 앱은 이 목록으로 기기 알림을 맞춘다 | LOAN-01·05, AC-NOTIFY | `확정` |
 | 20 | `POST /api/v1/me/loans` | 필수 | "빌렸어요": 대출일 = 서버 서울 오늘, 예정일 = +14일(추정). 예정에서 왔으면 연결 | LOAN-01, AC-LOAN·AC-DATE | `확정` · 같은 책 중복 기준 `미확인(임시)` Q-21 |
