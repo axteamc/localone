@@ -12,7 +12,7 @@ import asyncio
 import base64
 import json
 import re
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -26,11 +26,15 @@ from app.auth import CurrentUser, ensure_user_profile_if_absent, get_current_use
 from app.common import ApiError, now_kst
 from app.db import run_db
 from app.routers.feed import feed_post, my_flags
+from app.routers.libraries import area_label_of
 from app.routers.posts import (ALLOWED_TYPES, MSG_STORAGE, MSG_TOO_LARGE, POST_COLUMNS, POST_IMAGE_MAX_BYTES,
                                POST_JOINS, reencode_without_exif)
+from app.routers.stamps import stamp_item
 
 LIMIT_DEFAULT = 20
 LIMIT_MAX = 50
+VISITED_LIMIT_DEFAULT = 30
+VISITED_LIMIT_MAX = 60
 MSG_VALIDATION = "요청 형식이 올바르지 않아요."
 DEFAULT_NICKNAME = "이웃"  # nickname_of 규칙(행이 없을 때)
 NICKNAME_MAX = 40  # Y2-2(0003 CHECK와 같음)
@@ -41,6 +45,7 @@ MSG_STORAGE_CHECK = "사진을 확인하지 못했어요. 다시 시도해 주�
 router = APIRouter()
 
 LimitQuery = Query(LIMIT_DEFAULT, ge=1, le=LIMIT_MAX)
+VisitedLimitQuery = Query(VISITED_LIMIT_DEFAULT, ge=1, le=VISITED_LIMIT_MAX)
 
 
 # ─────────── 커서: base64url(JSON [ts_iso, post_id]) ───────────
@@ -72,7 +77,6 @@ def decode_cursor(cursor: str | None) -> tuple[datetime, UUID] | None:
 COLLECTIONS: dict[str, tuple[str, str]] = {
     "posts": ("", "p.published_at"),
     "reactions": (" JOIN post_reactions pr ON pr.post_id = p.id AND pr.user_id = :uid", "pr.created_at"),
-    "bookmarks": (" JOIN post_bookmarks pb ON pb.post_id = p.id AND pb.user_id = :uid", "pb.saved_at"),
 }
 
 
@@ -155,7 +159,215 @@ async def list_my_reactions(request: Request, cursor: str | None = None, limit: 
 @router.get("/api/v1/me/bookmarks")
 async def list_my_bookmarks(request: Request, cursor: str | None = None, limit: int = LimitQuery,
                             user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
-    return await list_collection(request, "bookmarks", user, cursor, limit)
+    return await list_merged_bookmarks(request, user, cursor, limit)
+
+
+# ─────────── MY-3: 북마크 통합(post + stamp, M3-7) · 방문 도서관 모음(#40) ───────────
+
+
+def encode_bookmark_cursor(ts: datetime, item_kind: str, item_id: Any) -> str:
+    raw = json.dumps([ts.isoformat(), item_kind, str(item_id)]).encode()
+    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+
+def decode_bookmark_cursor(cursor: str | None) -> tuple[datetime, str, UUID] | None:
+    """3-원소 [ts, item_kind, id] 및 기존 MY-1 2-원소 [ts, id] 하위 호환 파싱(M3-7)."""
+    if cursor is None or cursor == "":
+        return None
+    try:
+        raw = json.loads(base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)))
+        if not isinstance(raw, list):
+            raise ValueError("cursor shape")
+        if len(raw) == 2:
+            ts_raw, kind, id_raw = raw[0], "post", raw[1]
+        elif len(raw) == 3:
+            ts_raw, kind, id_raw = raw[0], raw[1], raw[2]
+            if kind not in ("post", "stamp"):
+                raise ValueError("item_kind")
+        else:
+            raise ValueError("cursor len")
+        if not isinstance(ts_raw, str) or not isinstance(id_raw, str):
+            raise ValueError("cursor types")
+        ts = datetime.fromisoformat(ts_raw)
+        if ts.tzinfo is None:
+            raise ValueError("tz required")
+        return ts, kind, UUID(id_raw)
+    except Exception as exc:
+        raise ApiError(422, "VALIDATION_ERROR", MSG_VALIDATION, "cursor") from exc
+
+
+def select_bookmark_keys(c: Connection, uid: UUID, after: tuple[datetime, str, UUID] | None,
+                         limit: int) -> list[Any]:
+    sql = (
+        "WITH combined AS ("
+        "  SELECT pb.saved_at AS collected_at, 'post'::text AS item_kind, p.id AS id "
+        "  FROM post_bookmarks pb JOIN posts p ON p.id = pb.post_id "
+        "  WHERE pb.user_id = :uid AND p.status = 'published' "
+        "  UNION ALL "
+        "  SELECT sb.saved_at AS collected_at, 'stamp'::text AS item_kind, vs.id AS id "
+        "  FROM stamp_bookmarks sb JOIN visit_stamps vs ON vs.id = sb.stamp_id "
+        "  WHERE sb.user_id = :uid AND vs.visibility = 'public'"
+        ") "
+        "SELECT collected_at, item_kind, id FROM combined"
+    )
+    params: dict[str, Any] = {"uid": uid, "n": limit + 1}
+    if after is not None:
+        sql += (
+            " WHERE (collected_at < :after_ts"
+            " OR (collected_at = :after_ts AND item_kind > :after_kind)"
+            " OR (collected_at = :after_ts AND item_kind = :after_kind AND id < :after_id))"
+        )
+        params.update(after_ts=after[0], after_kind=after[1], after_id=after[2])
+    sql += " ORDER BY collected_at DESC, item_kind ASC, id DESC LIMIT :n"
+    return c.execute(text(sql), params).all()
+
+
+async def list_merged_bookmarks(request: Request, user: CurrentUser, cursor: str | None,
+                                limit: int) -> dict[str, Any]:
+    after = decode_bookmark_cursor(cursor)
+
+    def tx(c: Connection) -> tuple[list[Any], dict[Any, Any], tuple[set[Any], set[Any]], dict[Any, Any]]:
+        keys = select_bookmark_keys(c, user.id, after, limit)
+        page = keys[:limit]
+        post_ids = [k.id for k in page if k.item_kind == "post"]
+        stamp_ids = [k.id for k in page if k.item_kind == "stamp"]
+        posts_by_id: dict[Any, Any] = {}
+        flags: tuple[set[Any], set[Any]] = (set(), set())
+        if post_ids:
+            post_rows = c.execute(
+                text(f"SELECT {POST_COLUMNS} {POST_JOINS} WHERE p.id = ANY(:ids)"),
+                {"ids": post_ids},
+            ).all()
+            posts_by_id = {r.id: r for r in post_rows}
+            flags = my_flags(c, user, post_ids)
+        stamps_by_id: dict[Any, Any] = {}
+        if stamp_ids:
+            stamp_rows = c.execute(
+                text(
+                    "SELECT s.id, s.user_id, s.library_id, l.name AS library_name, s.stamped_on, "
+                    "s.created_at AS published_at, COALESCE(up.nickname, '이웃') AS nickname "
+                    "FROM visit_stamps s "
+                    "JOIN libraries l ON l.id = s.library_id "
+                    "LEFT JOIN user_profiles up ON up.user_id = s.user_id "
+                    "WHERE s.id = ANY(:ids)"
+                ),
+                {"ids": stamp_ids},
+            ).all()
+            stamps_by_id = {r.id: r for r in stamp_rows}
+        return keys, posts_by_id, flags, stamps_by_id
+
+    keys, posts_by_id, (reacted, saved), stamps_by_id = await run_db(request.app.state.engine, tx)
+    page = keys[:limit]
+    items: list[dict[str, Any]] = []
+    for k in page:
+        collected_at = now_kst(k.collected_at).isoformat(timespec="seconds")
+        if k.item_kind == "post":
+            row = posts_by_id.get(k.id)
+            if row is None:
+                continue
+            item = feed_post(request, row, reacted, saved)
+            item["item_kind"] = "post"
+            item["collected_at"] = collected_at
+            items.append(item)
+        else:
+            row = stamps_by_id.get(k.id)
+            if row is None:
+                continue
+            item = stamp_item(row, user, {row.id})
+            item["item_kind"] = "stamp"
+            item["library_name"] = row.library_name
+            item["collected_at"] = collected_at
+            items.append(item)
+    return {
+        "items": items,
+        "next_cursor": (
+            encode_bookmark_cursor(page[-1].collected_at, page[-1].item_kind, page[-1].id)
+            if len(keys) > limit
+            else None
+        ),
+    }
+
+
+def encode_visited_cursor(last_on: date, library_id: int) -> str:
+    raw = json.dumps([last_on.isoformat(), int(library_id)]).encode()
+    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+
+def decode_visited_cursor(cursor: str | None) -> tuple[date, int] | None:
+    if cursor is None or cursor == "":
+        return None
+    try:
+        raw = json.loads(base64.urlsafe_b64decode(cursor + "=" * (-len(cursor) % 4)))
+        if not isinstance(raw, list) or len(raw) != 2:
+            raise ValueError("cursor shape")
+        day_raw, lib_raw = raw[0], raw[1]
+        if not isinstance(day_raw, str) or isinstance(lib_raw, bool) or not isinstance(lib_raw, int):
+            raise ValueError("cursor types")
+        if lib_raw < 1:
+            raise ValueError("library_id")
+        return date.fromisoformat(day_raw), lib_raw
+    except Exception as exc:
+        raise ApiError(422, "VALIDATION_ERROR", MSG_VALIDATION, "cursor") from exc
+
+
+@router.get("/api/v1/me/visited-libraries")
+async def list_my_visited_libraries(
+    request: Request,
+    cursor: str | None = None,
+    limit: int = VisitedLimitQuery,
+    user: CurrentUser = Depends(get_current_user),
+) -> dict[str, Any]:
+    """#40 도서관 방문 모음: 본인 스탬프(공개·비공개) 또는 공개 방명록이 있는 도서관만 최신순(M3-2·M3-5·M3-6)."""
+    after = decode_visited_cursor(cursor)
+
+    def tx(c: Connection) -> list[Any]:
+        sql = (
+            "WITH s AS ("
+            "  SELECT library_id, count(*)::int AS stamp_days, min(stamped_on) AS f, max(stamped_on) AS l "
+            "  FROM visit_stamps WHERE user_id = :uid GROUP BY library_id"
+            "), g AS ("
+            "  SELECT library_id, count(*)::int AS guestbook_count, "
+            "         min((published_at AT TIME ZONE 'Asia/Seoul')::date) AS f, "
+            "         max((published_at AT TIME ZONE 'Asia/Seoul')::date) AS l "
+            "  FROM guestbook_entries WHERE user_id = :uid AND status = 'published' GROUP BY library_id"
+            "), merged AS ("
+            "  SELECT COALESCE(s.library_id, g.library_id) AS library_id, "
+            "         COALESCE(s.stamp_days, 0) AS stamp_days, "
+            "         COALESCE(g.guestbook_count, 0) AS guestbook_count, "
+            "         LEAST(s.f, g.f) AS first_on, "
+            "         GREATEST(s.l, g.l) AS last_on "
+            "  FROM s FULL JOIN g USING (library_id)"
+            ") "
+            "SELECT m.library_id, l.name, l.address, m.stamp_days, m.guestbook_count, m.first_on, m.last_on "
+            "FROM merged m JOIN libraries l ON l.id = m.library_id"
+        )
+        params: dict[str, Any] = {"uid": user.id, "n": limit + 1}
+        if after is not None:
+            sql += " WHERE (m.last_on < :after_day OR (m.last_on = :after_day AND m.library_id > :after_lib))"
+            params.update(after_day=after[0], after_lib=after[1])
+        sql += " ORDER BY m.last_on DESC, m.library_id ASC LIMIT :n"
+        return c.execute(text(sql), params).all()
+
+    rows = await run_db(request.app.state.engine, tx)
+    page = rows[:limit]
+    return {
+        "items": [
+            {
+                "library": {
+                    "id": int(r.library_id),
+                    "name": r.name,
+                    "address": r.address,
+                    "area_label": area_label_of(r.address),
+                },
+                "stamp_days": int(r.stamp_days),
+                "guestbook_count": int(r.guestbook_count),
+                "first_on": r.first_on.isoformat(),
+                "last_on": r.last_on.isoformat(),
+            }
+            for r in page
+        ],
+        "next_cursor": encode_visited_cursor(page[-1].last_on, int(page[-1].library_id)) if len(rows) > limit else None,
+    }
 
 
 # ─────────── MY-2: 프로필 수정(#38)·사진 올리기(#39) ───────────

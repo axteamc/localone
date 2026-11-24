@@ -225,6 +225,7 @@ def book(db_engine: Engine, public_reference_data):  # noqa: F811
             {"i": AUTH3_ISBN}).scalar_one()
     yield bid
     with db_engine.begin() as conn:
+        conn.execute(text("DELETE FROM reading_logs WHERE book_id = :b"), {"b": bid})
         conn.execute(text("DELETE FROM loans WHERE book_id = :b"), {"b": bid})
         conn.execute(text("DELETE FROM loan_plans WHERE book_id = :b"), {"b": bid})
     clean()
@@ -365,7 +366,8 @@ def _inbox(engine: Engine, user: UUID) -> list[tuple[str, dict]]:
 
 def test_withdraw_steps_follow_z10_order():
     """순서 기본값(core P5 세부): ① 공개 철회(posts → 방명록 → 참가 → 댓글 → 모임) ② 개인 삭제
-    (반응·북마크 → 대출 → 예정 → 알림함 → 설정) ③ 프로필. 알림함 삭제는 모임 취소 안내 뒤."""
+    (반응·북마크 → 스탬프 북마크 → 스탬프 → 대출 → 예정 → 게시물 reading_log_id NULL → 독서 기록 → 알림함 → 설정 → 후기)
+    ③ 프로필. 알림함 삭제는 모임 취소 안내 뒤."""
     names = [step.__name__ for step in me_router.WITHDRAWAL_STEPS]
     assert names == [
         "_withdraw_published_posts",
@@ -374,8 +376,12 @@ def test_withdraw_steps_follow_z10_order():
         "_delete_published_club_comments",
         "_cancel_unstarted_hosted_clubs",
         "_delete_own_reactions_and_bookmarks",
+        "_delete_own_stamp_bookmarks",
+        "_delete_own_visit_stamps",
         "_delete_own_loans",
         "_delete_own_loan_plans",
+        "_clear_own_post_reading_logs",
+        "_delete_own_reading_logs",
         "_delete_own_inbox_items",
         "_delete_own_user_settings",
         "_delete_own_club_reviews",
@@ -383,8 +389,8 @@ def test_withdraw_steps_follow_z10_order():
     ]
 
 
-def test_withdraw_cleans_m2_tables_in_order(client, auth, db_engine, public_reference_data):
-    """P5 필수: Z10 표마다 기대 상태. reading_log_id NULL 단언은 LOCAL-3·READ-1 머지 뒤 P5 후속."""
+def test_withdraw_cleans_m2_tables_in_order(client, auth, db_engine, book):
+    """P5 필수: Z10 표마다 기대 상태(1차 + 2차 reading_log_id NULL → reading_logs, stamp_bookmarks → visit_stamps)."""
     gb_mine, gb_theirs = _guestbook(db_engine, A), _guestbook(db_engine, B)
     theirs_club = _club(db_engine, B, starts="now() + interval '1 day'")
     _join(db_engine, theirs_club, A)
@@ -403,6 +409,38 @@ def test_withdraw_cleans_m2_tables_in_order(client, auth, db_engine, public_refe
                      {"a": A, "b": B})
         conn.execute(text("INSERT INTO user_settings (user_id, return_stats_consent) VALUES (:a, true), (:b, true)"),
                      {"a": A, "b": B})
+        # 2차: reading_logs + posts.reading_log_id (published·hidden 모두)
+        a_log = str(conn.execute(text(
+            "INSERT INTO reading_logs (user_id, book_id, library_id, note, client_request_id) "
+            "VALUES (:a, :b, 101, 'A 감상', gen_random_uuid()) RETURNING id"
+        ), {"a": A, "b": book}).scalar_one())
+        b_log = str(conn.execute(text(
+            "INSERT INTO reading_logs (user_id, book_id, library_id, note, client_request_id) "
+            "VALUES (:b_uid, :b, 101, 'B 감상', gen_random_uuid()) RETURNING id"
+        ), {"b_uid": B, "b": book}).scalar_one())
+        a_post_pub = str(conn.execute(text(
+            "INSERT INTO posts (user_id, library_id, image_kind, image_value, body, status, reading_log_id, client_request_id) "
+            "VALUES (:a, 101, 'color', 'fill2', 'A 공개글', 'published', :log, gen_random_uuid()) RETURNING id"
+        ), {"a": A, "log": a_log}).scalar_one())
+        a_post_hid = str(conn.execute(text(
+            "INSERT INTO posts (user_id, library_id, image_kind, image_value, body, status, reading_log_id, client_request_id) "
+            "VALUES (:a, 101, 'color', 'fill2', 'A 숨김글', 'hidden', :log, gen_random_uuid()) RETURNING id"
+        ), {"a": A, "log": a_log}).scalar_one())
+        b_post = str(conn.execute(text(
+            "INSERT INTO posts (user_id, library_id, image_kind, image_value, body, status, reading_log_id, client_request_id) "
+            "VALUES (:b_uid, 101, 'color', 'fill2', 'B 공개글', 'published', :log, gen_random_uuid()) RETURNING id"
+        ), {"b_uid": B, "log": b_log}).scalar_one())
+        # 2차: visit_stamps + stamp_bookmarks
+        a_stamp = str(conn.execute(text(
+            "INSERT INTO visit_stamps (user_id, library_id, stamped_on, visibility) "
+            "VALUES (:a, 101, DATE '2026-11-18', 'public') RETURNING id"
+        ), {"a": A}).scalar_one())
+        b_stamp = str(conn.execute(text(
+            "INSERT INTO visit_stamps (user_id, library_id, stamped_on, visibility) "
+            "VALUES (:b_uid, 101, DATE '2026-11-18', 'public') RETURNING id"
+        ), {"b_uid": B}).scalar_one())
+        conn.execute(text("INSERT INTO stamp_bookmarks (user_id, stamp_id) VALUES (:a, :bs), (:b_uid, :as_), (:b_uid, :bs)"),
+                     {"a": A, "b_uid": B, "as_": a_stamp, "bs": b_stamp})
 
     assert client.delete("/api/v1/me", headers=auth["A"]).status_code == 200
 
@@ -428,6 +466,50 @@ def test_withdraw_cleans_m2_tables_in_order(client, auth, db_engine, public_refe
     # 설정: 내 행만 삭제
     assert scalar(db_engine, "SELECT count(*) FROM user_settings WHERE user_id = :u", u=A) == 0
     assert scalar(db_engine, "SELECT count(*) FROM user_settings WHERE user_id = :u", u=B) == 1
+    # 독서 기록 + 게시물 reading_log_id NULL(hidden 포함), 남의 기록·연결은 그대로
+    assert scalar(db_engine, "SELECT count(*) FROM reading_logs WHERE user_id = :u", u=A) == 0
+    assert scalar(db_engine, "SELECT count(*) FROM reading_logs WHERE user_id = :u", u=B) == 1
+    assert scalar(db_engine, "SELECT reading_log_id FROM posts WHERE id = :p", p=a_post_pub) is None
+    assert scalar(db_engine, "SELECT reading_log_id FROM posts WHERE id = :p", p=a_post_hid) is None
+    assert scalar(db_engine, "SELECT status FROM posts WHERE id = :p", p=a_post_hid) == "hidden"
+    assert str(scalar(db_engine, "SELECT reading_log_id FROM posts WHERE id = :p", p=b_post)) == b_log
+    # 방문 스탬프 + 스탬프 북마크: A의 스탬프·북마크 삭제(B가 A 스탬프에 남긴 북마크도 CASCADE 정리), B의 스탬프·북마크 유지
+    assert scalar(db_engine, "SELECT count(*) FROM visit_stamps WHERE user_id = :u", u=A) == 0
+    assert scalar(db_engine, "SELECT count(*) FROM visit_stamps WHERE user_id = :u", u=B) == 1
+    assert scalar(db_engine, "SELECT count(*) FROM stamp_bookmarks WHERE user_id = :u", u=A) == 0
+    assert scalar(db_engine, "SELECT count(*) FROM stamp_bookmarks WHERE stamp_id = :s", s=a_stamp) == 0
+    assert scalar(db_engine, "SELECT count(*) FROM stamp_bookmarks WHERE user_id = :u AND stamp_id = :s",
+                  u=B, s=b_stamp) == 1
+
+
+def test_withdraw_clears_post_reading_log_before_deleting_reading_logs(auth, db_engine, book, monkeypatch):
+    """_clear_own_post_reading_logs가 _delete_own_reading_logs보다 먼저 실행되어 명시적으로 NULL 처리한다."""
+    with db_engine.begin() as conn:
+        a_log = str(conn.execute(text(
+            "INSERT INTO reading_logs (user_id, book_id, library_id, note, client_request_id) "
+            "VALUES (:a, :b, 101, '순서 확인', gen_random_uuid()) RETURNING id"
+        ), {"a": A, "b": book}).scalar_one())
+        a_post = str(conn.execute(text(
+            "INSERT INTO posts (user_id, library_id, image_kind, image_value, body, status, reading_log_id, client_request_id) "
+            "VALUES (:a, 101, 'color', 'fill2', '연결 글', 'published', :log, gen_random_uuid()) RETURNING id"
+        ), {"a": A, "log": a_log}).scalar_one())
+
+    observed_before_delete: list[Any] = []
+    original_delete = me_router._delete_own_reading_logs
+
+    def spy_delete(conn, user_id, now):
+        observed_before_delete.append(
+            conn.execute(text("SELECT reading_log_id FROM posts WHERE id = :p"), {"p": a_post}).scalar_one()
+        )
+        original_delete(conn, user_id, now)
+
+    steps = [spy_delete if s is original_delete else s for s in me_router.WITHDRAWAL_STEPS]
+    monkeypatch.setattr(me_router, "WITHDRAWAL_STEPS", steps)
+
+    with db_engine.begin() as conn:
+        withdraw_user_account(conn, A)
+    assert observed_before_delete == [None]
+    assert scalar(db_engine, "SELECT count(*) FROM reading_logs WHERE user_id = :u", u=A) == 0
 
 
 def test_withdraw_keeps_hidden_and_removed_m2_rows(client, auth, db_engine, public_reference_data):

@@ -2,7 +2,7 @@
 // local-feed의 send()는 내보내지 않아(B 파일 수정 금지) 같은 규칙을 여기 짧게 둔다.
 import { apiFetch } from "../../auth/apiFetch";
 import { ApiCallError } from "../../lib/publicApi";
-import type { FeedPost } from "../local-feed/api";
+import type { FeedPost, StampItem } from "../local-feed/api";
 import { buildImageFormData } from "../local-feed/imagePicker";
 
 export { ApiCallError };
@@ -16,13 +16,30 @@ export type MyProfile = {
   updated_at: string;
 };
 
-/** `FeedPost` 호환 + 모은 시각. MY-1은 게시물만(`item_kind: "post"`, TODO(연결): VISIT-4 D3) */
+/** `FeedPost` 호환 + 모은 시각 */
 export type MyCollectionPost = FeedPost & {
   item_kind: "post";
   collected_at: string;
 };
 
-export type MyCollectionPage = { items: MyCollectionPost[]; next_cursor: string | null };
+/** `StampItem` 호환 + 도서관 이름·모은 시각(MY-3 C3) */
+export type MyCollectionStamp = StampItem & {
+  item_kind: "stamp";
+  library_name: string;
+  collected_at: string;
+};
+
+export type MyCollectionItem = MyCollectionPost | MyCollectionStamp;
+export type MyCollectionPage<T = MyCollectionPost> = { items: T[]; next_cursor: string | null };
+
+export type VisitedLibrary = {
+  library: { id: number; name: string; address: string | null; area_label: string | null };
+  stamp_days: number;
+  guestbook_count: number;
+  first_on: string;
+  last_on: string;
+};
+export type VisitedLibrariesPage = { items: VisitedLibrary[]; next_cursor: string | null };
 
 export type PageArgs = { cursor?: string | null; limit?: number };
 
@@ -75,8 +92,13 @@ export function fetchMyReactions(page?: PageArgs, signal?: AbortSignal): Promise
   return get<MyCollectionPage>(`me/reactions${pageQuery(page)}`, signal);
 }
 
-export function fetchMyBookmarks(page?: PageArgs, signal?: AbortSignal): Promise<MyCollectionPage> {
-  return get<MyCollectionPage>(`me/bookmarks${pageQuery(page)}`, signal);
+export function fetchMyBookmarks(page?: PageArgs, signal?: AbortSignal): Promise<MyCollectionPage<MyCollectionItem>> {
+  return get<MyCollectionPage<MyCollectionItem>>(`me/bookmarks${pageQuery(page)}`, signal);
+}
+
+/** #40 `GET /api/v1/me/visited-libraries` (MY-3-P1) */
+export function fetchVisitedLibraries(cursor?: string | null, signal?: AbortSignal): Promise<VisitedLibrariesPage> {
+  return get<VisitedLibrariesPage>(`me/visited-libraries${pageQuery({ cursor })}`, signal);
 }
 
 // ─────────── MY-2 (C2) ───────────

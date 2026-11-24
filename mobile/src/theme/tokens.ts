@@ -109,6 +109,12 @@ export const CUBE_PALETTE = [
   { name: "ghostGray", hex: "#C8C8D2", ink: ON_FILL_LIGHT },
 ] as const;
 
+/** MY-3 M3-O4 방문 모음 큐브 윗면 색. 순서가 도서관별 색을 결정한다. */
+export const VISIT_COLLECTION_PALETTE = [
+  "#E9B7AA", "#F0D6A1", "#C9DBAC", "#A9D4CC",
+  "#AFC9E8", "#CFBCE4", "#E6C4D7", "#D6CCBC",
+] as const;
+
 /** 본문 글자색(디자인_기준.md §2 "본문 글자 #1D1D1F"). 룩과 무관. */
 export const TEXT_COLOR = "#1D1D1F";
 

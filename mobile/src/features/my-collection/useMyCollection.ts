@@ -11,6 +11,7 @@ import {
   onPostWithdrawn,
   setBookmark,
   setReaction,
+  setStampBookmark,
   type PostReactionPatch,
 } from "../local-feed/api";
 import { toggleFailText } from "../local-feed/PostMenu";
@@ -19,6 +20,7 @@ import {
   fetchMyPosts,
   fetchMyProfile,
   fetchMyReactions,
+  type MyCollectionItem,
   type MyCollectionPage,
   type MyCollectionPost,
   type MyProfile,
@@ -64,7 +66,7 @@ export const NOTICE_MS = 2000;
 type Field = "my_reaction" | "my_bookmark";
 /** 그 필드가 꺼지면 목록에서 빠지는 수집 탭 */
 const COLLECTION_FIELD: Partial<Record<CollectionTab, Field>> = { reactions: "my_reaction", bookmarks: "my_bookmark" };
-const FETCHERS: Record<CollectionTab, (page: PageArgs, signal?: AbortSignal) => Promise<MyCollectionPage>> = {
+const FETCHERS: Record<CollectionTab, (page: PageArgs, signal?: AbortSignal) => Promise<MyCollectionPage<MyCollectionItem>>> = {
   posts: fetchMyPosts,
   reactions: fetchMyReactions,
   bookmarks: fetchMyBookmarks,
@@ -81,10 +83,11 @@ export type ProfileState = { kind: "loading" } | { kind: "error" } | { kind: "re
 export type TabState =
   | { kind: "loading" }
   | { kind: "error" }
-  | { kind: "ready"; items: MyCollectionPost[]; nextCursor: string | null; more: "idle" | "loading" | "error" };
+  | { kind: "ready"; items: MyCollectionItem[]; nextCursor: string | null; more: "idle" | "loading" | "error" };
 type Cache = Partial<Record<CollectionTab, TabState>>;
 export type Notice = { id: number; text: string; undo: boolean };
-export type Dim = { id: number; tab: CollectionTab; postId: string };
+type ItemKind = MyCollectionItem["item_kind"];
+export type Dim = { id: number; tab: CollectionTab; postId: string; itemKind: ItemKind };
 type MenuTarget = { postId: string; session: number };
 
 /** 응답을 못 받았거나 5xx: 서버가 처리했는지 기기 혼자 알 수 없다(C6 예외 #5 결과 불명) */
@@ -92,9 +95,13 @@ function resultUnknown(e: unknown): boolean {
   return !(e instanceof ApiCallError) || e.status === 0 || e.status >= 500;
 }
 
-function withoutPost(state: TabState | undefined, postId: string): TabState | undefined {
+function withoutItem(state: TabState | undefined, id: string, kind: ItemKind): TabState | undefined {
   if (state?.kind !== "ready") return state;
-  return { ...state, items: state.items.filter((p) => p.id !== postId) };
+  return { ...state, items: state.items.filter((item) => item.id !== id || item.item_kind !== kind) };
+}
+
+export function collectionItemKey(item: MyCollectionItem): string {
+  return `${item.item_kind}:${item.id}`;
 }
 
 export function useMyCollection() {
@@ -133,9 +140,10 @@ export function useMyCollection() {
   const dimSeq = useRef(0);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dimTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const undoing = useRef(new Set<string>()); // `${tab}:${postId}` 복구 중인 카드
+  const undoing = useRef(new Set<string>());
+  const stampRemoving = useRef(new Set<string>());
 
-  const undoKey = (tab: CollectionTab, postId: string) => `${tab}:${postId}`;
+  const undoKey = (tab: CollectionTab, postId: string, kind: ItemKind) => `${tab}:${kind}:${postId}`;
 
   const clearTimers = () => {
     if (noticeTimer.current) clearTimeout(noticeTimer.current);
@@ -154,7 +162,8 @@ export function useMyCollection() {
   const hideUndoNotice = () => setNotice((n) => (n?.undo ? null : n));
 
   const removeFromTab = useCallback(
-    (tab: CollectionTab, postId: string) => setCache((c) => ({ ...c, [tab]: withoutPost(c[tab], postId) })),
+    (tab: CollectionTab, postId: string, kind: ItemKind) =>
+      setCache((c) => ({ ...c, [tab]: withoutItem(c[tab], postId, kind) })),
     [setCache]
   );
 
@@ -167,7 +176,7 @@ export function useMyCollection() {
         for (const t of TABS) {
           if (t === exceptTab) continue;
           const st = next[t];
-          const hasPost = st?.kind === "ready" && st.items.some((p) => p.id === postId);
+          const hasPost = st?.kind === "ready" && st.items.some((p) => p.item_kind === "post" && p.id === postId);
           if ((hasPost || extraTabs.includes(t)) && t in next) {
             delete next[t];
             changed = true;
@@ -252,12 +261,12 @@ export function useMyCollection() {
     setCache((c) => {
       const cur = c[tab];
       if (cur?.kind !== "ready" || cur.nextCursor !== cursor) return c; // 그사이 새로 받은 목록이면 붙이지 않는다
-      const seen = new Set(cur.items.map((p) => p.id));
+      const seen = new Set(cur.items.map(collectionItemKey));
       return {
         ...c,
         [tab]: {
           kind: "ready",
-          items: [...cur.items, ...r.value.items.filter((p) => !seen.has(p.id))],
+          items: [...cur.items, ...r.value.items.filter((p) => !seen.has(collectionItemKey(p)))],
           nextCursor: r.value.next_cursor,
           more: "idle",
         },
@@ -283,10 +292,12 @@ export function useMyCollection() {
     setRefreshing(false);
     inFlight.current = null;
     undoing.current.clear();
+    stampRemoving.current.clear();
     if (!signedIn) return; // 비로그인: /me/* 호출 0번(M-#1)
     void loadProfile();
     void loadFirst("posts", "fresh"); // 처음 탭은 늘 "내 게시물"(Y1)
     return () => {
+      session.current += 1;
       profileRunner.cancel();
       listRunner.cancel();
     };
@@ -318,8 +329,8 @@ export function useMyCollection() {
         const next: Cache = { ...c };
         for (const tab of TABS) {
           const st = next[tab];
-          if (st?.kind === "ready" && st.items.some((p) => p.id === postId)) {
-            next[tab] = { ...st, items: st.items.map((p) => (p.id === postId ? { ...p, ...patch } : p)) };
+          if (st?.kind === "ready" && st.items.some((p) => p.item_kind === "post" && p.id === postId)) {
+            next[tab] = { ...st, items: st.items.map((p) => (p.item_kind === "post" && p.id === postId ? { ...p, ...patch } : p)) };
           }
         }
         // 모음이 달라진 수집 탭은 지금 보는 탭이 아니면 버린다(다음에 누를 때 첫 페이지부터)
@@ -337,7 +348,7 @@ export function useMyCollection() {
       onPostWithdrawn((postId) =>
         setCache((c) => {
           const next: Cache = { ...c };
-          for (const tab of TABS) next[tab] = withoutPost(next[tab], postId);
+          for (const tab of TABS) next[tab] = withoutItem(next[tab], postId, "post");
           return next;
         })
       ),
@@ -379,18 +390,19 @@ export function useMyCollection() {
 
   // ─────────── 카드 메뉴: 해제 → 흐림 + 되돌리기(Y-O4) ───────────
 
-  const startDim = (tab: CollectionTab, postId: string, field: Field) => {
+  const startDim = (tab: CollectionTab, postId: string, field: Field, itemKind: ItemKind = "post") => {
     const prev = dimRef.current;
     if (dimTimer.current) clearTimeout(dimTimer.current);
     // 복구(undo) 요청이 진행 중인 카드는 목록에서 미리 빼지 않는다(완료 결과로 유지·제거)
-    if (prev && !(prev.tab === tab && prev.postId === postId) && !undoing.current.has(undoKey(prev.tab, prev.postId))) {
-      removeFromTab(prev.tab, prev.postId); // 흐린 카드는 하나만
+    if (prev && undoKey(prev.tab, prev.postId, prev.itemKind) !== undoKey(tab, postId, itemKind)
+      && !undoing.current.has(undoKey(prev.tab, prev.postId, prev.itemKind))) {
+      removeFromTab(prev.tab, prev.postId, prev.itemKind); // 흐린 카드는 하나만
     }
     const id = ++dimSeq.current;
-    setDim({ id, tab, postId });
+    setDim({ id, tab, postId, itemKind });
     showNotice(field === "my_reaction" ? MY_TEXT.unliked : MY_TEXT.unbookmarked, { undo: true, ms: UNDO_MS });
     dimTimer.current = setTimeout(() => {
-      removeFromTab(tab, postId);
+      removeFromTab(tab, postId, itemKind);
       if (dimRef.current?.id === id) setDim(null);
     }, UNDO_MS);
   };
@@ -435,10 +447,32 @@ export function useMyCollection() {
     return kind === "reaction" ? MY_TEXT.unlikeFailed : MY_TEXT.unbookmarkFailed;
   };
 
+  const unbookmarkStamp = async (stampId: string) => {
+    const sess = session.current;
+    const owner = ownerRef.current;
+    const key = `${sess}:${stampId}`;
+    if (!owner || stampRemoving.current.has(key)) return;
+    stampRemoving.current.add(key);
+    try {
+      await setStampBookmark(stampId, false);
+      if (sess !== session.current || owner !== ownerRef.current) return;
+      startDim("bookmarks", stampId, "my_bookmark", "stamp");
+    } catch (e) {
+      if (sess !== session.current || owner !== ownerRef.current) return;
+      showNotice(MY_TEXT.unbookmarkFailed);
+      if (resultUnknown(e)) {
+        if (activeRef.current === "bookmarks") void loadFirst("bookmarks", "silent");
+        else setCache(({ bookmarks, ...rest }) => rest);
+      }
+    } finally {
+      stampRemoving.current.delete(key);
+    }
+  };
+
   const undo = async () => {
     const d = dimRef.current;
     if (!d) return;
-    const key = undoKey(d.tab, d.postId);
+    const key = undoKey(d.tab, d.postId, d.itemKind);
     if (undoing.current.has(key)) return; // 같은 카드 연타 막기(예외 #3)
     const field = COLLECTION_FIELD[d.tab];
     if (!field) return;
@@ -446,23 +480,28 @@ export function useMyCollection() {
     if (dimTimer.current) clearTimeout(dimTimer.current); // 4초 타이머는 누르는 즉시 끈다
     dimTimer.current = null;
     const sess = session.current;
+    const owner = ownerRef.current;
     try {
-      if (field === "my_reaction") await setReaction(d.postId, true);
+      if (d.itemKind === "stamp") await setStampBookmark(d.postId, true);
+      else if (field === "my_reaction") await setReaction(d.postId, true);
       else await setBookmark(d.postId, true);
-      if (sess !== session.current) return;
+      if (sess !== session.current || owner !== ownerRef.current) return;
       if (dimRef.current?.id === d.id) {
         setDim(null);
         hideUndoNotice();
       }
-      emitPostReaction(d.postId, { [field]: true }); // 같은 자리 원래 모습
+      if (d.itemKind === "post") emitPostReaction(d.postId, { [field]: true }); // 같은 자리 원래 모습
     } catch (e) {
-      if (sess !== session.current) return;
+      if (sess !== session.current || owner !== ownerRef.current) return;
       const isCurrentDim = dimRef.current?.id === d.id;
       if (isCurrentDim || !dimRef.current) showNotice(MY_TEXT.undoFailed);
       if (resultUnknown(e)) {
         if (isCurrentDim) setDim(null); // 기기 혼자 정하지 않고 서버 목록으로 맞춘다
         const extra: CollectionTab[] = [field === "my_reaction" ? "reactions" : "bookmarks"];
-        if (d.tab === activeRef.current) {
+        if (d.itemKind === "stamp") {
+          if (activeRef.current === "bookmarks") void loadFirst("bookmarks", "silent");
+          else setCache(({ bookmarks, ...rest }) => rest);
+        } else if (d.tab === activeRef.current) {
           void loadFirst(d.tab, "silent");
           invalidateTabsWithPost(d.postId, d.tab, extra);
         } else {
@@ -471,23 +510,26 @@ export function useMyCollection() {
       } else if (isCurrentDim) {
         // 확정 실패: 서버는 해제 상태라 안내 뒤 카드를 뺀다
         dimTimer.current = setTimeout(() => {
-          removeFromTab(d.tab, d.postId);
+          removeFromTab(d.tab, d.postId, d.itemKind);
           if (dimRef.current?.id === d.id) setDim(null);
         }, NOTICE_MS);
       } else {
-        removeFromTab(d.tab, d.postId);
+        removeFromTab(d.tab, d.postId, d.itemKind);
       }
     } finally {
-      undoing.current.delete(key);
+      if (sess === session.current) undoing.current.delete(key);
     }
   };
 
   const tabState = cache[activeTab];
   const menuPost =
-    menu && tabState?.kind === "ready" ? tabState.items.find((p) => p.id === menu.postId) ?? null : null;
+    menu && tabState?.kind === "ready"
+      ? tabState.items.find((p): p is MyCollectionPost => p.item_kind === "post" && p.id === menu.postId) ?? null
+      : null;
 
   return {
     status,
+    userId,
     signedIn,
     profile,
     activeTab,
@@ -507,6 +549,7 @@ export function useMyCollection() {
     onMenuChange,
     onMenuNotice,
     failText,
+    unbookmarkStamp: (stampId: string) => void unbookmarkStamp(stampId),
     undo: () => void undo(),
   };
 }
