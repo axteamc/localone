@@ -206,7 +206,7 @@ def test_production_requires_storage_key_and_rejects_memory_fallback(test_db_url
 
 # ─────────── #24 ───────────
 
-POST_FIELDS = {"id", "library", "book", "image_kind", "image_url", "image_color", "overlay_text", "body",
+POST_FIELDS = {"id", "library", "book", "image_kind", "image_url", "image_color", "image_value", "from_reading_log", "overlay_text", "body",
                "author", "is_mine", "reaction_count", "my_reaction", "my_bookmark", "published_at"}
 
 

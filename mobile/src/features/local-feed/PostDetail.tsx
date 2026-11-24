@@ -1,7 +1,7 @@
 // 게시물 상세(핀터레스트형) — contracts/local-feed.md LOCAL-2 H3·H9·H14·H15, C3·C6.
 // 좁은 화면: 이미지 → 상단 액션 바 → 작성자·도서관 → 대여/구매 박스 → 본문 → 이어지는 글 2묶음.
 // 넓은 화면(>= 768): 왼쪽 큰 이미지 + 오른쪽 정보 2단, 그 아래 이어지는 글.
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -14,6 +14,7 @@ import { LibraryLookProvider, lookKit, useLibraryLook, useLook } from "./useLibr
 import { ON_FILL_LIGHT } from "../../theme/tokens";
 import { ApiCallError, emitPostReaction, emitPostWithdrawn, fetchPost, type Post } from "./api";
 import { PostImage, PostMoreMenu } from "./ComposeScreen";
+import { TemplateCard } from "./templates";
 import { LoginPrompt, MENU_TEXT } from "./PostMenu";
 import { ReactionButton, SaveButton } from "./ReactionButton";
 import { LibraryOtherPosts, SameBookPosts } from "./SameBookPosts";
@@ -108,6 +109,7 @@ export function PostDetail(props: PostDetailProps) {
 function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
   const { C, T, ACT, styles } = useLook(makeStyles);
   const router = useRouter();
+  const alreadyPublished = useLocalSearchParams?.<{ notice?: string }>()?.notice === "already-published";
   const insets = useSafeAreaInsets();
   const { status } = useAuth();
   const signedIn = status === "signedIn";
@@ -250,20 +252,30 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
     loan
   );
 
-  const backOnDark =
+  const template = post.image_kind === "template" ? post.image_value : null;
+  const backOnDark = !template && (
     post.image_kind === "color"
       ? post.image_color !== null && onFill(resolvePostColor(post.image_color, C)) === ON_FILL_LIGHT
-      : true;
+      : true);
 
   const image = (
     <View style={wide ? styles.imageWide : styles.imageNarrow} testID="detail-image">
-      <PostImage
-        kind={post.image_kind}
-        imageUrl={post.image_url}
-        color={post.image_color}
-        text={post.overlay_text}
-        pos="bot"
-      />
+      {template ? (
+        <TemplateCard
+          template={template}
+          overlayText={post.overlay_text}
+          book={post.book}
+          width={Math.min(420, wide ? ((layoutWidth ?? 768) - 72) / 2 : (layoutWidth ?? 320) - 24)}
+        />
+      ) : (
+        <PostImage
+          kind={post.image_kind}
+          imageUrl={post.image_url}
+          color={post.image_color}
+          text={post.overlay_text}
+          pos="bot"
+        />
+      )}
       {/* 이미지 위에는 ‹만 둔다. 사이트 방문·이미지 검색·확대 버튼은 두지 않는다(H9) */}
       <Pressable accessibilityRole="button" accessibilityLabel="돌아가기" onPress={goBack} style={styles.backOnImage}>
         <Text style={[styles.backText, backOnDark && styles.backTextLight]}>‹</Text>
@@ -393,6 +405,9 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
   return (
     <View style={styles.screen} onLayout={onScreenLayout} testID="post-detail">
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top }]} testID="detail-scroll">
+        {alreadyPublished ? (
+          <Text accessibilityLiveRegion="polite" style={[styles.byline, { paddingHorizontal: 16 }]}>이미 올린 기록이에요</Text>
+        ) : null}
         {wide ? (
           <View style={styles.wideRow}>
             {image}

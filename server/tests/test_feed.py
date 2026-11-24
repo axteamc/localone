@@ -18,7 +18,7 @@ LIB_1 = 101  # 정독도서관
 LIB_2 = 102  # 종로도서관
 T0 = datetime(2026, 11, 17, 3, 0, tzinfo=timezone.utc)
 BOOK_PREFIX = "97922222"
-FEED_KEYS = {"id", "library_id", "library_name", "image_kind", "image_url", "image_color", "overlay_text",
+FEED_KEYS = {"id", "library_id", "library_name", "image_kind", "image_url", "image_color", "image_value", "overlay_text",
              "book", "published_at", "my_reaction", "my_bookmark"}
 
 

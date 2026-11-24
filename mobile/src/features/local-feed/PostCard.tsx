@@ -6,10 +6,12 @@ import { onFill, resolvePostColor, type Theme } from "../../theme";
 import { lookKit, useLook } from "./useLibraryLook";
 import { ON_FILL_LIGHT } from "../../theme/tokens";
 import type { FeedPost } from "./api";
+import { TemplateCard } from "./templates";
 
 
 /** 너비 대비 높이. 응답에 사진 크기가 없어 고정 비율로 엇갈리게 쌓는다(세부 명세 0절 기본값) */
 export function cardHeightRatio(post: Pick<FeedPost, "image_kind" | "overlay_text">): number {
+  if (post.image_kind === "template") return 1;
   if (post.image_kind !== "color") return 4 / 3;
   return post.overlay_text ? 5 / 4 : 1;
 }
@@ -25,6 +27,7 @@ export type PostCardProps = {
 export function PostCard({ post, onPress, onMenu, width, showLibraryName }: PostCardProps) {
   const { C, styles } = useLook(makeStyles);
   const [hover, setHover] = useState(false);
+  const template = post.image_kind === "template" ? post.image_value : null;
   const isColor = post.image_kind === "color";
   const bg = isColor ? resolvePostColor(post.image_color, C) : C.surface3;
   const textColor = isColor && post.image_color ? onFill(bg) : ON_FILL_LIGHT;
@@ -49,10 +52,13 @@ export function PostCard({ post, onPress, onMenu, width, showLibraryName }: Post
         onLongPress={onMenu ? () => onMenu(post) : undefined}
         style={[styles.card, { width, height, backgroundColor: bg }]}
       >
-        {!isColor && post.image_url ? (
+        {template ? (
+          <TemplateCard template={template} overlayText={post.overlay_text} book={post.book} width={width} />
+        ) : null}
+        {!template && !isColor && post.image_url ? (
           <Image source={{ uri: post.image_url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
         ) : null}
-        {post.overlay_text ? (
+        {!template && post.overlay_text ? (
           <Text
             numberOfLines={6}
             style={[styles.overlay, { color: textColor }, isColor ? styles.mid : [styles.bottom, styles.shadow]]}

@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from tests.conftest import USER_A_ID, USER_B_ID
 from tests.provider_fakes import public_reference_data  # noqa: F401  (픽스처)
 from tests.test_feed import LIB_1, auth, books, client, seed  # noqa: F401  (픽스처)
+from tests.test_posts_template import POSTS, clean_template_logs, new_log, template_body  # noqa: F401
 
 A = UUID(USER_A_ID)
 B = UUID(USER_B_ID)
@@ -415,3 +416,47 @@ def test_moderation_action_check_and_rls(db_engine, auth):
     rows = q(db_engine, "SELECT relname, relrowsecurity FROM pg_class WHERE relname = ANY(:t)", t=tables)
     assert {r.relname: r.relrowsecurity for r in rows} == {t: True for t in tables}
     assert one(db_engine, "SELECT count(*) FROM pg_policies WHERE tablename = ANY(:t)", t=tables) == 0
+
+
+def test_restore_template_race_leaves_one_published_and_audits_only_success(
+    client, ops, db_engine, monkeypatch, clean_template_logs,
+):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Event
+
+    from app.routers import ops as ops_router
+
+    log = new_log(client, ops["B"])
+    first = client.post(POSTS, headers=ops["B"], json=template_body(log))
+    assert first.status_code == 201, first.text
+    old_id = first.json()["id"]
+    prefix = f"/api/v1/ops/targets/post/{old_id}"
+    assert client.post(f"{prefix}/hide", headers=ops["A"], json=REASON).status_code == 200
+
+    original = ops_router.set_status
+    entered, release = Event(), Event()
+
+    def pause_restore(*args):
+        entered.set()
+        assert release.wait(5)
+        return original(*args)
+
+    monkeypatch.setattr(ops_router, "set_status", pause_restore)
+    before_actions = actions(db_engine)
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        restoring = pool.submit(client.post, f"{prefix}/restore", headers=ops["A"], json=REASON)
+        try:
+            assert entered.wait(5)
+            second = client.post(POSTS, headers=ops["B"], json=template_body(log, image_value="ink"))
+            assert second.status_code == 201, second.text
+        finally:
+            release.set()
+        conflict = restoring.result(timeout=5)
+
+    assert conflict.status_code == 409, conflict.text
+    assert conflict.json()["error"]["code"] == "ALREADY_PUBLISHED"
+    assert conflict.json()["error"]["message"] == "같은 독서 기록에서 이미 공개된 다른 게시물이 있어요."
+    assert [(str(row.id), row.status) for row in q(
+        db_engine, "SELECT id, status FROM posts WHERE reading_log_id = :log ORDER BY status", log=log,
+    )] == [(old_id, "hidden"), (second.json()["id"], "published")]
+    assert actions(db_engine) == before_actions
