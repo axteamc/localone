@@ -81,6 +81,13 @@ type Load =
 type Notice = { text: string; retry: (() => void) | null } | null;
 
 export function ClubRecordScreen({ clubId }: { clubId: string }) {
+  const { status, userId } = useAuth();
+  const account = status === "signedIn" ? userId : null;
+  // 계정이나 모임이 바뀌면 화면을 새로 만든다: 바뀐 그 순간부터 이전 기록·초안·안내·진행 상태가 보이지 않는다(C6)
+  return <RecordView key={`${account ?? "signed-out"}:${clubId}`} clubId={clubId} />;
+}
+
+function RecordView({ clubId }: { clubId: string }) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { status, userId } = useAuth();
@@ -98,6 +105,13 @@ export function ClubRecordScreen({ clubId }: { clubId: string }) {
   const sharingRef = useRef(false);
   const shareRequestId = useRef(Crypto.randomUUID()); // 화면에서 한 번. 실패 뒤 다시 눌러도 같은 값(멱등)
   const runner = useMemo(() => createLatestRunner(), []);
+  const alive = useRef(true); // 이 계정·모임 화면이 아직 떠 있는지. 바뀐 뒤 늦게 온 저장·공유 응답은 버린다
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
 
   const reload = useCallback(async () => {
     const res = await runner.run((signal) => Promise.all([fetchClubRecord(clubId, signal), fetchNextClubs(clubId, signal)]));
@@ -135,13 +149,17 @@ export function ClubRecordScreen({ clubId }: { clubId: string }) {
     setNotice(null);
     try {
       const record = await putClubReview(clubId, body);
+      if (!alive.current) return;
       setLoad({ state: "ok", record });
       setNotice({ text: RECORD_TEXT.saved, retry: null });
     } catch {
+      if (!alive.current) return;
       setNotice({ text: RECORD_TEXT.saveFailed, retry: () => void save(body) }); // 쓰던 후기 유지(예외 #1)
     } finally {
-      savingRef.current = false;
-      setSaving(false);
+      if (alive.current) {
+        savingRef.current = false;
+        setSaving(false);
+      }
     }
   }
 
@@ -152,13 +170,17 @@ export function ClubRecordScreen({ clubId }: { clubId: string }) {
     setNotice(null);
     try {
       const record = await shareClubReview(clubId, shareRequestId.current);
+      if (!alive.current) return;
       setLoad({ state: "ok", record });
       setNotice({ text: RECORD_TEXT.sharedNow, retry: null });
     } catch {
+      if (!alive.current) return;
       setNotice({ text: RECORD_TEXT.shareFailed, retry: () => void share() });
     } finally {
-      sharingRef.current = false;
-      setSharing(false);
+      if (alive.current) {
+        sharingRef.current = false;
+        setSharing(false);
+      }
     }
   }
 
@@ -377,7 +399,15 @@ export function ClubRecordScreen({ clubId }: { clubId: string }) {
         </View>
 
         {club.is_host ? (
-          <AttendanceSheet record={record} onRecorded={(next) => setLoad({ state: "ok", record: next })} onReload={() => void reload()} />
+          <AttendanceSheet
+            record={record}
+            onRecorded={(next) => {
+              if (alive.current) setLoad({ state: "ok", record: next });
+            }}
+            onReload={() => {
+              if (alive.current) void reload();
+            }}
+          />
         ) : null}
       </ScrollView>
 

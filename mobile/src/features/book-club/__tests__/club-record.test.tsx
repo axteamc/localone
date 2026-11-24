@@ -1,6 +1,6 @@
 // CLUB-2-P3 기록 화면·다음 모임·출석 확인·모임 화면 연결 (contracts/book-club.md CLUB-2 P5, 명세 결정 1·예외 #1~#6, K2-2·K2-O1·K2-O6·K2-O7)
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import React from "react";
 import { useAuth } from "../../../auth/AuthProvider";
 import * as api from "../api";
@@ -91,20 +91,27 @@ function rec(extra: Partial<ClubRecord> = {}, clubExtra: Partial<Club> = {}): Cl
     shared_post_id: null,
     can_create_next: true,
     suggest_next: false,
+    attendance_roster_version: null,
     ...extra,
   };
 }
 
-const HOST = { suggest_next: true, my_participation: "none" as const, my_attendance: null };
+const ROSTER_V1 = "a".repeat(64);
+const ROSTER_V2 = "b".repeat(64);
+const HOST = { suggest_next: true, my_participation: "none" as const, my_attendance: null, attendance_roster_version: ROSTER_V1 };
 
-function signed(status: "signedIn" | "signedOut") {
-  mockedUseAuth.mockReturnValue({ status, userId: status === "signedIn" ? "user-a" : null } as ReturnType<typeof useAuth>);
+function signed(status: "signedIn" | "signedOut", userId = "user-a") {
+  mockedUseAuth.mockReturnValue({ status, userId: status === "signedIn" ? userId : null } as ReturnType<typeof useAuth>);
 }
 
 function deferred<T>() {
   let resolve!: (v: T) => void;
-  const promise = new Promise<T>((r) => (resolve = r));
-  return { promise, resolve };
+  let reject!: (e: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
 }
 
 beforeEach(() => {
@@ -288,9 +295,44 @@ describe("출석 확인", () => {
     expect(m.putAttendance).not.toHaveBeenCalled(); // 확인창 전에는 보내지 않는다
     await fireEvent.press(screen.getByTestId("attend-confirm-do"));
     await waitFor(() => expect(m.putAttendance).toHaveBeenCalledTimes(1));
-    expect(m.putAttendance).toHaveBeenCalledWith("club-1", [{ participant_index: 2 }]);
+    expect(m.putAttendance).toHaveBeenCalledWith("club-1", ROSTER_V1, [{ participant_index: 2 }]); // 받은 명단 버전과 함께
     expect(await screen.findByText(ATTEND_TEXT.recorded)).toBeTruthy();
     expect(screen.queryByTestId("attend-missed-2")).toBeNull(); // 되돌리기 없음
+  });
+
+  test("roster changed clears selection and reloads the new roster", async () => {
+    m.fetchClubRecord.mockResolvedValueOnce(rec(HOST, { is_host: true, participants: [
+      { nickname: "해바라기", is_me: false },
+      { nickname: "민트", is_me: false },
+      { nickname: "달", is_me: false },
+    ] }));
+    // 그 사이 앞 순서 "해바라기"가 빠졌다: 같은 자리 1번이 이제 다른 사람("달")을 가리킨다
+    m.fetchClubRecord.mockResolvedValueOnce(rec({ ...HOST, attendance_roster_version: ROSTER_V2 }, { is_host: true, participants: [
+      { nickname: "민트", is_me: false },
+      { nickname: "달", is_me: false },
+    ] }));
+    m.putAttendance.mockRejectedValueOnce(
+      new api.ApiCallError(409, "CLUB_ATTENDANCE_ROSTER_CHANGED", "참가 명단이 바뀌었어요. 다시 확인해 주세요.", "")
+    );
+    await openRecord();
+    await fireEvent.press(screen.getByTestId("attend-missed-1")); // "민트"
+    await fireEvent.press(screen.getByTestId("attend-send"));
+    await fireEvent.press(screen.getByTestId("attend-confirm-do"));
+    expect(await screen.findByText(ATTEND_TEXT.rosterChanged)).toBeTruthy();
+    await waitFor(() => expect(m.fetchClubRecord).toHaveBeenCalledTimes(2)); // 같은 화면에서 새 명단을 다시 읽는다
+    expect(await screen.findByText(ATTEND_TEXT.note(2))).toBeTruthy();
+    expect(screen.queryByText("해바라기")).toBeNull();
+    expect(screen.getByTestId("attend-missed-0").props.accessibilityState.selected).toBe(false); // 선택이 비었다
+    expect(screen.getByTestId("attend-missed-1").props.accessibilityState.selected).toBe(false);
+    expect(screen.getByTestId("attend-send").props.accessibilityState.disabled).toBe(true);
+    expect(m.putAttendance).toHaveBeenCalledTimes(1);
+
+    m.putAttendance.mockResolvedValueOnce(rec({ ...HOST, attendance_roster_version: ROSTER_V2 }, { is_host: true }));
+    await fireEvent.press(screen.getByTestId("attend-missed-0")); // 새 명단에서 "민트"를 다시 고른다
+    await fireEvent.press(screen.getByTestId("attend-send"));
+    await fireEvent.press(screen.getByTestId("attend-confirm-do"));
+    await waitFor(() => expect(m.putAttendance).toHaveBeenCalledTimes(2));
+    expect(m.putAttendance).toHaveBeenLastCalledWith("club-1", ROSTER_V2, [{ participant_index: 0 }]);
   });
 
   test("closing the confirm sends nothing", async () => {
@@ -302,6 +344,106 @@ describe("출석 확인", () => {
     expect(screen.queryByTestId("attend-confirm")).toBeNull();
     expect(m.putAttendance).not.toHaveBeenCalled();
   });
+});
+
+describe("계정·모임 전환", () => {
+  const MINE = { review: { body: "A가 쓴 후기", updated_at: PAST_END } };
+
+  /** 이전 요청을 보류한 채 계정 또는 모임을 바꾼다. 바뀐 쪽 기록도 늦게 와서 그 사이 화면도 본다 */
+  async function switchWhilePending(view: { rerender(el: React.ReactElement): unknown }, kind: "account" | "club") {
+    const nextRecord = deferred<ClubRecord>();
+    m.fetchClubRecord.mockReturnValueOnce(nextRecord.promise);
+    if (kind === "account") {
+      signed("signedIn", "user-b");
+      await view.rerender(<ClubRecordScreen clubId="club-1" />);
+    } else {
+      await view.rerender(<ClubRecordScreen clubId="club-2" />);
+    }
+    expect(screen.queryByTestId("record-card")).toBeNull(); // 바뀐 즉시 이전 기록·초안·안내를 보여 주지 않는다
+    expect(screen.queryByTestId("record-notice")).toBeNull();
+    expect(screen.queryByText(RECORD_TEXT.saving)).toBeNull();
+    expect(screen.queryByText(RECORD_TEXT.sharing)).toBeNull();
+    await act(async () => nextRecord.resolve(rec({}, { id: kind === "club" ? "club-2" : "club-1", name: "새 화면 모임" })));
+    await screen.findByText("새 화면 모임");
+  }
+
+  function expectCleanNewScreen() {
+    expect(screen.getByText("새 화면 모임")).toBeTruthy();
+    expect(screen.getByTestId("record-review-input").props.value).toBe(""); // 이전 기록·초안 없음
+    expect(screen.queryByTestId("record-notice")).toBeNull(); // 저장·공유 안내, 오류, 다시 해 보기 없음
+    expect(screen.queryByText(RECORD_TEXT.retry)).toBeNull();
+    expect(screen.queryByText(RECORD_TEXT.saving)).toBeNull(); // 버튼 진행 상태 없음
+    expect(screen.queryByText(RECORD_TEXT.sharing)).toBeNull();
+    expect(screen.queryByTestId("record-review-shared")).toBeNull();
+    expect(screen.queryByTestId("record-review-share")).toBeNull();
+    expect(screen.getByTestId("record-review-save").props.accessibilityState.disabled).toBe(true);
+  }
+
+  test.each([
+    ["account", "success"],
+    ["account", "failure"],
+    ["club", "success"],
+    ["club", "failure"],
+  ] as const)("late review save after %s switch (%s) does not touch the new screen", async (kind, result) => {
+    const saved = deferred<ClubRecord>();
+    m.putClubReview.mockReturnValueOnce(saved.promise);
+    const view = await render(<ClubRecordScreen clubId="club-1" />);
+    await screen.findByTestId("record-card");
+    await fireEvent.changeText(screen.getByTestId("record-review-input"), "A가 쓴 후기");
+    await fireEvent.press(screen.getByTestId("record-review-save"));
+    expect(screen.getByText(RECORD_TEXT.saving)).toBeTruthy();
+    await switchWhilePending(view, kind);
+    await act(async () => {
+      if (result === "success") saved.resolve(rec({ ...MINE, shared_post_id: "post-a" }));
+      else saved.reject(new api.ApiCallError(0, "NETWORK", "x", ""));
+    });
+    expectCleanNewScreen();
+  });
+
+  test.each([
+    ["account", "success"],
+    ["account", "failure"],
+    ["club", "success"],
+    ["club", "failure"],
+  ] as const)("late review share after %s switch (%s) does not touch the new screen", async (kind, result) => {
+    m.fetchClubRecord.mockResolvedValueOnce(rec(MINE));
+    const shared = deferred<ClubRecord>();
+    m.shareClubReview.mockReturnValueOnce(shared.promise);
+    const view = await render(<ClubRecordScreen clubId="club-1" />);
+    await screen.findByTestId("record-card");
+    await fireEvent.press(screen.getByTestId("record-review-share"));
+    expect(screen.getByText(RECORD_TEXT.sharing)).toBeTruthy();
+    await switchWhilePending(view, kind);
+    await act(async () => {
+      if (result === "success") shared.resolve(rec({ ...MINE, shared_post_id: "post-a" }));
+      else shared.reject(new api.ApiCallError(0, "NETWORK", "x", ""));
+    });
+    expectCleanNewScreen();
+  });
+
+  test.each(["success", "failure"] as const)(
+    "late attendance %s after account switch does not touch the new screen",
+    async (result) => {
+      m.fetchClubRecord.mockResolvedValueOnce(rec(HOST, { is_host: true }));
+      const sent = deferred<ClubRecord>();
+      m.putAttendance.mockReturnValueOnce(sent.promise);
+      const view = await render(<ClubRecordScreen clubId="club-1" />);
+      await screen.findByTestId("record-card");
+      await fireEvent.press(screen.getByTestId("attend-missed-0"));
+      await fireEvent.press(screen.getByTestId("attend-send"));
+      await fireEvent.press(screen.getByTestId("attend-confirm-do"));
+      await switchWhilePending(view, "account");
+      await act(async () => {
+        if (result === "success") sent.resolve(rec(HOST, { is_host: true, name: "A의 모임" }));
+        else sent.reject(new api.ApiCallError(409, "CLUB_ATTENDANCE_ROSTER_CHANGED", "x", ""));
+      });
+      expectCleanNewScreen();
+      expect(screen.queryByText("A의 모임")).toBeNull();
+      expect(screen.queryByTestId("record-attendance")).toBeNull();
+      expect(screen.queryByText(ATTEND_TEXT.rosterChanged)).toBeNull();
+      expect(m.fetchClubRecord).toHaveBeenCalledTimes(2); // 이전 응답이 다시 읽기를 부르지 않는다
+    }
+  );
 });
 
 describe("기록 화면 상태", () => {

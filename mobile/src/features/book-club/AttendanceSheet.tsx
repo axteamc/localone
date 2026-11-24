@@ -1,6 +1,7 @@
 // CLUB-2-P3 출석 확인 칸(만든 사람만, 기록 화면 맨 아래) — contracts/book-club.md CLUB-2 K2-7·K2-O1·K2-O2·C3
 // 기본은 모두 "왔어요". 안 온 사람만 "안 왔어요"로 바꾸고 확인창을 거쳐 보내면 바로 불참·제한이 된다(되돌리기 없음).
-import React, { useRef, useState } from "react";
+// 고른 자리는 #60에서 명단과 함께 받은 명단 버전으로 보낸다. 그 사이 명단이 바뀌면(409) 선택을 비우고 새 명단을 읽는다.
+import React, { useEffect, useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { actionColors, cardSurface, theme, type as T } from "../../theme";
 import { ApiCallError, putAttendance, type ClubRecord } from "./api";
@@ -20,6 +21,7 @@ export const ATTEND_TEXT = {
   record: "불참으로 기록",
   recorded: "불참으로 기록됨",
   failed: "출석 확인을 보내지 못했어요. 다시 해 주세요.",
+  rosterChanged: "참가 명단이 바뀌었어요. 다시 확인해 주세요.",
   empty: "참가 신청한 사람이 없어요.",
 } as const;
 
@@ -37,8 +39,15 @@ export function AttendanceSheet({
   const [recorded, setRecorded] = useState<Set<number>>(new Set()); // 이 화면에서 보낸 사람(되돌리기 없음)
   const [asking, setAsking] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(false);
+  const [failed, setFailed] = useState<string | null>(null);
   const sending = useRef(false);
+  const alive = useRef(true); // 계정·모임이 바뀌어 이 칸이 사라진 뒤 늦게 온 응답은 버린다
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
 
   const toggle = (i: number, miss: boolean) =>
     setMissed((prev) => {
@@ -54,22 +63,30 @@ export function AttendanceSheet({
     sending.current = true;
     setAsking(false);
     setBusy(true);
-    setFailed(false);
+    setFailed(null);
     try {
-      const next = await putAttendance(record.club.id, marks);
+      const next = await putAttendance(record.club.id, record.attendance_roster_version ?? "", marks);
+      if (!alive.current) return;
       setRecorded((prev) => new Set([...prev, ...missed]));
       setMissed(new Set());
       onRecorded(next);
     } catch (e) {
-      if (e instanceof ApiCallError && e.status === 422) {
+      if (!alive.current) return;
+      const changed = e instanceof ApiCallError && e.code === "CLUB_ATTENDANCE_ROSTER_CHANGED";
+      if (changed || (e instanceof ApiCallError && e.status === 422)) {
+        // 받은 명단이 낡았다: 자리 번호가 다른 사람을 가리킬 수 있으니 고른 것·보낸 표시를 비우고 새 명단을 읽는다(C6)
         setMissed(new Set());
-        onReload(); // 명단이 바뀌었으면 화면을 다시 읽는다(C6)
+        setRecorded(new Set());
+        if (changed) setFailed(ATTEND_TEXT.rosterChanged);
+        onReload();
       } else {
-        setFailed(true); // 고른 것은 그대로
+        setFailed(ATTEND_TEXT.failed); // 고른 것은 그대로
       }
     } finally {
-      sending.current = false;
-      setBusy(false);
+      if (alive.current) {
+        sending.current = false;
+        setBusy(false);
+      }
     }
   }
 
@@ -98,8 +115,8 @@ export function AttendanceSheet({
         );
       })}
       {failed ? (
-        <Text style={styles.note} accessibilityRole="alert">
-          {ATTEND_TEXT.failed}
+        <Text style={styles.note} accessibilityRole="alert" testID="attend-failed">
+          {failed}
         </Text>
       ) : null}
       {people.length > 0 ? (

@@ -1,5 +1,7 @@
 """CLUB-2-P2: 출석 확인·불참 제한·댓글 처리 요청·재검토·내 제한 — book-club 계약 CLUB-2 K2-7~K2-10, K2-O1~K2-O5, P5."""
 
+import hashlib
+import json
 from datetime import timedelta
 from uuid import uuid4
 
@@ -18,9 +20,40 @@ from tests.test_clubs import (  # noqa: F401  (픽스처·도우미)
 LIB_2 = 102
 
 
-def attendance(client, headers, club_id, *indexes):
+UNKNOWN_VERSION = "0" * 64
+
+
+def roster_version_of(client, headers, club_id) -> str:
+    """만든 사람이 #60에서 받은 명단 버전. 받을 수 없으면(만든 사람 아님·종료 전) 형식만 맞는 값."""
+    res = record(client, headers, club_id)
+    return (res.json().get("attendance_roster_version") if res.status_code == 200 else None) or UNKNOWN_VERSION
+
+
+def attendance(client, headers, club_id, *indexes, version=None):
     marks = [{"participant_index": i} for i in indexes]
-    return client.put(f"/api/v1/clubs/{club_id}/attendance", json={"marks": marks}, headers=headers)
+    if version is None:
+        version = roster_version_of(client, headers, club_id)
+    body = {"attendance_roster_version": version, "marks": marks}
+    return client.put(f"/api/v1/clubs/{club_id}/attendance", json=body, headers=headers)
+
+
+def expected_version(*user_ids) -> str:
+    return hashlib.sha256(json.dumps(list(user_ids), separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def withdraw_directly(db_engine, uid):
+    """탈퇴 트랜잭션이 남기는 상태(계정 withdrawn·참가 left)를 그대로 만든다."""
+    with db_engine.begin() as conn:
+        conn.execute(text("UPDATE users SET status = 'withdrawn' WHERE id = :u"), {"u": uid})
+        conn.execute(text("UPDATE club_participations SET state = 'left' WHERE user_id = :u AND state = 'joined'"),
+                     {"u": uid})
+
+
+def no_show_users(db_engine, club_id) -> set[str]:
+    with db_engine.connect() as conn:
+        return set(conn.execute(text(
+            "SELECT user_id::text FROM club_participations WHERE club_id = :id AND attendance_status = 'no_show'"
+        ), {"id": club_id}).scalars())
 
 
 def restrictions(db_engine, uid, where="true"):
@@ -93,6 +126,53 @@ def test_attendance_rejects_bad_index_and_non_host_and_canceled_and_not_ended(cl
     assert error(attendance(client, auth["A"], club_id, 0))[:2] == (409, "CLUB_CLOSED")
     assert count(db_engine, "participation_restrictions") == 0
     assert count(db_engine, "club_participations", "attendance_status = 'no_show'") == 0
+
+
+def test_record_gives_roster_version_only_to_host(client, auth, db_engine):
+    club_id = ended_club(client, db_engine, auth, joiners=("B", "C", "D"))
+    host = record(client, auth["A"], club_id).json()
+    assert host["attendance_roster_version"] == expected_version(USER_B_ID, USER_C_ID, USER_D_ID)
+    assert record(client, auth["B"], club_id).json()["attendance_roster_version"] is None
+    marked = attendance(client, auth["A"], club_id, 0, version=host["attendance_roster_version"]).json()
+    assert marked["attendance_roster_version"] == host["attendance_roster_version"]  # #65 응답도 같은 명단·버전
+    assert [p["nickname"] for p in marked["club"]["participants"]] ==         [p["nickname"] for p in host["club"]["participants"]]
+
+
+def test_attendance_rejects_missing_or_malformed_roster_version(client, auth, db_engine):
+    club_id = ended_club(client, db_engine, auth, joiners=("B", "C"))
+    url = f"/api/v1/clubs/{club_id}/attendance"
+    marks = [{"participant_index": 0}]
+    for body in ({"marks": marks}, {"attendance_roster_version": None, "marks": marks},
+                 {"attendance_roster_version": "ABC", "marks": marks},
+                 {"attendance_roster_version": "A" * 64, "marks": marks},
+                 {"attendance_roster_version": 7, "marks": marks}):
+        res = client.put(url, json=body, headers=auth["A"])
+        assert error(res)[:3] == (422, "VALIDATION_ERROR", "attendance_roster_version"), body
+    assert no_show_users(db_engine, club_id) == set()
+
+
+def test_stale_roster_never_marks_another_participant(client, auth, db_engine):
+    club_id = ended_club(client, db_engine, auth, joiners=("B", "C", "D"))
+    stale = roster_version_of(client, auth["A"], club_id)  # 명단 B, C, D — 1번 = C를 고름
+    withdraw_directly(db_engine, USER_B_ID)  # 앞 순서 참가자 탈퇴 → 명단 C, D (인덱스 1은 여전히 범위 안 = D)
+    res = attendance(client, auth["A"], club_id, 1, version=stale)
+    assert error(res)[:2] == (409, "CLUB_ATTENDANCE_ROSTER_CHANGED")
+    assert res.json()["error"]["message"] == "참가 명단이 바뀌었어요. 다시 확인해 주세요."
+    assert no_show_users(db_engine, club_id) == set()  # 출석 무변경
+    assert count(db_engine, "participation_restrictions") == 0  # 제한 무변경
+    assert inbox_kinds(client, auth["C"], "moderation") == [] and inbox_kinds(client, auth["D"], "moderation") == []
+    fresh = roster_version_of(client, auth["A"], club_id)
+    assert fresh == expected_version(USER_C_ID, USER_D_ID) != stale
+    assert attendance(client, auth["A"], club_id, 0, version=fresh).status_code == 200  # 새 명단에서 C를 다시 고름
+    assert no_show_users(db_engine, club_id) == {USER_C_ID}
+    assert [r.reason_kind for r in restrictions(db_engine, USER_C_ID)] == ["no_show"]
+    assert restrictions(db_engine, USER_D_ID) == []
+
+
+def test_attendance_rejects_unknown_version_even_with_valid_index(client, auth, db_engine):
+    club_id = ended_club(client, db_engine, auth, joiners=("B", "C"))
+    assert error(attendance(client, auth["A"], club_id, 0, version=UNKNOWN_VERSION))[:2] ==         (409, "CLUB_ATTENDANCE_ROSTER_CHANGED")
+    assert no_show_users(db_engine, club_id) == set()
 
 
 def test_no_show_mark_creates_tiered_restriction_within_180_days(client, auth, db_engine):

@@ -2,12 +2,14 @@
 
 book-club 계약 CLUB-2 K2-7~K2-10, K2-O1~K2-O5(C-77 확정), C2·C3·C6·P4.
 - 출석은 기본 전체 출석이고, 만든 사람이 참가 신청 명단에서 불참자만 `participant_index`로 보낸다(K2-O1).
+  인덱스는 #60에서 받은 `attendance_roster_version`의 명단 기준이다. 버전이 지금 명단과 다르면 409로 아무것도 바꾸지 않는다.
   보내는 즉시 불참이 확정되고 최근 180일 유효 불참 수로 3일·7일·30일·영구 제한을 만든다(K2-O2·K2-O3).
   시각만으로 불참·제한을 만들지 않는다(K2-7). 되돌리기는 없고 불복은 #67 → 운영자 해제(D M2-0-P2).
 - 댓글 처리 요청은 만든 사람만, 댓글 하나에 한 번(B6). 승인 전 댓글은 그대로 보인다. 결정은 D 운영 경로.
 - 응답에 `user_id`를 넣지 않는다.
 """
 
+import re
 from datetime import datetime, timedelta
 from typing import Any
 from uuid import UUID
@@ -23,7 +25,8 @@ from app.common import ApiError, now_kst
 from app.db import run_db
 from app.routers.club_records import MSG_NOT_ENDED, record_view
 from app.routers.clubs import (
-    MSG_CLOSED, MSG_NOT_HOST, REASON_MAX, SELECT_CLUB_FOR_UPDATE, ended, iso, not_found, validation_error,
+    MSG_CLOSED, MSG_NOT_HOST, REASON_MAX, SELECT_CLUB_FOR_UPDATE, ended, iso, not_found, roster_version,
+    validation_error,
 )
 from app.services.inbox import add_inbox_items
 
@@ -33,6 +36,8 @@ NO_SHOW_WINDOW = timedelta(days=180)  # K2-O3 최근 6개월
 NO_SHOW_DAYS = {1: 3, 2: 7, 3: 30}  # K2-8, 4번째부터 영구(ends_at NULL)
 NO_SHOW_TEXT = "불참으로 기록됐어요"  # 불참 제한의 본인에게 보이는 사유(C3)
 REVIEW_TEXT_MAX = 500  # 재검토 요청 글(기본값 Claude)
+ROSTER_VERSION_RE = re.compile(r"[0-9a-f]{64}")  # SHA-256 소문자 16진수(C3)
+MSG_ROSTER_CHANGED = "참가 명단이 바뀌었어요. 다시 확인해 주세요."
 
 
 # ─────────── #65 출석 확인 ───────────
@@ -47,6 +52,7 @@ class AttendanceMark(BaseModel):
 class AttendanceIn(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
+    attendance_roster_version: Any = None  # 형식은 아래에서 직접 검사해 detail을 맞춘다
     marks: list[AttendanceMark]
 
 
@@ -70,10 +76,21 @@ def no_show_ends(count_with_this: int, now: datetime) -> datetime | None:
     return now + timedelta(days=NO_SHOW_DAYS[count_with_this])
 
 
+def roster_changed() -> ApiError:
+    return ApiError(409, "CLUB_ATTENDANCE_ROSTER_CHANGED", MSG_ROSTER_CHANGED)
+
+
+LOCK_USER_FOR_ATTENDANCE = text("SELECT status FROM users WHERE id = :uid FOR UPDATE")
+
+
 @router.put("/clubs/{club_id}/attendance")
 async def put_attendance(
     request: Request, club_id: UUID, body: AttendanceIn, user: CurrentUser = Depends(get_current_user)
 ) -> dict[str, Any]:
+    version = body.attendance_roster_version
+    if not isinstance(version, str) or ROSTER_VERSION_RE.fullmatch(version) is None:
+        raise validation_error("attendance_roster_version")
+
     def tx(c: Connection) -> dict[str, Any]:
         lock_active_user(c, user.id)
         club = c.execute(SELECT_CLUB_FOR_UPDATE, {"id": club_id}).first()
@@ -86,24 +103,34 @@ async def put_attendance(
         now = now_kst()
         if not ended(club, now):
             raise ApiError(409, "CLUB_NOT_ENDED", MSG_NOT_ENDED)
+        # ① 받은 버전이 지금 명단과 같을 때만 인덱스를 그 명단의 사람으로 고정한다
         people = c.execute(SELECT_PEOPLE_FOR_ATTENDANCE, {"id": club_id}).all()
+        if roster_version(people) != version:
+            raise roster_changed()  # 새 명단에서 같은 인덱스를 다시 해석하지 않는다
         idx = [m.participant_index for m in body.marks]
         if len(set(idx)) != len(idx) or any(i < 0 or i >= len(people) for i in idx):
             raise validation_error("marks")
-        for i in idx:
-            p = people[i]
-            if p.attendance_status == "no_show":
+        chosen = [people[i].user_id for i in idx]
+        # ② 고른 사람의 users 행을 ID 순서로 잠근다(탈퇴·다른 모임의 불참 확인과 줄 세우기, 교착 방지)
+        for uid in sorted(chosen):
+            if c.execute(LOCK_USER_FOR_ATTENDANCE, {"uid": uid}).scalar_one_or_none() != "active":
+                raise roster_changed()
+        # ③ 잠근 뒤 명단을 다시 읽어 버전과 참가 상태를 재검증한다. 하나라도 다르면 전체 중단(무변경)
+        fresh = c.execute(SELECT_PEOPLE_FOR_ATTENDANCE, {"id": club_id}).all()
+        if roster_version(fresh) != version:
+            raise roster_changed()
+        status = {p.user_id: p.attendance_status for p in fresh}
+        for uid in chosen:
+            if status[uid] == "no_show":
                 continue  # 멱등, 되돌리기 없음
-            # 같은 사람의 제한 수 세기·만들기를 줄 세운다(동시에 두 모임에서 불참 확인)
-            c.execute(text("SELECT 1 FROM users WHERE id = :uid FOR UPDATE"), {"uid": p.user_id})
             c.execute(text("UPDATE club_participations SET attendance_status = 'no_show', updated_at = now() "
-                           "WHERE club_id = :id AND user_id = :uid"), {"id": club_id, "uid": p.user_id})
-            n = c.execute(COUNT_NO_SHOW, {"uid": p.user_id, "since": now - NO_SHOW_WINDOW}).scalar_one() + 1
+                           "WHERE club_id = :id AND user_id = :uid"), {"id": club_id, "uid": uid})
+            n = c.execute(COUNT_NO_SHOW, {"uid": uid, "since": now - NO_SHOW_WINDOW}).scalar_one() + 1
             restriction_id = c.execute(INSERT_RESTRICTION, {
-                "uid": p.user_id, "kind": "no_show", "source": club_id, "reason": NO_SHOW_TEXT,
+                "uid": uid, "kind": "no_show", "source": club_id, "reason": NO_SHOW_TEXT,
                 "now": now, "ends": no_show_ends(n, now),
             }).scalar_one()
-            add_inbox_items(c, [p.user_id], "moderation", {"club_id": str(club_id), "restriction": str(restriction_id)})
+            add_inbox_items(c, [uid], "moderation", {"club_id": str(club_id), "restriction": str(restriction_id)})
         return record_view(c, club_id, user)
 
     return await run_db(request.app.state.engine, tx)

@@ -164,12 +164,14 @@ export type ClubRecord = {
   shared_post_id: string | null;
   can_create_next: boolean;
   suggest_next: boolean;
+  /** 만든 사람 전용 명단 버전(#60·#65, 위 `club.participants`와 같은 스냅샷). 만든 사람이 아니면 null */
+  attendance_roster_version: string | null;
 };
 
 /** #63 — 이름·소개·책·도서관은 서버가 복사한다. place를 빼면 이전 장소 */
 export type NextClubInput = { place?: string | null; starts_at: string | null; ends_at: string | null };
 
-/** #65 — 불참자만, `Club.participants`의 0부터 센 자리 */
+/** #65 — 불참자만, 받은 명단 버전의 `Club.participants`에서 0부터 센 자리 */
 export type AttendanceMark = { participant_index: number };
 
 export type Restriction = {
@@ -215,8 +217,13 @@ export async function fetchNextClubs(clubId: string, signal?: AbortSignal): Prom
 }
 
 /** #65 만든 사람 출석 확인 — 보낸 사람은 바로 불참·제한 */
-export function putAttendance(clubId: string, marks: AttendanceMark[]): Promise<ClubRecord> {
-  return send<ClubRecord>(`${club(clubId)}/attendance`, { method: "PUT", headers: JSON_HEADERS, body: JSON.stringify({ marks }) });
+/** #65 — `rosterVersion`은 #60에서 명단과 함께 받은 `attendance_roster_version`. 명단이 바뀌었으면 409 CLUB_ATTENDANCE_ROSTER_CHANGED */
+export function putAttendance(clubId: string, rosterVersion: string, marks: AttendanceMark[]): Promise<ClubRecord> {
+  return send<ClubRecord>(`${club(clubId)}/attendance`, {
+    method: "PUT",
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ attendance_roster_version: rosterVersion, marks }),
+  });
 }
 
 /** #66 — 처음 요청 201, 이미 요청한 댓글 200 */

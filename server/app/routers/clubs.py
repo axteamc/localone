@@ -8,6 +8,7 @@ book-club 계약 CLUB-1 C1~C7·P4. 표는 D가 `0012_m2_targets.py`로 만들었
 
 import base64
 import binascii
+import hashlib
 import json
 from datetime import datetime
 from typing import Any
@@ -133,10 +134,24 @@ def load_club(c: Connection, club_id: UUID) -> Any:
     return row
 
 
-def club_view(c: Connection, club_id: UUID, viewer: CurrentUser | None) -> dict[str, Any]:
-    """응답 `Club`(C3). user_id는 넣지 않는다."""
+def participant_rows(c: Connection, club_id: UUID) -> list[Any]:
+    """`Club.participants` 명단(만든 사람 제외, `joined_at, user_id` 순서). 행마다 user_id·nickname."""
+    return list(c.execute(SELECT_PARTICIPANTS, {"id": club_id}).all())
+
+
+def roster_version(people: list[Any]) -> str:
+    """명단 버전(CLUB-2 C3): 정렬 명단의 UUID 문자열 배열을 공백 없는 JSON으로 → SHA-256 소문자 16진수."""
+    ids = [str(p.user_id) for p in people]
+    return hashlib.sha256(json.dumps(ids, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def club_view(
+    c: Connection, club_id: UUID, viewer: CurrentUser | None, people: list[Any] | None = None
+) -> dict[str, Any]:
+    """응답 `Club`(C3). user_id는 넣지 않는다. `people`을 주면 그 명단 스냅샷을 그대로 쓴다(#60·#65 명단 버전)."""
     row = load_club(c, club_id)
-    people = c.execute(SELECT_PARTICIPANTS, {"id": club_id}).all()
+    if people is None:
+        people = participant_rows(c, club_id)
     mine = None
     if viewer is not None:
         mine = c.execute(SELECT_MINE, {"id": club_id, "uid": viewer.id}).scalar_one_or_none()

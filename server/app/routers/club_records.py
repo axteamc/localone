@@ -26,7 +26,7 @@ from app.routers import clubs as clubs_router
 from app.routers import posts as posts_router
 from app.routers.clubs import (
     FEED_CLUB_COLUMNS, MSG_CLOSED, PLACE_MAX, check_time_order, club_item, club_view, ended, iso, joined_user_ids,
-    not_found, validation_error,
+    not_found, participant_rows, roster_version, validation_error,
 )
 from app.services.inbox import InboxDraft, add_inbox_items, register_inbox_source
 
@@ -89,13 +89,14 @@ def load_record_club(c: Connection, club_id: UUID, user: CurrentUser) -> tuple[A
 
 
 def record_view(c: Connection, club_id: UUID, user: CurrentUser) -> dict[str, Any]:
-    """응답 `ClubRecord`(C3). 후기는 본인 것만."""
+    """응답 `ClubRecord`(C3). 후기는 본인 것만. 명단과 명단 버전은 한 번 읽은 같은 행에서 만든다(#60·#65)."""
     club, mine = load_record_club(c, club_id, user)
     is_host = club.host_id == user.id
     state = mine.state if mine is not None else "none"
     review = c.execute(SELECT_REVIEW, {"id": club_id, "uid": user.id}).first()
+    people = participant_rows(c, club_id)
     return {
-        "club": club_view(c, club_id, user),
+        "club": club_view(c, club_id, user, people),
         "my_participation": state,
         # 끝까지 참가 신청이 남은 사람만 출석 값이 있다(기본 전체 출석, K2-O1)
         "my_attendance": mine.attendance_status if state == "joined" else None,
@@ -103,6 +104,7 @@ def record_view(c: Connection, club_id: UUID, user: CurrentUser) -> dict[str, An
         "shared_post_id": None if review is None or review.shared_post_id is None else str(review.shared_post_id),
         "can_create_next": is_host or state == "joined",
         "suggest_next": is_host,  # 다음 모임 제안은 만든 사람에게만(K2-2)
+        "attendance_roster_version": roster_version(people) if is_host else None,  # 만든 사람 전용
     }
 
 

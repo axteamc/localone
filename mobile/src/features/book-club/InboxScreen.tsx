@@ -46,6 +46,13 @@ export function withinDays(items: InboxItem[], days = KEEP_DAYS, now = Date.now(
 type Load = { state: "loading" } | { state: "ok" } | { state: "error" };
 
 export function InboxScreen() {
+  const { status, userId } = useAuth();
+  const account = status === "signedIn" ? userId : null;
+  // 계정이 바뀌면 화면을 새로 만든다: 바뀐 그 순간부터 이전 계정의 목록·제한 안내·오류가 보이지 않는다(C6 계정 전환)
+  return <InboxView key={account ?? "signed-out"} />;
+}
+
+function InboxView() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const { status, userId } = useAuth();
@@ -73,9 +80,10 @@ export function InboxScreen() {
 
   const reload = useCallback(async () => {
     gen.current += 1;
+    const mine = gen.current; // 이 요청을 보낸 계정·화면. 바뀐 뒤 늦게 온 응답은 화면을 건드리지 않는다
     loadingMore.current = false;
     const res = await runner.run((signal) => fetchInbox(null, signal)); // #48
-    if (res.status === "stale") return; // 계정이 바뀐 뒤 늦게 온 응답은 버린다
+    if (res.status === "stale" || mine !== gen.current) return; // 계정이 바뀐 뒤 늦게 온 응답은 버린다
     if (res.status === "error") {
       setLoad({ state: "error" });
       return;
@@ -86,15 +94,20 @@ export function InboxScreen() {
     setLoad({ state: "ok" });
     void markAllRead().catch(() => {}); // #49 { all: true }, 실패해도 목록 유지
     fetchMyRestrictions()
-      .then((r) => setRestrictions(r))
-      .catch(() => {}); // 제한 안내는 못 받아도 알림함은 보인다
+      .then((r) => {
+        if (mine === gen.current) setRestrictions(r); // 계정 전환·다시 읽기 뒤 늦게 온 제한은 버린다
+      })
+      .catch(() => {}); // 제한 안내는 못 받아도 알림함은 보인다(실패도 화면을 바꾸지 않는다)
   }, [runner, account]);
 
   useEffect(() => {
     clear();
     setLoad({ state: "loading" });
     if (signedIn) void reload(); // 로그인 안 했으면 부르지 않는다
-    return () => runner.cancel();
+    return () => {
+      gen.current += 1; // 떠나거나 계정이 바뀌면 보내 둔 요청의 응답을 모두 버린다
+      runner.cancel();
+    };
   }, [reload, runner, signedIn, clear]);
 
   async function loadMore() {

@@ -48,9 +48,23 @@ function item(id: string, extra: Partial<InboxItem> = {}): InboxItem {
   return { id, kind: "club_ended", title: `안내 ${id}`, target: { club_id: `club-${id}` }, created_at: ago(HOUR), read: false, ...extra };
 }
 
-function signed(status: "signedIn" | "signedOut") {
-  mockedUseAuth.mockReturnValue({ status, userId: status === "signedIn" ? "user-a" : null } as ReturnType<typeof useAuth>);
+function signed(status: "signedIn" | "signedOut", userId = "user-a") {
+  mockedUseAuth.mockReturnValue({ status, userId: status === "signedIn" ? userId : null } as ReturnType<typeof useAuth>);
 }
+
+function deferred<T>() {
+  let resolve!: (v: T) => void;
+  let reject!: (e: unknown) => void;
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res;
+    reject = rej;
+  });
+  return { promise, resolve, reject };
+}
+
+const A_RESTRICTION: Restriction = {
+  id: "r-a", reason_kind: "no_show", ends_at: "2099-11-26T18:00:00+09:00", reason_text: "불참으로 기록됐어요", review_requested: false,
+};
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -153,6 +167,39 @@ describe("알림함", () => {
     });
     expect(screen.queryByText("안내 a")).toBeNull();
   });
+
+  test.each(["success", "failure"] as const)(
+    "late restriction lookup %s after account switch does not show on the new account",
+    async (result) => {
+      const aRestrictions = deferred<Restriction[]>();
+      m.fetchInbox.mockResolvedValueOnce({ items: [item("a")], next_cursor: null });
+      m.fetchMyRestrictions.mockReturnValueOnce(aRestrictions.promise); // A의 제한 조회를 보류
+      const view = await render(<InboxScreen />);
+      await screen.findByText("안내 a");
+
+      const bInbox = deferred<{ items: InboxItem[]; next_cursor: string | null }>();
+      m.fetchInbox.mockReturnValueOnce(bInbox.promise);
+      m.fetchMyRestrictions.mockResolvedValueOnce([]);
+      signed("signedIn", "user-b");
+      await view.rerender(<InboxScreen />);
+      expect(screen.queryByText("안내 a")).toBeNull(); // 바뀐 즉시 이전 계정 목록을 보여 주지 않는다
+      expect(screen.queryByTestId("restriction-notice")).toBeNull();
+
+      await act(async () => {
+        if (result === "success") aRestrictions.resolve([A_RESTRICTION]);
+        else aRestrictions.reject(new api.ApiCallError(0, "NETWORK", "x", ""));
+      });
+      expect(screen.queryByTestId("restriction-notice")).toBeNull(); // 아직 B 목록 전: A 제한이 끼어들지 않는다
+
+      await act(async () => bInbox.resolve({ items: [item("b")], next_cursor: null }));
+      await screen.findByText("안내 b");
+      await waitFor(() => expect(m.fetchMyRestrictions).toHaveBeenCalledTimes(2));
+      expect(screen.queryByTestId("restriction-notice")).toBeNull(); // B 화면에 A 제한 없음
+      expect(screen.queryByText(RESTRICTION_TEXT.noShowTitle)).toBeNull();
+      expect(screen.queryByText("안내 a")).toBeNull();
+      expect(screen.queryByText(INBOX_TEXT.loadFailed)).toBeNull(); // 오류·다시 해 보기 없음
+    }
+  );
 
   test("empty failure and signed out states", async () => {
     m.fetchInbox.mockRejectedValueOnce(new api.ApiCallError(0, "NETWORK", "x", ""));
