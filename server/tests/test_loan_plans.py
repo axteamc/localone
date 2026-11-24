@@ -207,7 +207,8 @@ def test_list_validation_is_422(client, auth, params, field):
     ({"library_id": 101}, "isbn13"),
     ({"isbn13": None, "library_id": 101}, "isbn13"),
     ({"library_id": "x"}, "isbn13,library_id"),
-    ({"isbn13": isbn(0)}, "library_id"),
+    # library_id 생략·null은 도서관 미지정 예정(LIB-3b U4) → test_loan_plans_unassigned.py
+    ({"isbn13": isbn(0), "library_id": -1}, "library_id"),
     ({"isbn13": isbn(0), "library_id": 0}, "library_id"),
 ])
 def test_save_validation_is_422_no_row(client, auth, db_engine, body, field):

@@ -158,7 +158,7 @@ def test_0026_migration_roundtrip_and_downgrade_converts_yes24_source(yes24_db, 
         )
 
     try:
-        command.downgrade(alembic_config, "-1")
+        command.downgrade(alembic_config, "0025_reports_constraints")  # 0026 아래로(위에 0027이 있어도)
         with yes24_db.connect() as conn:
             assert conn.execute(text("SELECT to_regclass('public.curated_books_cache')")).scalar_one() is None
             assert conn.execute(text("SELECT to_regclass('public.book_purchase_links')")).scalar_one() is None

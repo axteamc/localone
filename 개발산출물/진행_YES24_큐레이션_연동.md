@@ -1,6 +1,6 @@
 # YES24 스테디셀러·인기도서 큐레이션 및 구매 연동 진행 (M2 이후 후속)
 
-- **상태:** **4단계 완료 — 5단계(Y-6) 계약 확정·발행 완료(2026-11-24 D, [Y-6_계약개정안.md](명세/Y-6_계약개정안.md), team `2843458`), 구현 대기**. YES24 1단계 K23도 같은 커밋에서 다시 써서 원격 반영(원 `cb25a44`는 미반영·폐기). 운영 반영은 별도 지시에 따른다.
+- **상태:** **4단계 완료 — 5단계(Y-6) 계약 발행(team `2843458`)·서버 파트 1 구현 완료(2026-11-24 mac, 미커밋), 모바일 파트 2 대기**. YES24 1단계 K23도 같은 커밋에서 다시 써서 원격 반영(원 `cb25a44`는 미반영·폐기). 운영 반영은 별도 지시에 따른다.
 - **기준 SHA:**
   - 설계 시점(2026-11-24): 코드 `2ccc0db951dcba4e0bc354946984a8adc619cd48`, team `64b9d9e8705c2ced9aa54a33fa98f4beeeb811a7`
   - **1단계 계약 확정(2026-11-24, C-81):** 코드 `main` `9f05e2021fdcff11f98a5b326691b546d35c65d1`(단일 `alembic head = 0025_reports_constraints`), **team 계약 발행 SHA `cb25a44e9eab502b3a7646c7e2c732390b86eef4`**(로컬 커밋, 원격 push 대기)
@@ -22,7 +22,7 @@
 | **2. DB·엔진·CLI 구현** | 1단계 선행. 새 Alembic 리비전(`books_source_check` `'yes24'` 추가, `curated_books_cache`·`book_purchase_links` 생성·RLS), `settings.py`·`policy.py`·`Yes24Client`·`ProviderEngine.curated_books`·`sync-yes24-curated` CLI 구현 | `server/`: `uv run alembic upgrade head && uv run alembic downgrade -1 && uv run alembic upgrade head`, `uv run pytest -W error tests/test_lib_engine.py tests/test_yes24_curated.py` | 마이그레이션 왕복·RLS(`relrowsecurity=true`, 정책 0개)·성인물/URL/ISBN일치/한도/빈 응답 보호 테스트 및 핵심 가드 변이 5곳 실패 확인 | **완료 (2026-11-24)** |
 | **3. API(`#9`/`#15`)·서가 테마 연결** | 2단계 선행. `#9 /books/recommendations` YES24 스테디셀러 연결·정보나루 폴백(양쪽 stale 시 YES24 stale 유지), `#15 /books/{isbn13}/purchase-link` 직링크(`kind="product"`)·검색 폴백 구현, `sync-yes24-curated --print-isbns` → `ops/shelf-themes` + `sync-theme-holdings` 연동 확인 | `server/`: `uv run pytest -W error tests/test_books.py tests/test_looks_shelf.py tests/test_yes24_curated.py` | `#9` 하위 호환·폴백, `#15` 직링크/폴백, 기존 도서관별 `#31` 회귀 0건(108 passed) 통과 | **완료 (2026-11-24)** |
 | **4. 모바일 타입·출처 표기·검증** | 3단계 선행. `Book.source`, `PurchaseLink.kind` 확장. 홈 하단 창(VISIT-1b)·검색 진입의 `#9` YES24 추천 섹션에 `출처: YES24`를 한 번 표기 | `mobile/`: `npx tsc --noEmit`, `npx jest --runInBand`. 구현·진행 기록을 각각 `Owner: D` 커밋으로 기록하고 [PR #302](https://github.com/axteamc/localone/pull/302)에 반영 | 타입 검사 통과, Jest 49개 스위트·870개 테스트 통과 | **완료 (2026-11-24)** |
-| **5. 도서 상세 시안·배치 개편 (Y-6, 후속)** | 4단계 선행. 도서 상세·단일 조회는 기존 API 재사용. 도서관 미지정 예정·일괄 조회·일괄 빌림은 아래 결정 후 관련 계약 개정 | [최신 HTML 시안](시안/Y-6_도서상세_YES24_시안.html), 설계명세 §5.5·§6, 아래 구현 범위 | 시안·계약 일치, 승인된 변경 구현, 경로별 검증 및 최신 PR HEAD 필수 CI 확인 | **계약 발행 완료(team `2843458`), 구현 대기** |
+| **5. 도서 상세 시안·배치 개편 (Y-6, 후속)** | 4단계 선행. 도서 상세·단일 조회는 기존 API 재사용. 도서관 미지정 예정·일괄 조회·일괄 빌림은 아래 결정 후 관련 계약 개정 | [최신 HTML 시안](시안/Y-6_도서상세_YES24_시안.html), 설계명세 §5.5·§6, 아래 구현 범위 | 시안·계약 일치, 승인된 변경 구현, 경로별 검증 및 최신 PR HEAD 필수 CI 확인 | **계약 발행 완료(team `2843458`), 서버 파트 1 완료(미커밋), 모바일 파트 2 대기** |
 
 ---
 
@@ -60,12 +60,22 @@
 1. **기획 완료** — 최신 도서 상세 시안, 필 버튼·카드 선택, 기존 대출·반납 탭을 사용한다. 도서관 미지정 예정·일괄 조회·일괄 빌림의 개정 방향을 선택했다.
 2. **계약 내용 확정 (2026-11-24 D, mac)** — [Y-6_계약개정안.md](명세/Y-6_계약개정안.md) Y6-1~Y6-8. `#70 POST /api/v1/me/loan-plans/availability`(로그인·예정 ID), `libSrchByBook` 소장 1차 + 상위 후보 `bookExist`, ISBN 20권, 요청당 40건·동시 8건 공유, 항상 200 + `complete`·`unknown_pairs`, 정렬 소장 → 대출 가능 → 거리 → ID. Windows의 `.git/y6-contract-review/` 비교본은 이 문서로 대체한다.
 3. **team 발행 완료 (2026-11-24 mac)** — team `28434580a8db4a2fa0b0ba426b3df1805a005e2a`. `cb25a44`는 원격 어디에도 없어 사용자 지시로 덮어쓰기 발행. 02·05·06·C-84 반영.
-4. **구현 대기** — 확정한 계약과 시안대로 화면·API·예정 저장과 일괄 동작을 연결하고 위 표적 검증을 실행한다.
-5. **주니어 AI 마무리 대기** — 구현 결과와 미검증 범위를 받아 필요한 회귀·플랫폼 검증 및 기록을 마무리한다. 작업 브랜치의 커밋·push·PR과 최신 HEAD 필수 CI를 확인한다. 머지·배포는 별도 지시를 따른다.
+4. **구현 파트 1(서버) 완료 (2026-11-24 mac, 미커밋)** — 아래 "Y-6 파트 1 결과".
+5. **구현 파트 2(모바일) 대기** — `saveLoanPlan(isbn13, libraryId | null)`, `#16 include_unassigned=true`, `#70` 조회 창·일괄 빌림(`#20` 순차), 도서 상세 V1~V10. 머지·배포는 별도 지시.
 
+### Y-6 파트 1 결과 (서버, 2026-11-24 mac)
+
+- **바꾼 파일(9)**: `server/app/policy.py`(`BATCH_AVAILABILITY_MAX_ISBNS=20`·`_MAX_PLAN_IDS=50`·`_TOP_LIBRARIES=3`), `server/app/services/provider_engine.py`(`accept_holdings_page` 공용 무결성 검사로 `sync_theme_holdings` 정리, `bulk_availability`·`BulkAvailabilityResult`·`BulkCandidate`), `server/app/routers/loan_plans.py`(#16 `include_unassigned`, #17 `library_id` 선택, `LoanPlan.library` null, #70), 새 `server/migrations/versions/0027_loan_plans_unassigned.py`, 새 `server/tests/test_loan_plans_unassigned.py`(33건), `server/tests/test_loan_plans.py`(생략=미지정이 돼 검증 케이스 1개 교체), `server/tests/test_yes24_curated.py`(0026 왕복 시험이 `downgrade -1` → `0025_reports_constraints` 명시. 0027이 위에 생겨서). `loans.py` #20은 이미 `lib_id or plan.library_id`라 수정 없음(미지정 예정 → 대출 `library` null 시험 추가).
+- **공식 문서 확인(개정안 §7)**: 정보나루 API 매뉴얼 v20260620. `bookExist` 35쪽 "대출 가능여부는 조회일 기준 전날의 대출 상태를 기준으로 제공". `libSrchByBook` 38~39쪽은 `pageSize` "선택·숫자"만 적고 **상한·기본값·소장 데이터 기준일은 적지 않음** → 임시 처리 유지(전날 기준으로 보고 오늘 `bookExist` 우선, 페이지 100은 운영 `sync-theme-holdings`에서 쓰던 값). 두 API 결과 대조 1회(실제 키 호출)는 아직 안 함.
+- **검증(격리 PostgreSQL 16 컨테이너 `y6-test-pg`, `127.0.0.1:55434/y6_test`, 데모 DB 5433 미사용, `.env` 키는 빈 값으로 덮음)**: `alembic upgrade head` → `downgrade -1`(0026) → `upgrade head`, 단일 head `0027_loan_plans_unassigned`. 미지정 행이 있으면 downgrade 실패·행 보존 시험 포함. 표적 pytest `-W error` 262건 통과(`test_loan_plans_unassigned`·`test_loan_plans`·`test_loans_start`·`test_lib_engine`·`test_looks_shelf`·`test_books`·`test_me_withdraw`·`test_yes24_curated`), 전체 882건 통과. 가드 변이 7곳(부분 페이지를 no로·예산 무시·대출 가능 정렬 제거·오늘 관측 무시·미지정 숨김 제거·404 소유 검사 제거·ISBN 상한 제거) 모두 실패 확인(정렬 변이는 처음 살아남아 단언 추가 뒤 실패).
+- **계약에 없던 세부를 기본값(Claude)으로 정함 — 계약 보완 필요**:
+  1. 0027 downgrade는 미지정 **활성** 행이 아니라 **미지정 행이 하나라도**(해제·전환 포함) 있으면 실패한다. `NOT NULL`을 되돌릴 수 없어서다(U1 문구 "미지정 활성 행" → "미지정 행"으로 고칠 것).
+  2. `region_code`가 시·도 2자리가 아닌 도서관은 ①을 못 해서 `holding=unknown`, `fallback_reason="provider_error"`(운영 `_store_libraries`는 항상 채워 실제로는 0곳).
+  3. `fallback_counts`는 사유가 있고 `holding`이나 `loanable`이 `unknown`인 쌍 수(①로 소장은 확정됐는데 ②를 예산·오류로 못 본 쌍도 센다). `complete`·`unknown_pairs`는 `holding`만 본다.
+  4. 예산은 실제 호출 순서대로 쓴다(동시 8 안에서 앞 ISBN 첫 페이지부터, 여러 페이지인 지역의 뒤 페이지는 나중). 주변 도서관 0곳이면 `books[].status`는 `not_held`(모든 쌍이 no라는 공허한 참).
+- **아직 안 함**: 커밋·push·PR, 모바일 파트 2, 실제 정보나루 호출 대조, 운영 DB `0027` 적용·배포.
 ```text
-Y-6 구현 파트 1(서버 #70·미지정 예정·마이그레이션)을 시작해. 나는 D야.
-먼저 읽어: 개발산출물/인수인계_메모.md, 개발산출물/명세/Y-6_계약개정안.md, ../team/contracts/book-search.md LIB-3b, core.md K24.
-git: git -C ../team pull --ff-only(발행 2843458 이후), 코드는 feat/yes24-y6-book-detail.
-범위: server/ 정책·엔진·loan_plans 라우터·0027 마이그레이션·관련 테스트. 모바일은 파트 2.
+Y-6 구현 파트 2(모바일: 도서 상세·미지정 예정·#70 조회 창·일괄 빌림)를 시작해.
+먼저 읽어: 개발산출물/인수인계_메모.md, 이 진행 파일 "Y-6 파트 1 결과", 개발산출물/명세/Y-6_계약개정안.md §3~§5, ../team/contracts/book-search.md LIB-3b.
+범위: mobile/ 만. 서버는 파트 1 결과 그대로.
 ```
