@@ -1,4 +1,4 @@
-"""도서 검색·상세·인기 추천(06 #7~#9). 인증 없음.
+"""도서 검색·상세·인기 추천·대출 가능·구매 링크. 인증 없음.
 
 외부 데이터는 조회 엔진(`ProviderEngine`)으로만 얻는다(H-ARCH-07: 이 파일에 HTTP 클라이언트 import 없음).
 """
@@ -24,6 +24,8 @@ from app.services.provider_engine import (
     libraries_nearby,
     LibraryRow,
     ProviderEngine,
+    PurchaseLinkResult,
+    RecommendationSource,
     get_library,
     isbn13_is_valid,
 )
@@ -81,15 +83,17 @@ async def search_books(
     }
 
 
-# ─────────── #9 M1 인기 도서 추천(K8) ───────────
+# ─────────── #9 인기 도서 추천(K8·K23) ───────────
 
 
 @router.get("/recommendations")
 async def recommendations(
-    request: Request, library_id: int | None = Query(None, ge=1, le=BIGINT_MAX)
+    request: Request,
+    library_id: int | None = Query(None, ge=1, le=BIGINT_MAX),
+    source: RecommendationSource = Query("auto"),
 ) -> Any:
     library = await _library_or_404(request, library_id) if library_id is not None else None
-    popular = await _engine(request).popular_books(library)
+    popular = await _engine(request).recommendations(library, source)
     return {
         "kind": "popular",
         "scope": popular.scope,
@@ -179,15 +183,9 @@ async def availability(
     }
 
 
-# ─────────── #15 구매 링크(Q-41 ② 미결: 예스24 검색 주소만) ───────────
+# ─────────── #15 구매 링크(K23) ───────────
 
 
 @router.get("/{isbn13}/purchase-link")
-async def purchase_link(isbn13: str) -> Any:
-    isbn13 = _isbn(isbn13)
-    return {
-        "isbn13": isbn13,
-        "provider": "yes24",
-        "kind": "search",
-        "url": policy.YES24_SEARCH_URL_TEMPLATE.format(isbn13=isbn13),
-    }
+async def purchase_link(request: Request, isbn13: str) -> PurchaseLinkResult:
+    return await _engine(request).purchase_link(_isbn(isbn13))

@@ -10,6 +10,8 @@ import http.client
 import json
 import math
 import sys
+import threading
+import time
 import urllib.error
 import urllib.request
 from collections.abc import Callable, Iterable, Sequence
@@ -22,13 +24,14 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection, Engine
 from sqlalchemy.exc import SQLAlchemyError
 from app import policy
-from app.common import ApiError, now_kst, today_kst
+from app.common import KST, ApiError, now_kst, today_kst
 from app.db import run_db
 from app.services.homepage_fix import fix_homepage, fix_region_code
 from app.services.theme_holdings import holdings_targets, replace_holdings
 from app.settings import Settings
 
 T = TypeVar("T")
+RecommendationSource = Literal["auto", "yes24_steady", "yes24_bestseller", "library_loan"]
 MSG_PROVIDER_LIMIT = "지금은 조회가 많아요. 잠시 뒤 다시 시도해 주세요."
 MSG_PROVIDER_UNAVAILABLE = "정보를 가져오지 못했어요. 다시 시도해 주세요."
 
@@ -213,13 +216,13 @@ def _store_libraries(
 
 
 def _main(argv: list[str]) -> int:
-    """`python -m app.services.provider_engine seed | sync-libraries | sync-theme-holdings`"""
+    """`python -m app.services.provider_engine seed | sync-libraries | sync-theme-holdings | sync-yes24-curated`"""
     from sqlalchemy import create_engine
 
     from app.seed import seed_reference_data
     from app.settings import get_settings
 
-    if not argv or argv[0] not in {"seed", "sync-libraries", "sync-theme-holdings"}:
+    if not argv or argv[0] not in {"seed", "sync-libraries", "sync-theme-holdings", "sync-yes24-curated"}:
         print(_main.__doc__)
         return 2
     if argv[0] == "sync-theme-holdings":
@@ -231,6 +234,16 @@ def _main(argv: list[str]) -> int:
             parser.error("--region은 두 자리 광역 코드여야 해요")
         if args.max_calls is not None and args.max_calls < 1:
             parser.error("--max-calls는 1 이상이어야 해요")
+    elif argv[0] == "sync-yes24-curated":
+        parser = argparse.ArgumentParser(prog="sync-yes24-curated")
+        parser.add_argument("--kind", choices=("steady", "bestseller"), default="steady")
+        parser.add_argument("--category", default=policy.YES24_DEFAULT_CATEGORY_ID)
+        parser.add_argument("--print-isbns", action="store_true")
+        args = parser.parse_args(argv[1:])
+        category = args.category.strip()
+        if not 1 <= len(category) <= 32:
+            parser.error("--category는 공백 제외 1~32자여야 해요")
+        args.category = category
     settings = get_settings()
     engine = create_engine(settings.database_url)
     try:
@@ -245,6 +258,39 @@ def _main(argv: list[str]) -> int:
                 status, report = 1, {"error": "database_error"}
             print(json.dumps(report, ensure_ascii=False))
             return status
+        elif argv[0] == "sync-yes24-curated":
+            try:
+                result = asyncio.run(
+                    ProviderEngine(engine, build_providers(settings)).curated_books(
+                        list_kind=args.kind, category_id=args.category
+                    )
+                )
+            except (SQLAlchemyError, ApiError):
+                if not args.print_isbns:
+                    print(json.dumps({"error": "database_error", "kind": args.kind, "category": args.category}, ensure_ascii=False))
+                return 1
+            if result is None:
+                if not args.print_isbns:
+                    print(json.dumps({"kind": args.kind, "category": args.category, "count": 0, "stale": False, "fallback_reason": "no_data"}, ensure_ascii=False))
+                return 1
+            if args.print_isbns:
+                for book in result.books:
+                    print(book.isbn13)
+            else:
+                print(
+                    json.dumps(
+                        {
+                            "kind": result.list_kind,
+                            "category": result.category_id,
+                            "basis_label": result.basis_label,
+                            "count": len(result.books),
+                            "stale": result.stale,
+                            "fallback_reason": result.fallback_reason,
+                        },
+                        ensure_ascii=False,
+                    )
+                )
+            return 1 if result.stale else 0
         else:
             codes = argv[1:]
             if not codes:
@@ -285,6 +331,7 @@ class LibraryDataProvider(Protocol):
 class Providers:
     books: BookSearchProvider | None = None
     library_data: LibraryDataProvider | None = None
+    yes24: Yes24Provider | None = None
 
 
 class Data4LibraryClient:
@@ -427,7 +474,14 @@ def build_providers(settings: Settings) -> Providers:
             settings.data4library_api_base_url,
             policy.PROVIDER_TIMEOUT_SECONDS,
         )
-    return Providers(books=books, library_data=library_data)
+    yes24 = None
+    if settings.yes24_api_key:
+        yes24 = Yes24Client(
+            settings.yes24_api_key,
+            settings.yes24_api_base_url,
+            policy.PROVIDER_TIMEOUT_SECONDS,
+        )
+    return Providers(books=books, library_data=library_data, yes24=yes24)
 
 
 
@@ -605,6 +659,169 @@ class ProviderEngine:
         if cached is not None:
             return PopularResult(**{**cached.__dict__, "stale": True, "fallback_reason": reason})
         return None
+
+
+    async def curated_books(
+        self,
+        list_kind: Literal["steady", "bestseller"] = "steady",
+        category_id: str = policy.YES24_DEFAULT_CATEGORY_ID,
+    ) -> CuratedResult | None:
+        """YES24 큐레이션(스테디셀러·베스트셀러) KST 일 1회 캐시 조회·갱신(K23, C-81)."""
+        result, _ = await self._curated_books(list_kind, category_id)
+        return result
+
+    async def recommendations(
+        self, library: LibraryRow | None, source: RecommendationSource
+    ) -> PopularResult:
+        if library is not None or source == "library_loan":
+            return await self.popular_books(library)
+
+        list_kind = "bestseller" if source == "yes24_bestseller" else "steady"
+        curated, reason = await self._curated_books(list_kind, policy.YES24_DEFAULT_CATEGORY_ID)
+        if reason is not None:
+            try:
+                popular = await self.popular_books(None)
+            except ApiError as exc:
+                if exc.code not in {"PROVIDER_LIMIT", "PROVIDER_UNAVAILABLE"}:
+                    raise
+                if curated is None:
+                    if reason == "limit" and exc.code == "PROVIDER_UNAVAILABLE":
+                        raise ApiError(429, "PROVIDER_LIMIT", MSG_PROVIDER_LIMIT) from exc
+                    raise
+            else:
+                if curated is None or not popular.stale:
+                    return replace(popular, fallback_reason=reason)
+
+        assert curated is not None
+        return PopularResult(
+            scope="national",
+            library_id=None,
+            period_label=curated.basis_label,
+            books=curated.books,
+            fetched_at=curated.fetched_at,
+            stale=curated.stale,
+            fallback_reason=curated.fallback_reason,
+        )
+
+    async def _curated_books(
+        self, list_kind: Literal["steady", "bestseller"], category_id: str
+    ) -> tuple[CuratedResult | None, FallbackReason | None]:
+        now = self.now_fn()
+        cached = await self._db(lambda c: _read_curated(c, "yes24", list_kind, category_id))
+        if cached is not None and today_kst(cached.fetched_at) == today_kst(now):
+            return cached, None
+
+        provider = self.providers.yes24
+        if provider is None:
+            return (_mark_curated_stale(cached, "not_configured") if cached else None), "not_configured"
+
+        try:
+            page = await self._guarded_call(
+                "yes24",
+                policy.YES24_DAILY_LIMIT,
+                lambda: provider.curated_list(
+                    list_kind, category_id, page=1, size=policy.YES24_CURATED_FETCH_SIZE
+                ),
+            )
+        except ProviderLimitReached:
+            return (_mark_curated_stale(cached, "limit") if cached else None), "limit"
+        except ProviderError:
+            return (_mark_curated_stale(cached, "provider_error") if cached else None), "provider_error"
+
+        filtered = _filter_yes24_curated_items(page.items, limit=policy.YES24_CURATED_SIZE)
+        if not filtered:
+            return (_mark_curated_stale(cached, "no_data") if cached else None), "no_data"
+
+        fetched_at = self.now_fn()
+        basis_label = _yes24_basis_label(list_kind, category_id)
+
+        def _write_tx(conn: Connection) -> CuratedResult:
+            conn.execute(
+                text("SELECT pg_advisory_xact_lock(hashtext(:k))"),
+                {"k": f"curated:yes24:{list_kind}:{category_id}"},
+            )
+            infos = [_yes24_to_book_info(item) for item in filtered]
+            records = upsert_books(conn, infos, "yes24", fetched_at, overwrite=False)
+            records_by_isbn = {record.isbn13: record for record in records}
+            _upsert_yes24_purchase_links(conn, records_by_isbn, filtered, fetched_at)
+            _replace_curated_cache(
+                conn,
+                "yes24",
+                list_kind,
+                category_id,
+                records,
+                basis_label,
+                page.pub_date,
+                fetched_at,
+            )
+            stored = _read_curated(conn, "yes24", list_kind, category_id)
+            assert stored is not None
+            return stored
+
+        return await self._db(_write_tx), None
+
+
+    async def purchase_link(self, isbn13: str) -> PurchaseLinkResult:
+        """도서 구매 직링크 조회·캐시(TTL 14일). 조건 미충족·오류 시 검색 URL 폴백(K23, C-81)."""
+        fallback = PurchaseLinkResult(
+            isbn13=isbn13,
+            provider="yes24",
+            kind="search",
+            url=policy.YES24_SEARCH_URL_TEMPLATE.format(isbn13=isbn13),
+        )
+        now = self.now_fn()
+        cached = await self._db(lambda c: _read_purchase_link(c, isbn13, "yes24"))
+        if (
+            cached is not None
+            and now - cached.fetched_at < policy.YES24_PURCHASE_LINK_TTL
+            and _is_valid_yes24_product_url(cached.product_url)
+            and cached.item_status in policy.YES24_PURCHASABLE_STATUSES
+        ):
+            return PurchaseLinkResult(
+                isbn13=isbn13,
+                provider="yes24",
+                kind="product",
+                url=cached.product_url,
+            )
+
+        provider = self.providers.yes24
+        if provider is None:
+            return fallback
+
+        try:
+            item = await self._guarded_call(
+                "yes24",
+                policy.YES24_DAILY_LIMIT,
+                lambda: provider.item_detail(isbn13),
+            )
+        except (ProviderLimitReached, ProviderError):
+            return fallback
+
+        if item is None or not _is_eligible_purchase_link(item, expected_isbn13=isbn13) or not item.title:
+            return fallback
+
+        assert item.product_url is not None
+        fetched_at = self.now_fn()
+
+        def _store_tx(conn: Connection) -> None:
+            record = upsert_books(conn, [_yes24_to_book_info(item)], "yes24", fetched_at, overwrite=False)[0]
+            _upsert_purchase_link(
+                conn,
+                record.id,
+                "yes24",
+                item.item_id,
+                item.product_url,  # type: ignore[arg-type]
+                item.item_status,
+                fetched_at,
+            )
+
+        await self._db(_store_tx)
+        return PurchaseLinkResult(
+            isbn13=isbn13,
+            provider="yes24",
+            kind="product",
+            url=item.product_url,
+        )
 
 
     async def availability(self, isbn13: str, libraries: Sequence[LibraryRow]) -> list[AvailabilityItem]:
@@ -997,7 +1214,9 @@ def upsert_books(
         "description = COALESCE(EXCLUDED.description, books.description), "
         "pub_year = COALESCE(EXCLUDED.pub_year, books.pub_year), fetched_at = EXCLUDED.fetched_at"
         if overwrite
-        else "cover_url = COALESCE(books.cover_url, EXCLUDED.cover_url), "
+        else "author = COALESCE(books.author, EXCLUDED.author), "
+        "publisher = COALESCE(books.publisher, EXCLUDED.publisher), "
+        "cover_url = COALESCE(books.cover_url, EXCLUDED.cover_url), "
         "description = COALESCE(books.description, EXCLUDED.description), "
         "pub_year = COALESCE(books.pub_year, EXCLUDED.pub_year)"
     )
@@ -1297,6 +1516,470 @@ def _store_observations(conn: Connection, book_id: int, today: date, successes: 
             },
         )
 
+
+
+# ─────────── YES24 큐레이션·구매 직링크(C-81, K23) ───────────
+
+
+@dataclass(frozen=True)
+class Yes24Item:
+    sort_order: int
+    item_id: str
+    isbn13: str | None
+    title: str | None
+    author: str | None = None
+    publisher: str | None = None
+    goods_type: str | None = None
+    goods_sort_nm: str | None = None
+    adult_yn: str = "N"
+    pub_year: int | None = None
+    item_status: str | None = None
+    cover_url: str | None = None
+    product_url: str | None = None
+    description: str | None = None
+
+
+@dataclass(frozen=True)
+class Yes24CuratedPage:
+    items: list[Yes24Item]
+    pub_date: datetime | None = None
+
+
+class Yes24Provider(Protocol):
+    def curated_list(
+        self,
+        list_kind: Literal["steady", "bestseller"],
+        category_id: str,
+        page: int = 1,
+        size: int = policy.YES24_CURATED_FETCH_SIZE,
+    ) -> Yes24CuratedPage: ...
+
+    def item_detail(self, isbn13: str) -> Yes24Item | None: ...
+
+
+@dataclass(frozen=True)
+class CuratedResult:
+    provider: Literal["yes24"]
+    list_kind: Literal["steady", "bestseller"]
+    category_id: str
+    basis_label: str
+    books: list[BookRecord]
+    source_published_at: datetime | None
+    fetched_at: datetime
+    stale: bool
+    fallback_reason: FallbackReason | None
+
+
+@dataclass(frozen=True)
+class PurchaseLinkResult:
+    isbn13: str
+    provider: Literal["yes24"]
+    kind: Literal["product", "search"]
+    url: str
+
+
+@dataclass(frozen=True)
+class _CachedPurchaseLink:
+    external_item_id: str
+    product_url: str
+    item_status: str | None
+    fetched_at: datetime
+
+
+def _parse_yes24_pub_date(raw: Any) -> datetime | None:
+    if not isinstance(raw, str) or not raw.strip():
+        return None
+    text_val = raw.strip()
+    if text_val.endswith("Z"):
+        text_val = text_val[:-1] + "+00:00"
+    try:
+        dt = datetime.fromisoformat(text_val)
+    except ValueError:
+        return None
+    return dt if dt.tzinfo is not None else dt.replace(tzinfo=KST)
+
+
+def _parse_yes24_item(raw: Any) -> Yes24Item | None:
+    if not isinstance(raw, dict):
+        return None
+    raw_sort = raw.get("sortOrder")
+    sort_order = raw_sort if type(raw_sort) is int else 0
+    raw_item_id = raw.get("itemId")
+    if type(raw_item_id) is int and raw_item_id > 0:
+        item_id = str(raw_item_id)
+    elif isinstance(raw_item_id, str) and raw_item_id.strip().isdigit() and int(raw_item_id.strip()) > 0:
+        item_id = raw_item_id.strip()
+    else:
+        item_id = ""
+    raw_isbn13 = _clean_text(raw.get("isbn13"))
+    isbn13 = normalize_isbn(raw_isbn13) if raw_isbn13 else normalize_isbn(raw.get("isbn10"))
+    raw_pub = _clean_text(raw.get("publishDate"))
+    pub_year = _pub_year(raw_pub) if raw_pub and re.fullmatch(r"[0-9]{8}", raw_pub) else None
+    detail = raw.get("contentDetail") if isinstance(raw.get("contentDetail"), dict) else {}
+    description = _description(detail.get("bookIntroduction")) or _description(detail.get("bookSummary"))
+    adult_yn = (_clean_text(raw.get("adultYn")) or "").upper()
+    return Yes24Item(
+        sort_order=sort_order,
+        item_id=item_id,
+        isbn13=isbn13,
+        title=_clean_book_text(raw.get("title")),
+        author=_clean_book_text(raw.get("author")),
+        publisher=_clean_book_text(raw.get("publisher")),
+        goods_type=_clean_text(raw.get("goodsType")),
+        goods_sort_nm=_clean_text(raw.get("goodsSortNm")),
+        adult_yn=adult_yn,
+        pub_year=pub_year,
+        item_status=_clean_text(raw.get("itemStatus")),
+        cover_url=https_cover(raw.get("cover")),  # 약관: cover(앞표지)만 사용, sideCover·backCover 미사용
+        product_url=_clean_text(raw.get("link")),
+        description=description,
+    )
+
+
+def _is_valid_yes24_product_url(url: str | None) -> bool:
+    return isinstance(url, str) and url.startswith(policy.YES24_PRODUCT_URL_PREFIX)
+
+
+def _filter_yes24_curated_items(
+    items: Sequence[Yes24Item], limit: int = policy.YES24_CURATED_SIZE
+) -> list[Yes24Item]:
+    ordered = sorted(items, key=lambda item: item.sort_order)
+    seen_isbns: set[str] = set()
+    result: list[Yes24Item] = []
+    for item in ordered:
+        if item.adult_yn.upper() == "Y":
+            continue
+        if item.goods_type not in policy.YES24_CURATED_ALLOWED_GOODS_TYPES:
+            continue
+        if item.goods_sort_nm and any(
+            token in item.goods_sort_nm for token in policy.YES24_CURATED_EXCLUDED_SORT_TOKENS
+        ):
+            continue
+        if not item.isbn13 or not isbn13_is_valid(item.isbn13) or not item.title:
+            continue
+        if item.isbn13 in seen_isbns:
+            continue
+        seen_isbns.add(item.isbn13)
+        result.append(item)
+        if len(result) >= limit:
+            break
+    return result
+
+
+def _is_eligible_purchase_link(item: Yes24Item, expected_isbn13: str | None = None) -> bool:
+    if expected_isbn13 is not None and item.isbn13 != expected_isbn13:
+        return False
+    if item.adult_yn.upper() == "Y":
+        return False
+    if item.goods_type not in policy.YES24_PURCHASE_ALLOWED_GOODS_TYPES:
+        return False
+    if item.item_status not in policy.YES24_PURCHASABLE_STATUSES:
+        return False
+    if not _is_valid_yes24_product_url(item.product_url):
+        return False
+    if not item.item_id:
+        return False
+    return True
+
+
+def _yes24_to_book_info(item: Yes24Item) -> BookInfo:
+    assert item.isbn13 is not None and item.title is not None
+    return BookInfo(
+        isbn13=item.isbn13,
+        title=item.title,
+        author=item.author,
+        publisher=item.publisher,
+        cover_url=item.cover_url,
+        description=item.description,
+        pub_year=item.pub_year,
+    )
+
+
+def _yes24_basis_label(list_kind: Literal["steady", "bestseller"], category_id: str) -> str:
+    kind_label = "스테디셀러" if list_kind == "steady" else "베스트셀러"
+    cat_label = "국내도서" if category_id == policy.YES24_DEFAULT_CATEGORY_ID else category_id
+    return f"YES24 {kind_label} · {cat_label}"
+
+
+def _mark_curated_stale(cached: CuratedResult, reason: FallbackReason) -> CuratedResult:
+    return replace(cached, stale=True, fallback_reason=reason)
+
+
+def _read_curated(
+    conn: Connection,
+    provider: Literal["yes24"],
+    list_kind: Literal["steady", "bestseller"],
+    category_id: str,
+) -> CuratedResult | None:
+    rows = conn.execute(
+        text(
+            """
+            SELECT b.id, b.isbn13, b.title, b.author, b.publisher, b.cover_url, b.source, b.description, b.pub_year,
+                   c.basis_label, c.source_published_at, c.fetched_at
+            FROM curated_books_cache c JOIN books b ON b.id = c.book_id
+            WHERE c.provider = :provider AND c.list_kind = :list_kind AND c.category_id = :category_id
+              AND b.isbn13 IS NOT NULL
+            ORDER BY c.rank
+            """
+        ),
+        {"provider": provider, "list_kind": list_kind, "category_id": category_id},
+    ).all()
+    if not rows:
+        return None
+    return CuratedResult(
+        provider=provider,
+        list_kind=list_kind,
+        category_id=category_id,
+        basis_label=rows[0].basis_label,
+        books=[_book_row(r) for r in rows][: policy.YES24_CURATED_SIZE],
+        source_published_at=rows[0].source_published_at,
+        fetched_at=min(r.fetched_at for r in rows),
+        stale=False,
+        fallback_reason=None,
+    )
+
+
+def _replace_curated_cache(
+    conn: Connection,
+    provider: Literal["yes24"],
+    list_kind: Literal["steady", "bestseller"],
+    category_id: str,
+    records: Sequence[BookRecord],
+    basis_label: str,
+    source_published_at: datetime | None,
+    fetched_at: datetime,
+) -> None:
+    conn.execute(
+        text(
+            "DELETE FROM curated_books_cache "
+            "WHERE provider = :provider AND list_kind = :list_kind AND category_id = :category_id"
+        ),
+        {"provider": provider, "list_kind": list_kind, "category_id": category_id},
+    )
+    for rank, record in enumerate(records[: policy.YES24_CURATED_SIZE], start=1):
+        conn.execute(
+            text(
+                """
+                INSERT INTO curated_books_cache (
+                    provider, list_kind, category_id, rank, book_id,
+                    basis_label, source_published_at, fetched_at
+                ) VALUES (
+                    :provider, :list_kind, :category_id, :rank, :book_id,
+                    :basis_label, :source_published_at, :fetched_at
+                )
+                """
+            ),
+            {
+                "provider": provider,
+                "list_kind": list_kind,
+                "category_id": category_id,
+                "rank": rank,
+                "book_id": record.id,
+                "basis_label": basis_label,
+                "source_published_at": source_published_at,
+                "fetched_at": fetched_at,
+            },
+        )
+
+
+def _upsert_purchase_link(
+    conn: Connection,
+    book_id: int,
+    provider: Literal["yes24"],
+    external_item_id: str,
+    product_url: str,
+    item_status: str | None,
+    fetched_at: datetime,
+) -> None:
+    conn.execute(
+        text(
+            """
+            INSERT INTO book_purchase_links (
+                book_id, provider, external_item_id, product_url, item_status, fetched_at
+            ) VALUES (
+                :book_id, :provider, :external_item_id, :product_url, :item_status, :fetched_at
+            )
+            ON CONFLICT (book_id, provider) DO UPDATE SET
+                external_item_id = EXCLUDED.external_item_id,
+                product_url = EXCLUDED.product_url,
+                item_status = EXCLUDED.item_status,
+                fetched_at = EXCLUDED.fetched_at
+            """
+        ),
+        {
+            "book_id": book_id,
+            "provider": provider,
+            "external_item_id": external_item_id,
+            "product_url": product_url,
+            "item_status": item_status,
+            "fetched_at": fetched_at,
+        },
+    )
+
+
+def _upsert_yes24_purchase_links(
+    conn: Connection,
+    records_by_isbn: dict[str, BookRecord],
+    items: Sequence[Yes24Item],
+    fetched_at: datetime,
+) -> None:
+    for item in items:
+        if item.isbn13 is None or item.isbn13 not in records_by_isbn:
+            continue
+        if not _is_eligible_purchase_link(item, expected_isbn13=item.isbn13):
+            continue
+        assert item.product_url is not None
+        _upsert_purchase_link(
+            conn,
+            records_by_isbn[item.isbn13].id,
+            "yes24",
+            item.item_id,
+            item.product_url,
+            item.item_status,
+            fetched_at,
+        )
+
+
+def _read_purchase_link(
+    conn: Connection, isbn13: str, provider: Literal["yes24"]
+) -> _CachedPurchaseLink | None:
+    row = conn.execute(
+        text(
+            """
+            SELECT l.external_item_id, l.product_url, l.item_status, l.fetched_at
+            FROM book_purchase_links l JOIN books b ON b.id = l.book_id
+            WHERE b.isbn13 = :isbn13 AND l.provider = :provider
+            """
+        ),
+        {"isbn13": isbn13, "provider": provider},
+    ).first()
+    if row is None:
+        return None
+    return _CachedPurchaseLink(
+        external_item_id=row.external_item_id,
+        product_url=row.product_url,
+        item_status=row.item_status,
+        fetched_at=row.fetched_at,
+    )
+
+
+class Yes24Client:
+    """YES24 Open API 클라이언트. 인증은 X-Api-Key 헤더만 사용한다(Y-1)."""
+
+    _LIST_ENDPOINTS: dict[str, str] = {
+        "steady": "category/bestsellerSteady",
+        "bestseller": "category/bestseller",
+    }
+
+    def __init__(
+        self,
+        api_key: str,
+        base_url: str,
+        timeout: float,
+        min_interval: float = policy.YES24_MIN_INTERVAL_SECONDS,
+    ) -> None:
+        self._headers = {policy.YES24_AUTH_HEADER: api_key}
+        self._base = base_url.rstrip("/")
+        self._timeout = timeout
+        self._min_interval = max(0.0, min_interval)
+        self._lock = threading.Lock()
+        self._last_call_at = 0.0
+
+    def _wait_interval(self) -> None:
+        if self._min_interval <= 0:
+            return
+        with self._lock:
+            now = time.monotonic()
+            wait = self._min_interval - (now - self._last_call_at)
+            if wait > 0:
+                time.sleep(wait)
+            self._last_call_at = time.monotonic()
+
+    def _get(
+        self,
+        path: str,
+        params: dict[str, Any],
+        *,
+        not_found_codes: frozenset[str] = frozenset(),
+    ) -> dict[str, Any] | None:
+        self._wait_interval()
+        url = f"{self._base}/{path}?{urlencode(params)}"
+        request = urllib.request.Request(url, headers={"Accept": "application/json", **self._headers})
+        try:
+            with urllib.request.urlopen(request, timeout=self._timeout) as response:
+                raw = response.read(policy.PROVIDER_MAX_RESPONSE_BYTES + 1)
+        except urllib.error.HTTPError as exc:
+            error_code: str | None = None
+            try:
+                err_raw = exc.read(policy.PROVIDER_MAX_RESPONSE_BYTES + 1)
+                err_body = json.loads(err_raw)
+                if isinstance(err_body, dict) and isinstance(err_body.get("errorCode"), str):
+                    error_code = err_body["errorCode"]
+            except Exception:
+                error_code = None
+            if exc.code == 404 and error_code in not_found_codes:
+                return None
+            raise ProviderError(f"YES24 HTTP {exc.code}: {error_code or 'unknown'}") from exc
+        except (urllib.error.URLError, http.client.HTTPException, TimeoutError, OSError) as exc:
+            raise ProviderError(type(exc).__name__) from exc
+
+        if len(raw) > policy.PROVIDER_MAX_RESPONSE_BYTES:
+            raise ProviderError("응답이 너무 커요")
+        try:
+            data = json.loads(raw)
+        except ValueError as exc:
+            raise ProviderError("JSON 형식이 아니에요") from exc
+
+        if (
+            not isinstance(data, dict)
+            or data.get("success") is not True
+            or data.get("errorCode") is not None
+            or not isinstance(data.get("data"), dict)
+            or not isinstance(data["data"].get("items"), list)
+        ):
+            code = data.get("errorCode") if isinstance(data, dict) else None
+            raise ProviderError(f"YES24 응답 오류: {code or 'invalid_envelope'}")
+        return data["data"]
+
+    def curated_list(
+        self,
+        list_kind: Literal["steady", "bestseller"],
+        category_id: str,
+        page: int = 1,
+        size: int = policy.YES24_CURATED_FETCH_SIZE,
+    ) -> Yes24CuratedPage:
+        endpoint = self._LIST_ENDPOINTS.get(list_kind)
+        if endpoint is None:
+            raise ValueError(f"지원하지 않는 YES24 목록 종류: {list_kind}")
+        if page < 1:
+            raise ValueError("YES24 page는 1 이상이어야 해요")
+        if not 1 <= size <= 100:
+            raise ValueError("YES24 pageSize는 1~100이어야 해요")
+        cat = category_id.strip()
+        if not cat:
+            raise ValueError("YES24 categoryId가 비어 있어요")
+
+        payload = self._get(
+            endpoint,
+            {"categoryId": cat, "page": page, "pageSize": size},
+            not_found_codes=frozenset({"BEST_001"}),
+        )
+        if payload is None:
+            return Yes24CuratedPage(items=[], pub_date=None)
+        meta = payload.get("meta") if isinstance(payload.get("meta"), dict) else {}
+        pub_date = _parse_yes24_pub_date(meta.get("pubDate"))
+        items = [parsed for parsed in (_parse_yes24_item(x) for x in payload["items"]) if parsed is not None]
+        return Yes24CuratedPage(items=items, pub_date=pub_date)
+
+    def item_detail(self, isbn13: str) -> Yes24Item | None:
+        payload = self._get(
+            "goods/itemDetail",
+            {"searchType": "ISBN13", "query": isbn13},
+            not_found_codes=frozenset({"GOODS_002"}),
+        )
+        if payload is None or not payload["items"]:
+            return None
+        return _parse_yes24_item(payload["items"][0])
 
 
 if __name__ == "__main__":

@@ -45,9 +45,31 @@ SHELF_POPULAR_EXCLUDED_SERIES = ("빨간내복야코", "빨간 내복 야코", "
 NEARBY_RADII_KM = (3, 5)  # 02 LIB-02 `확정`(O-39)
 NEARBY_DEFAULT_RADIUS_KM = 3  # 02 LIB-02 `확정`
 
-# ── 구매 링크(06 #15) ──
-# 02 §9 "LIB-0 조회 엔진 수치": Q-41 ②(예스24 링크 생성 방식·약관)가 풀리기 전 기본 연결은 검색 주소
+# ── 구매 링크(06 #15) · YES24 큐레이션(C-81, K23) ──
+# 기본 폴백 검색 주소(키 미설정·미검색·오류·비판매 시)
 YES24_SEARCH_URL_TEMPLATE = "https://www.yes24.com/Product/Search?domain=BOOK&query={isbn13}"
+YES24_DAILY_LIMIT = 14_000  # 실측 일 20,000의 70%
+YES24_MIN_INTERVAL_SECONDS = 0.2  # 실측 초당 10회 한도 대비 보수적 간격
+YES24_AUTH_HEADER = "X-Api-Key"  # 실측 확정(쿼리 파라미터 불가)
+YES24_DEFAULT_CATEGORY_ID = "001"  # 국내도서
+YES24_CURATED_SIZE = 20  # 필터 통과 후 최종 개수(RECOMMENDATION_MAX_BOOKS와 동일)
+YES24_CURATED_FETCH_SIZE = 100  # 필터 손실 대비 1회 조회 크기(pageSize 최대 100 실측)
+YES24_CURATED_ALLOWED_GOODS_TYPES = frozenset({"도서"})  # 비도서·만화 혼입 차단
+YES24_CURATED_EXCLUDED_SORT_TOKENS = (
+    "어린이",
+    "유아",
+    "참고서",
+    "수험서",
+    "대학교재",
+    "국어 외국어 사전",
+    "전집",
+    "잡지",
+    "만화/라이트노벨",
+)
+YES24_PURCHASE_ALLOWED_GOODS_TYPES = frozenset({"도서", "만화"})
+YES24_PURCHASABLE_STATUSES = frozenset({"판매중", "예약판매"})
+YES24_PRODUCT_URL_PREFIX = "https://www.yes24.com/"
+YES24_PURCHASE_LINK_TTL = timedelta(days=14)
 
 LIBRARY_SEARCH_LIMIT = 20  # 05 §11 LIB-0 조회 엔진 정책 수치
 LIBRARY_QUERY_MAX_CHARS = 30  # 같은 절

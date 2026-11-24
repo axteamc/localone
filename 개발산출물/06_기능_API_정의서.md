@@ -47,13 +47,13 @@
 | --- | --- | --- | --- | --- | --- |
 | 7 | `GET /api/v1/books/search?q=&start=` | 없음 | 도서 검색(카카오 책 검색, C-66), 20건씩. 책마다 서지·표지 주소·소개·출판 연도(C-64) | LIB-01 | `확정` · 응답 필드·한도 `미확인(임시)` Q-41 |
 | 8 | `GET /api/v1/books/{isbn13}` | 없음 | 도서 상세(서지·표지 주소·소개·출판 연도, C-64) | LIB-01, LOCAL-02 | `확정` · 표지 조건 Q-41 |
-| 9 | `GET /api/v1/books/recommendations?library_id=` | 없음 | 검색 진입 화면의 추천: 활성 테마가 있으면 테마, 없으면 인기 도서. `library_id`가 있으면 그 도서관, 없으면 전국. 응답에 기준 문구 | LIB-01(C-46 E1~E3) | 동작 `확정` · M1은 테마 표가 없어 항상 인기 도서(`기본값(Claude)`), M2(`M2-0-P3`)에서 `shelf_themes` 연결 · API 선택 `미확인(임시)` Q-42 |
+| 9 | `GET /api/v1/books/recommendations?library_id=&source=` | 없음 | 검색 진입·홈 하단 창 추천. `library_id`가 있으면 해당 도서관 인기 도서(없으면 전국 폴백, 현행 유지). `library_id`가 없고 `source=auto`(기본, Y-4 A안 확정)이면 YES24 스테디셀러 캐시(`basis_label`에 출처 포함) → 실패·미설정 시 정보나루 전국 인기대출로 자동 폴백. `source`: `auto`\|`yes24_steady`\|`yes24_bestseller`\|`library_loan` | LIB-01(C-46 E1~E3) | `확정` (2026-11-24 D, [C-81](스펙_변경_이력.md)) |
 | 10 | `GET /api/v1/libraries?lat=&lng=&radius_km=` 또는 `?dtl_region=` 또는 `?q=` | 없음 | 주변(반경 3 또는 5km, 거리순) 또는 시군구의 도서관 목록, 또는 도서관 이름 일부로 찾기(`q`, 지도 홈 "도서관 찾기" 창). 지도 핀·"내 주변 도서관"·위치 거부 때 목록이 같은 엔드포인트를 쓴다. 세 방식은 함께 쓰지 않는다 | LIB-02, VISIT-01 | `확정`(2026-11-13: 직선거리, 핀과 목록에 같은 반경) · `q` 추가 `확정`(2026-11-16 D, [C-63](스펙_변경_이력.md)) · 지도에 반경 밖 도서관을 보일지 `미확인(임시)` Q-51(계약 `core.md` K7에서 반경 안만으로 임시) |
 | 11 | `GET /api/v1/libraries/{library_id}` | 없음 | 도서관 하나(방문 페이지 헤더: 이름·오늘 운영시간·휴관 원문과 계산 결과; M2 `M2-0-P3`에서 도서관 룩 `look` 필드 추가) | VISIT-02·07, LIB-02 | `확정`(Q-22, 2026-11-19 D) |
 | 12 | `GET /api/v1/books/{isbn13}/availability?scope=nearby&lat=&lng=&radius_km=` | 없음 | 주변 도서관별 소장·대출 가능(세 갈래)·출처·조회 시각·데이터 기준일·"실시간 확인" 주소 | LIB-03·04·06·07 | `확정` · 기준일 필드 `미확인(임시)` Q-18 · 주소 규칙 `미확인(임시)` Q-48 |
 | 13 | `GET /api/v1/books/{isbn13}/availability?scope=city&dtl_region=` | 없음 | "현재 도시 내 모든 도서관" 재검색. 응답한 곳만 보여 주고 나머지는 `unknown` | LIB-07 | `확정`(도시 = 시군구, 2026-11-13) · 호출량은 실측 `미확인(임시)` Q-18 |
 | 14 | `GET /api/v1/books/{isbn13}/availability?library_id=` | 없음 | 도서관 하나의 소장·대출 가능(게시물 상세의 대여 경로, 방문 중인 도서관 우선) | LIB-03, LOCAL-04 | `확정` |
-| 15 | `GET /api/v1/books/{isbn13}/purchase-link` | 없음 | 예스24 구매 주소 | LOCAL-04 | `미확인(임시)` Q-41 ②(링크 생성 방식·약관). 풀리기 전에는 예스24 검색 주소로 보내는 기본 연결만 |
+| 15 | `GET /api/v1/books/{isbn13}/purchase-link` | 없음 | 예스24 상품 직링크(`kind="product"`, `book_purchase_links` 캐시 또는 `itemDetail` 실측 조회) → 미보유·비판매·오류·한도 초과 시 기존 검색 주소(`kind="search"`) 폴백(항상 200) | LOCAL-04 | `확정` (2026-11-24 D, Q-41 ② 해소, [C-81](스펙_변경_이력.md)) |
 
 - 12~14는 경로가 같고 `scope`·`library_id`로 나뉜다(하나의 핸들러). 늦은 응답 폐기(LIB-04, AC-RACE)는 서버가 아니라 앱이 요청 세대로 처리한다(`기본값(Claude)`).
 - 호출 상한(정보나루 일 21,000건)을 넘으면 새로 부르지 않고 캐시에 있는 것만 주며 나머지는 `unknown`으로 표시한다. 전부 막혔을 때만 `429 PROVIDER_LIMIT`(`기본값(Claude)`).
