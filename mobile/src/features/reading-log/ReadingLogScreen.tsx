@@ -5,7 +5,7 @@
 // 도서관별 보기 = 도서관마다 한 줄(이름표 + 최근 9권 가로 줄, 바닥선 = 도서관 색). 이름표 › → 그 도서관 책장.
 // 설정 버튼 순서 메뉴·꾹 눌러 자리 바꾸기는 별도 계약 승인 대기(READ-2 계약 머리말) — 그리지 않는다.
 import { useNavigation, useRouter } from "expo-router";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Pressable,
@@ -14,6 +14,7 @@ import {
   Text,
   View,
   useWindowDimensions,
+  type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
@@ -127,14 +128,24 @@ function RefreshButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-/** 도서관 줄 하나의 높이(이름표 32 + 간격 8 + 표지 + 간격 8 + 바닥선 6 + 줄 사이 18). 화면에 보이는 줄을 고르는 데 쓴다 */
-const libRowHeight = (coverSize: number) => 32 + 8 + Math.round(coverSize * 1.45) + 8 + 6 + 18;
+/** 도서관 줄 하나의 콘텐츠 높이(이름표 32 + 간격 8 + 표지 + 간격 8 + 바닥선 6). onLayout 전 폴백 계산에 쓴다 */
+const libRowContentHeight = (coverSize: number) => 32 + 8 + Math.round(coverSize * 1.45) + 8 + 6;
+/** 조회 실패한 도서관 줄의 콘텐츠 높이(이름표 32 + 간격 8 + 실패 영역 60 + 간격 8 + 바닥선 6) */
+const LIB_ROW_FAIL_HEIGHT = 32 + 8 + 60 + 8 + 6;
+/** 도서관 줄 사이 간격(styles.shelfPad.gap) */
+const LIB_ROW_GAP = 18;
 /** 도서관별 보기 맨 위(위 여백 16 + 숫자 줄 19 + 간격 18) */
 const LIB_LIST_TOP = 16 + 19 + 18;
+/** 화면 헤더 기본 최소 높이(styles.head.minHeight) */
+const HEAD_MIN_HEIGHT = 52;
+/** onLayout이 아직 없을 때 windowHeight에서 제외할 상단 내비·화면 헤더·하단 탭 바 추정 높이 */
+const ESTIMATED_CHROME_HEIGHT = 164;
+
+type RowLayout = { y: number; height: number };
 
 /**
- * 도서관 한 줄: 화면에 처음 보일 때(active) 그 도서관 #41 limit=9 한 번(P4).
- * 보기를 바꾸거나(언마운트) 탭·상세로 떠나면(active=false) 받는 중인 요청을 끊는다(C6 연타). 숫자를 다시 받으면(stamp) 다시 받는다
+ * 도서관 한 줄: 화면에 보일 때(active) 그 도서관 #41 limit=9 한 번(P4).
+ * 보기를 바꾸거나(언마운트) 화면 밖·다른 탭·상세로 떠나면(active=false) 받는 중인 요청을 끊는다(C6 연타). 숫자를 다시 받으면(stamp) 보일 때 다시 받는다
  */
 function LibraryRow({
   lib,
@@ -144,20 +155,29 @@ function LibraryRow({
   stamp,
   onOpen,
   onPick,
+  onRowLayout,
+  onFailedChange,
 }: {
   lib: ReadingStatsLibrary;
   first: boolean;
   coverSize: number;
-  /** 화면에 한 번이라도 보였고 지금 이 탭이 보이는 중 */
+  /** 지금 실제 스크롤 영역에 보이고 이 탭이 보이는 중 */
   active: boolean;
-  /** 숫자(#46)를 다시 받으면 바뀌는 값 — 탭으로 돌아오면 줄도 다시 받는다 */
+  /** 숫자(#46)를 다시 받으면 바뀌는 값 — 탭으로 돌아오면 보이는 줄부터 다시 받는다 */
   stamp: ReadingStats;
   onOpen: (lib: ReadingStatsLibrary) => void;
   onPick: (log: ReadingLog) => void;
+  onRowLayout: (libraryId: number, layout: RowLayout) => void;
+  onFailedChange: (libraryId: number, failed: boolean) => void;
 }) {
   const [rows, setRows] = useState<{ items: ReadingLog[] | null; failed: boolean }>({ items: null, failed: false });
   const [tick, setTick] = useState(0);
   const loadedRef = useRef<{ tick: number; stamp: ReadingStats } | null>(null);
+  useEffect(() => {
+    onFailedChange(lib.library_id, rows.failed);
+    return () => onFailedChange(lib.library_id, false);
+  }, [lib.library_id, rows.failed, onFailedChange]);
+
   useEffect(() => {
     if (!active) return;
     const loaded = loadedRef.current;
@@ -179,7 +199,14 @@ function LibraryRow({
   const color = libraryColor(lib.library_id);
   const tag = libraryTagText(lib, first);
   return (
-    <View testID={`lib-row-${lib.library_id}`} style={styles.libRow}>
+    <View
+      testID={`lib-row-${lib.library_id}`}
+      style={styles.libRow}
+      onLayout={(e) => {
+        const { y, height } = e.nativeEvent.layout;
+        if (height > 0) onRowLayout(lib.library_id, { y, height });
+      }}
+    >
       <Pressable
         testID={`lib-tag-${lib.library_id}`}
         accessibilityRole="button"
@@ -236,8 +263,43 @@ export function ReadingLogScreen() {
       offBlur();
     };
   }, [navigation]);
-  // 도서관별 보기에서 지금까지 보인 아래 끝(스크롤한 만큼 늘어난다). 보기를 바꾸면 처음부터
-  const [libReach, setLibReach] = useState(0);
+  // 도서관별 보기의 현재 스크롤 영역과 각 줄의 실제 배치(헤더·탭 바 제외, 실패로 줄어든 높이 반영, 최대 스크롤 범위 누적 금지)
+  const [screenHeight, setScreenHeight] = useState<number | null>(null);
+  const [headHeight, setHeadHeight] = useState<number | null>(null);
+  const [libViewport, setLibViewport] = useState<{ top: number; height: number | null }>({ top: 0, height: null });
+  const [rowLayouts, setRowLayouts] = useState<{ stamp: ReadingStats | null; map: Record<number, RowLayout> }>({ stamp: null, map: {} });
+  const [failedRows, setFailedRows] = useState<Record<number, true>>({});
+  const statsRef = useRef<ReadingStats | null>(null);
+  statsRef.current = logs.stats;
+
+  const onScreenLayout = useCallback((e: LayoutChangeEvent) => {
+    const h = e.nativeEvent.layout.height;
+    if (h > 0) setScreenHeight((prev) => (prev === h ? prev : h));
+  }, []);
+  const onHeadLayout = useCallback((e: LayoutChangeEvent) => {
+    const h = e.nativeEvent.layout.height;
+    if (h > 0) setHeadHeight((prev) => (prev === h ? prev : h));
+  }, []);
+  const onRowLayout = useCallback((libraryId: number, layout: RowLayout) => {
+    const stamp = statsRef.current;
+    setRowLayouts((prev) => {
+      const baseMap = prev.stamp === stamp ? prev.map : {};
+      const cur = baseMap[libraryId];
+      if (cur && cur.y === layout.y && cur.height === layout.height) return prev;
+      return { stamp, map: { ...baseMap, [libraryId]: layout } };
+    });
+  }, []);
+  const onFailedChange = useCallback((libraryId: number, failed: boolean) => {
+    setFailedRows((prev) => {
+      const has = Boolean(prev[libraryId]);
+      if (has === failed) return prev;
+      if (failed) return { ...prev, [libraryId]: true };
+      const next = { ...prev };
+      delete next[libraryId];
+      return next;
+    });
+  }, []);
+
   const [viewState, setViewState] = useState<{ owner: string | null; view: ShelfView }>({ owner: null, view: "all" });
   const view: ShelfView = viewState.owner === owner ? viewState.view : "all";
   const [picked, setPicked] = useState<{ owner: string; log: ReadingLog } | null>(null);
@@ -245,9 +307,12 @@ export function ReadingLogScreen() {
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shelfNotice = shelfStore.get().notice;
 
-  // 계정이 바뀌면 고른 카드·보기를 닫는다(C6 계정 바뀜)
+  // 계정이 바뀌면 고른 카드·보기·스크롤 측정을 초기화한다(C6 계정 바뀜)
   useEffect(() => {
     setPicked(null);
+    setLibViewport({ top: 0, height: null });
+    setRowLayouts({ stamp: null, map: {} });
+    setFailedRows({});
   }, [owner]);
 
   // 쓰기·지우기 뒤 책장으로 돌아오면 안내 한 번("저장했어요"·"기록을 지웠어요")
@@ -265,7 +330,11 @@ export function ReadingLogScreen() {
 
   const goView = (next: ShelfView) => {
     setPicked(null);
-    if (next === "libraries") setLibReach(0);
+    if (next === "libraries") {
+      setLibViewport({ top: 0, height: null });
+      setRowLayouts({ stamp: null, map: {} });
+      setFailedRows({});
+    }
     setViewState({ owner, view: next });
     logs.setFilter(typeof next === "object" ? next.libraryId : null);
   };
@@ -360,7 +429,7 @@ export function ReadingLogScreen() {
     const liveCount = logs.stats ? (logs.stats.libraries.find((l) => l.library_id === view.libraryId)?.count ?? 0) : view.count;
     // 한 도서관 책장: ‹ · 이름 · n권 (본문은 전체 책장과 같은 한 달 한 줄 책장)
     head = (
-      <View testID="reading-head" style={styles.head}>
+      <View testID="reading-head" style={styles.head} onLayout={onHeadLayout}>
         <Pressable accessibilityRole="button" accessibilityLabel={TEXT.back} onPress={() => goView("libraries")} hitSlop={8} style={styles.backBtn}>
           <Text style={styles.backText}>‹</Text>
         </Pressable>
@@ -383,7 +452,7 @@ export function ReadingLogScreen() {
   } else {
     const isAll = view === "all";
     head = (
-      <View testID="reading-head" style={styles.head}>
+      <View testID="reading-head" style={styles.head} onLayout={onHeadLayout}>
         <Text style={[styles.headTitle, base.flex]} numberOfLines={1}>{TEXT.title}</Text>
         <Pressable
           testID="view-toggle"
@@ -412,15 +481,40 @@ export function ReadingLogScreen() {
       } else content = monthShelf(logs.items, true);
     } else {
       const libs = logs.stats?.libraries ?? null;
-      const reach = Math.max(libReach, windowHeight);
-      const rowH = libRowHeight(rowCover);
+      const estimatedScrollHeight =
+        screenHeight !== null
+          ? Math.max(0, screenHeight - (headHeight ?? HEAD_MIN_HEIGHT))
+          : Math.max(0, windowHeight - ESTIMATED_CHROME_HEIGHT);
+      const viewportHeight = libViewport.height ?? estimatedScrollHeight;
+      const viewTop = libViewport.top;
+      const viewBottom = viewTop + viewportHeight;
+      const rowContentH = libRowContentHeight(rowCover);
+      const measuredMap = rowLayouts.stamp === logs.stats ? rowLayouts.map : {};
+      let cursorY = LIB_LIST_TOP;
+      const rowBounds = (libs ?? []).map((lib) => {
+        const measured = measuredMap[lib.library_id];
+        const estH = failedRows[lib.library_id] ? LIB_ROW_FAIL_HEIGHT : rowContentH;
+        const top = measured ? measured.y : cursorY;
+        const height = measured ? measured.height : estH;
+        const bottom = top + height;
+        cursorY = bottom + LIB_ROW_GAP;
+        return { top, bottom };
+      });
       content = (
         <ScrollView
           testID="library-shelf"
+          onLayout={(e) => {
+            const h = e.nativeEvent.layout.height;
+            if (h > 0) setLibViewport((prev) => (prev.height === h ? prev : { ...prev, height: h }));
+          }}
           onScroll={(e) => {
             const { contentOffset, layoutMeasurement } = e.nativeEvent;
-            const bottom = contentOffset.y + layoutMeasurement.height;
-            setLibReach((prev) => (bottom > prev ? bottom : prev));
+            const top = Math.max(0, contentOffset.y);
+            const h = layoutMeasurement.height > 0 ? layoutMeasurement.height : null;
+            setLibViewport((prev) => {
+              const nextH = h ?? prev.height;
+              return prev.top === top && prev.height === nextH ? prev : { top, height: nextH };
+            });
           }}
           scrollEventThrottle={100}
           contentContainerStyle={[styles.shelfPad, styles.libPad, libs?.length === 0 && styles.grow]}>
@@ -433,18 +527,24 @@ export function ReadingLogScreen() {
               <Text style={base.sub}>{TEXT.libEmptyBody}</Text>
             </View>
           ) : (
-            libs.map((lib, i) => (
-              <LibraryRow
-                key={`${owner}-${lib.library_id}`}
-                lib={lib}
-                first={i === 0}
-                coverSize={rowCover}
-                active={focused && LIB_LIST_TOP + i * rowH < reach}
-                stamp={logs.stats!}
-                onOpen={(l) => goView({ libraryId: l.library_id, name: l.name, count: l.count })}
-                onPick={pick}
-              />
-            ))
+            libs.map((lib, i) => {
+              const bounds = rowBounds[i]!;
+              const visible = bounds.bottom > viewTop && bounds.top < viewBottom;
+              return (
+                <LibraryRow
+                  key={`${owner}-${lib.library_id}`}
+                  lib={lib}
+                  first={i === 0}
+                  coverSize={rowCover}
+                  active={focused && visible}
+                  stamp={logs.stats!}
+                  onOpen={(l) => goView({ libraryId: l.library_id, name: l.name, count: l.count })}
+                  onPick={pick}
+                  onRowLayout={onRowLayout}
+                  onFailedChange={onFailedChange}
+                />
+              );
+            })
           )}
         </ScrollView>
       );
@@ -452,7 +552,7 @@ export function ReadingLogScreen() {
   }
 
   return (
-    <View style={base.screen}>
+    <View testID="reading-screen" style={base.screen} onLayout={onScreenLayout}>
       {head}
       {view === "all" && logs.status === "error" && logs.items.length > 0 ? (
         <View testID="shelf-refresh-error" style={styles.errorBanner}>

@@ -421,12 +421,119 @@ describe("PR #287 검토 보완 (P4 줄 요청·복귀 갱신)", () => {
     expect(first.has(311)).toBe(false); // 화면 밖 줄은 아직 묻지 않는다
     expect(first.size).toBeLessThan(12);
 
-    await fireEvent.scroll(screen.getByTestId("library-shelf"), {
-      nativeEvent: { contentOffset: { y: 5000 }, layoutMeasurement: { height: 1334 }, contentSize: { height: 8000 } },
+    const shelf = screen.getByTestId("library-shelf");
+    // 화면을 아래로 차례로 스크롤하면 새로 들어온 줄이 요청되고, 이미 받은 줄은 다시 묻지 않는다
+    await fireEvent.scroll(shelf, {
+      nativeEvent: { contentOffset: { y: 1100 }, layoutMeasurement: { height: 1170 }, contentSize: { height: 3500 } },
+    });
+    await fireEvent.scroll(shelf, {
+      nativeEvent: { contentOffset: { y: 2200 }, layoutMeasurement: { height: 1170 }, contentSize: { height: 3500 } },
     });
     await waitFor(() => expect(asked().size).toBe(12));
     // 이미 받은 줄은 다시 묻지 않는다(줄마다 한 번)
     for (const id of first) expect(libCalls(id)).toHaveLength(1);
+  });
+
+  test("first load respects measured ScrollView height excluding header and tab bar", async () => {
+    fetchReadingStats.mockResolvedValue({ ...STATS, libraries: manyLibs });
+    fetchReadingLogs.mockImplementation(async (q) => page(q.libraryId === undefined ? ALL : [log(`r${q.libraryId}`, `책${q.libraryId}`, q.libraryId!)]));
+    await render(<ReadingLogScreen />);
+    await screen.findByText("전체 12 · 올해 9 · 이번 달 2");
+
+    // 실제 탭 화면 높이(552) - 헤더(52) = 스크롤 영역 500 (windowHeight 1334보다 작음)
+    await fireEvent(screen.getByTestId("reading-screen"), "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 552 } },
+    });
+    await fireEvent(screen.getByTestId("reading-head"), "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 52 } },
+    });
+
+    await fireEvent.press(screen.getByText(TEXT.toggleAll));
+    await screen.findByTestId("shelf-book-r300");
+
+    // 0번(top=53), 1번(top=328)은 500 안에 보여 요청되지만, 2번(top=603)은 windowHeight(1334) 안이어도 ScrollView(500) 밖이라 미요청
+    expect(libCalls(300)).toHaveLength(1);
+    expect(libCalls(301)).toHaveLength(1);
+    expect(libCalls(302)).toHaveLength(0);
+
+    // 아래로 스크롤해 2번 줄이 실제 뷰포트에 들어오면 그제서야 요청된다
+    await fireEvent.scroll(screen.getByTestId("library-shelf"), {
+      nativeEvent: { contentOffset: { y: 200 }, layoutMeasurement: { height: 500 }, contentSize: { height: 3500 } },
+    });
+    expect(await screen.findByTestId("shelf-book-r302")).toBeTruthy();
+    expect(libCalls(302)).toHaveLength(1);
+  });
+
+  test("failed upper rows shrinking brings the next row into view without scrolling", async () => {
+    fetchReadingStats.mockResolvedValue({ ...STATS, libraries: manyLibs });
+    fetchReadingLogs.mockImplementation(async (q) => {
+      if (q.libraryId === undefined) return page(ALL);
+      if (q.libraryId === 300 || q.libraryId === 301) throw new api.ApiCallError(0, "NETWORK", "x", "");
+      return page([log(`r${q.libraryId}`, `책${q.libraryId}`, q.libraryId!)]);
+    });
+    await render(<ReadingLogScreen />);
+    await screen.findByText("전체 12 · 올해 9 · 이번 달 2");
+
+    // ScrollView 높이 = 500: 초기에는 300(53..310), 301(328..585)만 보이고 302(603..)는 화면 밖
+    await fireEvent(screen.getByTestId("reading-screen"), "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 552 } },
+    });
+    await fireEvent(screen.getByTestId("reading-head"), "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 52 } },
+    });
+
+    await fireEvent.press(screen.getByText(TEXT.toggleAll));
+
+    // 300·301이 실패로 높이가 줄어들면(각 114px) 302가 317px로 올라와 스크롤 없이도 즉시 요청된다
+    expect(await screen.findByTestId("lib-row-failed-300")).toBeTruthy();
+    expect(await screen.findByTestId("lib-row-failed-301")).toBeTruthy();
+    expect(await screen.findByTestId("shelf-book-r302")).toBeTruthy();
+    expect(libCalls(302)).toHaveLength(1);
+  });
+
+  test("scrolling back to top and refreshing stats only reloads currently visible rows", async () => {
+    fetchReadingStats.mockResolvedValue({ ...STATS, libraries: manyLibs });
+    fetchReadingLogs.mockImplementation(async (q) => page(q.libraryId === undefined ? ALL : [log(`r${q.libraryId}`, `책${q.libraryId}`, q.libraryId!)]));
+    await render(<ReadingLogScreen />);
+    await screen.findByText("전체 12 · 올해 9 · 이번 달 2");
+
+    await fireEvent(screen.getByTestId("reading-screen"), "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 552 } },
+    });
+    await fireEvent(screen.getByTestId("reading-head"), "layout", {
+      nativeEvent: { layout: { x: 0, y: 0, width: 390, height: 52 } },
+    });
+
+    await fireEvent.press(screen.getByText(TEXT.toggleAll));
+    await screen.findByTestId("shelf-book-r300");
+    expect(libCalls(300)).toHaveLength(1);
+    expect(libCalls(308)).toHaveLength(0);
+
+    const shelf = screen.getByTestId("library-shelf");
+    // 아래까지 스크롤해 308번 줄을 불러온 뒤 다시 맨 위로 돌아온다
+    await fireEvent.scroll(shelf, {
+      nativeEvent: { contentOffset: { y: 2100 }, layoutMeasurement: { height: 500 }, contentSize: { height: 3500 } },
+    });
+    expect(await screen.findByTestId("shelf-book-r308")).toBeTruthy();
+    expect(libCalls(308)).toHaveLength(1);
+
+    await fireEvent.scroll(shelf, {
+      nativeEvent: { contentOffset: { y: 0 }, layoutMeasurement: { height: 500 }, contentSize: { height: 3500 } },
+    });
+
+    // 탭 이탈 후 복귀로 #46이 갱신되면 현재 보이는 300·301만 재요청하고, 화면 밖 308은 재요청하지 않는다
+    fetchReadingStats.mockResolvedValueOnce({ ...STATS, total: 13, libraries: manyLibs });
+    await act(async () => mockBlurListeners.forEach((fn) => fn()));
+    await act(async () => focusListeners.forEach((fn) => fn()));
+    await waitFor(() => expect(libCalls(300)).toHaveLength(2));
+    expect(libCalls(301)).toHaveLength(2);
+    expect(libCalls(308)).toHaveLength(1);
+
+    // 다시 아래로 스크롤해 308이 화면에 들어오면 새 #46 기준으로 재요청한다
+    await fireEvent.scroll(shelf, {
+      nativeEvent: { contentOffset: { y: 2100 }, layoutMeasurement: { height: 500 }, contentSize: { height: 3500 } },
+    });
+    await waitFor(() => expect(libCalls(308)).toHaveLength(2));
   });
 
   test("leaving the tab cancels row requests in flight", async () => {
