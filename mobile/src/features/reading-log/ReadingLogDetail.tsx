@@ -86,6 +86,11 @@ export function ReadingLogDetail({ logId }: { logId: string }) {
   }, [navigation]);
 
   useEffect(() => {
+    // The first fetch runs below. A focused return from compose or post detail refreshes the link.
+    return navigation?.addListener?.("focus", () => setReload((value) => value + 1));
+  }, [navigation]);
+
+  useEffect(() => {
     setMenuOpen(false);
     setEditing(false);
     setConfirmDelete(false);
@@ -268,7 +273,6 @@ export function ReadingLogDetail({ logId }: { logId: string }) {
             <Pressable
               accessibilityRole="button"
               onPress={() => {
-                // TODO(연결): B LOCAL-3 — 머지 전에는 published_post_id가 늘 null이라 /posts/new로만 간다(C7)
                 if (log.published_post_id) {
                   router.push({ pathname: "/posts/[postId]", params: { postId: log.published_post_id } });
                 } else {

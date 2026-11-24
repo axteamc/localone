@@ -13,10 +13,12 @@ import {
   Text,
   TextInput,
   View,
+  useWindowDimensions,
 } from "react-native";
 import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useAuth } from "../../auth/AuthProvider";
-import { fetchBook, fetchLibrary, searchBooks, type Book } from "../../lib/publicApi";
+import { fetchBook, fetchLibrary, searchBooks, searchLibrariesByName, type Book, type LibrarySummary } from "../../lib/publicApi";
+import type { ReadingLog } from "../reading-log/api";
 import { ON_FILL_LIGHT } from "../../theme/tokens";
 import { actionColors, cardSurface, onFill, panel, resolvePostColor, theme, type as T } from "../../theme";
 import {
@@ -32,6 +34,7 @@ import {
   type Post,
   type UploadedImage,
 } from "./api";
+import { TemplateCard, TEMPLATE_LABELS, type TemplateKey } from "./templates";
 import { canUseCamera, pickPostImage, type PickSource } from "./imagePicker";
 
 export type OverlayPos = "top" | "mid" | "bot";
@@ -341,9 +344,301 @@ function BookFinder({ onPick, onClose }: { onPick: (book: Book) => void; onClose
 
 // ─────────── 글쓰기 화면 ───────────
 
-export type ComposeScreenProps = { libraryId: number; isbn13?: string | null };
+export type ComposeScreenProps = { libraryId: number; isbn13?: string | null; fromLog?: string };
 
-export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
+export function ComposeScreen({ fromLog, ...props }: ComposeScreenProps) {
+  const { status, userId } = useAuth();
+  if (fromLog && status === "signedIn") {
+    return <TemplateComposer key={JSON.stringify([userId, fromLog])} logId={fromLog} />;
+  }
+  return <RegularComposer {...props} libraryId={fromLog ? NaN : props.libraryId} templateEntry={Boolean(fromLog)} />;
+}
+
+function loadTemplateRecord(logId: string, signal: AbortSignal) {
+  const { fetchReadingLog } = require("../reading-log/api") as typeof import("../reading-log/api");
+  return fetchReadingLog(logId, signal);
+}
+
+function TemplateComposer({ logId }: { logId: string }) {
+  const router = useRouter();
+  const navigation = useNavigation();
+  const { width } = useWindowDimensions();
+  const [requestId] = useState(() => Crypto.randomUUID());
+  const [log, setLog] = useState<ReadingLog | null>(null);
+  const [library, setLibrary] = useState<ReadingLog["library"]>(null);
+  const [template, setTemplate] = useState<TemplateKey>("minimal");
+  const [sentence, setSentence] = useState("");
+  const [includeBook, setIncludeBook] = useState(true);
+  const [editingLibrary, setEditingLibrary] = useState(false);
+  const [reload, setReload] = useState(0);
+  const [focused, setFocused] = useState(() => navigation?.isFocused?.() ?? true);
+  const [problem, setProblem] = useState<"notFound" | "load" | "submit" | "conflict" | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [posted, setPosted] = useState<Post | null>(null);
+  const [existing, setExisting] = useState<string | null>(null);
+  const request = useRef<AbortController | null>(null);
+
+  useLayoutEffect(() => {
+    const blur = navigation?.addListener?.("blur", () => {
+      request.current?.abort();
+      request.current = null;
+      setBusy(false);
+      setFocused(false);
+    });
+    const focus = navigation?.addListener?.("focus", () => setFocused(true));
+    return () => {
+      request.current?.abort();
+      request.current = null;
+      blur?.();
+      focus?.();
+    };
+  }, [navigation]);
+
+  const routerRef = useRef(router);
+  routerRef.current = router;
+  const showExisting = useCallback((postId: string) => {
+    setExisting(postId);
+    routerRef.current.replace({ pathname: "/posts/[postId]", params: { postId, notice: "already-published" } });
+  }, []);
+
+  useEffect(() => {
+    if (!focused || log) return;
+    const ctrl = new AbortController();
+    request.current = ctrl;
+    loadTemplateRecord(logId, ctrl.signal)
+      .then((record) => {
+        if (ctrl.signal.aborted) return;
+        if (record.published_post_id) {
+          showExisting(record.published_post_id);
+        } else {
+          setLog(record);
+          setLibrary(record.library);
+          setSentence((record.quote ?? "").slice(0, OVERLAY_MAX));
+        }
+      })
+      .catch((e: unknown) => {
+        if (ctrl.signal.aborted) return;
+        setProblem(e instanceof ApiCallError && e.status === 404 ? "notFound" : "load");
+      });
+    return () => {
+      ctrl.abort();
+      if (request.current === ctrl) request.current = null;
+    };
+  }, [focused, log, logId, reload, showExisting]);
+
+  const submit = async (checkOnly = false) => {
+    if (!focused || !log || !library || request.current || posted || existing) return;
+    const ctrl = new AbortController();
+    request.current = ctrl;
+    setBusy(true);
+    setProblem(null);
+    let checking = checkOnly;
+    try {
+      if (!checking) {
+        try {
+          const post = await createPost({
+            client_request_id: requestId,
+            reading_log_id: logId,
+            library_id: library.id,
+            isbn13: includeBook ? log.book.isbn13 : null,
+            image_kind: "template",
+            image_value: template,
+            image_path: null,
+            image_color: null,
+            overlay_text: nullIfBlank(sentence),
+            body: null,
+          }, ctrl.signal);
+          if (!ctrl.signal.aborted) setPosted(post);
+          return;
+        } catch (e) {
+          if (ctrl.signal.aborted) return;
+          if (!(e instanceof ApiCallError) || e.code !== "ALREADY_PUBLISHED") throw e;
+          checking = true;
+        }
+      }
+      const record = await loadTemplateRecord(logId, ctrl.signal);
+      if (ctrl.signal.aborted) return;
+      if (record.published_post_id) showExisting(record.published_post_id);
+      else setProblem("submit");
+    } catch (e) {
+      if (ctrl.signal.aborted) return;
+      if (e instanceof ApiCallError && e.status === 404 && (checking || !e.detail)) {
+        setProblem("notFound");
+      } else {
+        setProblem(checking ? "conflict" : "submit");
+      }
+    } finally {
+      if (request.current === ctrl) {
+        request.current = null;
+        setBusy(false);
+      }
+    }
+  };
+
+  const leave = () => {
+    if (router.canGoBack()) router.back();
+    else router.replace({ pathname: "/reading/[logId]", params: { logId } });
+  };
+  const previewWidth = Math.max(1, Math.min(360, width - 32));
+  if (existing || problem === "notFound" || (!log && problem === "load")) {
+    return (
+      <View style={[styles.screen, styles.center]} accessibilityLiveRegion="polite">
+        <Text style={T.title}>
+          {existing ? "이미 올린 기록이에요" : problem === "notFound" ? TEXT.notFound : "기록을 불러오지 못했어요."}
+        </Text>
+        {problem === "load" ? (
+          <Pressable accessibilityRole="button" onPress={() => { setProblem(null); setReload((n) => n + 1); }}>
+            <Text style={styles.link}>다시 시도</Text>
+          </Pressable>
+        ) : null}
+      </View>
+    );
+  }
+  if (!log) return <View style={[styles.screen, styles.center]}><ActivityIndicator color={C.inkStrong} /></View>;
+
+  if (posted) {
+    return (
+      <ScrollView style={styles.screen} contentContainerStyle={styles.body}>
+        <View style={styles.postedHead}>
+          <Text style={T.title}>{TEXT.posted}</Text>
+          <PostMoreMenu post={posted} onWithdrawn={leave} />
+        </View>
+        <TemplateCard
+          template={posted.image_value ?? template}
+          overlayText={posted.overlay_text}
+          book={posted.book}
+          width={previewWidth}
+        />
+        <Pressable accessibilityRole="button" style={styles.secondaryBtn} onPress={leave}>
+          <Text style={styles.secondaryBtnText}>기록으로 돌아가기</Text>
+        </Pressable>
+      </ScrollView>
+    );
+  }
+
+  const selectedBook = includeBook ? log.book : null;
+  return (
+    <ScrollView style={styles.screen} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+      <Text style={T.title}>게시할 내용 미리보기</Text>
+      <TemplateCard template={template} overlayText={nullIfBlank(sentence)} book={selectedBook} width={previewWidth} />
+      <View style={styles.choiceRow}>
+        {(Object.keys(TEMPLATE_LABELS) as TemplateKey[]).map((key) => (
+          <Pressable
+            key={key}
+            accessibilityRole="button"
+            accessibilityLabel={TEMPLATE_LABELS[key]}
+            accessibilityState={{ selected: template === key }}
+            onPress={() => setTemplate(key)}
+            style={[styles.pill, template === key && styles.pillOn]}
+          >
+            <TemplateCard template={key} overlayText="좋았던 문장" book={null} width={82} />
+            <Text style={styles.pillText}>{TEMPLATE_LABELS[key]}</Text>
+          </Pressable>
+        ))}
+      </View>
+      <Text style={T.name}>공개할 문장</Text>
+      <TextInput
+        accessibilityLabel="공개할 문장"
+        placeholder="문장을 써 주세요"
+        value={sentence}
+        onChangeText={setSentence}
+        maxLength={OVERLAY_MAX}
+        multiline
+        style={styles.input}
+      />
+      {log.note ? (
+        <Pressable accessibilityRole="button" onPress={() => setSentence((log.note ?? "").slice(0, OVERLAY_MAX))} style={styles.pill}>
+          <Text style={styles.pillText}>감상 앞부분 가져오기</Text>
+        </Pressable>
+      ) : null}
+      <Pressable
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked: includeBook }}
+        onPress={() => setIncludeBook((value) => !value)}
+        style={styles.pill}
+      >
+        <Text style={styles.pillText}>{includeBook ? "✓ " : ""}책 정보 함께 올리기</Text>
+      </Pressable>
+      <Text style={T.name}>게시할 도서관</Text>
+      {library ? <Text style={styles.sub}>{library.name}</Text> : null}
+      <Pressable accessibilityRole="button" onPress={() => setEditingLibrary((value) => !value)} style={styles.pill}>
+        <Text style={styles.pillText}>{editingLibrary ? "검색 닫기" : library ? "도서관 변경" : "도서관 선택"}</Text>
+      </Pressable>
+      {editingLibrary ? <TemplateLibrarySearch onPick={(choice) => { setLibrary(choice); setEditingLibrary(false); }} /> : null}
+      {problem ? (
+        <Text accessibilityRole="alert" style={styles.errorText}>
+          {problem === "conflict" ? "이미 올린 게시물을 확인하지 못했어요. 다시 시도해 주세요." : TEXT.failed}
+        </Text>
+      ) : null}
+      <Pressable
+        accessibilityRole="button"
+        disabled={!library || busy}
+        style={[styles.submit, (!library || busy) && styles.submitOff]}
+        onPress={() => void submit(problem === "conflict")}
+      >
+        <Text style={styles.submitText}>
+          {busy ? TEXT.submitting : problem === "conflict" ? "다시 시도" : problem === "submit" ? TEXT.retry : TEXT.submit}
+        </Text>
+      </Pressable>
+    </ScrollView>
+  );
+}
+
+function TemplateLibrarySearch({ onPick }: { onPick: (library: Pick<LibrarySummary, "id" | "name">) => void }) {
+  const [query, setQuery] = useState("");
+  const [items, setItems] = useState<LibrarySummary[] | null>(null);
+  const [failed, setFailed] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const current = useRef<AbortController | null>(null);
+  useEffect(() => () => current.current?.abort(), []);
+
+  const search = async () => {
+    const name = query.trim();
+    if (!name) return;
+    current.current?.abort();
+    const ctrl = new AbortController();
+    current.current = ctrl;
+    setLoading(true);
+    setItems(null);
+    setFailed(false);
+    try {
+      const result = await searchLibrariesByName(name, ctrl.signal);
+      if (!ctrl.signal.aborted) setItems(result.items);
+    } catch {
+      if (!ctrl.signal.aborted) setFailed(true);
+    } finally {
+      if (!ctrl.signal.aborted) setLoading(false);
+    }
+  };
+
+  return (
+    <View>
+      <TextInput
+        accessibilityLabel="도서관 이름"
+        placeholder="도서관 이름"
+        value={query}
+        onChangeText={setQuery}
+        onSubmitEditing={() => void search()}
+        returnKeyType="search"
+        style={styles.input}
+      />
+      <Pressable accessibilityRole="button" onPress={() => void search()} style={styles.smallSecondary}>
+        <Text style={styles.smallSecondaryText}>도서관 찾기</Text>
+      </Pressable>
+      {loading ? <ActivityIndicator color={C.inkStrong} /> : null}
+      {failed ? <Text style={styles.errorText}>도서관을 찾지 못했어요. 다시 시도해 주세요.</Text> : null}
+      {items?.length === 0 ? <Text style={styles.sub}>검색 결과가 없어요.</Text> : null}
+      {items?.map((item) => (
+        <Pressable accessibilityRole="button" key={item.id} onPress={() => onPick(item)} style={styles.bookRow}>
+          <Text style={styles.bookTitle}>{item.name}</Text>
+          {item.address ? <Text style={styles.sub}>{item.address}</Text> : null}
+        </Pressable>
+      ))}
+    </View>
+  );
+}
+
+function RegularComposer({ libraryId, isbn13, templateEntry }: Omit<ComposeScreenProps, "fromLog"> & { templateEntry: boolean }) {
   const router = useRouter();
   const navigation = useNavigation();
   const { status } = useAuth();
@@ -544,7 +839,7 @@ export function ComposeScreen({ libraryId, isbn13 }: ComposeScreenProps) {
   };
   submitRef.current = submit;
 
-  if (invalidLibraryId) {
+  if (invalidLibraryId && !templateEntry) {
     return (
       <View style={[styles.screen, styles.center]}>
         <Text style={T.title}>{TEXT.notFound}</Text>
