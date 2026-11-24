@@ -100,6 +100,16 @@ def test_today_stamp_before_stamping_is_empty(client, auth):
     assert response.json() == {"stamped": False, "stamp": None}
 
 
+def test_today_stamp_ignores_yesterday_and_other_users(client, auth, clock):
+    clock.set(datetime(2026, 11, 24, 23, 59, tzinfo=KST))
+    assert put_stamp(client, auth["A"], "public").status_code == 200
+    assert client.get(f"/api/v1/libraries/{LIB_1}/stamps/today", headers=auth["B"]).json() == {
+        "stamped": False, "stamp": None}  # 남의 오늘 스탬프는 내 것이 아니다
+    clock.set(datetime(2026, 11, 25, 0, 1, tzinfo=KST))
+    assert client.get(f"/api/v1/libraries/{LIB_1}/stamps/today", headers=auth["A"]).json() == {
+        "stamped": False, "stamp": None}  # 자정이 지나면 어제 스탬프는 오늘 것이 아니다
+
+
 def test_stamp_date_comes_from_server_seoul_today(client, auth, db_engine, clock):
     clock.set(datetime(2026, 11, 24, 23, 59, tzinfo=KST))
     first = put_stamp(client, auth["A"], stamped_on="2020-01-01")  # 본문 날짜는 무시
