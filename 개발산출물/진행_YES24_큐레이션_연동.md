@@ -1,6 +1,6 @@
 # YES24 스테디셀러·인기도서 큐레이션 및 구매 연동 진행 (M2 이후 후속)
 
-- **상태:** **4단계 완료(main 머지, 운영 미반영) — 5단계(Y-6) 구현·웹 확인·시안 재반영 완료, PR [#304](https://github.com/axteamc/localone/pull/304) 머지·운영 반영 대기.** 계약 발행 team `2843458`·`5646974`(C-85)·`abd82a5`(C-86), 코드 서버 `b3e466c`·모바일 `cf51892`·시안 재반영 `4dcf594`(2026-11-24 mac). YES24 1단계 K23도 같은 커밋에서 다시 써서 원격 반영(원 `cb25a44`는 미반영·폐기). 운영 반영(`0026`·`0027`·배포)은 별도 지시에 따른다.
+- **상태:** **4단계·5단계(Y-6) PR #304 머지(`main` `3853871`) 및 운영 반영 완료 — Android·iOS·운영 웹 실기기 최종 확인 대기.** 계약 발행 team `2843458`·`5646974`(C-85)·`abd82a5`(C-86), 코드 `main` `3853871`. 운영 반영(2026-11-24 mac): 운영 DB `0017`→`0027`, `YES24_API_KEY` Cloud Run 연결, `localone-api-00009-5t2`, `sync-yes24-curated` 첫 적재 20권, `localone-web-00003-t5k`, iOS Release IPA(`mobile/ios/localone-unsigned.ipa`) 생성 완료.
 - **기준 SHA:**
   - 설계 시점(2026-11-24): 코드 `2ccc0db951dcba4e0bc354946984a8adc619cd48`, team `64b9d9e8705c2ced9aa54a33fa98f4beeeb811a7`
   - **1단계 계약 확정(2026-11-24, C-81):** 코드 `main` `9f05e2021fdcff11f98a5b326691b546d35c65d1`(단일 `alembic head = 0025_reports_constraints`), **team 계약 발행 SHA `cb25a44e9eab502b3a7646c7e2c732390b86eef4`**(로컬 커밋, 원격 push 대기)
@@ -22,7 +22,7 @@
 | **2. DB·엔진·CLI 구현** | 1단계 선행. 새 Alembic 리비전(`books_source_check` `'yes24'` 추가, `curated_books_cache`·`book_purchase_links` 생성·RLS), `settings.py`·`policy.py`·`Yes24Client`·`ProviderEngine.curated_books`·`sync-yes24-curated` CLI 구현 | `server/`: `uv run alembic upgrade head && uv run alembic downgrade -1 && uv run alembic upgrade head`, `uv run pytest -W error tests/test_lib_engine.py tests/test_yes24_curated.py` | 마이그레이션 왕복·RLS(`relrowsecurity=true`, 정책 0개)·성인물/URL/ISBN일치/한도/빈 응답 보호 테스트 및 핵심 가드 변이 5곳 실패 확인 | **완료 (2026-11-24)** |
 | **3. API(`#9`/`#15`)·서가 테마 연결** | 2단계 선행. `#9 /books/recommendations` YES24 스테디셀러 연결·정보나루 폴백(양쪽 stale 시 YES24 stale 유지), `#15 /books/{isbn13}/purchase-link` 직링크(`kind="product"`)·검색 폴백 구현, `sync-yes24-curated --print-isbns` → `ops/shelf-themes` + `sync-theme-holdings` 연동 확인 | `server/`: `uv run pytest -W error tests/test_books.py tests/test_looks_shelf.py tests/test_yes24_curated.py` | `#9` 하위 호환·폴백, `#15` 직링크/폴백, 기존 도서관별 `#31` 회귀 0건(108 passed) 통과 | **완료 (2026-11-24)** |
 | **4. 모바일 타입·출처 표기·검증** | 3단계 선행. `Book.source`, `PurchaseLink.kind` 확장. 홈 하단 창(VISIT-1b)·검색 진입의 `#9` YES24 추천 섹션에 `출처: YES24`를 한 번 표기 | `mobile/`: `npx tsc --noEmit`, `npx jest --runInBand`. 구현·진행 기록을 각각 `Owner: D` 커밋으로 기록하고 [PR #302](https://github.com/axteamc/localone/pull/302)에 반영 | 타입 검사 통과, Jest 49개 스위트·870개 테스트 통과 | **완료 (2026-11-24)** |
-| **5. 도서 상세 시안·배치 개편 (Y-6, 후속)** | 4단계 선행. 도서 상세·단일 조회는 기존 API 재사용. 도서관 미지정 예정·일괄 조회·일괄 빌림은 아래 결정 후 관련 계약 개정 | [최신 HTML 시안](시안/Y-6_도서상세_YES24_시안.html), 설계명세 §5.5·§6, 아래 구현 범위 | 시안·계약 일치, 승인된 변경 구현, 경로별 검증 및 최신 PR HEAD 필수 CI 확인 | **구현·웹 확인·시안 재반영 완료(C-86), Android 부분 확인, 머지·운영 반영·실기기 최종 확인 대기** |
+| **5. 도서 상세 시안·배치 개편 (Y-6, 후속)** | 4단계 선행. 도서 상세·단일 조회는 기존 API 재사용. 도서관 미지정 예정·일괄 조회·일괄 빌림은 아래 결정 후 관련 계약 개정 | [최신 HTML 시안](시안/Y-6_도서상세_YES24_시안.html), 설계명세 §5.5·§6, 아래 구현 범위 | 시안·계약 일치, 승인된 변경 구현, 경로별 검증 및 최신 PR HEAD 필수 CI 확인 | **PR #304 머지·운영 반영 완료, 실기기 최종 확인 대기** |
 
 ---
 
@@ -120,4 +120,22 @@
 - **검증**: `tsc` 통과, 전체 Jest 50 스위트 890건 통과. 변이(`빌렸어요`·YES24 순서 바꿈) → 새 시험 실패 확인 후 원복. 에뮬레이터 화면을 시안 캡처와 나란히 대조(상세 위·아래, 조회 창 머리, 광주 북구 7곳 카드 — 위치를 못 받아 지역 고르기 경로).
 - **정보나루 대조(§7)**: 7권 × 북구 7곳 49쌍 `libSrchByBook` 소장 = `bookExist hasBook` 전부 일치. 갱신 주기는 여전히 미확인(임시 처리 유지).
 - **아직 안 함**: Android에서 대출 예정 → 일괄 검색 → 일괄 빌림 동선, 일괄 검색 패널 카드의 시안 대조, iOS 전체. 방식은 배포 뒤 최종 확인(iOS = Mac 서명 없는 Release IPA → LiveContainer, `.env.production`).
+
+### Y-6 운영 반영 및 실기기 확인 준비 (2026-11-24 mac, `main` `3853871`)
+
+- **운영 반영 완료**:
+  - PR [#304](https://github.com/axteamc/localone/pull/304) 머지 확인 후 `main` `3853871` 동기화.
+  - 운영 DB Alembic 마이그레이션: `0017` → **`0027_loan_plans_unassigned (head)`** (`0018`~`0027` 10개 일괄 적용).
+  - `YES24_API_KEY` Secret Manager 등록 후 Cloud Run `localone-api` 연결 및 배포 → 활성 리비전 **`localone-api-00009-5t2`** (`POST /api/v1/me/loan-plans/availability` 401 응답 확인).
+  - `sync-yes24-curated` 첫 적재 성공: `{"kind": "steady", "category": "001", "basis_label": "YES24 스테디셀러 · 국내도서", "count": 20, "stale": false, "fallback_reason": null}` (`GET /api/v1/books/recommendations` 20권·`source="yes24"` 확인).
+  - `localone-web` 프론트 재배포 → 활성 리비전 **`localone-web-00003-t5k`** (HTTP 200, 두 웹 URL 모두 `localone-api` CORS 허용 확인).
+  - Mac에서 `.env.production` 기준 서명 없는 iOS Release IPA 생성 완료: `mobile/ios/localone-unsigned.ipa` (12M, `main.jsbundle`에 운영 API URL 포함·사설 IP 미포함 확인).
+- **다음 확인 필요 리스트 (실기기 최종 확인 — Android 에뮬레이터/기기 · iOS LiveContainer · 운영 웹)**:
+  1. **로그인·YES24 큐레이션**: Google 로그인(iOS LiveContainer에서 `localone://auth-callback` 복귀 포함), 홈/검색 `#9` `YES24 스테디셀러 · 국내도서`·`출처: YES24` 표시
+  2. **도서 상세 (`V1`·`V2`·`M10 ①`)**: 큰 표지·왼쪽 정렬·구역 줄눈·도서 정보 칸·본문 맨 아래 `빌렸어요` 사각 버튼 → `YES24에서 도서 상세/검색 ↗` (시안 캡처와 나란히 대조)
+  3. **단일 도서관 확인 창 (`V17`·`V5`·`V6`·`V7`)**: 창 머리 X·`현재 책의 대출 상태`·밑줄 범위 링크·카드 본문 선택/필 버튼(`실시간 ↗` ↔ 초록 점 `확인 완료`) 독립 동작·미소장 확정 시 `YES24에서 구매하기 ↗` (시안 대조)
+  4. **도서관 미지정 대출 예정 (`U6`·`U7`·`V4`)**: 하단 `대출 예정` → 우측 상단 리스트 아이콘 → `대출·반납` 탭 `n권`·`도서관 미정` 카드
+  5. **일괄 검색 (`#70`·`V8`·`V16`)**: 위치 권한 허용 주변 조회, `소장 n권 · 대출 가능 m권`, **일괄 검색 패널 카드 시안 대조**, `complete=false` 시 재조회
+  6. **일괄 빌림 (`#20`·`B1`~`B9`)**: 확인 창(지정 도서관 / 미지정 후보 칩·미리 채움·`기록 안 함`) → 순차 `#20` 전환 → `converted` 목록 갱신
+  7. **후처리**: 확인 중 운영 DB에 만든 시험 대출·예정 기록은 사용자 확인 뒤 정리 방법 결정 → `LIB-3b §8`·진행·인수인계 최종 갱신
 
