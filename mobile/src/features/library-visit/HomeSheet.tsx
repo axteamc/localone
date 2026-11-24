@@ -1,6 +1,7 @@
 // 홈 하단 창 (계약서 library-visit.md VISIT-1b W1·W3·W7·W8·W11, 결정 1·2)
 // 지도 홈 아래에서 올려 보는 창. 평소 반쯤, 올리면 맨 위 검색창 바로 아래까지, 내리면 제목 한 줄. 지도는 창 뒤에 그대로 있다.
 // P1: 창과 인기 도서 한 줄. P2: 그 아래 자주 가는·가까운 도서관 소식(LibraryNewsSection).
+// READ-2 R2-O4: 인기 도서와 소식 사이에 "내 최근 독서 기록"(RecentReadingRow, 로그인·기록 있을 때만). 기존 두 칸은 그대로(R2-6).
 // 창이 반쯤·내림이면 안쪽은 스크롤하지 않고 끌기만, 올림(full)이면 안쪽 목록이 스크롤된다(C4).
 import { useRouter } from "expo-router";
 import React, { useCallback, useRef, useState } from "react";
@@ -17,6 +18,7 @@ import { theme } from "../../theme";
 import type { Book, LibrarySummary } from "./deps";
 import { LibraryNewsSection } from "./LibraryNewsSection";
 import { PopularBooksRow } from "./PopularBooksRow";
+import { RecentReadingRow } from "./RecentReadingRow";
 import { useHomeFeed } from "./useHomeFeed";
 import { useHomeSheet } from "./useHomeSheet";
 
@@ -66,6 +68,11 @@ export function HomeSheet(props: HomeSheetProps) {
     (postId: string) => once(() => router.push({ pathname: "/posts/[postId]", params: { postId } })),
     [once, router]
   );
+  // READ-2 R2-5: 내 기록 표지 → 그 기록 화면(READ-1 /reading/[logId])
+  const openLog = useCallback(
+    (logId: string) => once(() => router.push({ pathname: "/reading/[logId]", params: { logId } })),
+    [once, router]
+  );
 
   const { loadMore } = feed;
   const onScroll = useCallback(
@@ -112,6 +119,7 @@ export function HomeSheet(props: HomeSheetProps) {
             onPressBook={openBook}
             onReload={feed.reloadPopular}
           />
+          <RecentReadingRow onOpenLog={openLog} />
           <LibraryNewsSection
             news={feed.news}
             areaBased={origin !== "current"}
@@ -119,7 +127,6 @@ export function HomeSheet(props: HomeSheetProps) {
             onPressPost={openPost}
             onReload={feed.reloadNews}
           />
-          {/* W11: "내 최근 독서 기록"은 넣지 않는다(빈 자리도 없음) */}
         </ScrollView>
       </Animated.View>
     </View>
