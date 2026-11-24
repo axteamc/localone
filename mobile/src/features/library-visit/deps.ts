@@ -19,3 +19,5 @@ export {
 export { searchRegions, type Region } from "../../lib/regions";
 export { getDefaultLibrary, getFrequentLibraries, getLastRegion, setLastRegion, type VisitRecord } from "../../lib/visits";
 export { getHeroRule, getRecentVisitedLibraryId, setHeroRule } from "./heroPref";
+// READ-2 R2-O4 홈 하단 창 "내 최근 독서 기록"(A reading-log #41). 홈 시험은 이 파일째 바꿔 끼우므로 로그인 저장소를 읽지 않는다
+export { fetchReadingLogs, type ReadingLog } from "../reading-log/api";
