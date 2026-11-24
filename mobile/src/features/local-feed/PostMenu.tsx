@@ -3,11 +3,11 @@
 import { useRouter } from "expo-router";
 import React, { useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
-import { actionColors, cardSurface, theme, type as T } from "../../theme";
+import { actionColors, cardSurface, type Theme } from "../../theme";
+import { lookKit, useLook } from "./useLibraryLook";
 import { ApiCallError, setBookmark, setReaction, type FeedPost, type PostReactionPatch } from "./api";
 import { shareNotice, sharePost } from "./share";
 
-const C = theme.colors;
 
 export const MENU_TEXT = {
   like: "좋아요",
@@ -33,6 +33,7 @@ export function toggleFailText(e: unknown): string {
 
 /** 비로그인 공감·북마크 안내 창(H-#6). 서버에 묻지 않는다 */
 export function LoginPrompt({ onClose }: { onClose: () => void }) {
+  const { ACT, styles } = useLook(makeStyles);
   const router = useRouter();
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
@@ -85,6 +86,7 @@ export function PostMenu({
   onLoginNeeded,
   failText,
 }: PostMenuProps) {
+  const { styles } = useLook(makeStyles);
   const router = useRouter();
   const busy = useRef({ reaction: false, bookmark: false, share: false });
   const [, rerender] = useState(0);
@@ -178,6 +180,7 @@ export function PostMenu({
 }
 
 function IconButton(props: { icon: string; label: string; on: boolean; onPress: () => void }) {
+  const { styles } = useLook(makeStyles);
   return (
     <Pressable
       accessibilityRole="button"
@@ -193,6 +196,7 @@ function IconButton(props: { icon: string; label: string; on: boolean; onPress: 
 }
 
 function Row({ label, onPress }: { label: string; onPress: () => void }) {
+  const { styles } = useLook(makeStyles);
   return (
     <Pressable accessibilityRole="button" onPress={onPress} style={styles.row}>
       <Text style={styles.rowText} numberOfLines={1}>
@@ -202,8 +206,9 @@ function Row({ label, onPress }: { label: string; onPress: () => void }) {
   );
 }
 
-const ACT = actionColors(theme.colors);
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => {
+  const { C, T, ACT } = lookKit(theme);
+  return StyleSheet.create({
   scrim: { flex: 1, backgroundColor: C.shadowDeep, alignItems: "center", justifyContent: "center", padding: 24 },
   menu: {
     ...cardSurface(theme, { onPanel: true }),
@@ -235,4 +240,5 @@ const styles = StyleSheet.create({
   primaryText: { ...ACT.primaryText, fontSize: 15, fontWeight: "500" },
   secondary: { ...ACT.secondary, borderRadius: theme.radii.control, minHeight: 44, justifyContent: "center", alignItems: "center" },
   secondaryText: { ...ACT.secondaryText, fontSize: 15, fontWeight: "500" },
-});
+  });
+};

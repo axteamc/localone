@@ -26,6 +26,7 @@ from app.routers.posts import (
     validation_error,
     with_image_url,
 )
+from app.routers.stamps import STAMP_FEED_COLUMNS, STAMP_FEED_JOINS, my_stamp_bookmarks, stamp_item
 from app.services.provider_engine import isbn13_is_valid
 
 FEED_LIMIT_DEFAULT = 20  # H2
@@ -251,7 +252,7 @@ async def post_detail(
 # 정렬: 모든 종류를 합쳐 published_at DESC, kind ASC, id DESC. 커서는 base64url JSON [published_at, kind, id].
 # `#26`(게시물만, 홈 하단 창)은 바꾸지 않는다.
 
-FEED_ITEM_KINDS = ("club", "guestbook", "post")  # kind ASC 순서. VISIT-4 stamp가 더한다(CLUB-1 club 더함)
+FEED_ITEM_KINDS = ("club", "guestbook", "post", "stamp")  # kind ASC 순서(CLUB-1 club, VISIT-4 stamp 더함)
 
 
 def encode_items_cursor(published_at: datetime, kind: str, item_id: Any) -> str:
@@ -313,6 +314,16 @@ def select_clubs_page(c: Connection, library_id: int, after: tuple[datetime, str
     return c.execute(text(sql), dict(args, lib=library_id, n=n)).all()
 
 
+def select_stamps_page(c: Connection, library_id: int, after: tuple[datetime, str, UUID] | None,
+                       n: int) -> list[Any]:
+    """VISIT-4: 공개 스탬프 카드만. 정렬 시각은 `visit_stamps.created_at`(local-feed VISIT-4 C2 #32)."""
+    cond, args = after_clause("s", "stamp", after)
+    cond = cond.replace("s.published_at", "s.created_at")
+    sql = (f"SELECT {STAMP_FEED_COLUMNS} {STAMP_FEED_JOINS} WHERE s.visibility = 'public' AND s.library_id = :lib"
+           f"{cond} ORDER BY s.created_at DESC, s.id DESC LIMIT :n")
+    return c.execute(text(sql), dict(args, lib=library_id, n=n)).all()
+
+
 @router.get("/libraries/{library_id}/feed")
 async def library_feed_items(
     request: Request,
@@ -323,27 +334,31 @@ async def library_feed_items(
 ) -> dict[str, Any]:
     after = decode_items_cursor(cursor)
 
-    def tx(c: Connection) -> tuple[list[tuple[str, Any]], bool, tuple[set[Any], set[Any]]]:
+    def tx(c: Connection) -> tuple[list[tuple[str, Any]], bool, tuple[set[Any], set[Any]], set[Any]]:
         if not c.execute(text("SELECT 1 FROM libraries WHERE id = :id"), {"id": library_id}).first():
             raise ApiError(404, "NOT_FOUND", MSG_NOT_FOUND, "library_id")
         merged = [("post", r) for r in select_posts_page(c, library_id, after, limit + 1)]
         merged += [("guestbook", r) for r in select_guestbook_page(c, library_id, after, limit + 1)]
         merged += [("club", r) for r in select_clubs_page(c, library_id, after, limit + 1)]
+        merged += [("stamp", r) for r in select_stamps_page(c, library_id, after, limit + 1)]
         # 안정 정렬을 뒤 기준부터: id DESC → kind ASC → published_at DESC
         merged.sort(key=lambda kv: kv[1].id, reverse=True)
         merged.sort(key=lambda kv: kv[0])
         merged.sort(key=lambda kv: kv[1].published_at, reverse=True)
         page = merged[:limit]
         post_ids = [r.id for kind, r in page if kind == "post"]
-        return page, len(merged) > limit, my_flags(c, viewer, post_ids)
+        stamp_ids = [r.id for kind, r in page if kind == "stamp"]
+        return page, len(merged) > limit, my_flags(c, viewer, post_ids), my_stamp_bookmarks(c, viewer, stamp_ids)
 
-    page, more, flags = await run_db(request.app.state.engine, tx)
+    page, more, flags, stamp_marks = await run_db(request.app.state.engine, tx)
     items: list[dict[str, Any]] = []
     for kind, row in page:
         if kind == "post":
             items.append({"kind": "post", "post": feed_post(request, row, *flags)})
         elif kind == "club":
             items.append({"kind": "club", "club": club_item(row, int(row.joined_count))})
+        elif kind == "stamp":
+            items.append({"kind": "stamp", "stamp": stamp_item(row, viewer, stamp_marks)})
         else:
             items.append({"kind": "guestbook", "guestbook": guestbook_item(row, viewer)})
     next_cursor = None

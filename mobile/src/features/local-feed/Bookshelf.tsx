@@ -15,10 +15,10 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { createLatestRunner } from "../../lib/latest";
 import { WebHorizontalControls } from "../../lib/WebHorizontalControls";
-import { theme } from "../../theme";
+import { type Theme } from "../../theme";
+import { lookKit, useLook } from "./useLibraryLook";
 import { fetchShelf, type ShelfBook, type ShelfKind, type ShelfPage, type ShelfResponse } from "./api";
 
-const C = theme.colors;
 
 export const SHELF_HEIGHT = 224; // V3-1
 export const SHELF_FADE_HEIGHT = 72; // V3-1 피드-책장 사이 띠
@@ -51,6 +51,7 @@ export type BookshelfProps = {
 };
 
 export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf }: BookshelfProps) {
+  const { styles } = useLook(makeStyles);
   const insets = useSafeAreaInsets();
   const runner = useRef(createLatestRunner()).current;
   const [state, setState] = useState<ShelfState>({ kind: "loading" });
@@ -210,6 +211,7 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf }: Bookshel
 }
 
 function BookCover({ book, width, onPress }: { book: ShelfBook; width: number; onPress(): void }) {
+  const { styles } = useLook(makeStyles);
   const compact = width < 84;
   return (
     <Pressable
@@ -238,6 +240,7 @@ function BookCover({ book, width, onPress }: { book: ShelfBook; width: number; o
 // V3-1 피드-책장 사이 띠: 블러 라이브러리 없이(P3 승인 전) 그라데이션 페이드만 — 아래로 갈수록 선반색으로 녹는다
 const FADE_STEPS = ["00", "1a", "36", "57", "7a", "a0", "c4", "d9"];
 function ShelfFade() {
+  const { C, styles } = useLook(makeStyles);
   const step = SHELF_FADE_HEIGHT / FADE_STEPS.length;
   return (
     <View pointerEvents="none" style={styles.fade} testID="shelf-fade">
@@ -248,15 +251,16 @@ function ShelfFade() {
   );
 }
 
-const [bTL, bTR, bBR, bBL] = theme.radii.bookCover;
-const bookRadius = {
-  borderTopLeftRadius: bTL,
-  borderTopRightRadius: bTR,
-  borderBottomRightRadius: bBR,
-  borderBottomLeftRadius: bBL,
-};
-
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => {
+  const { C } = lookKit(theme);
+  const [bTL, bTR, bBR, bBL] = theme.radii.bookCover;
+  const bookRadius = {
+    borderTopLeftRadius: bTL,
+    borderTopRightRadius: bTR,
+    borderBottomRightRadius: bBR,
+    borderBottomLeftRadius: bBL,
+  };
+  return StyleSheet.create({
   wrap: { position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: C.surface2 },
   fade: { position: "absolute", left: 0, right: 0, top: -SHELF_FADE_HEIGHT, height: SHELF_FADE_HEIGHT },
   top: {
@@ -291,4 +295,5 @@ const styles = StyleSheet.create({
   messageSub: { fontSize: 13, color: C.textSub },
   retry: { minHeight: 44, justifyContent: "center" },
   retryText: { fontSize: 15, fontWeight: "500", color: C.inkStrong },
-});
+  });
+};

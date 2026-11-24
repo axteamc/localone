@@ -8,9 +8,9 @@ import { getDefaultLibrary, setDefaultLibrary } from "../../lib/visits";
 import { getHeroRule, setHeroRule } from "../library-visit/heroPref";
 import { HERO_MENU_TEXT } from "../library-visit/heroText";
 import type { HeroRule } from "../library-visit/direction";
-import { cardSurface, theme } from "../../theme";
+import { cardSurface, type Theme } from "../../theme";
+import { lookKit, useLook } from "./useLibraryLook";
 
-const C = theme.colors;
 
 export const MENU_TEXT = {
   turnOn: "앱을 켜면 여기부터 열기",
@@ -30,6 +30,7 @@ export function VisitMenu({
   library: Pick<LibraryDetail, "id" | "name" | "homepage">;
   onNotice: (text: string) => void;
 }) {
+  const { styles } = useLook(makeStyles);
   const [open, setOpen] = useState(false);
   const [isDefault, setIsDefault] = useState<boolean | null>(null);
   const [heroRule, setRule] = useState<HeroRule | null>(null);
@@ -124,7 +125,9 @@ export function VisitMenu({
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => {
+  const { C } = lookKit(theme);
+  return StyleSheet.create({
   more: { minWidth: 44, minHeight: 36, alignItems: "center", justifyContent: "center" },
   moreText: { fontSize: 24, color: C.inkStrong },
   scrim: { flex: 1, backgroundColor: C.shadowSoft, alignItems: "flex-end", paddingTop: 110, paddingRight: 12 },
@@ -139,4 +142,5 @@ const styles = StyleSheet.create({
   groupTitle: { fontSize: 12, color: C.inkSoft, paddingHorizontal: 16, paddingTop: 6, paddingBottom: 2 },
   ruleItem: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   ruleMark: { fontSize: 12, color: C.inkSoft },
-});
+  });
+};

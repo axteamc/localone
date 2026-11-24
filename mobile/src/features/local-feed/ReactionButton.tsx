@@ -3,11 +3,11 @@
 import React, { useRef, useState } from "react";
 import { Pressable, StyleSheet, Text } from "react-native";
 import Svg, { Path } from "react-native-svg";
-import { theme } from "../../theme";
+import { type Theme } from "../../theme";
+import { lookKit, useLook } from "./useLibraryLook";
 import { setBookmark, setReaction } from "./api";
 import { toggleFailText } from "./PostMenu";
 
-const C = theme.colors;
 
 export const SAVE_TEXT = { save: "저장", saved: "저장됨" } as const;
 
@@ -40,6 +40,7 @@ function useOnce() {
 export function ReactionButton(
   props: Common & { reacted: boolean; count: number; onChange(reacted: boolean, count: number): void }
 ) {
+  const { styles } = useLook(makeStyles);
   const { busy, run } = useOnce();
   const press = () => {
     if (props.authLoading) return;
@@ -72,6 +73,7 @@ export function ReactionButton(
 }
 
 export function SaveButton(props: Common & { saved: boolean; onChange(saved: boolean): void }) {
+  const { C, styles } = useLook(makeStyles);
   const { busy, run } = useOnce();
   const press = () => {
     if (props.authLoading) return;
@@ -110,7 +112,9 @@ export function SaveButton(props: Common & { saved: boolean; onChange(saved: boo
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => {
+  const { C } = lookKit(theme);
+  return StyleSheet.create({
   action: { flexDirection: "row", alignItems: "center", gap: 4, minHeight: 44, paddingHorizontal: 8 },
   heart: { fontSize: 22, color: C.text },
   heartOn: { color: C.inkStrong },
@@ -122,4 +126,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-});
+  });
+};
