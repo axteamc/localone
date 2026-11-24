@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
+from sqlalchemy.exc import IntegrityError
 
 from app.auth import CurrentUser, get_current_user, lock_active_user
 from app.common import ApiError, now_kst
@@ -132,7 +133,9 @@ class PostCreate(BaseModel):
     client_request_id: UUID
     library_id: int
     isbn13: str | None = None
-    image_kind: Literal["photo", "cover", "color"]
+    image_kind: Literal["photo", "cover", "color", "template"]
+    image_value: str | None = None
+    reading_log_id: UUID | None = None
     image_path: str | None = None
     image_color: str | None = None
     overlay_text: str | None = None
@@ -169,12 +172,15 @@ def validate_kind_fields(body: PostCreate, user_id: UUID) -> None:
     elif body.image_kind == "color":
         if body.image_color not in COLOR_TOKENS:
             raise validation_error("image_color")
+    elif body.image_kind == "template":
+        if body.image_value not in ("minimal", "ink"):
+            raise validation_error("image_value")
     elif body.isbn13 is None:  # cover
         raise validation_error("isbn13")
 
 
 POST_COLUMNS = (
-    "p.id, p.user_id, p.library_id, p.image_kind, p.image_value, p.overlay_text, p.body, "
+    "p.id, p.user_id, p.library_id, p.image_kind, p.image_value, p.reading_log_id, p.overlay_text, p.body, "
     "p.status, p.published_at, l.name AS library_name, b.isbn13 AS book_isbn13, "
     "b.title AS book_title, b.author AS book_author, b.cover_url AS book_cover_url, "
     "COALESCE(up.nickname, '이웃') AS nickname"
@@ -187,8 +193,8 @@ POST_JOINS = (
 
 INSERT_POST_ON_CONFLICT_DO_NOTHING_RETURNING = text(
     "INSERT INTO posts (user_id, library_id, book_id, image_kind, image_value, overlay_text, body, "
-    "client_request_id) VALUES (:uid, :library_id, :book_id, :image_kind, :image_value, :overlay_text, "
-    ":body, :rid) ON CONFLICT (user_id, client_request_id) DO NOTHING RETURNING id"
+    "client_request_id, reading_log_id) VALUES (:uid, :library_id, :book_id, :image_kind, :image_value, :overlay_text, "
+    ":body, :rid, :reading_log_id) ON CONFLICT (user_id, client_request_id) DO NOTHING RETURNING id"
 )
 SELECT_BY_CLIENT_REQUEST_ID = text(
     "SELECT id FROM posts WHERE user_id = :uid AND client_request_id = :rid"
@@ -205,6 +211,8 @@ def params(body: PostCreate, user_id: UUID, book: BookRecord | None) -> dict[str
     elif body.image_kind == "cover":
         assert book is not None and book.cover_url is not None
         value = book.cover_url
+    elif body.image_kind == "template":
+        value = body.image_value
     else:
         value = body.image_color
     return {
@@ -216,6 +224,7 @@ def params(body: PostCreate, user_id: UUID, book: BookRecord | None) -> dict[str
         "overlay_text": body.overlay_text,
         "body": body.body,
         "rid": body.client_request_id,
+        "reading_log_id": body.reading_log_id,
     }
 
 
@@ -254,6 +263,8 @@ def post_public(
         "book": book,
         "image_kind": row.image_kind,
         "image_url": row.image_url,
+        "image_value": row.image_value if row.image_kind == "template" else None,
+        "from_reading_log": row.reading_log_id is not None,
         "image_color": row.image_value if row.image_kind == "color" else None,
         "overlay_text": row.overlay_text,
         "body": row.body,
@@ -275,6 +286,26 @@ async def _book_for(request: Request, isbn13: str) -> BookRecord:
         raise
 
 
+READING_LOG_PUBLISHED_INDEX = "ux_posts_reading_log_published"
+
+
+def reading_log_publish_conflict(exc: IntegrityError) -> bool:
+    return getattr(getattr(exc.orig, "diag", None), "constraint_name", None) == READING_LOG_PUBLISHED_INDEX
+
+
+def lock_own_reading_log(c: Connection, user_id: UUID, log_id: UUID) -> bool:
+    return c.execute(
+        text("SELECT id FROM reading_logs WHERE id = :id AND user_id = :uid FOR UPDATE"),
+        {"id": log_id, "uid": user_id},
+    ).first() is not None
+
+def ensure_log_has_no_published_post(c: Connection, log_id: UUID) -> None:
+    if c.execute(text(
+        "SELECT 1 FROM posts WHERE reading_log_id = :id AND status = 'published'"
+    ), {"id": log_id}).first():
+        raise ApiError(409, "ALREADY_PUBLISHED", "이미 올린 기록이에요")
+
+
 @router.post("/posts")
 async def create_post(
     request: Request, body: PostCreate, user: CurrentUser = Depends(get_current_user)
@@ -287,6 +318,17 @@ async def create_post(
 
     def tx(c: Connection) -> tuple[Any, bool]:
         lock_active_user(c, user.id)
+        if body.reading_log_id is not None:
+            owns_log = lock_own_reading_log(c, user.id, body.reading_log_id)
+            # Check the replay after locking the log. It still works after the original log was deleted.
+            existing_id = c.execute(
+                SELECT_BY_CLIENT_REQUEST_ID, {"uid": user.id, "rid": body.client_request_id},
+            ).scalar_one_or_none()
+            if existing_id is not None:
+                return select_post(c, existing_id), False
+            if not owns_log:
+                raise ApiError(404, "NOT_FOUND", MSG_NOT_FOUND)
+            ensure_log_has_no_published_post(c, body.reading_log_id)
         if not c.execute(text("SELECT 1 FROM libraries WHERE id = :id"), {"id": body.library_id}).first():
             raise ApiError(404, "NOT_FOUND", MSG_NOT_FOUND, "library_id")
         inserted = c.execute(INSERT_POST_ON_CONFLICT_DO_NOTHING_RETURNING, params(body, user.id, book)).first()
@@ -296,7 +338,12 @@ async def create_post(
         ).scalar_one()
         return select_post(c, post_id), created
 
-    row, created = await run_db(request.app.state.engine, tx)
+    try:
+        row, created = await run_db(request.app.state.engine, tx)
+    except IntegrityError as exc:
+        if reading_log_publish_conflict(exc):
+            raise ApiError(409, "ALREADY_PUBLISHED", "이미 올린 기록이에요") from exc
+        raise
     content = post_public(
         with_image_url(request, row),
         viewer=user,

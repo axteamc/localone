@@ -88,6 +88,7 @@ def feed_post(request: Request, row: Any, reacted: set[Any], saved: set[Any]) ->
         "library_name": r.library_name,
         "image_kind": r.image_kind,
         "image_url": r.image_url,
+        "image_value": r.image_value if r.image_kind == "template" else None,
         "image_color": r.image_value if r.image_kind == "color" else None,
         "overlay_text": r.overlay_text,
         "book": book,

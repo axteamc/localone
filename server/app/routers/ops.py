@@ -18,11 +18,13 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints, ValidationInfo, field_validator, model_validator
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
+from sqlalchemy.exc import IntegrityError
 
 from app import policy
 from app.auth import CurrentUser, get_current_user
 from app.common import ApiError, now_kst
 from app.db import run_db
+from app.routers.posts import reading_log_publish_conflict
 from app.services.inbox import add_inbox_items
 from app.services.looks import set_look_by_operator, shelf_book
 from app.services.provider_engine import isbn13_is_valid
@@ -189,7 +191,12 @@ async def restore_target(request: Request, kind: TargetKind, target_id: UUID, bo
         record(c, op.id, "restore", kind, target_id, body.reason)
         return target_out(kind, target_id, status)
 
-    return await run_db(request.app.state.engine, tx)
+    try:
+        return await run_db(request.app.state.engine, tx)
+    except IntegrityError as exc:
+        if kind == "post" and reading_log_publish_conflict(exc):
+            raise ApiError(409, "ALREADY_PUBLISHED", "같은 독서 기록에서 이미 공개된 다른 게시물이 있어요.") from exc
+        raise
 
 
 # ─────────── 신고 ───────────

@@ -39,7 +39,9 @@ router = APIRouter(prefix="/api/v1/me/reading-logs")
 SORT_DATE = "coalesce(r.read_on, (r.created_at AT TIME ZONE 'Asia/Seoul')::date)"
 LOG_COLUMNS = (
     f"r.id, r.read_on, r.note, r.quote, r.loan_id, r.created_at, r.updated_at, {SORT_DATE} AS sort_on, "
-    "b.isbn13, b.title, b.author, b.cover_url, l.id AS library_id, l.name AS library_name"
+    "b.isbn13, b.title, b.author, b.cover_url, l.id AS library_id, l.name AS library_name, "
+    "(SELECT p.id FROM posts p WHERE p.reading_log_id = r.id AND p.user_id = r.user_id "
+    "AND p.status = 'published') AS published_post_id"
 )
 LOG_JOINS = "FROM reading_logs r JOIN books b ON b.id = r.book_id LEFT JOIN libraries l ON l.id = r.library_id"
 
@@ -68,8 +70,7 @@ def reading_log_public(row: Any) -> dict[str, Any]:
         "note": row.note,
         "quote": row.quote,
         "loan_id": str(row.loan_id) if row.loan_id is not None else None,
-        # TODO(연결): B LOCAL-3 — posts.reading_log_id가 생기면 공개 중 게시물 id를 준다(C7: 그 전에는 늘 null)
-        "published_post_id": None,
+        "published_post_id": str(row.published_post_id) if row.published_post_id is not None else None,
         "created_at": iso_kst(row.created_at),
         "updated_at": iso_kst(row.updated_at),
     }
@@ -318,14 +319,6 @@ async def create_reading_log(
 # ─────────── #44 지우기 ───────────
 
 
-def posts_have_reading_log_column(c: Connection) -> bool:
-    # TODO(연결): B LOCAL-3 — posts.reading_log_id가 main에 생기면 이 확인 없이 늘 UPDATE한다
-    return c.execute(
-        text("SELECT 1 FROM information_schema.columns "
-             "WHERE table_schema = current_schema() AND table_name = 'posts' AND column_name = 'reading_log_id'")
-    ).first() is not None
-
-
 @router.delete("/{log_id}")
 async def delete_reading_log(
     request: Request, log_id: UUID, user: CurrentUser = Depends(get_current_user)
@@ -338,8 +331,6 @@ async def delete_reading_log(
         ).first()
         if own is None:
             raise not_found()
-        if posts_have_reading_log_column(c):  # 올린 게시물은 남기고 연결만 끊는다(R1-7, LOCAL-3 L3-4)
-            c.execute(text("UPDATE posts SET reading_log_id = NULL WHERE reading_log_id = :id"), {"id": log_id})
         c.execute(text("DELETE FROM reading_logs WHERE id = :id"), {"id": log_id})
 
     await run_db(request.app.state.engine, tx)
