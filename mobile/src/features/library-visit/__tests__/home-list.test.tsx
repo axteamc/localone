@@ -169,8 +169,10 @@ describe("VISIT-1-P1 home list", () => {
     const walk = (dir: string) => {
       for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
         const p = path.join(dir, e.name);
-        if (e.isDirectory()) walk(p);
-        else if (/\.(ts|tsx)$/.test(e.name)) files.push(p);
+        if (e.isDirectory()) {
+          // 다른 테스트의 색상 기대값은 화면 코드의 색상 검증 대상이 아니다.
+          if (e.name !== "__tests__") walk(p);
+        } else if (/\.(ts|tsx)$/.test(e.name)) files.push(p);
       }
     };
     walk(root);

@@ -3,7 +3,7 @@ import { NEARBY_DEFAULT_RADIUS_KM } from "./policy";
 
 export type Book = {
   isbn13: string; title: string; author: string | null; publisher: string | null;
-  cover_url: string | null; source: "kakao" | "naver" | "data4library" | "manual";
+  cover_url: string | null; source: "kakao" | "naver" | "data4library" | "yes24" | "manual";
   description: string | null; pub_year: number | null;
 };
 export type Today = { date: string; is_closed: boolean | null; hours_text: string | null; holiday_unchecked: boolean };
@@ -37,7 +37,7 @@ export type AvailabilityResponse = {
   isbn13: string; scope: "nearby" | "city" | "library"; radius_km: number | null;
   dtl_region: string | null; checked_at: string; items: AvailabilityItem[];
 };
-export type PurchaseLink = { isbn13: string; provider: "yes24"; kind: "search"; url: string };
+export type PurchaseLink = { isbn13: string; provider: "yes24"; kind: "product" | "search"; url: string };
 export class ApiCallError extends Error {
   constructor(public status: number, public code: string, message: string, public detail: string) {
     super(message); this.name = "ApiCallError";

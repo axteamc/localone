@@ -3,6 +3,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
+import { RecommendationAttribution } from "../../lib/RecommendationAttribution";
 import { WebHorizontalControls, useWebHorizontalScroll } from "../../lib/WebHorizontalControls";
 import { createLatestRunner } from "../../lib/latest";
 import { fetchRecommendations, type RecommendationResponse } from "../../lib/publicApi";
@@ -145,6 +146,9 @@ export function SearchEntry({ onOpenBook }: { onOpenBook(isbn13: string): void }
           <Text style={styles.headText} numberOfLines={1}>
             인기 도서
           </Text>
+          {popular.kind === "ready" && ranked.length > 0 && (
+            <RecommendationAttribution basisLabel={popular.data.basis_label} />
+          )}
         </View>
         {popular.kind === "ready" && (
           <Text style={styles.basis} numberOfLines={1}>
