@@ -1,6 +1,6 @@
 # 지역 SNS `local-feed` — VISIT-4 세부 명세서 (방문 스탬프 "다녀왔어요"·도서관 룩)
 
-- 담당: B · 큰 틀: `specs/local-feed/명세서.md` · 계획 Step: VISIT-4 · 상태: 작성 중 <!-- 작성 중 / 검토 요청 / 수정 요청 / 승인(머지됨) -->
+- 담당: B · 큰 틀: `specs/local-feed/명세서.md` · 계획 Step: VISIT-4 · 상태: 검토 요청 <!-- 작성 중 / 검토 요청 / 수정 요청 / 승인(머지됨) -->
 - 한 줄 설명 (사용자 말 그대로, 버튼을 누르면 어떻게 이어지는지 순서대로): (D 지시로 30초 설명을 묻지 않음 — Claude가 결정대로 씀, 사용자 말 아님) "다녀왔어요 누르면 나만 보기로 남고, 안내에서 피드에도 남기기를 누르면 피드에 도장 카드" / "방문 페이지는 도서관마다 다른 룩"
 - 이 세부가 끝나면 사용자가 눈으로 볼 수 있는 것: 그날 처음 들어온 도서관 방문 페이지의 피드 오른쪽 위에 "다녀왔어요" 버튼이 있고, 누르면 나만 볼지 피드에 남길지 정한다. 피드에 남긴 스탬프는 피드에 카드로 섞여 나오고 북마크할 수 있다. 방문 페이지와 거기서 연 게시물 상세는 그 도서관의 룩(색·곡률)으로 보인다.
 - 시안: `specs/local-feed/세부/VISIT-4_시안.html`
@@ -103,6 +103,8 @@
 
 - [정해진 것 이견] 결정 1·2 — 사용자는 두 번(처음·B·C 비교 뒤) 모두 A를 골랐으나 D 지시(PR #276, 이슈 #285)로 B로 반영. 사용자 A 답·이유는 이전 버전에 그대로 보존 — `specs/local-feed/세부/VISIT-4.md` 이전 버전
 - [Claude가 정함] 결정 1 안내 5초, 결정 2 ⋯ 메뉴 한 줄 + 닫기, 한 줄 설명·유저 플로우는 D 지시로 묻지 않고 결정대로 씀 — PR #276 2026-11-23 D 지시
+- [계약 보완 필요] V4-O5 "룩 토큰 전부"를 하려면 모듈 수준 `theme`을 쓰는 방문 페이지 조각(`PostCard.tsx`·`GuestbookCard.tsx`·`LibraryFeed.tsx`·`VisitHeader.tsx`·`VisitMenu.tsx`·`GuestbookComposer.tsx`·`PostMenu.tsx`·`ReactionButton.tsx`·`SameBookPosts.tsx`·`StampCard.tsx`)도 룩을 받아야 하는데 VISIT-4-P3 허용 파일은 `useLibraryLook.ts`·`VisitScreen.tsx`·`PostDetail.tsx`·`Bookshelf.tsx`뿐 — 추천: P3 허용 파일에 위 파일 추가(룩은 `useLibraryLook`이 돌려준 Theme를 React 컨텍스트로 내려 받기). D 판단 전 그 부분 구현 금지 — `../team/contracts/local-feed.md` VISIT-4 P2
+- [계약 보완 필요] 결정 2(B)의 "오늘 다녀감" 표시·⋯ 메뉴는 V4-1 "방문 페이지에서 시선을 끄는 무거운 표식은 이 버튼 하나(완전한 필 9999px)"와 같이 읽으면, 남긴 뒤에는 그 버튼이 사라짐 — V4-1은 "처음 들어오면"의 모양이라 충돌은 아니라고 보고 진행, D 확인 — `../team/contracts/local-feed.md` VISIT-4 V4-1
 - [Claude가 정함] 다음 세부를 VISIT-4로 시작 — 큰 틀 세부 목록에 M2 세부 순서가 없고, `기능_배정.md`가 "VISIT-4·LOCAL-4 기획 착수 가능"이라 계약서 절 순서(VISIT-3 → VISIT-4 → LOCAL-3 → LOCAL-4)를 따름 — `../team/기능_배정.md` B(M2) 행, `../team/contracts/local-feed.md`
 
 ## 다음에 할 것
@@ -144,4 +146,4 @@
 | VISIT-4-P2 | 같은 브랜치 | - | 대기 | - | - |
 | VISIT-4-P3 | 같은 브랜치 | - | 대기 | - | - |
 
-- **다음 세션 이어하기 메모**: D 지시(#285)로 결정 1·2 B 반영·빈칸 채움 완료 → 계약 수정본(contract/B-VISIT-4) 제출·두 PR Ready.
+- **다음 세션 이어하기 메모**: 기획 #276 + 계약 수정본(contract/B-VISIT-4) 제출 완료(검토 대기). 두 PR의 의견만 처리하고 다음 세부 기획은 시작하지 않는다.
