@@ -1167,8 +1167,8 @@ async function submit() {
 
 | # | 열린 칸 | D 추천(참고) | 채택 결정 | 상태 | 근거(명세 ID) |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| V4-O1 | 스탬프를 누른 뒤 공개 여부 고르는 모양(작은 창 두 버튼 / 토글) | 작은 창 `"나만 보기"`·`"피드에 남기기"` | 누르면 **바로 `private`로 남는다**(`#36` `visibility="private"`). 아래 한 줄 안내 `"나만 보기로 남겼어요"` + 글자 버튼 `"피드에도 남기기"`를 5초 보인다. 그 버튼을 누르면 `#36` `visibility="public"` → 피드 맨 앞에 내 `stamp` 카드, 한 줄 안내 `"피드에 남겼어요"`. 안내를 놓치면 V4-O2의 ⋯ 메뉴에서 바꾼다. 창·스위치 없음 | 확인 (D 결정 2026-11-23, 사용자는 작은 창(A)을 고름 — 명세 이전 버전) | `specs/local-feed/세부/VISIT-4.md` 결정 1, 시안 `#el-stamp-choose` |
-| V4-O2 | 이미 찍은 날 버튼 모양·공개 여부 바꾸는 자리 | 찍힌 모양 유지 + 다시 누르면 같은 작은 창 | 오늘 찍은 뒤(같은 날 다시 들어와도, `#35` `stamped=true`) 버튼 자리에 작은 글자 `"오늘 다녀감 · 나만 보기"` / `"오늘 다녀감 · 피드에 남김"`(`inkMuted`) + ⋯(누르는 자리 44 이상). ⋯ → 메뉴 한 줄 `"피드에 남기기로 바꾸기"`(지금 `private`) 또는 `"나만 보기로 바꾸기"`(지금 `public`) + `"닫기"`. 고르면 `#36`으로 바꾸고 피드의 내 `stamp` 카드를 넣거나 뺀다 | 확인 (D 결정 2026-11-23, 사용자는 진한 버튼·같은 창(A)을 고름) / 메뉴 모양: 기본값(Claude) | `specs/local-feed/세부/VISIT-4.md` 결정 2, 시안 `#el-stamp-done` |
+| V4-O1 | 스탬프를 누른 뒤 공개 여부 고르는 모양(작은 창 두 버튼 / 토글) | 작은 창 `"나만 보기"`·`"피드에 남기기"` | 누르면 **바로 `private`로 남는다**(`#36` `visibility="private"`). 아래 한 줄 안내 `"나만 보기로 남겼어요"` + 글자 버튼 `"피드에도 남기기"`를 5초 보인다. 그 버튼을 누르면 `#36` `visibility="public"` → 혼합 피드를 갱신해 기존 정렬에 맞게 내 `stamp` 카드 표시, 한 줄 안내 `"피드에 남겼어요"`. 안내를 놓치면 V4-O2의 ⋯ 메뉴에서 바꾼다. 창·스위치 없음 | 확인 (D 결정 2026-11-23, 사용자는 작은 창(A)을 고름 — 명세 이전 버전) | `specs/local-feed/세부/VISIT-4.md` 결정 1, 시안 `#el-stamp-choose` |
+| V4-O2 | 이미 찍은 날 버튼 모양·공개 여부 바꾸는 자리 | 찍힌 모양 유지 + 다시 누르면 같은 작은 창 | 오늘 찍은 뒤(같은 날 다시 들어와도, `#35` `stamped=true`) 버튼 자리에 작은 글자 `"오늘 다녀감 · 나만 보기"` / `"오늘 다녀감 · 피드에 남김"`(`inkMuted`) + ⋯(누르는 자리 44 이상). ⋯ → 메뉴 한 줄 `"피드에 남기기로 바꾸기"`(지금 `private`) 또는 `"나만 보기로 바꾸기"`(지금 `public`) + `"닫기"`. 고르면 `#36`으로 바꾸고 기존 정렬을 유지하며 피드를 갱신한다. 비공개로 바꿨다면 즉시 내 카드를 숨긴다 | 확인 (D 결정 2026-11-23, 사용자는 진한 버튼·같은 창(A)을 고름) / 메뉴 모양: 기본값(Claude) | `specs/local-feed/세부/VISIT-4.md` 결정 2, 시안 `#el-stamp-done` |
 | V4-O3 | 공개 스탬프 카드 모양(도장 그림·날짜·닉네임·북마크 버튼 배치) | 도장 + `"<닉네임> · 다녀왔어요"` + 날짜 + 오른쪽 북마크 아이콘 | 2열 메이슨리 **한 칸**짜리 작은 카드(게시물·방명록과 같은 폭). 바탕 `paper`, 곡률 `radii.infoCard`, 위 동그란 도장(테두리 `inkStrong`, 안에 `stamped_on`의 `MM.DD`), `"<author_nickname> · 다녀왔어요"`, 아래 언제(VISIT-3 방명록 `guestbookTime` 규칙, `published_at` 기준), 오른쪽 아래 북마크(비움 `surface3` / 채움 `inkStrong`, 누르는 자리 44 이상). 카드 자체를 눌러도 이동 없음. `mine`이어도 카드에 메뉴 없음(바꾸기는 V4-O2) | 확인(사용자: "a가 좋아요. 방명록처럼 자연스럽게 섞여서요") / 크기·색: 기본값(Claude) | `specs/local-feed/세부/VISIT-4.md` 결정 3, 시안 `#el-stamp-card` |
 | V4-O4 | 비로그인으로 버튼을 눌렀을 때 | 로그인 안내 | 서버를 부르지 않고 아래에서 로그인 안내 창(VISIT-3 `GuestbookLoginSheet`와 같은 모양): `"로그인하면 다녀왔어요를 남길 수 있어요"` / `"피드와 책장은 로그인 없이도 볼 수 있어요."`, `"로그인하기"`(→ `/login`)·`"닫기"`. 비로그인은 `#35`를 부르지 않고 버튼 기본 모양. 스탬프 카드 북마크도 비로그인이면 같은 모양의 안내(`"로그인하면 저장할 수 있어요"`) | 기본값(Claude), 예외 화면 사용자 확인("다 괜찮아요. 로그인 안함 화면이 헷갈리지 않아요") | `specs/local-feed/세부/VISIT-4.md` 예외 #4 |
 | V4-O5 | 룩이 바뀌는 범위 세부(머리·피드 바탕·카드 곡률·책장 선반색) | 룩 토큰 전부 | **룩 토큰 전부**: `getTheme(look)`의 `colors` 전부와 `radii` 전부(아치 `card` 18·`infoCard` 9·`bookCover` [5,9,9,5] / `modern` 6·6·[2,4,4,2]). 방문 페이지의 머리·접힌 머리·피드 바탕·게시물·방명록·스탬프 카드·"다녀왔어요"·글자 표시·`+`·작은 창·한 줄 안내·책장 선반·표지 없는 책, 그 피드에서 연 상세(이어 읽기 포함, 방문 중인 도서관 룩). 홈·검색·대출·내 정보·글쓰기 화면은 기본 룩 | 확인(사용자: "a가 좋아요. 도서관마다 다른곳에 온 느낌이라서요") | `specs/local-feed/세부/VISIT-4.md` 결정 4, 시안 `#el-look` |
@@ -1272,7 +1272,7 @@ ALTER TABLE stamp_bookmarks ENABLE ROW LEVEL SECURITY;
 | 비공개·없는 스탬프 북마크 | `#69` `PUT`에 없는 `stamp_id` 또는 `visibility='private'` | `404 NOT_FOUND` | 안내 | 카드 | 행 없음 |
 | 날짜 경계 | 자정 직후 다시 들어옴 | `#35` `stamped:false` | 새 버튼 | 어제 스탬프 그대로 | 날짜별 행 |
 | 끊김(공개 바꾸기·북마크, 세부 명세 예외 #1) | 안내의 `"피드에도 남기기"`·⋯ 메뉴 바꾸기·카드 북마크 중 네트워크·서버 오류 | `ApiCallError` | 한 줄 안내(C3 찍기 실패 행) | 표시·카드·북마크 아이콘은 실패 전 그대로 | 행 그대로 |
-| 연타(세부 명세 예외 #3) | 버튼·`"피드에도 남기기"`·메뉴 항목 빠르게 두 번 | `200` | 진행 중 누름 무시 | — | 행 하나, 피드 내 카드 하나 |
+| 연타(세부 명세 예외 #3) | 버튼·`"피드에도 남기기"`·메뉴 항목 빠르게 두 번 | `200` | 진행 중 누름 무시 | — | 행 하나, 공개 상태의 피드에 같은 ID 카드 최대 하나 |
 | 남의 것(세부 명세 예외 #4) | 남의 공개 스탬프 카드 | N/A: 앱이 바꾸기 메뉴를 그리지 않음(바꾸기는 내 V4-O2 표시에서만) | — | 카드 | 남의 행 무변경 |
 
 #### C7. 다른 기능과 닿는 곳과 `TODO(연결)` 가짜 값
@@ -1362,30 +1362,43 @@ export function useLibraryLook(libraryId: number): Theme {
 
 ```ts
 // StampButton.tsx — V4-O1·V4-O2 (누르면 바로 private, 안내에서 public, 남긴 뒤 글자 표시 + ⋯)
-const sending = useRef(false);
-async function put(visibility: "private" | "public") {
-  if (sending.current) return;                                   // 연타: 진행 중이면 무시(C6 연타)
-  sending.current = true;
+// scope는 도서관·로그인 사용자·화면 세대를 묶는다. 변경 시 오늘 상태·안내·메뉴를 지운다.
+// #35는 로그인 상태에서만 부르고, 취소·최신 응답 가드를 적용한다. 조회 완료 전에는 누름을 받지 않는다.
+async function put(scope, visibility, action) {
+  if (!isCurrentSignedIn(scope) || scope.pending) return;        // 이전 화면 안내·메뉴와 연타 차단
+  scope.pending = true;
+  invalidateTodayRead(scope);                                    // 앞서 시작한 #35의 응답 무효화
   try {
-    const r = await putTodayStamp(libraryId, visibility);          // #36 멱등(V4-5)
-    if (stale(libraryId)) return;                                 // 도서관을 바꿨으면 늦은 응답 버림
-    setToday(r);                                                  // 글자 표시 "오늘 다녀감 · …"
-    emitStampChanged(libraryId, r);                               // api.ts 알림(기존 emitPostWithdrawn과 같은 방식) → LibraryFeed가 맨 앞 내 stamp 카드를 넣거나 뺌(같은 id 하나). StampButton 시그니처(C2)는 그대로
-    return r;
+    const result = await putTodayStamp(scope.libraryId, visibility);
+    if (!isCurrentSignedIn(scope)) return;
+    setToday(result);
+    closeStampControls();
+    emitStampChanged(scope, result.stamp.id, visibility);          // api.ts → VisitScreen
+    if (action === "first") {
+      showPrivateNotice(5000, () => put(scope, "public", "change"));
+    } else {
+      notice(visibility === "public" ? STAMP_TEXT.savedPublic : STAMP_TEXT.changedPrivate);
+    }
   } catch {
-    notice(STAMP_TEXT.failed);                                    // 표시는 실패 전 그대로
+    if (isCurrentSignedIn(scope)) {
+      notice(action === "first" ? STAMP_TEXT.failed : STAMP_TEXT.changeFailed);
+    }
   } finally {
-    sending.current = false;
+    scope.pending = false;
   }
 }
 function onPress() {
-  if (status !== "signedIn") return setLoginSheet(true);         // V4-O4: 서버 호출 0번
-  if (!today?.stamped) void put("private").then((r) => r && showUndoLike(STAMP_TEXT.savedPrivate, STAMP_TEXT.toPublic, () => put("public")));
+  if (status === "signedOut") return setLoginSheet(true);
+  if (status === "signedIn" && today?.stamped === false) void put(scope, "private", "first");
 }
-function onMenuFlip() {                                           // V4-O2: 지금의 반대쪽으로
-  void put(today!.stamp!.visibility === "public" ? "private" : "public");
+function onMenuFlip() {
+  if (!today?.stamp) return;
+  void put(scope, today.stamp.visibility === "public" ? "private" : "public", "change");
 }
 ```
+
+- `VisitScreen.tsx`에서 현재 방문·계정 범위의 이벤트만 받고, 이미 진행 중인 `#32` 조회·페이지 추가를 무효화한다. `private` 성공 시 표시 중인 해당 ID의 카드를 즉시 뺀다. `public` 성공 시 `#36`의 `MyStamp`에 없는 카드 필드는 `#32`에서 읽는다. 두 경우 모두 기존 `refreshFeed`로 조용히 갱신하고 `#32` 정렬·커서를 따른다. 갱신 실패 시 보이던 피드를 유지하며 이미 제거한 카드는 복원하지 않는다.
+- 서울 날짜가 바뀐 뒤 이전 날짜 표시에서 공개 여부를 바꾸면 `#36`은 새 날짜에 기록할 수 있다. 날짜 전환 경합의 처리 계약은 발행 전 D 결정 항목이다.
 
 #### P5. 필수 테스트
 
@@ -1403,11 +1416,13 @@ function onMenuFlip() {                                           // V4-O2: 지�
 | VISIT-4-P3 | `unknown or null look falls back to warm` | `look: null` / `"neon"` | 렌더 | `getTheme("warm")` 값 | V4-9 |
 | VISIT-4-P3 | `continue reading keeps visiting library look` | 방문 101(oxford), 102 글 상세 | 이어 읽기로 102 글 열기 | 상세는 oxford 토큰 | V4-8 |
 | VISIT-4-P3 | `all looks keep body text contrast` | 4룩 | 대비 계산 | 본문 4.5:1 이상 | V4-10 |
-| VISIT-4-P2 | `stamp press saves private at once and toast switches to public` | 로그인, 오늘 안 찍음 | 버튼 누름 → 안내의 `"피드에도 남기기"` | `putTodayStamp` 첫 호출 `"private"`·작은 창 없음, 안내 `"나만 보기로 남겼어요"`, 두 번째 호출 `"public"`, 피드 맨 앞 내 `stamp` 카드 1개, `"피드에 남겼어요"` | V4-O1(바로 public으로 찍거나 창을 띄우면 실패) |
+| VISIT-4-P2 | `stamp press saves private at once and toast switches to public` | 로그인, 오늘 안 찍음 | 버튼 누름 → 안내의 `"피드에도 남기기"` | `putTodayStamp` 첫 호출 `"private"`·작은 창 없음, 안내 `"나만 보기로 남겼어요"`, 두 번째 호출 `"public"`, `#32` 갱신 후 정렬 위치에 같은 ID의 내 `stamp` 카드 1개, `"피드에 남겼어요"` | V4-O1(바로 public으로 찍거나 창을 띄우면 실패) |
 | VISIT-4-P2 | `stamped today shows label and menu flips visibility` | `#35` `stamped:true` `private` | 렌더 → ⋯ → `"피드에 남기기로 바꾸기"` → 다시 ⋯ → `"나만 보기로 바꾸기"` | 버튼 대신 `"오늘 다녀감 · 나만 보기"`, `putTodayStamp("public")` 뒤 `"오늘 다녀감 · 피드에 남김"`·카드 생김, `putTodayStamp("private")` 뒤 카드 사라짐 | V4-O2 |
 | VISIT-4-P2 | `signed out stamp shows login sheet without request` | 비로그인 | 버튼 누름 / 카드 북마크 누름 | 로그인 안내 창, `fetchTodayStamp`·`putTodayStamp`·`setStampBookmark` 0번 | V4-O4·C6 비로그인 |
 | VISIT-4-P2 | `stamp failure keeps button and shows retry notice` | `putTodayStamp` 503 | 버튼 누름 | 버튼 기본 모양 그대로, `"남기지 못했어요. 다시 눌러 주세요"`, 피드 카드 없음 | C6 끊김 |
 | VISIT-4-P2 | `stamp card is one cell with seal nickname time and no menu` | `kind:"stamp"` `mine:true`·`false` | 렌더 | 도장 `MM.DD`, `"{닉네임} · 다녀왔어요"`, 언제 글자, 북마크 버튼 1개, 메뉴 버튼 0개, 화면에 `"인증"`·`"확인됨"` 없음 | V4-O3·V4-6 |
+| VISIT-4-P2 | `old scope cannot change current stamp or feed` | A 계정·도서관 X의 쓰기 또는 조회 응답을 지연 | 로그아웃→B 로그인 또는 Y로 이동 후 이전 응답·안내 실행 | 새 범위의 상태·피드·문구 무변경, 이전 안내에서 `#36` 추가 호출 0회 | V4-O1·V4-O2 / 범위 가드 제거 시 실패 |
+| VISIT-4-P2 | `visibility change refreshes sorted feed and hides private stamp immediately` | 더 최신인 게시물과 진행 중인 페이지 응답 | 공개→비공개, 이전 응답 지연, 최신 조회 실패 | 공개는 `#32` 순서 유지, 비공개 성공 직후 대상 카드 제거, 이전 응답이나 조회 실패로 카드가 다시 나타나지 않음 | V4-O1·V4-O2 / 재조회·이전 응답 무효화·즉시 제거 가드 누락 시 실패 |
 | VISIT-4-P3 | `visit page uses look tokens for cards radii and shelf` | `look:"modern"` | 방문 페이지 렌더 | 게시물·방명록·스탬프 카드·책장 선반·버튼이 modern 색, 카드 곡률 6 | V4-O5(일부만 바꾸면 실패) |
 | VISIT-4-P3 | `home and compose keep default look` | 방문 페이지 `look:"oxford"` 뒤 | 홈·글쓰기 렌더 | 기본 theme 값 | V4-8 |
 
