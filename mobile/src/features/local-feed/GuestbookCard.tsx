@@ -1,4 +1,5 @@
 // VISIT-3-P3 방명록 카드·내 방명록 메뉴 — contracts/local-feed.md VISIT-3 V3-6·V3-10, V3-O4·V3-O6, 명세 결정 3
+import { REPORT_TEXT } from "./ReportSheet";
 import React, { useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { actionColors, type Theme } from "../../theme";
@@ -68,7 +69,7 @@ export function GuestbookCard({ entry, width, onMenu }: GuestbookCardProps) {
           <View style={styles.tagDot} />
           <Text style={styles.tagText}>{GUESTBOOK_CARD_TEXT.tag}</Text>
         </View>
-        {entry.mine && onMenu ? (
+        {onMenu ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={GUESTBOOK_CARD_TEXT.menuLabel}
@@ -99,10 +100,11 @@ export type GuestbookMenuProps = {
   busy: boolean;
   onClose(): void;
   onWithdraw(entry: GuestbookItem): void;
+  onReport?(): void;
 };
 
 /** 내 카드 ⋯ → "지우기" → 확인창 → "지우기"(V3-O6). 되돌리기 없음 */
-export function GuestbookMenu({ entry, busy, onClose, onWithdraw }: GuestbookMenuProps) {
+export function GuestbookMenu({ entry, busy, onClose, onWithdraw, onReport }: GuestbookMenuProps) {
   const { ACT, styles } = useLook(makeStyles);
   const [confirming, setConfirming] = useState(false);
   return (
@@ -131,10 +133,16 @@ export function GuestbookMenu({ entry, busy, onClose, onWithdraw }: GuestbookMen
         ) : (
           <View style={styles.sheet} testID="guestbook-menu">
             <Text style={styles.sheetTitle}>{GUESTBOOK_CARD_TEXT.menuTitle}</Text>
-            <Pressable accessibilityRole="button" onPress={() => setConfirming(true)} style={styles.row}>
-              <Text style={styles.rowText}>{GUESTBOOK_CARD_TEXT.withdraw}</Text>
-              <Text style={styles.rowSub}>{GUESTBOOK_CARD_TEXT.withdrawSub}</Text>
-            </Pressable>
+            {entry.mine ? (
+              <Pressable accessibilityRole="button" onPress={() => setConfirming(true)} style={styles.row}>
+                <Text style={styles.rowText}>{GUESTBOOK_CARD_TEXT.withdraw}</Text>
+                <Text style={styles.rowSub}>{GUESTBOOK_CARD_TEXT.withdrawSub}</Text>
+              </Pressable>
+            ) : onReport ? (
+              <Pressable accessibilityRole="button" onPress={onReport} style={styles.row}>
+                <Text style={styles.rowText}>{REPORT_TEXT.open}</Text>
+              </Pressable>
+            ) : null}
             <Pressable
               accessibilityRole="button"
               onPress={onClose}

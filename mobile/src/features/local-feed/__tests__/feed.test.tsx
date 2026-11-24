@@ -40,6 +40,7 @@ jest.mock("../api", () => {
       return { items: page.items.map((post) => ({ kind: "post", post })), next_cursor: page.next_cursor };
     }),
     fetchShelf: jest.fn(async () => ({ pages: [] })), // VISIT-3 책장(#31): 이 파일은 책장을 보지 않는다
+    fetchPost: jest.fn(async (id: string) => ({ id, is_mine: false })), // LOCAL-4 카드 메뉴 소유권 확인(#27)
     setReaction: jest.fn(),
     setBookmark: jest.fn(),
   };

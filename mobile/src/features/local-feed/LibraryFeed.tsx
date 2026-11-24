@@ -25,6 +25,7 @@ import { FeedItemCard, isClubItem } from "./FeedItemCard";
 import { GUESTBOOK_CARD_TEXT, GuestbookMenu, guestbookHeightRatio } from "./GuestbookCard";
 import { cardHeightRatio, PostCard } from "./PostCard";
 import { LoginPrompt, PostMenu } from "./PostMenu";
+import { REPORT_TEXT, ReportedTarget, ReportSheet } from "./ReportSheet";
 import { StampLoginSheet } from "./StampButton";
 import { STAMP_CARD_TEXT, STAMP_HEIGHT_RATIO } from "./StampCard";
 
@@ -84,7 +85,9 @@ export function MasonryGrid({ items, onPress, onMenu, testID }: MasonryGridProps
       {[left, right].map((col, i) => (
         <View key={i} style={[styles.column, { width: cardWidth }]}>
           {col.map((post) => (
-            <PostCard key={post.id} post={post} width={cardWidth} onPress={onPress} onMenu={onMenu} />
+            <ReportedTarget key={post.id} kind="post" id={post.id} width={cardWidth}>
+              <PostCard post={post} width={cardWidth} onPress={onPress} onMenu={onMenu} />
+            </ReportedTarget>
           ))}
         </View>
       ))}
@@ -110,16 +113,26 @@ function FeedItemGrid({
     <View style={styles.grid} onLayout={onLayout}>
       {[left, right].map((col, i) => (
         <View key={i} style={[styles.column, { width: cardWidth }]}>
-          {col.map((item) => (
-            <FeedItemCard
-              key={feedItemKey(item)}
-              item={item}
-              width={cardWidth}
-              onOpenPost={onOpenPost}
-              onMenu={onMenu}
-              onToggleStampBookmark={onToggleStampBookmark}
-            />
-          ))}
+          {col.map((item) => {
+            const card = (
+              <FeedItemCard
+                key={feedItemKey(item)}
+                item={item}
+                width={cardWidth}
+                onOpenPost={onOpenPost}
+                onMenu={onMenu}
+                onToggleStampBookmark={onToggleStampBookmark}
+              />
+            );
+            const target = isPostItem(item) ? { kind: "post" as const, id: item.post.id }
+              : isGuestbookItem(item) ? { kind: "guestbook" as const, id: item.guestbook.id }
+              : isClubItem(item) ? { kind: "club" as const, id: item.club.id } : null;
+            return target ? (
+              <ReportedTarget key={feedItemKey(item)} {...target} width={cardWidth}>
+                {card}
+              </ReportedTarget>
+            ) : card;
+          })}
         </View>
       ))}
     </View>
@@ -136,12 +149,14 @@ export type LibraryFeedProps = {
 export function LibraryFeed({ items, onNotice, onReload }: LibraryFeedProps) {
   const router = useRouter();
   const { status, userId } = useAuth();
+  const reportOwner = JSON.stringify([status, userId]);
   // 메뉴·상세에서 바꾼 좋아요·북마크. 필드 단위로 최신 상태에 합친다(①-1: 늦은 응답이 다른 필드를 덮지 않게)
   const [changed, setChanged] = useState<Record<string, PostReactionPatch>>({});
   const [menuFor, setMenuFor] = useState<string | null>(null);
   const [login, setLogin] = useState(false);
   const [hidden, setHidden] = useState<Set<string>>(() => new Set()); // 게시물 id(상세에서 내림)
   const [gone, setGone] = useState<Set<string>>(() => new Set()); // 지운 방명록 id
+  const [report, setReport] = useState<{ id: string; owner: string } | null>(null);
   const [gbMenu, setGbMenu] = useState<GuestbookItem | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
   const withdrawingRef = useRef(false);
@@ -279,7 +294,7 @@ export function LibraryFeed({ items, onNotice, onReload }: LibraryFeedProps) {
         }
         onMenu={(item) => {
           if (isPostItem(item)) setMenuFor(item.post.id);
-          else if (isGuestbookItem(item) && item.guestbook.mine) setGbMenu(item.guestbook);
+          else if (isGuestbookItem(item)) setGbMenu(item.guestbook);
         }}
         onToggleStampBookmark={(id, next) => void toggleStampBookmark(id, next)}
       />
@@ -302,6 +317,17 @@ export function LibraryFeed({ items, onNotice, onReload }: LibraryFeedProps) {
           busy={withdrawing}
           onClose={() => setGbMenu(null)}
           onWithdraw={(entry) => void withdraw(entry)}
+          onReport={() => {
+            setReport({ id: gbMenu.id, owner: reportOwner });
+            setGbMenu(null);
+          }}
+        />
+      ) : null}
+      {report?.owner === reportOwner ? (
+        <ReportSheet
+          target={{ kind: "guestbook", id: report.id }}
+          onClose={() => setReport(null)}
+          onDone={() => { setReport(null); onNotice(REPORT_TEXT.done); }}
         />
       ) : null}
     </View>

@@ -16,6 +16,7 @@ import { ApiCallError, emitPostReaction, emitPostWithdrawn, fetchPost, type Post
 import { PostImage, PostMoreMenu } from "./ComposeScreen";
 import { TemplateCard } from "./templates";
 import { LoginPrompt, MENU_TEXT } from "./PostMenu";
+import { REPORT_TEXT, ReportedTarget, ReportSheet } from "./ReportSheet";
 import { ReactionButton, SaveButton } from "./ReactionButton";
 import { LibraryOtherPosts, SameBookPosts } from "./SameBookPosts";
 import { shareNotice, sharePost } from "./share";
@@ -111,7 +112,8 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
   const router = useRouter();
   const alreadyPublished = useLocalSearchParams?.<{ notice?: string }>()?.notice === "already-published";
   const insets = useSafeAreaInsets();
-  const { status } = useAuth();
+  const { status, userId } = useAuth();
+  const reportIdentity = JSON.stringify([postId, status, userId]);
   const signedIn = status === "signedIn";
   const authLoading = status === "loading"; // 복원 중에는 로그인 안내를 띄우지 않는다(①-5)
   const [layoutWidth, setLayoutWidth] = useState<number | null>(null);
@@ -124,6 +126,7 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
   const [loan, setLoan] = useState<AvailabilityItem | null | "failed">(null);
   const [login, setLogin] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [reportFor, setReportFor] = useState<string | null>(null);
   const [othersMenu, setOthersMenu] = useState(false);
   const postRunner = useRef(createLatestRunner()).current;
   const loanRunner = useRef(createLatestRunner()).current;
@@ -333,6 +336,14 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
                   >
                     <Text style={styles.smallMenuText}>{MENU_TEXT.share}</Text>
                   </Pressable>
+                  {!authLoading ? (
+                    <Pressable accessibilityRole="button" style={styles.smallMenuItem} onPress={() => {
+                      setOthersMenu(false);
+                      setReportFor(reportIdentity);
+                    }}>
+                      <Text style={styles.smallMenuText}>{REPORT_TEXT.open}</Text>
+                    </Pressable>
+                  ) : null}
                 </View>
               ) : null}
             </View>
@@ -408,17 +419,19 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
         {alreadyPublished ? (
           <Text accessibilityLiveRegion="polite" style={[styles.byline, { paddingHorizontal: 16 }]}>이미 올린 기록이에요</Text>
         ) : null}
-        {wide ? (
-          <View style={styles.wideRow}>
-            {image}
-            {info}
-          </View>
-        ) : (
-          <>
-            {image}
-            {info}
-          </>
-        )}
+        <ReportedTarget kind="post" id={post.id}>
+          {wide ? (
+            <View style={styles.wideRow}>
+              {image}
+              {info}
+            </View>
+          ) : (
+            <>
+              {image}
+              {info}
+            </>
+          )}
+        </ReportedTarget>
         <SameBookPosts postId={post.id} isbn13={post.book?.isbn13 ?? null} onOpen={openPost} />
         <LibraryOtherPosts postId={post.id} libraryId={visitLibraryId ?? post.library.id} onOpen={openPost} />
       </ScrollView>
@@ -428,6 +441,13 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
         </View>
       ) : null}
       {login ? <LoginPrompt onClose={() => setLogin(false)} /> : null}
+      {reportFor === reportIdentity ? (
+        <ReportSheet
+          target={{ kind: "post", id: post.id }}
+          onClose={() => setReportFor(null)}
+          onDone={() => { setReportFor(null); showNotice(REPORT_TEXT.done); }}
+        />
+      ) : null}
     </View>
   );
 }

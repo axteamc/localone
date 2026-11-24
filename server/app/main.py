@@ -136,6 +136,9 @@ def create_app(
     from app.routers.guestbook import router as guestbook_router
 
     app.include_router(guestbook_router)
+    from app.routers.reports import router as reports_router
+
+    app.include_router(reports_router)
     from app.routers.stamps import router as stamps_router
 
     app.include_router(stamps_router)
