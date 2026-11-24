@@ -273,3 +273,30 @@ def test_bookmark_row_kept_when_stamp_turns_private(client, auth, db_engine):
     put_stamp(client, auth["A"], "private", expected_stamp_id=stamp_id)
     assert len(bookmark_rows(db_engine)) == 1  # C-46 D4·D5: 행은 남긴다
     assert stamp_items(feed(client, auth["B"]).json()) == []
+
+
+def test_visit_stamps_and_bookmarks_rls_enabled_with_no_policies(db_engine):
+    with db_engine.connect() as conn:
+        for table in ("visit_stamps", "stamp_bookmarks"):
+            assert conn.execute(
+                text("SELECT relrowsecurity FROM pg_class WHERE relnamespace='public'::regnamespace AND relname = :t"),
+                {"t": table},
+            ).scalar_one() is True
+            assert conn.execute(
+                text("SELECT count(*) FROM pg_policies WHERE schemaname = 'public' AND tablename = :t"),
+                {"t": table},
+            ).scalar_one() == 0
+
+
+def test_withdrawn_user_cannot_write_stamps_or_bookmarks(client, auth, db_engine):
+    stamp_id = put_stamp(client, auth["A"], "public").json()["stamp"]["id"]
+    with db_engine.begin() as conn:
+        conn.execute(text("UPDATE users SET status = 'withdrawn' WHERE id = :uid"), {"uid": USER_B_ID})
+    for resp in (
+        put_stamp(client, auth["B"], "public", library_id=LIB_2),
+        client.put(f"/api/v1/stamps/{stamp_id}/bookmark", headers=auth["B"]),
+        client.delete(f"/api/v1/stamps/{stamp_id}/bookmark", headers=auth["B"]),
+    ):
+        assert resp.status_code == 403
+    assert [(str(r.user_id), r.library_id) for r in rows(db_engine)] == [(USER_A_ID, LIB_1)]
+    assert bookmark_rows(db_engine) == []

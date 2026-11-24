@@ -457,4 +457,30 @@ describe("VISIT-4-P2 스탬프 카드", () => {
     expect(await screen.findByTestId("empty-feed")).toBeTruthy();
     expect(screen.getByText(STAMP_TEXT.button)).toBeTruthy();
   });
+
+  test("account switch clears stamp bookmark overrides and drops late bookmark response", async () => {
+    const pending = deferred<{ bookmarked: boolean }>();
+    setStampBookmark.mockReturnValueOnce(pending.promise);
+    const view = await enter([stampFeed(stampItem("s1", { my_bookmark: false })), postItem(post("p1"))]);
+    await fireEvent.press(await screen.findByTestId("stamp-bookmark-s1"));
+    expect(setStampBookmark).toHaveBeenCalledTimes(1);
+
+    // A의 북마크 응답이 오기 전에 B로 계정 전환(status는 그대로 signedIn, userId만 변경)
+    setAuth("signedIn", USER_B);
+    await view.rerender(<VisitScreen libraryId={101} distanceM={null} />);
+
+    // 늦게 도착한 A의 응답이 B의 화면 북마크 상태나 안내를 덮어쓰지 않아야 한다
+    await act(async () => pending.resolve({ bookmarked: true }));
+    expect(screen.getByLabelText(STAMP_CARD_TEXT.bookmark)).toBeTruthy();
+    expect(screen.queryByText(STAMP_CARD_TEXT.saved)).toBeNull();
+
+    // B가 저장한 뒤 다시 A로 전환하면 B의 로컬 오버라이드도 초기화된다
+    setStampBookmark.mockResolvedValueOnce({ bookmarked: true });
+    await fireEvent.press(screen.getByTestId("stamp-bookmark-s1"));
+    expect(await screen.findByLabelText(STAMP_CARD_TEXT.bookmarked)).toBeTruthy();
+
+    setAuth("signedIn", USER_A);
+    await view.rerender(<VisitScreen libraryId={101} distanceM={null} />);
+    expect(screen.getByLabelText(STAMP_CARD_TEXT.bookmark)).toBeTruthy();
+  });
 });

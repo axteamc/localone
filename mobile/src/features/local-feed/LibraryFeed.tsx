@@ -149,6 +149,15 @@ export function LibraryFeed({ items, onNotice, onReload }: LibraryFeedProps) {
   const [privateStamps, setPrivateStamps] = useState<Set<string>>(() => new Set()); // 나만 보기로 바꾼 내 스탬프 "도서관:id"
   const [stampLogin, setStampLogin] = useState(false);
   const stampBusy = useRef(new Set<string>());
+  const authScopeRef = useRef({ status, userId, alive: true });
+  authScopeRef.current.status = status;
+  authScopeRef.current.userId = userId;
+  useEffect(
+    () => () => {
+      authScopeRef.current.alive = false;
+    },
+    []
+  );
   const shown = useMemo(
     () =>
       items.flatMap((item): FeedItem[] => {
@@ -176,12 +185,12 @@ export function LibraryFeed({ items, onNotice, onReload }: LibraryFeedProps) {
 
   // 상세에서 바꾼 공감·북마크를 돌아왔을 때 메뉴에 그대로 보인다(①-2)
   useEffect(() => onPostReaction(patch), [patch]);
-  // 로그인 상태가 바뀌면 앞 사용자의 변경을 남기지 않는다
+  // 로그인 상태나 계정이 바뀌면 앞 사용자의 변경을 남기지 않는다
   useEffect(() => {
     setChanged({});
     setStampMarks({});
     setPrivateStamps(new Set());
-  }, [status]);
+  }, [status, userId]);
 
   // 내 스탬프 공개 여부를 바꾸면 카드를 바로 넣고 뺀다(V4-O1·V4-O2). 넣기는 VisitScreen의 #32 갱신이 한다
   useEffect(
@@ -205,16 +214,25 @@ export function LibraryFeed({ items, onNotice, onReload }: LibraryFeedProps) {
       setStampLogin(true); // 서버를 부르지 않는다(V4-O4)
       return;
     }
-    if (status !== "signedIn" || stampBusy.current.has(stampId)) return;
-    stampBusy.current.add(stampId);
+    if (status !== "signedIn" || !userId) return;
+    const reqUserId = userId;
+    const busyKey = `${reqUserId}:${stampId}`;
+    if (stampBusy.current.has(busyKey)) return;
+    stampBusy.current.add(busyKey);
+    const sameUser = () =>
+      authScopeRef.current.alive &&
+      authScopeRef.current.status === "signedIn" &&
+      authScopeRef.current.userId === reqUserId;
     try {
       const res = await setStampBookmark(stampId, next);
+      if (!sameUser()) return;
       setStampMarks((m) => ({ ...m, [stampId]: res.bookmarked }));
       onNotice(res.bookmarked ? STAMP_CARD_TEXT.saved : STAMP_CARD_TEXT.unsaved);
     } catch {
+      if (!sameUser()) return;
       onNotice(STAMP_CARD_TEXT.saveFailed);
     } finally {
-      stampBusy.current.delete(stampId);
+      stampBusy.current.delete(busyKey);
     }
   };
 

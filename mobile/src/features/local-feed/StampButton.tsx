@@ -59,7 +59,7 @@ export function StampButton({ libraryId }: { libraryId: number }) {
   const isCurrentSignedIn = (scope: Scope) => scope.alive && scopeRef.current === scope && scope.userId !== null;
 
   const reloadToday = useCallback(
-    async (scope: Scope) => {
+    async (scope: Scope, notifyOnError = false) => {
       setRead("loading");
       const res = await readRunner.run((signal) => fetchTodayStamp(scope.libraryId, signal));
       if (res.status === "stale" || !(scope.alive && scopeRef.current === scope)) return;
@@ -68,6 +68,7 @@ export function StampButton({ libraryId }: { libraryId: number }) {
         setRead("ok");
       } else {
         setRead("error");
+        if (notifyOnError) emitStampNotice({ libraryId: scope.libraryId, text: STAMP_TEXT.failed });
       }
     },
     [readRunner]
@@ -135,7 +136,7 @@ export function StampButton({ libraryId }: { libraryId: number }) {
     const scope = scopeRef.current;
     if (!isCurrentSignedIn(scope)) return;
     if (read === "error") {
-      void reloadToday(scope); // 오늘 상태를 모르면 찍지 않고 먼저 다시 확인한다(이미 공개한 것을 비공개로 덮지 않게)
+      void reloadToday(scope, true); // 오늘 상태를 모르면 찍지 않고 먼저 다시 확인한다(이미 공개한 것을 비공개로 덮지 않게)
       return;
     }
     if (read === "ok" && today?.stamped === false) void put(scope, "private", "first");
