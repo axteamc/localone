@@ -142,7 +142,7 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 (대기/진행/검토요청/완료) | 구현 근거 (`파일:줄`) 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| VISIT-4-P1 | `feat/local-feed-VISIT-4` | (Draft) | 진행 | `server/migrations/versions/0023_visit_stamps.py`(main의 0021·0022 뒤로 번호 옮김), `server/app/routers/stamps.py`(#35·#36·#69), `server/app/routers/feed.py`(#32 `stamp`), `server/app/main.py` `[local-feed-B]` · `server/tests/test_stamps.py` 15개 통과(격리 DB `localone_v4`, 5434). 가드 제거 확인은 도중에 멈춰 다시 해야 함 | - |
+| VISIT-4-P1 | `feat/local-feed-VISIT-4` | #293 | 진행 | `server/migrations/versions/0023_visit_stamps.py`(main의 0021·0022 뒤로 번호 옮김), `server/app/routers/stamps.py`(#35·#36·#69), `server/app/routers/feed.py`(#32 `stamp`), `server/app/main.py` `[local-feed-B]` · `server/tests/test_stamps.py` 15개 통과(격리 DB `localone_v4`, 5434). 가드 제거 확인은 도중에 멈춰 다시 해야 함 | - |
 | VISIT-4-P2 | 같은 브랜치 | - | 대기 | - | - |
 | VISIT-4-P3 | 같은 브랜치 | - | 대기 | - | - |
 
