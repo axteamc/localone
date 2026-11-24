@@ -1,0 +1,633 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>book-club · CLUB-2 시안 — 끝난 모임 기록·후기·출석·알림함</title>
+<!--
+  짝 문서: specs/book-club/세부/CLUB-2.md
+  기준: ../team/contracts/book-club.md CLUB-2(D 기준선) · specs/book-club/명세서.md 결정 3·4 · CLUB-1 시안의 모임 화면 모양 · 개발산출물/디자인_기준.md
+  휴대폰 틀 240×430 = 390×844 화면을 약 0.615배로 줄인 그림. 세 후보 모두 같은 끝난 모임("소년이 온다 같이 읽기", 11.28)을 쓴다.
+-->
+<style>
+  :root {
+    /* 개발산출물/디자인_기준.md 토큰 (warm, M1 기본) */
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+    --cream:#EFEFE7; --paper:#EFF1F1; --ink-strong:#2E333F; --text:#1D1D1F; --sub:#71716F;
+    --on-fill:#1D1D1F;
+    /* 파생 (디자인_기준 §2 mix 식, warm) */
+    --panel-lit:#EEF0EF; --panel-frosted:#E9EAE8; --seam:#D1D2D0; --relief-bottom:#B9B9B6;
+    /* 형태 토큰 (아치 계열, 0.615배) */
+    --r-card:18px; --r-pill:9999px; --r-info:9px; --r-book:5px 9px 9px 5px;
+    --r-club:43px 43px 11px 11px;   /* 모임 카드 아치 위 70 · 아래 18 (앱 값) */
+    /* 그림자·덮개·유리 알약 (룩과 무관한 고정값) */
+    --shadow-soft:rgba(0,0,0,.15); --shadow-mid:rgba(0,0,0,.22); --dim:rgba(0,0,0,.35);
+    --pill-glass:rgba(255,255,255,.55);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; line-height:1.5; }
+  header.page, main { max-width:1280px; margin:0 auto; padding:0 16px; }
+  header.page { padding-top:20px; }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:17px; margin:0 0 4px; } h3 { font-size:15px; margin:0 0 8px; }
+  .how, .flow, .decided { background:var(--cream); border-radius:var(--r-card); padding:12px 16px; margin:10px 0 0; }
+  .decided { border-left:5px solid var(--ink-strong); }
+  section.element { margin-top:32px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:var(--r-pill); background:var(--surface2); margin-left:6px; font-weight:400; }
+  .pick { margin:8px 0 0; font-size:14px; }
+  .pick select { font:inherit; padding:4px 8px; border-radius:10px; border:1px solid var(--surface3); background:var(--paper); }
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-card); padding:14px; border:3px solid transparent; }
+  .cand.recommended { border-color:var(--fill1); } .cand.chosen { border-color:var(--ink-strong); }
+  .badge { display:inline-block; font-size:12px; font-weight:700; padding:1px 9px; border-radius:var(--r-pill); background:var(--fill1); margin-left:6px; }
+  .badge.adopted { background:var(--ink-strong); color:var(--paper); }
+  .cand p, .cand li { font-size:13.5px; margin:6px 0; } .cand ul { padding-left:18px; margin:4px 0; }
+  .lbl { font-weight:700; font-size:12.5px; color:var(--sub); margin-top:10px; display:block; }
+  .tbtn { font:inherit; font-size:12.5px; border:1px solid var(--surface3); background:var(--cream); border-radius:var(--r-pill); padding:3px 10px; cursor:pointer; margin:2px 0; }
+  .tbtn[aria-pressed="true"] { background:var(--ink-strong); color:var(--paper); border-color:var(--ink-strong); }
+
+  /* ---- 휴대폰 ---- */
+  .phone { width:240px; height:430px; margin:0 auto 10px; background:var(--cream); border-radius:26px; border:5px solid var(--ink-strong); position:relative; overflow:hidden; font-size:11px; }
+  .scr { position:absolute; inset:0; background:var(--cream); overflow:hidden; }
+  .hd { position:absolute; left:0; right:0; top:0; height:50px; padding:8px 10px 0; background:var(--panel-frosted); border-bottom:1px solid var(--seam); z-index:5; }
+  .back { font-size:20px; font-weight:800; line-height:1; background:none; border:0; padding:0; color:inherit; cursor:pointer; }
+  .vname { font-size:13px; font-weight:500; }
+  .feed { position:absolute; left:0; right:0; top:50px; bottom:0; overflow-y:auto; padding:6px 8px 60px; display:grid; grid-template-columns:1fr 1fr; gap:6px; align-items:start; scrollbar-width:none; }
+  .feed::-webkit-scrollbar { display:none; }
+  .col { display:flex; flex-direction:column; gap:6px; }
+  .pc { border-radius:var(--r-card); background:var(--surface3); }
+  .fab { position:absolute; right:10px; bottom:14px; width:34px; height:34px; border-radius:var(--r-pill); background:var(--ink-strong); color:var(--paper); display:flex; align-items:center; justify-content:center; font-size:20px; z-index:16; box-shadow:0 2px 6px var(--shadow-mid); border:0; }
+
+  /* 모임 카드 (공통) */
+  .club { border-radius:var(--r-club); background:var(--fill2); color:var(--on-fill); padding:16px 9px 9px; cursor:pointer; display:flex; flex-direction:column; gap:3px; border:0; text-align:left; font:inherit; width:100%; }
+  .club .tag { align-self:flex-start; font-size:8px; padding:1px 7px; border-radius:var(--r-pill); background:var(--pill-glass); }
+  .club .go { font-size:9px; font-weight:500; margin-top:4px; }
+  .club .nm { font-size:10px; font-weight:500; line-height:1.3; }
+  .club .meta { font-size:8.5px; opacity:.8; line-height:1.35; }
+  .club .date { font-size:15px; line-height:1.1; }
+  .club .date small { display:block; font-size:9px; opacity:.85; margin-top:2px; }
+  .club .cover { height:64px; border-radius:var(--r-book); background:var(--fill1); display:flex; align-items:flex-end; padding:5px; font-size:8px; font-weight:500; box-shadow:0 2px 5px var(--shadow-soft); margin:2px 6px 4px; }
+  .club.wide { grid-column:1 / -1; flex-direction:row; align-items:center; gap:10px; padding:12px 12px; border-radius:var(--r-card); }
+  .club.wide .dblock { flex:none; width:52px; text-align:center; background:var(--pill-glass); border-radius:var(--r-info); padding:5px 0; }
+  .club.wide .dblock b { display:block; font-size:16px; font-weight:400; line-height:1.1; }
+  .club.wide .dblock span { font-size:8px; }
+  .club.wide .body { flex:1; display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .und-only { display:none; } .phone.und .und-only { display:block; } .phone.und .dec-only { display:none; }
+
+  /* 모임 화면 (큰 틀 결정 2: 약속 정보 → 참가 버튼 → 참가자 → 댓글) */
+  .cs { position:absolute; left:0; right:0; top:50px; bottom:0; overflow-y:auto; padding:8px 10px 50px; scrollbar-width:none; }
+  .cs::-webkit-scrollbar { display:none; }
+  .info { background:var(--paper); border-radius:var(--r-info); padding:9px; display:flex; gap:8px; }
+  .info .bk { flex:none; width:38px; height:54px; border-radius:var(--r-book); background:var(--fill1); }
+  .info .nm { font-size:12px; font-weight:500; line-height:1.3; }
+  .info .ln { font-size:9.5px; color:var(--sub); }
+  .info .ln b { color:var(--text); font-weight:500; }
+  .main-btn { display:block; width:100%; margin:8px 0 0; padding:8px 0; border-radius:var(--r-pill); background:var(--panel-lit); border:1px solid var(--seam); box-shadow:0 2px 0 var(--relief-bottom); font:inherit; font-size:11px; color:var(--ink-strong); cursor:pointer; }
+  .main-btn[disabled] { opacity:.55; cursor:default; }
+  .sub-btn { display:block; width:100%; margin:6px 0 0; padding:6px 0; border-radius:var(--r-pill); background:var(--panel-frosted); border:1px solid var(--seam); font:inherit; font-size:10px; color:var(--text); cursor:pointer; }
+  .sec { font-size:9px; color:var(--sub); margin:12px 0 4px; letter-spacing:.04em; }
+  .who { display:flex; flex-wrap:wrap; gap:4px; font-size:9.5px; }
+  .who span { background:var(--paper); border-radius:var(--r-pill); padding:1px 7px; }
+  .cm { background:var(--paper); border-radius:var(--r-info); padding:6px 8px; margin-bottom:4px; font-size:9.5px; }
+  .cm i { font-style:normal; color:var(--sub); font-size:8.5px; display:block; }
+  .cin { position:absolute; left:8px; right:8px; bottom:8px; height:28px; border-radius:var(--r-pill); background:var(--paper); border:1px solid var(--seam); display:flex; align-items:center; padding:0 10px; color:var(--sub); font-size:9.5px; z-index:6; }
+  .msg { font-size:9.5px; margin-top:6px; padding:6px 8px; border-radius:var(--r-info); background:var(--panel-frosted); }
+  .empty { font-size:9.5px; color:var(--sub); padding:6px 0; }
+  .sheet { position:absolute; left:0; right:0; bottom:0; background:var(--paper); border-radius:var(--r-card) var(--r-card) 0 0; padding:12px; box-shadow:0 -2px 10px var(--shadow-mid); z-index:20; }
+  .dimmer { position:absolute; inset:0; background:var(--dim); z-index:19; }
+  .toast { position:absolute; left:14px; right:14px; bottom:46px; background:var(--ink-strong); color:var(--paper); border-radius:12px; padding:7px 10px; font-size:10px; display:none; z-index:30; }
+  .toast.on { display:block; }
+  .hide { display:none !important; }
+  /* 만들기 화면 (P-03 위로 올라오는 화면) */
+  .ed { position:absolute; left:0; right:0; top:50px; bottom:0; overflow-y:auto; padding:8px 10px 40px; scrollbar-width:none; }
+  .ed::-webkit-scrollbar { display:none; }
+  .ehd { display:flex; justify-content:space-between; align-items:center; }
+  .ehd b { font-size:12px; font-weight:500; }
+  .ehd .x { font-size:14px; background:none; border:0; cursor:pointer; padding:0; }
+  .ehd .up { font:inherit; font-size:10px; border:1px solid var(--seam); background:var(--panel-lit); box-shadow:0 2px 0 var(--relief-bottom); border-radius:var(--r-pill); padding:2px 10px; cursor:pointer; }
+  .fl { font-size:8.5px; color:var(--sub); margin:9px 0 3px; display:flex; justify-content:space-between; align-items:center; }
+  .fl em { font-style:normal; }
+  .in { background:var(--paper); border:1px solid var(--seam); border-radius:var(--r-info); padding:6px 8px; font-size:10px; min-height:26px; }
+  .in.ph { color:var(--sub); }
+  .in.big { min-height:48px; }
+  .sw { width:26px; height:15px; border-radius:var(--r-pill); background:var(--surface3); position:relative; border:0; cursor:pointer; flex:none; margin-left:4px; }
+  .sw::after { content:""; position:absolute; left:2px; top:2px; width:11px; height:11px; border-radius:50%; background:var(--paper); transition:left .15s; }
+  .sw.on { background:var(--ink-strong); } .sw.on::after { left:13px; }
+  .stepdots { font-size:9px; color:var(--sub); margin-top:4px; }
+  .more { display:block; width:100%; margin-top:10px; padding:6px; text-align:left; font:inherit; font-size:10px; background:none; border:1px dashed var(--surface3); border-radius:var(--r-info); cursor:pointer; color:var(--text); }
+  .bkpick { display:flex; gap:6px; align-items:center; }
+  .bkpick i { width:22px; height:32px; border-radius:var(--r-book); background:var(--fill1); display:block; flex:none; }
+  .done { font-size:9.5px; color:var(--sub); margin:0 0 2px; }
+  /* 시작 시각 바뀜 */
+  .ib { position:absolute; left:0; right:0; top:50px; bottom:0; padding:8px 10px; }
+  .ibi { background:var(--paper); border-radius:var(--r-info); padding:8px; font-size:9.5px; cursor:pointer; border:0; width:100%; text-align:left; font:inherit; }
+  .ibi i { font-style:normal; color:var(--sub); font-size:8.5px; display:block; }
+  .chg { font-size:8.5px; padding:0 5px; border-radius:var(--r-pill); background:var(--fill1); margin-left:4px; }
+  .old { text-decoration:line-through; color:var(--sub); }
+  .banner { font-size:9px; background:var(--fill1); color:var(--on-fill); border-radius:var(--r-info); padding:6px 8px; margin-bottom:6px; }
+  .clock { font-size:8.5px; color:var(--sub); margin:0 0 6px; }
+  .two { display:flex; gap:6px; } .two button { flex:1; }
+  /* ---- 표 ---- */
+  table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-card); overflow:hidden; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--surface2); }
+  th { background:var(--surface2); }
+  .st { font-size:12px; padding:1px 8px; border-radius:var(--r-pill); background:var(--surface2); white-space:nowrap; }
+  #spec, #except, #fullflow { margin-top:32px; }
+  .state button { font:inherit; border:0; border-radius:var(--r-pill); padding:4px 12px; background:var(--surface2); cursor:pointer; margin:2px; }
+  .state button[aria-pressed="true"] { background:var(--ink-strong); color:var(--paper); }
+  .wide-t { overflow-x:auto; }
+  .exdesc { max-width:560px; font-size:13.5px; }
+  .rv { min-height:40px; } .rv .ph { color:var(--sub); }
+  .sub-btn[disabled] { opacity:.55; }
+  .att { display:flex; align-items:center; justify-content:space-between; background:var(--paper); border-radius:var(--r-info); padding:5px 8px; margin-bottom:4px; font-size:10px; }
+  .att .seg2 { display:flex; gap:3px; }
+  .att .seg2 button { font:inherit; font-size:9px; border:1px solid var(--seam); background:var(--panel-frosted); border-radius:var(--r-pill); padding:1px 7px; cursor:pointer; }
+  .att .seg2 button.on { background:var(--ink-strong); color:var(--paper); border-color:var(--ink-strong); }
+  .tag2 { font-size:8.5px; color:var(--sub); }
+  .step { font-size:9px; color:var(--sub); margin:8px 0 2px; }
+  .ib-row { display:flex; gap:6px; align-items:flex-start; background:var(--paper); border-radius:var(--r-info); padding:6px 8px; margin-bottom:4px; font-size:9.5px; cursor:pointer; border:0; width:100%; text-align:left; font:inherit; }
+  .ib-row .dot { width:6px; height:6px; border-radius:50%; background:var(--fill1); margin-top:4px; flex:none; }
+  .ib-row.read .dot { background:transparent; }
+  .ib-row i { font-style:normal; color:var(--sub); font-size:8.5px; display:block; }
+  .grp { background:var(--paper); border-radius:var(--r-info); padding:6px 8px; margin-bottom:4px; font-size:9.5px; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>book-club · CLUB-2 시안 — 모임이 끝난 뒤 기록·후기</h1>
+  <div class="how"><b>보는 법.</b> 화면 3개를 비교해 보세요. 휴대폰 안의 버튼(후기 쓰기, 게시물로 올리기, 다음 모임 만들기)을 눌러 볼 수 있어요. 화면 아래 <b>"만든 사람으로 보기"</b>를 누르면 모임을 만든 사람에게 보이는 모습으로 바뀌어요. 노란 테두리가 <b>추천</b>이에요. 고르는 건 직접 해 주세요.</div>
+  <div class="decided"><b>이미 정한 것.</b> 모임이 끝나면 모임 화면의 참가 버튼 자리가 <b>"기록·후기 쓰기"</b>로 바뀌고, 누르면 이 기록 화면이 열려요. 알림함 안내를 누르면 늘 모임 화면으로 가요. 후기는 나만 보는 게 기본이고, 원하면 게시물로 올려요. 다음 모임 만들기는 만든 사람에게 먼저 권하고, 다른 참가자도 버튼으로 만들 수 있어요. 이미 만들어진 다음 모임이 있으면 그걸 먼저 보여 줘요.</div>
+</header>
+<main>
+
+<!-- ===== 중심 요소 1: 기록 화면에서 무엇이 먼저 ===== -->
+<section class="element" id="el-record" data-chosen="A">
+  <h2>정할 것 1. 기록 화면을 열면 무엇이 먼저 보이나 <span class="status">확인</span></h2>
+  <div class="flow"><b>왜 정하나.</b> 모임이 끝나고 기록 화면에 들어온 사람이 제일 먼저 하는 일이 달라져요. 그날 모임을 돌아보는지, 바로 후기를 쓰는지, 다음 모임으로 이어 가는지요. 세 화면 모두 같은 끝난 모임이에요.</div>
+  <div class="pick">다시 보기: <select data-for="el-record">
+    <option value="A">후보 A — 기록 → 후기 → 다음 모임</option>
+    <option value="B">후보 B — 후기 칸이 맨 위</option>
+    <option value="C">후보 C — 다음 모임이 맨 위</option>
+  </select></div>
+  <div class="cands">
+
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 기록 → 후기 → 다음 모임 <span class="badge">추천</span></h3>
+      <div class="phone" data-order="record,review,next"></div>
+      <button class="tbtn" data-host aria-pressed="false">만든 사람으로 보기</button>
+      <p>맨 위에 그날 모임 기록(날짜·장소·책·내 참석), 그 아래 내 후기 칸, 맨 아래 다음 모임이 있어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>모임 화면 "기록·후기 쓰기" → 그날 기록을 먼저 봄 → 아래 후기 칸에 쓰고 "저장" → 더 내리면 다음 모임 만들기·이미 만든 다음 모임.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>후기는 "나만 보기"가 기본, 쓰고 나면 "게시물로 올리기"가 생겨요</li><li>만든 사람은 다음 모임 칸이 "다음 모임 만들어 볼까요?" 권하는 카드로 보여요</li><li>다음 모임까지 가려면 한 번 내려야 해요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>그날 모임을 돌아보며 자연스럽게 후기로 이어져요. / 다음 모임은 맨 아래라 덜 눈에 띄어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-40 전체 화면 상세 + 아래에 이어지는 것 (핀터레스트 핀 상세)</p>
+      <p><b>추천 이유:</b> 모임 화면도 약속 정보를 맨 위에 두기로 해서, 기록 화면도 같은 순서면 덜 헷갈려요. 다음 모임을 빨리 잡는 게 더 중요하다면 C가 나아요.</p>
+    </article>
+
+    <article class="cand" data-id="B">
+      <h3>후보 B — 후기 칸이 맨 위</h3>
+      <div class="phone" data-order="review,record,next"></div>
+      <button class="tbtn" data-host aria-pressed="false">만든 사람으로 보기</button>
+      <p>들어오자마자 후기 칸이 열려 있어요. 그날 기록은 그 아래 한 줄로 작게, 다음 모임은 맨 아래예요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>모임 화면 "기록·후기 쓰기" → 바로 후기 칸에 씀 → "저장" → 아래로 내려 기록·다음 모임.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>후기 칸이 화면 위쪽 절반을 차지해요</li><li>그날 기록은 접힌 한 줄("11.28 토 · 2층 세미나실 · 참석")</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>후기를 바로 써요. / 그날 기록이 작아서 돌아보기 어려워요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-71 한 화면에 칸을 두고 "올리기" (당근 글쓰기)</p>
+    </article>
+
+    <article class="cand" data-id="C">
+      <h3>후보 C — 다음 모임이 맨 위</h3>
+      <div class="phone" data-order="next,record,review"></div>
+      <button class="tbtn" data-host aria-pressed="false">만든 사람으로 보기</button>
+      <p>맨 위에 다음 모임(이미 만든 것 또는 만들기 버튼), 그 아래 그날 기록, 맨 아래 후기 칸이에요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>모임 화면 "기록·후기 쓰기" → 다음 모임이 먼저 보임 → "다음 모임 만들기" 또는 이미 만든 다음 모임에 들어가기 → 후기는 내려서.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>다음 모임이 이미 있으면 그 카드가 맨 위에 커다랗게</li><li>후기 칸은 맨 아래라 한 번 이상 내려야 해요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>모임이 다음 회차로 잘 이어져요. / 후기는 덜 쓰게 될 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-42 핵심 정보 + 주 버튼 (배민 "담기")</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 중심 요소 2: 출석 확인과 불참 판정 ===== -->
+<section class="element" id="el-attend" data-chosen="A">
+  <h2>정할 것 2. 누가 "안 왔다"를 정하고, 언제 불참이 되나 <span class="status">확인</span></h2>
+  <div class="flow"><b>정해진 것.</b> 참가 신청·실제로 왔는지·불참은 서로 다른 거예요. 만든 사람이 출석을 확인할 수 있지만, <b>만든 사람 표시만으로나 시간이 지났다는 이유만으로 불참을 정하거나 벌을 주지 않아요.</b> 취소된 모임·일정이 바뀐 것 때문에는 불참이 생기지 않아요. 불참이 쌓이면 3일·7일·30일·참가 불가 순서로 참가가 막혀요.<br>
+  <b>정할 것.</b> 끝난 모임에서 "안 온 사람"이 불참이 되기까지의 길이에요. 세 화면 모두 참가 신청 3명 중 "달"이 안 온 모임이에요. 만든 사람 화면에서 "출석 확인 보내기"를 누르고, "달에게 보이는 화면"도 눌러 보세요.</div>
+  <div class="pick">다시 보기: <select data-for="el-attend">
+    <option value="A">후보 A — 만든 사람 표시 → 관리자 확인</option>
+    <option value="B">후보 B — 본인 "참석했어요" + 만든 사람 표시 → 관리자 확인</option>
+    <option value="C">후보 C — 만든 사람 표시 → 본인에게 사정 묻기 → 관리자 확인</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 만든 사람이 표시하고 관리자가 확인 <span class="badge">추천</span></h3>
+      <div class="phone"><div class="scr" data-screen="host"><div class="hd"><button class="back">‹</button> <span class="vname">출석 확인 · 만든 사람</span></div><div class="cs"><div class="step">참가 신청 3명 · 모임이 끝났어요</div><div class="att"><span>해바라기</span><span class="seg2"><button class="on" data-mark>왔어요</button><button data-mark>안 왔어요</button></span></div><div class="att"><span>민트</span><span class="seg2"><button class="on" data-mark>왔어요</button><button data-mark>안 왔어요</button></span></div><div class="att"><span>달</span><span class="seg2"><button data-mark>왔어요</button><button class="on" data-mark>안 왔어요</button></span></div><div class="msg">"출석 확인 보내기"를 누르면 "안 왔어요"인 사람은 관리자 확인으로 넘어가요.</div><button class="main-btn" data-open="sent">출석 확인 보내기</button></div></div><div class="scr hide" data-screen="sent"><div class="hd"><button class="back" data-open="host">‹</button> <span class="vname">출석 확인 · 보냄</span></div><div class="cs"><div class="msg">"안 왔어요"로 표시한 1명(달)은 <b>관리자 확인을 기다려요</b>. 관리자가 맞다고 하면 불참 1회가 돼요. 아직 불참은 아니에요.</div><button class="sub-btn" data-open="mine">"달"에게 보이는 화면</button></div></div><div class="scr hide" data-screen="mine"><div class="hd"><button class="back" data-open="sent">‹</button> <span class="vname">모임 기록 · 달</span></div><div class="cs"><div class="msg"><b>출석 확인 결과를 기다리고 있어요</b><br>만든 사람이 "안 왔어요"로 표시했어요. 관리자가 확인한 뒤 알려 드릴게요.<button class="sub-btn">재검토 요청하기</button></div></div></div></div>
+      <p>끝난 모임의 기록 화면에서 만든 사람이 참가자마다 "왔어요/안 왔어요"를 골라 보내요. "안 왔어요"는 관리자가 확인해야 불참이 돼요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>모임 끝남 → 만든 사람 기록 화면 "출석 확인" → 참가자마다 고름 → 보내기 → 관리자 확인 → 불참 1회 + 본인에게 알림함 안내 → 본인은 재검토 요청 가능.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>참가자는 따로 누를 것이 없어요</li><li>관리자 확인 전에는 "결과를 기다리고 있어요"로만 보여요</li><li>기본값은 모두 "왔어요"(만든 사람이 안 온 사람만 바꿈)</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>참가자 손이 안 가고 단순해요. / 관리자가 모든 불참을 하나씩 봐야 해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-52 확인창(두 버튼) — 되돌리기 어려운 일을 한 번 더 확인 (HIG Alerts)</p>
+      <p><b>추천 이유:</b> 처음에 원하신 "참가 신청하고 안 오는 사람 체크"와 가장 같고, 만든 사람 표시만으로 정하지 않는다는 규칙을 관리자 확인으로 지켜요. 참가자 말도 듣고 싶다면 C가 나아요.</p>
+    </article>
+
+    <article class="cand" data-id="B">
+      <h3>후보 B — 본인 "참석했어요" + 만든 사람 확인</h3>
+      <div class="phone"><div class="scr" data-screen="host"><div class="hd"><button class="back">‹</button> <span class="vname">출석 확인 · 만든 사람</span></div><div class="cs"><div class="step">참가 신청 3명 · 모임이 끝났어요</div><div class="att"><span>해바라기<span class="tag2"> · 본인 "참석했어요"</span></span><span class="seg2"><button class="on" data-mark>왔어요</button><button data-mark>안 왔어요</button></span></div><div class="att"><span>민트<span class="tag2"> · 본인 "참석했어요"</span></span><span class="seg2"><button class="on" data-mark>왔어요</button><button data-mark>안 왔어요</button></span></div><div class="att"><span>달</span><span class="seg2"><button data-mark>왔어요</button><button class="on" data-mark>안 왔어요</button></span></div><div class="msg">본인이 "참석했어요"를 누른 사람은 이름 옆에 보여요. 엇갈리거나 둘 다 안 왔다는 사람만 관리자 확인으로 넘어가요.</div><button class="main-btn" data-open="sent">출석 확인 보내기</button></div></div><div class="scr hide" data-screen="sent"><div class="hd"><button class="back" data-open="host">‹</button> <span class="vname">출석 확인 · 보냄</span></div><div class="cs"><div class="msg">본인이 "참석했어요"라고 했는데 "안 왔어요"로 표시한 사람, 둘 다 안 왔다고 한 사람 모두 <b>관리자 확인을 기다려요</b>. 지금은 달 1명이에요.</div><button class="sub-btn" data-open="mine">"달"에게 보이는 화면</button></div></div><div class="scr hide" data-screen="mine"><div class="hd"><button class="back" data-open="sent">‹</button> <span class="vname">모임 기록 · 달</span></div><div class="cs"><div class="msg"><b>출석 확인 결과를 기다리고 있어요</b><br>"참석했어요"를 누르지 않았고 만든 사람도 "안 왔어요"로 표시했어요. 관리자가 확인한 뒤 알려 드릴게요.<button class="sub-btn">참석했어요</button></div></div></div></div>
+      <p>참가자는 모임 뒤 기록 화면에서 "참석했어요"를 누르고, 만든 사람은 명단에서 확인해요. 둘을 맞춰 보고 안 왔다는 쪽만 관리자가 확인해요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>모임 끝남 → 참가자 "참석했어요" 누름 → 만든 사람 "출석 확인" → 엇갈림·안 옴만 관리자 확인 → 불참 1회 + 본인 안내.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>기록 화면 맨 위에 참가자용 "참석했어요" 버튼이 하나 더 생겨요</li><li>만든 사람 명단에 본인 체크 여부가 함께 보여요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>본인 기록도 남아 더 정확해요. / 참가자가 한 번 더 눌러야 하고, 깜빡하면 엇갈려 보여요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-13 아이콘 하나 누르면 채워짐(상태 표시) — "참석했어요" 체크</p>
+    </article>
+
+    <article class="cand" data-id="C">
+      <h3>후보 C — 만든 사람 표시 뒤 본인에게 사정 묻기</h3>
+      <div class="phone"><div class="scr" data-screen="host"><div class="hd"><button class="back">‹</button> <span class="vname">출석 확인 · 만든 사람</span></div><div class="cs"><div class="step">참가 신청 3명 · 모임이 끝났어요</div><div class="att"><span>해바라기</span><span class="seg2"><button class="on" data-mark>왔어요</button><button data-mark>안 왔어요</button></span></div><div class="att"><span>민트</span><span class="seg2"><button class="on" data-mark>왔어요</button><button data-mark>안 왔어요</button></span></div><div class="att"><span>달</span><span class="seg2"><button data-mark>왔어요</button><button class="on" data-mark>안 왔어요</button></span></div><div class="msg">"안 왔어요"인 사람에게 먼저 "사정이 있었나요?"를 물어요.</div><button class="main-btn" data-open="sent">출석 확인 보내기</button></div></div><div class="scr hide" data-screen="sent"><div class="hd"><button class="back" data-open="host">‹</button> <span class="vname">출석 확인 · 보냄</span></div><div class="cs"><div class="msg">"안 왔어요"로 표시한 1명(달)에게 <b>"사정이 있었나요?"</b>를 물어요. 사정을 적으면 불참으로 세지 않고, 3일 안에 답이 없으면 관리자 확인을 기다려요.</div><button class="sub-btn" data-open="mine">"달"에게 보이는 화면</button></div></div><div class="scr hide" data-screen="mine"><div class="hd"><button class="back" data-open="sent">‹</button> <span class="vname">모임 기록 · 달</span></div><div class="cs"><div class="msg"><b>사정이 있었나요?</b><br>만든 사람이 "안 왔어요"로 표시했어요. 사정을 적으면 불참으로 세지 않아요. (3일 안에)<div class="cm rv"><span class="ph">예) 갑자기 아파서 못 갔어요</span></div><button class="sub-btn">보내기</button></div></div></div></div>
+      <p>만든 사람이 "안 왔어요"로 표시하면 그 사람에게 사정을 묻고, 사정을 적으면 불참으로 세지 않아요. 답이 없을 때만 관리자가 확인해요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>모임 끝남 → 만든 사람 표시 → "달"의 알림함에 "사정이 있었나요?" → 적으면 불참 아님 / 3일 안에 답 없으면 관리자 확인 → 불참 1회.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>안 온 사람에게 사정 적는 칸이 생겨요(3일 안에)</li><li>사정을 적으면 관리자에게도 넘어가지 않아요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>사정이 있던 사람이 억울하지 않아요. / 누구나 사정을 적으면 불참이 거의 안 생겨요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-12 알맞은 순간에 한 번 묻는 카드 (지도 "집으로 저장할까요?")</p>
+    </article>
+
+  </div>
+</section>
+
+<!-- ===== 중심 요소 3: 불참 횟수 세는 법과 4회째 ===== -->
+<section class="element" id="el-count" data-chosen="A">
+  <h2>정할 것 3. 불참을 어떻게 세고, 4번째 "참가 불가"는 언제 풀리나 <span class="status">확인</span></h2>
+  <div class="flow"><b>정해진 것.</b> 불참(관리자가 확인한 것)이 쌓이면 1번째 3일, 2번째 7일, 3번째 30일, 4번째 참가 불가예요. 운영자만 제한을 풀 수 있고, 본인은 재검토를 요청할 수 있어요.<br>
+  <b>정할 것.</b> 몇 번째인지 셀 때 <b>예전 불참도 다 세는지</b>, 그리고 4번째 "참가 불가"가 <b>언제 풀리는지</b>예요. 세 화면 모두 같은 사람의 같은 기록(불참 3번, 출석 1번)이에요. "시간을 넘겨 보기"를 눌러 보세요.</div>
+  <div class="pick">다시 보기: <select data-for="el-count">
+    <option value="A">후보 A — 최근 1년 불참만 셈, 4번째는 운영자가 풀 때까지</option>
+    <option value="B">후보 B — 지금까지 전부 셈, 4번째는 운영자가 풀 때까지</option>
+    <option value="C">후보 C — 연속 불참만 셈, 4번째는 90일 뒤 저절로</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 최근 1년 불참만 셈 <span class="badge">추천</span></h3>
+      <div class="phone"><div class="scr" data-screen="now"><div class="hd"><button class="back">‹</button> <span class="vname">내 참가 제한</span></div><div class="cs"><div class="step">불참·출석 기록</div><div class="att"><span>2025.12.06 불참</span><span class="tag2">1년 지나 안 셈</span></div><div class="att"><span>2026.03.14 불참</span><span class="tag2">셈</span></div><div class="att"><span>2026.09.20 출석</span><span class="tag2">—</span></div><div class="att"><span>2026.11.28 불참</span><span class="tag2">셈</span></div><div class="msg">최근 1년 불참 <b>2회</b> → 이번 불참으로 <b>7일</b> 참가 못 해요 (12.5까지)</div><button class="sub-btn" data-open="later">시간을 넘겨 보기</button><button class="sub-btn">재검토 요청하기</button></div></div><div class="scr hide" data-screen="later"><div class="hd"><button class="back" data-open="now">‹</button> <span class="vname">내 참가 제한 · 나중</span></div><div class="cs"><div class="msg">2027.03.15이 되면 2026.03 불참도 1년이 지나 빠져요. 그 뒤로는 최근 1년 불참 <b>1회</b>로 셈해요.</div><button class="sub-btn" data-open="now">지금으로 돌아가기</button></div></div></div>
+      <p>1년이 지난 불참은 세지 않아요. 4번째 "참가 불가"는 운영자가 풀어 줄 때까지 이어져요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>불참 확인 → 최근 1년 안의 불참 수로 단계(3일·7일·30일·참가 불가) → 1년 지난 불참은 저절로 빠짐 → 참가 불가는 재검토 요청 → 운영자가 풂.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>기록 옆에 "셈 / 1년 지나 안 셈"이 보여요</li><li>이 사람은 최근 1년 2번 → 이번이 7일</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>예전 실수 한 번이 계속 따라다니지 않아요. / 1년에 3번씩 꾸준히 빠지는 사람은 계속 30일까지만 가요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-32 줄 목록(썸네일 + 두 줄 글자) — 기록을 한 줄씩 (iOS 메일)</p>
+      <p><b>추천 이유:</b> 한 번 실수한 사람이 오래 묶이지 않으면서도 자주 빠지는 사람은 단계가 올라가요. 4번째를 운영자가 풀게 하면 "운영자만 해제"와도 맞아요. 더 엄하게 하고 싶다면 B가 나아요.</p>
+    </article>
+
+    <article class="cand" data-id="B">
+      <h3>후보 B — 지금까지 전부 셈</h3>
+      <div class="phone"><div class="scr" data-screen="now"><div class="hd"><button class="back">‹</button> <span class="vname">내 참가 제한</span></div><div class="cs"><div class="step">불참·출석 기록</div><div class="att"><span>2025.12.06 불참</span><span class="tag2">셈</span></div><div class="att"><span>2026.03.14 불참</span><span class="tag2">셈</span></div><div class="att"><span>2026.09.20 출석</span><span class="tag2">—</span></div><div class="att"><span>2026.11.28 불참</span><span class="tag2">셈</span></div><div class="msg">지금까지 불참 <b>3회</b> → 이번 불참으로 <b>30일</b> 참가 못 해요 (12.28까지)</div><button class="sub-btn" data-open="later">시간을 넘겨 보기</button><button class="sub-btn">재검토 요청하기</button></div></div><div class="scr hide" data-screen="later"><div class="hd"><button class="back" data-open="now">‹</button> <span class="vname">내 참가 제한 · 나중</span></div><div class="cs"><div class="msg">시간이 지나도 횟수는 줄지 않아요. 한 번 더 불참하면 <b>참가 불가</b>, 운영자만 풀 수 있어요.</div><button class="sub-btn" data-open="now">지금으로 돌아가기</button></div></div></div>
+      <p>예전 불참도 모두 세요. 횟수는 줄지 않고, 4번째 "참가 불가"는 운영자가 풀어 줄 때까지예요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>불참 확인 → 지금까지 불참 수로 단계 → 횟수는 그대로 쌓임 → 참가 불가는 재검토 요청 → 운영자가 풂.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>이 사람은 3번 → 이번이 30일</li><li>"시간을 넘겨 봐도" 바뀌는 게 없어요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>규칙이 가장 단순하고 엄해요. / 몇 년 전 불참까지 계속 셈해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-31 1열 카드 피드 — 기록을 차례로 (인스타그램 홈)</p>
+    </article>
+
+    <article class="cand" data-id="C">
+      <h3>후보 C — 연속 불참만 셈</h3>
+      <div class="phone"><div class="scr" data-screen="now"><div class="hd"><button class="back">‹</button> <span class="vname">내 참가 제한</span></div><div class="cs"><div class="step">불참·출석 기록</div><div class="att"><span>2025.12.06 불참</span><span class="tag2">출석 뒤 0으로</span></div><div class="att"><span>2026.03.14 불참</span><span class="tag2">출석 뒤 0으로</span></div><div class="att"><span>2026.09.20 출석</span><span class="tag2">여기서 0으로</span></div><div class="att"><span>2026.11.28 불참</span><span class="tag2">셈</span></div><div class="msg">연속 불참 <b>1회</b> → 이번 불참으로 <b>3일</b> 참가 못 해요 (12.1까지)</div><button class="sub-btn" data-open="later">시간을 넘겨 보기</button><button class="sub-btn">재검토 요청하기</button></div></div><div class="scr hide" data-screen="later"><div class="hd"><button class="back" data-open="now">‹</button> <span class="vname">내 참가 제한 · 나중</span></div><div class="cs"><div class="msg">다음 모임에 출석하면 다시 0회가 돼요. 4번 연속 불참으로 <b>참가 불가</b>가 되면 90일 뒤 저절로 풀려요.</div><button class="sub-btn" data-open="now">지금으로 돌아가기</button></div></div></div>
+      <p>한 번이라도 출석하면 0번으로 돌아가요. 4번 연속 불참으로 "참가 불가"가 되면 90일 뒤 저절로 풀려요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>불참 확인 → 연속 불참 수로 단계 → 출석하면 0으로 → 4번 연속이면 참가 불가 → 90일 뒤 저절로 풀림.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>이 사람은 중간에 출석해서 이번이 1번째 → 3일</li><li>참가 불가에도 끝나는 날이 보여요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>꾸준히 나오는 사람은 실수 몇 번으로 묶이지 않아요. / 출석과 불참을 번갈아 하면 단계가 거의 안 올라가요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-54 화면 위 띠 배너 — 지금 상태를 한 줄로 (오프라인 안내)</p>
+    </article>
+
+  </div>
+</section>
+
+<!-- ===== 중심 요소 4: 불참 제한이 걸리는 범위 ===== -->
+<section class="element" id="el-scope" data-chosen="A">
+  <h2>정할 것 4. 불참으로 제한되면 어디서 무엇을 못 하나 <span class="status">확인</span></h2>
+  <div class="flow"><b>정해진 것.</b> 제한은 기간이 있고(최근 1년 불참 수로 3일·7일·30일·참가 불가), 참가 버튼 자리에 "지금은 모임에 참가할 수 없어요 (언제까지)"가 보여요. 댓글 운영으로 생긴 제한은 다음 정할 것에서 따로 봐요.<br>
+  <b>정할 것.</b> <b>불참</b> 때문에 제한된 사람이 <b>모든 모임</b>에서 막히는지 <b>불참했던 모임(다음 회차 포함)</b>에서만 막히는지, <b>댓글</b>도 막히는지예요. 세 화면 모두 같은 사람(불참 2번, 12.5까지 제한)이 다른 모임을 연 모습이에요. "불참했던 모임의 다음 회차 보기"도 눌러 보세요.</div>
+  <div class="pick">다시 보기: <select data-for="el-scope">
+    <option value="A">후보 A — 모든 모임 참가만 막힘, 댓글은 됨</option>
+    <option value="B">후보 B — 모든 모임 참가와 댓글 모두 막힘</option>
+    <option value="C">후보 C — 불참했던 모임(다음 회차)만 참가 막힘</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 모든 모임 참가만 막힘, 댓글은 됨 <span class="badge">추천</span></h3>
+      <div class="phone"><div class="scr" data-screen="other"><div class="hd"><button class="back">‹</button> <span class="vname">모임</span></div><div class="cs"><div class="info"><div class="bk"></div><div><div class="nm">시집 같이 읽기(다른 모임)</div><div class="ln"><b>12.6 토 오후 3:00</b> ~ 5:00</div><div class="ln">1층 열람실 · 2/8명</div></div></div><button class="main-btn" disabled>지금은 모임에 참가할 수 없어요 (12.5 18:00까지)</button><div class="sec">댓글 1</div><div class="cm"><i>해바라기 · 어제</i>책은 미리 읽어 와요?</div><button class="sub-btn" data-open="same">불참했던 모임의 다음 회차 보기</button></div><div class="cin">댓글 쓰기</div></div><div class="scr hide" data-screen="same"><div class="hd"><button class="back">‹</button> <span class="vname">모임</span></div><div class="cs"><div class="info"><div class="bk"></div><div><div class="nm">소년이 온다 같이 읽기 2회차</div><div class="ln"><b>12.6 토 오후 3:00</b> ~ 5:00</div><div class="ln">1층 열람실 · 2/8명</div></div></div><button class="main-btn" disabled>지금은 모임에 참가할 수 없어요 (12.5 18:00까지)</button><div class="sec">댓글 1</div><div class="cm"><i>해바라기 · 어제</i>책은 미리 읽어 와요?</div><button class="sub-btn" data-open="other">다른 모임 보기</button></div><div class="cin">댓글 쓰기</div></div></div>
+      <p>어느 모임이든 참가 버튼이 막혀요. 댓글은 그대로 쓸 수 있어서 일정 의논에는 낄 수 있어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>제한 중 모임 화면 → 참가 버튼 자리 "지금은 모임에 참가할 수 없어요 (12.5 18:00까지)" → 댓글은 씀 → 기간이 끝나면 다시 참가.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>다른 모임과 불참했던 모임 다음 회차 모두 같은 모습</li><li>댓글 칸은 평소와 같아요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>자리만 잡고 안 오는 일을 막으면서 대화는 막지 않아요. / 제한 중에도 댓글로 계속 말을 걸 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-61 오류: 무엇이 안 됐는지 + 다시 해 보기 — 막힌 이유를 버튼 자리에 (대부분의 앱)</p>
+      <p><b>추천 이유:</b> 불참은 "자리만 잡고 안 오는 것"이라 참가를 막는 게 맞고, 댓글 제한은 댓글 운영에서 따로 걸려요. 불참하는 사람이 다른 모임에도 피해를 주니 모든 모임이 맞아요. 더 엄하게 하고 싶다면 B가 나아요.</p>
+    </article>
+
+    <article class="cand" data-id="B">
+      <h3>후보 B — 모든 모임 참가와 댓글 모두 막힘</h3>
+      <div class="phone"><div class="scr" data-screen="other"><div class="hd"><button class="back">‹</button> <span class="vname">모임</span></div><div class="cs"><div class="info"><div class="bk"></div><div><div class="nm">시집 같이 읽기(다른 모임)</div><div class="ln"><b>12.6 토 오후 3:00</b> ~ 5:00</div><div class="ln">1층 열람실 · 2/8명</div></div></div><button class="main-btn" disabled>지금은 모임에 참가할 수 없어요 (12.5 18:00까지)</button><div class="sec">댓글 1</div><div class="cm"><i>해바라기 · 어제</i>책은 미리 읽어 와요?</div><button class="sub-btn" data-open="same">불참했던 모임의 다음 회차 보기</button></div><div class="cin">지금은 댓글을 쓸 수 없어요 (12.5 18:00까지)</div></div><div class="scr hide" data-screen="same"><div class="hd"><button class="back">‹</button> <span class="vname">모임</span></div><div class="cs"><div class="info"><div class="bk"></div><div><div class="nm">소년이 온다 같이 읽기 2회차</div><div class="ln"><b>12.6 토 오후 3:00</b> ~ 5:00</div><div class="ln">1층 열람실 · 2/8명</div></div></div><button class="main-btn" disabled>지금은 모임에 참가할 수 없어요 (12.5 18:00까지)</button><div class="sec">댓글 1</div><div class="cm"><i>해바라기 · 어제</i>책은 미리 읽어 와요?</div><button class="sub-btn" data-open="other">다른 모임 보기</button></div><div class="cin">지금은 댓글을 쓸 수 없어요 (12.5 18:00까지)</div></div></div>
+      <p>어느 모임이든 참가 버튼과 댓글 칸이 모두 막혀요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>제한 중 모임 화면 → 참가 버튼·댓글 칸 둘 다 "지금은 … 할 수 없어요 (12.5 18:00까지)" → 기간이 끝나면 다시.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>댓글 칸도 흐린 안내로 바뀌어요</li><li>읽기는 다 돼요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>규칙이 하나라 단순하고 엄해요. / 불참과 상관없는 댓글까지 못 써요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-54 화면 위 띠 배너 — 화면 전체에 걸린 상태 (오프라인 안내)</p>
+    </article>
+
+    <article class="cand" data-id="C">
+      <h3>후보 C — 불참했던 모임(다음 회차)만 막힘</h3>
+      <div class="phone"><div class="scr" data-screen="other"><div class="hd"><button class="back">‹</button> <span class="vname">모임</span></div><div class="cs"><div class="info"><div class="bk"></div><div><div class="nm">시집 같이 읽기(다른 모임)</div><div class="ln"><b>12.6 토 오후 3:00</b> ~ 5:00</div><div class="ln">1층 열람실 · 2/8명</div></div></div><button class="main-btn">모임에 참가</button><div class="sec">댓글 1</div><div class="cm"><i>해바라기 · 어제</i>책은 미리 읽어 와요?</div><button class="sub-btn" data-open="same">불참했던 모임의 다음 회차 보기</button></div><div class="cin">댓글 쓰기</div></div><div class="scr hide" data-screen="same"><div class="hd"><button class="back">‹</button> <span class="vname">모임</span></div><div class="cs"><div class="info"><div class="bk"></div><div><div class="nm">소년이 온다 같이 읽기 2회차</div><div class="ln"><b>12.6 토 오후 3:00</b> ~ 5:00</div><div class="ln">1층 열람실 · 2/8명</div></div></div><button class="main-btn" disabled>지금은 모임에 참가할 수 없어요 (12.5 18:00까지)</button><div class="sec">댓글 1</div><div class="cm"><i>해바라기 · 어제</i>책은 미리 읽어 와요?</div><button class="sub-btn" data-open="other">다른 모임 보기</button></div><div class="cin">댓글 쓰기</div></div></div>
+      <p>불참했던 모임과 그 다음 회차에서만 참가가 막혀요. 다른 모임에는 참가할 수 있어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>제한 중 다른 모임 → 평소처럼 참가 / 불참했던 모임 다음 회차 → "지금은 모임에 참가할 수 없어요" → 기간이 끝나면 다시.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>다른 모임은 평소와 똑같아요</li><li>다음 회차는 이전 회차와 이어진 모임만</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>그 모임을 만든 사람만 지켜 줘요. / 여기저기 모임을 옮겨 다니며 계속 빠질 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-11 머리 오른쪽 ⋯ 메뉴 — 그 모임 안에서만 바뀌는 것 (iOS ⋯)</p>
+    </article>
+
+  </div>
+</section>
+
+<!-- ===== 중심 요소 5: 댓글 운영 제한 기간과 보이는 사유 ===== -->
+<section class="element" id="el-comment" data-chosen="B">
+  <h2>정할 것 5. 댓글 때문에 제한되면 며칠이고, 본인에게 무엇이 보이나 <span class="status">확인</span></h2>
+  <div class="flow"><b>정해진 것.</b> 만든 사람이 댓글 처리를 요청하면 관리자가 "댓글 삭제만" 또는 "삭제와 제한"을 골라요. 제한되면 모임 댓글과 참가를 못 하고, 이미 참가 중이던 모임 명단에서 빠져요. 본인은 사유를 보고 재검토를 요청할 수 있고, 운영자만 풀어요. 불참 제한과 따로 기록해요.<br>
+  <b>정할 것.</b> 이 "댓글 운영 제한"의 <b>기간</b>과 본인에게 보이는 <b>사유 문구</b>예요. 세 화면 모두 같은 사람이 처음으로 댓글 때문에 제한된 모습이에요. "한 번 더 제한되면?"을 눌러 보세요.</div>
+  <div class="pick">다시 보기: <select data-for="el-comment">
+    <option value="A">후보 A — 늘 7일, 정해진 사유 문구</option>
+    <option value="B">후보 B — 불참과 같은 단계(3일·7일·30일·참가 불가), 정해진 문구</option>
+    <option value="C">후보 C — 관리자가 기간을 고르고 사유를 직접 적음</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand" data-id="A">
+      <h3>후보 A — 늘 7일</h3>
+      <div class="phone"><div class="scr" data-screen="now"><div class="hd"><button class="back">‹</button> <span class="vname">내 참가 제한</span></div><div class="cs"><div class="step">댓글 운영 · 11.23 처리</div><div class="msg">모임 댓글 운영 기준에 따라 <b>7일 동안</b> 모임 댓글과 참가가 제한돼요. (11.30 18:00까지)</div><div class="cm"><i>숨겨진 내 댓글</i>그 책 읽고도 그런 말이 나와요?</div><button class="sub-btn" data-open="later">한 번 더 제한되면?</button><button class="sub-btn">재검토 요청하기</button></div><div class="cin">지금은 댓글을 쓸 수 없어요</div></div><div class="scr hide" data-screen="later"><div class="hd"><button class="back" data-open="now">‹</button> <span class="vname">한 번 더 제한되면</span></div><div class="cs"><div class="msg">두 번째로 제한돼도 똑같이 <b>7일</b>이에요.</div><button class="sub-btn" data-open="now">돌아가기</button></div></div></div>
+      <p>댓글 때문에 제한되면 언제나 7일이에요. 본인에게는 정해진 한 문장과 끝나는 시각, 숨겨진 내 댓글이 보여요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>관리자 "삭제와 제한" → 알림함 안내 → 내 참가 제한 화면 "7일 동안 … 제한돼요 (언제까지)" → 재검토 요청 가능 → 7일 뒤 풀림.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>몇 번째든 7일</li><li>사유는 늘 같은 문장 "모임 댓글 운영 기준에 따라…"</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>가장 단순하고 예측하기 쉬워요. / 같은 사람이 계속 그래도 7일씩만 막혀요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-50 아래 한 줄 안내 — 결과를 한 문장으로 (M3 Snackbar)</p>
+    </article>
+
+    <article class="cand recommended" data-id="B">
+      <h3>후보 B — 불참과 같은 단계 <span class="badge">추천</span></h3>
+      <div class="phone"><div class="scr" data-screen="now"><div class="hd"><button class="back">‹</button> <span class="vname">내 참가 제한</span></div><div class="cs"><div class="step">댓글 운영 · 11.23 처리</div><div class="msg">모임 댓글 운영 기준에 따라 모임 댓글과 참가가 제한돼요. 최근 1년 <b>1번째</b> → <b>3일</b> (11.26 18:00까지)</div><div class="cm"><i>숨겨진 내 댓글</i>그 책 읽고도 그런 말이 나와요?</div><button class="sub-btn" data-open="later">한 번 더 제한되면?</button><button class="sub-btn">재검토 요청하기</button></div><div class="cin">지금은 댓글을 쓸 수 없어요</div></div><div class="scr hide" data-screen="later"><div class="hd"><button class="back" data-open="now">‹</button> <span class="vname">한 번 더 제한되면</span></div><div class="cs"><div class="msg">1년 안에 두 번째로 제한되면 <b>7일</b>, 세 번째 <b>30일</b>, 네 번째 <b>참가 불가</b>예요(불참과 같은 단계, 따로 셈).</div><button class="sub-btn" data-open="now">돌아가기</button></div></div></div>
+      <p>불참처럼 최근 1년 안 댓글 제한 횟수로 3일·7일·30일·참가 불가예요. 불참과는 따로 세요. 사유는 정해진 문장이에요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>관리자 "삭제와 제한" → 알림함 안내 → 내 참가 제한 화면 "최근 1년 1번째 → 3일 (언제까지)" → 재검토 요청 가능 → 기간 뒤 풀림. 4번째는 운영자가 풀 때까지.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>몇 번째인지와 기간이 함께 보여요</li><li>불참 제한과 같은 화면, 사유만 "댓글 운영"</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>불참과 규칙이 같아서 익히기 쉽고, 되풀이하면 단계가 올라가요. / 처음엔 3일이라 가벼워 보일 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-32 줄 목록 — 제한 기록을 한 줄씩 (iOS 메일)</p>
+      <p><b>추천 이유:</b> 앞에서 정한 불참 세는 법(최근 1년, 3일·7일·30일·참가 불가)과 똑같아서 사용자가 규칙을 하나만 알면 돼요. 상황마다 다르게 정하고 싶다면 C가 나아요.</p>
+    </article>
+
+    <article class="cand" data-id="C">
+      <h3>후보 C — 관리자가 기간과 사유를 정함</h3>
+      <div class="phone"><div class="scr" data-screen="now"><div class="hd"><button class="back">‹</button> <span class="vname">내 참가 제한</span></div><div class="cs"><div class="step">댓글 운영 · 11.23 처리</div><div class="msg">관리자가 적은 사유: <b>"다른 참가자를 비꼬는 댓글을 반복했어요"</b><br>모임 댓글과 참가가 <b>14일</b> 제한돼요. (12.7 18:00까지)</div><div class="cm"><i>숨겨진 내 댓글</i>그 책 읽고도 그런 말이 나와요?</div><button class="sub-btn" data-open="later">한 번 더 제한되면?</button><button class="sub-btn">재검토 요청하기</button></div><div class="cin">지금은 댓글을 쓸 수 없어요</div></div><div class="scr hide" data-screen="later"><div class="hd"><button class="back" data-open="now">‹</button> <span class="vname">한 번 더 제한되면</span></div><div class="cs"><div class="msg">다음에는 관리자가 그때 상황을 보고 3일·7일·14일·30일 중에서 골라요.</div><button class="sub-btn" data-open="now">돌아가기</button></div></div></div>
+      <p>관리자가 처리할 때 기간(3일·7일·14일·30일)을 고르고 사유를 직접 적어요. 본인에게는 그 사유가 그대로 보여요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>관리자 "삭제와 제한" + 기간·사유 입력 → 알림함 안내 → 내 참가 제한 화면에 관리자가 적은 사유와 기간 → 재검토 요청 가능.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>사유가 사람마다 달라요</li><li>기간도 그때그때 달라요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>상황에 맞게 정해요. / 사람마다 기간이 달라 불공평하게 느낄 수 있고, 관리자 일이 늘어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-73 접힌 선택 칸 — 관리자만 쓰는 칸 (선택 사항 더 보기)</p>
+    </article>
+
+  </div>
+</section>
+
+<!-- ===== 중심 요소 6: 알림함 화면 ===== -->
+<section class="element" id="el-inbox" data-chosen="A">
+  <h2>정할 것 6. 알림함을 열면 어떻게 보이고, 언제 "읽음"이 되나 <span class="status">확인</span></h2>
+  <div class="flow"><b>정해진 것.</b> 내 정보의 알림 아이콘을 누르면 알림함이 열려요. 모임 확정·변경·취소·종료·다음 모임·운영 처리 안내가 모여요. 안내를 누르면 늘 그 모임 화면으로 가요. 휴대폰 알림을 꺼 둬도 알림함에서 볼 수 있어요.<br>
+  <b>정할 것.</b> 알림함 화면의 <b>모양</b>과 <b>읽음이 되는 때</b>예요. 세 화면 모두 같은 안내 4개(새 안내 2개)예요. 안내를 눌러 보세요.</div>
+  <div class="pick">다시 보기: <select data-for="el-inbox">
+    <option value="A">후보 A — 최신순 한 줄 목록, 열면 모두 읽음</option>
+    <option value="B">후보 B — "안 읽은 / 지난" 두 묶음, 하나씩 읽음</option>
+    <option value="C">후보 C — 모임별로 묶음, 누른 것만 읽음</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 최신순 한 줄 목록, 열면 모두 읽음 <span class="badge">추천</span></h3>
+      <div class="phone"><div class="scr" data-screen="list"><div class="hd"><button class="back">‹</button> <span class="vname">알림함</span></div><div class="cs"><div class="step">새 안내 2 · 열면 모두 읽음으로 바뀌어요</div><button class="ib-row" data-ib data-open="club"><span class="dot"></span><span><b>모임이 끝났어요</b><i>소년이 온다 같이 읽기 · 방금</i></span></button><button class="ib-row" data-ib data-open="club"><span class="dot"></span><span><b>모임 일정이 바뀌었어요</b><i>시집 같이 읽기 · 2시간 전</i></span></button><button class="ib-row read" data-ib data-open="club"><span class="dot"></span><span><b>다음 모임이 열렸어요</b><i>소년이 온다 같이 읽기 · 어제</i></span></button><button class="ib-row read" data-ib data-open="club"><span class="dot"></span><span><b>모임 일정이 확정됐어요</b><i>시집 같이 읽기 · 3일 전</i></span></button><div class="step">90일 지난 안내는 사라져요</div></div></div><div class="scr hide" data-screen="club"><div class="hd"><button class="back" data-open="list">‹</button> <span class="vname">모임</span></div><div class="cs"><div class="msg">안내를 누르면 그 모임 화면이 열려요(정해짐). ‹로 알림함에 돌아와요.</div></div></div></div>
+      <p>새 안내가 맨 위부터 한 줄씩 있어요. 이번에 새로 온 것만 점이 찍혀 있고, 알림함을 열면 모두 읽음이 돼요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>내 정보 알림 아이콘(점) → 알림함 열림 → 새 안내에 점 → 점은 이번만 보이고 모두 읽음 → 안내를 누르면 모임 화면.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>새 안내 2개에 노란 점</li><li>다시 열면 점이 없어요</li><li>90일 지난 안내는 사라져요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>가볍고 빨라요, 아이콘의 점도 한 번에 꺼져요. / 열기만 하고 안 누른 안내도 읽음이 돼요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-31 1열 카드 피드 — 한 줄씩 차례로 (인스타그램 알림)</p>
+      <p><b>추천 이유:</b> 안내 종류가 적고(모임 안내·운영 안내) 누르면 늘 모임 화면이라, 하나씩 읽음 처리할 필요가 적어요. 놓치면 안 되는 안내가 많다면 B가 나아요.</p>
+    </article>
+
+    <article class="cand" data-id="B">
+      <h3>후보 B — "안 읽은 / 지난" 두 묶음</h3>
+      <div class="phone"><div class="scr" data-screen="list"><div class="hd"><button class="back">‹</button> <span class="vname">알림함</span></div><div class="cs"><div class="step">안 읽은 안내 2</div><button class="ib-row" data-ib data-read data-open="club"><span class="dot"></span><span><b>모임이 끝났어요</b><i>소년이 온다 같이 읽기 · 방금</i></span></button><button class="ib-row" data-ib data-read data-open="club"><span class="dot"></span><span><b>모임 일정이 바뀌었어요</b><i>시집 같이 읽기 · 2시간 전</i></span></button><button class="sub-btn">모두 읽음</button><div class="step">지난 안내</div><button class="ib-row read" data-ib data-open="club"><span class="dot"></span><span><b>다음 모임이 열렸어요</b><i>소년이 온다 같이 읽기 · 어제</i></span></button><button class="ib-row read" data-ib data-open="club"><span class="dot"></span><span><b>모임 일정이 확정됐어요</b><i>시집 같이 읽기 · 3일 전</i></span></button></div></div><div class="scr hide" data-screen="club"><div class="hd"><button class="back" data-open="list">‹</button> <span class="vname">모임</span></div><div class="cs"><div class="msg">안내를 누르면 그 모임 화면이 열려요(정해짐). ‹로 알림함에 돌아와요.</div></div></div></div>
+      <p>위에 안 읽은 안내, 아래에 지난 안내가 따로 있어요. 하나씩 누르거나 "모두 읽음"을 눌러야 읽음이 돼요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>알림 아이콘 → 알림함 → 위 "안 읽은 안내" → 누르면 그 안내만 읽음 + 모임 화면 / "모두 읽음" → 전부 아래로.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>"모두 읽음" 버튼이 있어요</li><li>안 읽은 게 남아 있으면 아이콘 점도 남아요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>놓친 안내를 확실히 알아요. / 하나씩 눌러야 해서 손이 더 가요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-35 위 탭으로 목록 바꾸기 — 두 묶음 (유튜브 구독｜홈)</p>
+    </article>
+
+    <article class="cand" data-id="C">
+      <h3>후보 C — 모임별로 묶음</h3>
+      <div class="phone"><div class="scr" data-screen="list"><div class="hd"><button class="back">‹</button> <span class="vname">알림함</span></div><div class="cs"><div class="grp"><b>소년이 온다 같이 읽기</b> <span class="tag2">새 1</span><button class="ib-row" data-ib data-open="club"><span class="dot"></span><span><b>모임이 끝났어요</b><i>방금</i></span></button><button class="ib-row read" data-ib data-open="club"><span class="dot"></span><span><b>다음 모임이 열렸어요</b><i>어제</i></span></button></div><div class="grp"><b>시집 같이 읽기</b> <span class="tag2">새 1</span><button class="ib-row" data-ib data-open="club"><span class="dot"></span><span><b>모임 일정이 바뀌었어요</b><i>2시간 전</i></span></button><button class="ib-row read" data-ib data-open="club"><span class="dot"></span><span><b>모임 일정이 확정됐어요</b><i>3일 전</i></span></button></div></div></div><div class="scr hide" data-screen="club"><div class="hd"><button class="back" data-open="list">‹</button> <span class="vname">모임</span></div><div class="cs"><div class="msg">안내를 누르면 그 모임 화면이 열려요(정해짐). ‹로 알림함에 돌아와요.</div></div></div></div>
+      <p>모임마다 한 칸으로 묶여 있고, 그 안에 안내가 쌓여요. 누른 안내만 읽음이 돼요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>알림 아이콘 → 알림함 → 모임별 칸 → 안내를 누르면 그 안내 읽음 + 모임 화면.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>모임 이름 옆에 "새 1"</li><li>운영 안내는 따로 한 칸</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>모임별로 무슨 일이 있었는지 한눈에 봐요. / 언제 온 안내인지 순서가 덜 보여요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-32 줄 목록(썸네일 + 두 줄 글자) — 모임 이름 밑에 안내 (iOS 메일 묶음)</p>
+    </article>
+
+  </div>
+</section>
+
+<!-- 중심 요소 메모:
+     2 출석 확인과 불참 판정(K2-O1·O2) · 3 불참 횟수 세는 법과 4회째(K2-O3) · 4 제한이 걸리는 범위(K2-O4) · 5 댓글 운영 제한 기간(K2-O5) · 6 알림함 화면(K2-O8) -->
+
+<!-- ===== 잘 안 될 때 (예외, 1B 3단계) — 기록 화면 기준. 중심 요소를 다 정한 뒤 다시 본다 ===== -->
+<section id="except">
+  <h2>잘 안 될 때 보이는 화면</h2>
+  <p class="exdesc">기록 화면에서 생기는 일이에요. 버튼을 눌러 상태를 바꿔 보세요. 문구는 제가 먼저 넣어 둔 거예요.</p>
+  <div class="state" id="exTabs">
+    <button aria-pressed="true" data-ex="net">인터넷이 끊김</button><button aria-pressed="false" data-ex="empty">하나도 없음</button><button aria-pressed="false" data-ex="dbl">두 번 빠르게 누름</button><button aria-pressed="false" data-ex="guest">로그인 안 함·남의 기록</button>
+  </div>
+  <div class="phone" id="exPhone" style="margin:8px 0 0"><div class="scr" data-screen="ex"></div></div>
+  <p class="exdesc" id="exNote"></p>
+</section>
+
+<!-- ===== 처음부터 끝까지 ===== -->
+<section id="fullflow">
+  <h2>처음부터 끝까지 이렇게 써요</h2>
+  <ol>
+    <li>모임의 끝나는 시각이 지난 뒤 만든 사람과 참가자가 각자 알림함을 열면 동네한권이 "모임이 끝났어요" 안내를 한 번만 생성해 보여 준다.</li>
+    <li>사용자가 안내를 누르면 동네한권이 모임 화면을 열고, 참가 버튼 자리에 "기록·후기 쓰기"를 보여 준다.</li>
+    <li>사용자가 "기록·후기 쓰기"를 누르면 동네한권이 기록 화면을 열고 맨 위에 그날 모임 기록(날짜·장소·책·내 참가)을 보여 준다.</li>
+    <li>사용자가 그 아래 후기 칸에 후기를 쓰고 "저장"을 누르면 동네한권이 나만 보는 후기로 저장하고 "게시물로 올리기"를 보여 준다.</li>
+    <li>사용자가 더 내리면 동네한권이 다음 모임(이미 만든 다음 모임, 다음 모임 만들기)을 보여 준다.</li>
+    <li>만든 사람이 기록 화면의 "출석 확인"에서 안 온 참가자를 "안 왔어요"로 바꾸고 보내면 동네한권이 그 참가자를 관리자 확인으로 넘긴다.</li>
+    <li>관리자가 맞다고 확인하면 동네한권이 그 참가자에게 불참 1회를 기록하고 알림함에 안내를 넣는다. 참가자는 재검토를 요청할 수 있다.</li>
+    <li>동네한권이 최근 1년 안의 불참 수로 제한 기간(3일·7일·30일·참가 불가)을 정한다. 1년이 지난 불참은 세지 않는다.</li>
+    <li>제한 중인 사람이 어느 모임 화면을 열어도 동네한권이 참가 버튼 자리에 "지금은 모임에 참가할 수 없어요 (언제까지)"를 보여 준다. 댓글은 평소대로 쓸 수 있다.</li>
+    <li>사용자가 내 정보의 알림 아이콘을 누르면 동네한권이 알림함을 열어 최신 안내부터 한 줄씩 보여 주고, 새 안내에 점을 찍은 뒤 모두 읽음으로 바꾼다. 안내를 누르면 그 모임 화면이 열린다.</li>
+    <li>만든 사람이 댓글 처리를 요청하고 관리자가 "삭제와 제한"을 고르면 동네한권이 댓글을 숨기고, 최근 1년 댓글 제한 횟수로 3일·7일·30일·참가 불가를 정해 본인 알림함에 안내를 넣는다. 이 동안은 참가와 댓글을 모두 못 한다.</li>
+  </ol>
+</section>
+
+<!-- ===== 명세 패널 ===== -->
+<section id="spec">
+  <h2>명세</h2>
+  <div class="wide-t"><table>
+    <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
+    <tr data-el="el-record"><td>1. 기록 화면에서 먼저 보이는 것</td><td>A 기록 → 후기 → 다음 모임</td><td>없음</td><td>B 후기 칸 맨 위, C 다음 모임 맨 위</td><td>"기록이 먼저 보이는 게 좋아요. 그날 모임을 돌아볼 수 있어서요" · 불편한 점: 다음 모임이 맨 아래라 찾기 어려워요</td><td>맨 위 기록 카드(책 표지·이름·날짜 시각·끝난 모임·장소·참가 수·내 참가/참석), 곡률 9 → 내 후기 칸(나만 보기 기본, 2000자) → 다음 모임(만든 사람은 권하는 카드, 참가자는 이미 만든 다음 모임 + 만들기 버튼)</td><td>모임 화면 기록·후기 쓰기 → 그날 기록 → 아래 후기 쓰기·저장 → 게시물로 올리기 → 더 내려 다음 모임</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-attend"><td>2. 출석 확인과 불참 판정</td><td>A 만든 사람 표시 → 관리자 확인</td><td>없음</td><td>B 본인 참석 체크 + 만든 사람 표시, C 본인에게 사정 묻기</td><td>"만든 사람이 표시하고 관리자가 확인하는 게 좋아요. 관리자가 확인하니까 억울하게 불참되는 사람이 없어서요" · 불편한 점: 관리자 확인을 기다리는 동안 결과가 늦어요</td><td>끝난 모임 기록 화면에 만든 사람만 출석 확인 칸, 참가자마다 왔어요/안 왔어요(기본 왔어요), 보내기 확인창. 안 왔어요 → 관리자 확인 전에는 결과를 기다리고 있어요, 확인되면 불참 1회</td><td>모임 끝남 → 만든 사람 출석 확인 → 보내기 → 관리자 확인 → 불참 1회 + 본인 알림함 안내 → 본인 재검토 요청 가능</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-count"><td>3. 불참 횟수 세는 법과 4회째</td><td>A 최근 1년 불참만 셈, 4회째 참가 불가는 운영자가 풀 때까지</td><td>없음</td><td>B 지금까지 전부 셈, C 연속 불참만 셈·90일 자동 해제</td><td>"최근 1년만 세는 게 좋아요. 예전 실수가 계속 남지 않아서요" · 불편한 점: 자주 빠지는 사람이 계속 30일까지만 가요</td><td>관리자가 확인한 불참 중 확인 시각이 최근 365일 안인 것만 셈. 1회 3일·2회 7일·3회 30일·4회 참가 불가(끝나는 날 없음). 기록 옆 셈 / 1년 지나 안 셈 표시</td><td>불참 확인 → 최근 1년 불참 수로 단계 → 제한 → 1년 지난 불참은 저절로 빠짐 → 참가 불가는 재검토 요청 → 운영자 해제</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-scope"><td>4. 불참 제한 범위</td><td>A 모든 모임 참가만 막힘, 댓글은 됨</td><td>없음</td><td>B 참가·댓글 모두, C 불참한 모임(다음 회차)만</td><td>"모든 모임 참가만 막히는 게 좋아요. 댓글을 쓸 수 있어서요" · 불편한 점: 제한 중에도 댓글로 계속 말을 걸 수 있어요</td><td>불참 사유 제한 = 모든 도서관 모든 모임의 참가(#55)만 막음. 버튼 자리 지금은 모임에 참가할 수 없어요 (M.D HH:mm까지), 참가 불가면 괄호 없음. 댓글·읽기는 평소대로</td><td>제한 중 모임 화면 → 참가 버튼 자리 안내 → 댓글은 씀 → 기간이 끝나면 다시 참가</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-comment"><td>5. 댓글 운영 제한 기간·사유</td><td>B 불참과 같은 단계, 정해진 문구</td><td>없음</td><td>A 늘 7일, C 관리자가 기간·사유 정함</td><td>"불참과 같은 단계가 좋아요. 규칙이 같아서 헷갈리지 않아요" · 불편한 점: 처음에 3일이라 가벼워 보일 수 있어요</td><td>댓글 운영 사유 제한을 불참과 따로, 최근 1년 횟수로 1번째 3일·2번째 7일·3번째 30일·4번째 참가 불가(운영자 해제). 문구 모임 댓글 운영 기준에 따라 모임 댓글과 참가가 제한돼요. 최근 1년 n번째 → 기간 (M.D HH:mm까지). 숨겨진 내 댓글 함께 보임. 참가와 댓글 모두 막힘</td><td>관리자 삭제와 제한 → 알림함 안내 → 내 참가 제한 화면 → 재검토 요청 → 기간 뒤 풀림</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-inbox"><td>6. 알림함 화면</td><td>A 최신순 한 줄 목록, 열면 모두 읽음</td><td>없음</td><td>B 안 읽은/지난 두 묶음, C 모임별 묶음</td><td>"최신순으로 보이는 게 좋아요. 열면 다 읽음이라서 편해서요. 새 안내를 한 번에 확인하고 하나씩 안 눌러도 돼서요" · 불편한 점: 열기만 해도 읽음이 돼서 놓칠 수 있어요</td><td>최신순(#48 created_at DESC), 한 줄 = 제목 + 모임 이름 · 언제. 이번에 새로 온 안내만 fill1 점. 화면을 열면 #49 all true로 모두 읽음. 90일 지난 안내는 안 보임. 내리면 계속 나옴(30개씩)</td><td>내 정보 알림 아이콘 → 알림함 → 새 안내 점 → 모두 읽음 → 안내 누르면 모임 화면</td><td><span class="st">확인</span></td></tr>
+    <tr><td>후기 글자 수</td><td>2000자</td><td>—</td><td>—</td><td>묻지 않음</td><td>칸 아래 n/2000</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>반납 알림을 알림함에</td><td>넣지 않음(휴대폰에만 뜨는 알림이라 지난 내역이 없음)</td><td>—</td><td>—</td><td>묻지 않음</td><td>—</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>모임 끝날 때 휴대폰 알림</td><td>띄우지 않음(알림함 안내만)</td><td>—</td><td>—</td><td>묻지 않음</td><td>—</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+  </table></div>
+</section>
+</main>
+
+<script>
+  // 기록 화면 조각(같은 가짜 값). host = 만든 사람으로 보기
+  var HEAD = '<div class="hd"><button class="back">‹</button> <span class="vname">모임 기록</span></div>';
+  function part(kind, host) {
+    if (kind === 'record') return '<div class="info"><div class="bk"></div><div><div class="nm">소년이 온다 같이 읽기</div>' +
+      '<div class="ln"><b>11.28 토 오후 2:00</b> ~ 4:00 · 끝난 모임</div><div class="ln">2층 세미나실 · 참가 4명</div><div class="ln">나: 참가 신청함</div></div></div>';
+    if (kind === 'review') return '<div class="sec">내 후기 · 나만 보기</div>' +
+      '<div class="cm rv" data-review><span class="ph">오늘 모임 어땠어요? 나만 볼 수 있어요</span></div>' +
+      '<button class="sub-btn" data-write>후기 쓰기</button><button class="sub-btn hide" data-share>게시물로 올리기</button>';
+    if (kind === 'next') return host
+      ? '<div class="msg"><b>다음 모임 만들어 볼까요?</b><br>이름·책·장소를 그대로 가져와요. 날짜만 새로 골라요.<button class="main-btn" data-next>다음 모임 만들기</button></div>'
+      : '<div class="sec">다음 모임</div><div class="cm"><i>이미 만든 다음 모임</i>소년이 온다 같이 읽기 · 12.12 토 <b>들어가기 →</b></div><button class="sub-btn" data-next>다음 모임 만들기</button>';
+    return '';
+  }
+  function draw(ph) {
+    var host = ph.classList.contains('host');
+    var order = ph.dataset.order.split(',');
+    var body = order.map(function (k) { return part(k, host); }).join('');
+    ph.innerHTML = '<div class="scr" data-screen="rec">' + HEAD + '<div class="cs">' + body + '</div><div class="toast" id="t' + Math.random().toString(36).slice(2) + '"></div></div>';
+  }
+  document.querySelectorAll('#el-record .cand .phone').forEach(draw);
+  document.querySelectorAll('[data-host]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var ph = b.closest('.cand').querySelector('.phone');
+      var on = !ph.classList.contains('host');
+      ph.classList.toggle('host', on); b.setAttribute('aria-pressed', on);
+      b.textContent = on ? '참가자로 보기' : '만든 사람으로 보기';
+      draw(ph);
+    });
+  });
+  document.addEventListener('click', function (e) {
+    var ph = e.target.closest('.phone'); if (!ph) return;
+    var toast = ph.querySelector('.toast');
+    function say(t) { if (!toast) return; toast.textContent = t; toast.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(function () { toast.classList.remove('on'); }, 2000); }
+    if (e.target.closest('[data-write]')) {
+      var rv = ph.querySelector('[data-review]'); rv.innerHTML = '처음엔 어려웠는데 같이 읽으니 끝까지 읽었어요.';
+      e.target.closest('[data-write]').textContent = '후기 저장됨 · 고치기';
+      ph.querySelector('[data-share]').classList.remove('hide'); say('후기를 저장했어요. 나만 볼 수 있어요');
+    }
+    if (e.target.closest('[data-share]')) say('후기를 게시물로 올렸어요. 원래 후기는 그대로 나만 봐요');
+    if (e.target.closest('[data-next]')) say('다음 모임 만들기 화면이 열려요(이름·책·장소 채워짐, 날짜만 새로)');
+  });
+
+  document.addEventListener('click', function (e) {
+    var m = e.target.closest('[data-mark]'); if (!m) return;
+    m.parentNode.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === m); });
+  });
+  // 휴대폰 안 화면 바꾸기
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-open]'); if (!t) return;
+    var ph = t.closest('.phone'); if (!ph) return;
+    ph.querySelectorAll('.scr[data-screen]').forEach(function (x) { x.classList.toggle('hide', x.dataset.screen !== t.dataset.open); });
+  });
+
+  document.addEventListener('click', function (e) {
+    var r = e.target.closest('[data-read]'); if (r) r.classList.add('read');
+  });
+
+  // 채택안 표시
+  function mark(el, id) {
+    el.querySelectorAll('.cand').forEach(function (c) {
+      c.classList.toggle('chosen', c.dataset.id === id);
+      var old = c.querySelector('.badge.adopted'); if (old) old.remove();
+      if (id && c.dataset.id === el.dataset.chosen) { var s = document.createElement('span'); s.className = 'badge adopted'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+    });
+    var sel = el.querySelector('select[data-for]'); if (sel && id) sel.value = id;
+  }
+  document.querySelectorAll('section.element').forEach(function (el) {
+    mark(el, el.dataset.chosen || '');
+    var sel = el.querySelector('select[data-for]');
+    if (sel) { if (!el.dataset.chosen) sel.insertAdjacentHTML('afterbegin', '<option value="" selected>(아직 고르지 않음)</option>');
+      sel.addEventListener('change', function () { mark(el, sel.value || el.dataset.chosen);
+        var c = el.querySelector('.cand[data-id="' + sel.value + '"]'); if (c) c.scrollIntoView({ behavior:'smooth', block:'nearest' }); }); }
+  });
+
+  // 예외 화면
+  var EX = {
+    net: { html: HEAD + '<div class="cs">' + part('record') + '<div class="sec">내 후기 · 나만 보기</div><div class="cm rv">처음엔 어려웠는데 같이 읽으니…</div>' +
+        '<div class="msg">후기를 저장하지 못했어요. 다시 해 주세요.<button class="sub-btn">다시 해 보기</button></div></div>',
+      note: '후기를 저장하다 인터넷이 끊긴 모습이에요. 쓰던 후기는 칸에 그대로 남고, "다시 해 보기"를 누르면 같은 후기로 다시 저장해요. 기록 화면을 아예 못 불러오면 "기록을 불러오지 못했어요" + "다시 해 보기"가 화면 가운데에 보여요.' },
+    empty: { html: HEAD + '<div class="cs">' + part('record') + part('review') + '<div class="sec">다음 모임</div><div class="empty">아직 다음 모임이 없어요. 처음으로 만들어 볼까요?</div><button class="sub-btn">다음 모임 만들기</button></div>',
+      note: '후기도 다음 모임도 아직 없는 첫 모습이에요. 후기 칸에는 안내 글자가, 다음 모임 자리에는 한 줄 안내와 만들기 버튼이 보여요.' },
+    dbl: { html: HEAD + '<div class="cs">' + part('record') + '<div class="sec">내 후기 · 나만 보기</div><div class="cm rv">처음엔 어려웠는데 같이 읽으니…</div><button class="sub-btn" disabled>올리는 중…</button></div>',
+      note: '"게시물로 올리기"나 "다음 모임 만들기"를 빠르게 두 번 눌러도 첫 누름 뒤 버튼이 "올리는 중…"으로 잠겨서 게시물·다음 모임이 하나만 생겨요.' },
+    guest: { html: HEAD + '<div class="cs"><div class="empty" style="margin-top:40px">이 모임에 참가한 사람만 기록을 볼 수 있어요.</div><button class="sub-btn">모임 화면으로</button></div>',
+      note: '참가하지 않은 모임의 기록 화면이나, 로그인하지 않은 사람이 들어온 모습이에요(로그인 안 했으면 먼저 로그인 창이 떠요). 남의 후기는 어디에도 보이지 않아요.' }
+  };
+  var exScr = document.querySelector('#exPhone [data-screen="ex"]'), exNote = document.getElementById('exNote');
+  function showEx(k) { exScr.innerHTML = EX[k].html; exNote.textContent = EX[k].note;
+    document.querySelectorAll('#exTabs button').forEach(function (x) { x.setAttribute('aria-pressed', x.dataset.ex === k); }); }
+  document.querySelectorAll('#exTabs button').forEach(function (b) { b.addEventListener('click', function () { showEx(b.dataset.ex); }); });
+  showEx('net');
+</script>
+</body>
+</html>
