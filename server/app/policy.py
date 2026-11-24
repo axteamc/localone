@@ -15,6 +15,14 @@ PROVIDER_MAX_RESPONSE_BYTES = 2_000_000  # 02 §9 "LIB-0 조회 엔진 수치": 
 AVAILABILITY_MAX_CONCURRENCY = 8  # 02 §9 "LIB-0 조회 엔진 수치": 한 요청의 동시 호출 수
 AVAILABILITY_MAX_CALLS_PER_REQUEST = 40  # 02 §9 "LIB-0 조회 엔진 수치": 넘는 도서관은 unknown(limit)
 
+# ── 빌릴 예정 일괄 소장 조회(06 #70, book-search LIB-3b·core K24, C-84) ──
+# 요청당 호출·동시 수는 위 40·8을 libSrchByBook 페이지와 bookExist가 함께 쓴다(Y6-4).
+# libSrchByBook 페이지 크기는 SHELF_HOLDINGS_PAGE_SIZE(100) 재사용. 정보나루 매뉴얼 v20260620 39쪽은
+# pageSize 상한·기본값과 소장 데이터 기준일을 적지 않는다(2026-11-24 확인) → 기준일은 전날로 보고 오늘 bookExist 우선.
+BATCH_AVAILABILITY_MAX_ISBNS = 20  # 05 §11 `확정`(Y6-3): 서로 다른 ISBN 상한, 넘으면 422
+BATCH_AVAILABILITY_MAX_PLAN_IDS = 50  # 05 §11 기본값(Claude): #16 limit 상한과 같음
+BATCH_AVAILABILITY_TOP_LIBRARIES = 3  # 05 §11 `확정`(시안): 후보 도서관 최대 수
+
 # ── 도서 검색(06 #7) ──
 SEARCH_PAGE_SIZE = 20  # 06 §1 `확정`: 20건씩 "더 보기"
 SEARCH_MAX_START = 1000  # 06 #7 start 상한(1~1000). 카카오는 page 50까지라 그 뒤 start는 빈 결과

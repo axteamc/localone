@@ -1,0 +1,371 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="명세" content="../명세/YES24_큐레이션_및_구매연동_설계명세.md §1.3·§5.5·§6 Y-6">
+<title>Y-6 도서 상세 배치 · YES24 연결 위치 시안</title>
+<!--
+  YES24 5단계(Y-6, 2026-11-24). 대상: mobile/src/features/book-search/BookDetailScreen.tsx
+  근거: 설계명세 §1.3 의무 ②(도서 상세에서 YES24 상품 상세 연결), §5.5, 00_기획_원본 O-16(대여 우선, 구매는 yes24).
+  상단 판(표지·제목·두 버튼)과 소장 카드 모양은 L3a·S4에서 확정된 것이라 그대로 둔다.
+  외부 이미지·글꼴 연결 없음. 색·곡률은 :root 토큰(warm 룩)만 쓴다.
+-->
+<style>
+  :root {
+    --white:#FFFFFF; --text:#1D1D1F; --ink-muted:#6B6B66; --ink-soft:#4D4D4B;
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+    --paper:#EFF1F1; --ink-strong:#2E333F;
+    --panel-frosted:#E9EAE9; --panel-lit:#EFF1EF; --seam:#C8C9C8; --rivet:#8E8D8D;
+    --relief-mid:#B8B7B3; --loan-avail:#5B8A5B; --loan-out:#B27A3D; --loan-unk:#9A9A98;
+    --shadow-cast:rgba(28,30,36,.20); --shadow-soft:rgba(0,0,0,.18); --seam-hi:rgba(255,255,255,.68);
+    --r-block:3px; --r-info:9px; --r-pill:999px; --r-cover:5px 9px 9px 5px;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:"Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif; line-height:1.5; }
+  header.page, main { max-width:1320px; margin:0 auto; padding:0 16px 48px; }
+  header.page { padding-top:22px; padding-bottom:0; }
+  h1 { font-size:22px; font-weight:400; margin:0 0 4px; color:var(--ink-soft); letter-spacing:-.02em; }
+  h2 { font-size:18px; font-weight:500; margin:0 0 4px; }
+  h3 { font-size:15px; font-weight:500; margin:14px 0 6px; }
+  .how { background:var(--panel-lit); border:1px solid var(--seam); border-radius:var(--r-info); padding:12px 16px; margin:10px 0 0; font-size:13.5px; }
+  .how ol, .how ul { margin:4px 0; padding-left:20px; }
+  .ask { background:var(--fill1); color:var(--text); border-radius:var(--r-info); padding:12px 16px; margin:12px 0 0; font-size:14px; }
+  .bar { display:flex; flex-wrap:wrap; gap:14px; align-items:center; margin-top:12px; font-size:13.5px; }
+  select { font:inherit; padding:4px 9px; border-radius:8px; border:1px solid var(--surface3); background:var(--paper); color:var(--text); }
+  section { margin-top:38px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:var(--r-pill); background:var(--surface2); margin-left:6px; font-weight:400; }
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(330px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-info); padding:14px; border:3px solid transparent; display:flex; flex-direction:column; }
+  .cand.recommended { border-color:var(--fill1); }
+  .cand.chosen { border-color:var(--ink-strong); }
+  .badge { display:inline-block; font-size:11.5px; font-weight:500; padding:1px 9px; border-radius:var(--r-pill); background:var(--fill1); margin-left:6px; }
+  .badge.adopted { background:var(--ink-strong); color:var(--white); }
+  .cand p, .cand li { font-size:13px; margin:4px 0; }
+  .cand ul { padding-left:18px; margin:4px 0; }
+  .lbl { font-weight:500; font-size:12px; color:var(--ink-muted); margin-top:10px; display:block; }
+  code { font-size:12px; background:var(--surface2); padding:0 4px; border-radius:3px; }
+
+  /* 휴대폰 틀 (390×844 → 304×610 축소) */
+  .phone { width:304px; height:610px; margin:0 auto 10px; border-radius:28px; border:6px solid var(--ink-strong); position:relative; overflow:hidden; background:var(--panel-frosted); display:flex; flex-direction:column; font-size:11.5px; }
+  .hd { flex:none; height:38px; border-bottom:1px solid var(--seam); display:flex; align-items:center; padding:0 12px; gap:8px; position:relative; }
+  .hd .back { font-size:20px; font-weight:500; color:var(--ink-strong); line-height:1; }
+  .hd .en { font-size:9.5px; font-weight:500; letter-spacing:.32em; color:var(--ink-muted); }
+  .hd .more { margin-left:auto; font-size:18px; font-weight:700; color:var(--ink-strong); background:none; border:0; cursor:pointer; padding:0 2px; letter-spacing:1px; }
+  .menu { position:absolute; right:10px; top:36px; z-index:20; background:var(--panel-lit); border:1px solid var(--seam); border-radius:var(--r-info); box-shadow:0 6px 16px var(--shadow-cast); padding:4px 0; min-width:190px; }
+  .menu button { display:block; width:100%; text-align:left; background:none; border:0; font:inherit; font-size:11.5px; padding:8px 12px; color:var(--text); cursor:pointer; }
+  .menu button + button { border-top:1px solid var(--seam); }
+  .scr { flex:1; overflow-y:auto; overflow-x:hidden; position:relative; scrollbar-width:thin; }
+  .fold { position:absolute; left:0; right:0; top:560px; border-top:1.5px dashed #B27A3D; pointer-events:none; z-index:5; }
+  .fold span { position:absolute; right:6px; top:-15px; font-size:9px; color:#B27A3D; background:var(--panel-frosted); padding:0 3px; }
+  .hide { display:none !important; }
+  .gauge { font-size:8.5px; font-weight:500; letter-spacing:.14em; text-transform:uppercase; color:var(--ink-muted); line-height:1.3; }
+  .t-sec { font-size:17px; font-weight:400; letter-spacing:-.02em; color:var(--ink-soft); line-height:1.3; margin:16px 0 6px; }
+  .t-title { font-size:17px; font-weight:400; letter-spacing:-.02em; line-height:1.3; }
+  .t-sub { font-size:11px; color:var(--ink-muted); margin-top:2px; }
+
+  .btn-pri { background:var(--panel-lit); color:var(--ink-strong); border:1px solid var(--seam); border-radius:var(--r-pill); box-shadow:0 2px 0 var(--relief-mid); font:inherit; font-size:12px; font-weight:500; white-space:nowrap; height:38px; padding:0 12px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
+  .btn-sec { background:var(--panel-frosted); color:var(--text); border:1px solid var(--seam); border-radius:var(--r-pill); font:inherit; font-size:11px; font-weight:500; white-space:nowrap; height:32px; padding:0 11px; display:inline-flex; align-items:center; cursor:pointer; }
+  .btn-link { background:none; border:0; padding:4px 0; font:inherit; font-size:12px; font-weight:500; color:var(--ink-strong); cursor:pointer; white-space:nowrap; text-align:left; }
+  .btn-link.small { font-size:10.5px; padding:2px 0; }
+  .btn-link[disabled] { color:var(--ink-muted); cursor:default; }
+
+  .top { background:var(--panel-lit); border-bottom:1px solid var(--seam); border-radius:0 0 var(--r-block) var(--r-block); box-shadow:0 1px 0 var(--seam-hi); padding:12px; }
+  .top .row { display:flex; gap:12px; align-items:flex-start; }
+  .cov { width:66px; height:94px; border-radius:var(--r-cover); border:1px solid var(--seam); background:var(--fill3); flex:none; padding:5px; display:flex; flex-direction:column; justify-content:space-between; }
+  .cov .ct { font-size:8.5px; font-weight:500; line-height:1.2; color:var(--ink-strong); }
+  .cov .ca { font-size:7px; color:var(--ink-strong); opacity:.75; }
+  .acts { display:grid; grid-template-columns:1.55fr 1fr; gap:6px; margin-top:10px; }
+  .body { padding:4px 12px 24px; }
+  .lib-card { background:var(--panel-lit); border:1px solid var(--seam); border-radius:var(--r-info); box-shadow:0 2px 0 var(--relief-mid); padding:9px 10px; display:flex; align-items:center; gap:8px; margin-top:8px; }
+  .lib-card .l { flex:1; min-width:0; }
+  .lib-card .n { font-size:12.5px; font-weight:500; }
+  .lib-card .s { display:flex; align-items:center; gap:5px; font-size:10.5px; margin-top:2px; }
+  .dot { width:7px; height:7px; border-radius:50%; background:var(--loan-avail); }
+  .dot.out { background:var(--loan-out); } .dot.unk { background:var(--loan-unk); }
+  .live { height:30px; padding:0 9px; background:var(--panel-frosted); border:1px solid var(--seam); border-radius:var(--r-pill); font-size:10.5px; font-weight:500; display:inline-flex; align-items:center; white-space:nowrap; }
+  .desc { font-size:11.5px; color:var(--ink-soft); line-height:1.6; }
+  .desc.clamp { display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  .yes24-row { margin-top:16px; padding-top:10px; border-top:1px solid var(--seam); display:flex; flex-direction:column; gap:2px; }
+  .yes24-note { font-size:10.5px; color:var(--ink-soft); }
+  .toast { position:absolute; left:12px; right:12px; bottom:14px; z-index:30; background:var(--ink-strong); color:var(--white); font-size:11px; padding:9px 11px; border-radius:var(--r-info); box-shadow:0 6px 16px var(--shadow-cast); }
+  .state-bar { display:flex; flex-wrap:wrap; gap:6px; margin:8px 0; }
+  .state-bar button { font:inherit; font-size:12.5px; border:1px solid var(--seam); border-radius:var(--r-pill); padding:4px 11px; background:var(--paper); color:var(--text); cursor:pointer; }
+  .state-bar button[aria-pressed="true"] { background:var(--ink-strong); color:var(--white); border-color:var(--ink-strong); }
+
+  .wide { overflow-x:auto; }
+  table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-info); overflow:hidden; margin-top:8px; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--seam); }
+  th { background:var(--surface2); font-weight:500; }
+  .st { font-size:12px; padding:1px 8px; border-radius:var(--r-pill); background:var(--surface2); white-space:nowrap; }
+  .pair { display:flex; flex-wrap:wrap; gap:24px; justify-content:center; margin-top:12px; }
+  .pair figure { margin:0; }
+  .pair figcaption { text-align:center; font-size:12.5px; color:var(--ink-soft); }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>Y-6 도서 상세 배치 · YES24 연결 위치 시안</h1>
+  <div class="how">
+    <b>이해한 내용 (확인 부탁드려요)</b>
+    <ol>
+      <li>YES24 약관 의무 ②: 도서 상세에서 YES24 상품 상세로 가는 길이 있어야 해요(지금 없음).</li>
+      <li>원문 O-16 "대여 우선, 구매는 yes24" — 상단 판의 <code>빌릴 예정에 저장</code>·<code>빌렸어요</code>가 주인공인 위계는 그대로 둡니다.</li>
+      <li>상단 판 모양(L3a)·소장 카드 모양(S4)은 이미 확정이라 바꾸지 않습니다.</li>
+      <li>정할 것은 두 가지: <b>① YES24 연결을 어디에 두나</b>, <b>② 본문 순서(도서관 목록과 책 소개)</b>.</li>
+      <li>링크를 누르면 서버 <code>#15</code>가 주는 주소(상품 직링크, 없으면 YES24 검색)를 새 창/브라우저로 엽니다. 서버·API는 바꾸지 않습니다.</li>
+      <li>글 상세(PostDetail)의 <code>구매 ↗</code> 버튼 연결은 이번 범위가 아닙니다(별도 화면).</li>
+    </ol>
+  </div>
+  <div class="ask">
+    <b>답해 주실 것:</b> 정할 것 ①·②마다 <b>고른 화면과 그 이유</b>를 자기 말로 알려 주세요. 이유가 있어야 결정 노트를 쓸 수 있어요 — "B", "추천대로"처럼 번호만으로는 적을 수 없어요. 차선이 있으면 함께 알려 주세요.
+  </div>
+  <div class="how">
+    휴대폰 화면은 <b>스크롤</b>할 수 있어요. 주황 점선은 <b>첫 화면 끝</b>(390×844 기준)이에요. 링크를 누르면 시안 안에서만 동작을 보여 주고 실제로 이동하지 않아요.
+  </div>
+</header>
+
+<main>
+<!-- ================= 정할 것 1 ================= -->
+<section id="el1">
+  <h2>정할 것 ①. YES24 연결을 어디에 두나 <span class="status" id="el1-status">결정 전</span></h2>
+  <div class="bar">채택안(기본 선택):
+    <select id="el1-sel" aria-label="정할 것 1 보기">
+      <option value="">결정 전 — 후보 비교</option>
+      <option value="A">A. 도서관 목록 아래 텍스트 링크</option>
+      <option value="B">B. 상단 판 안 작은 링크</option>
+      <option value="C">C. 머리띠 점 3개 메뉴</option>
+    </select>
+    <span style="color:var(--ink-muted)">세 후보 모두 본문 순서는 지금 그대로(②-A)로 그렸어요.</span>
+  </div>
+  <div class="cands">
+    <div class="cand recommended" data-el="1" data-id="A">
+      <h3>A. 가까운 도서관 목록 바로 아래 텍스트 링크 <span class="badge">추천</span></h3>
+      <div class="phone" data-link="A" data-order="A"></div>
+      <p>도서관 카드들이 끝난 곳에 가는 줄 하나를 긋고 <code>YES24에서 책 정보·구매 보기 ↗</code>를 글자 링크로 둡니다. 아래에 "YES24 사이트로 이동해요" 작은 안내.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>책 상세 → 아래로 스크롤 → 도서관 목록을 다 본 뒤 링크 → 새 창(웹)/브라우저(앱)에서 YES24 상품 페이지 → 돌아오면 같은 상세 화면.</p>
+      <span class="lbl">열어야 보이는 것</span>
+      <ul><li>도서관 4곳이면 첫 화면 끝(점선) 바로 아래라 조금만 내리면 보여요. 5곳 이상이면 카드 수만큼 더 아래.</li><li>도시 전체(20곳+)로 넓히면 그만큼 더 아래로 밀려요.</li><li>누르는 동안 "여는 중…"으로 바뀌고, 못 열면 링크 아래에 안내 한 줄.</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>＋ "근처에서 못 빌리면 → 사러 가기" 순서라 대여 우선(O-16)과 맞고 명세 §1.3 1순위 그대로. 시선을 뺏지 않음.<br>－ 도시 전체 모드에선 한참 내려가야 보임.</p>
+      <p><b>추천 이유:</b> 도서관을 다 확인한 사람이 다음에 할 행동 자리에 놓여, 대출 버튼과 경쟁하지 않으면서도 약관상 "상세에서 연결"을 숨기지 않아요.</p>
+    </div>
+    <div class="cand" data-el="1" data-id="B">
+      <h3>B. 상단 판 안, ISBN 줄 아래 작은 링크</h3>
+      <div class="phone" data-link="B" data-order="A"></div>
+      <p>표지 옆 제목·저자·출판사·ISBN 줄 바로 아래에 작은 글자 <code>YES24에서 보기 ↗</code>. 두 버튼 위쪽, 첫 화면에 늘 보여요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>책 상세 열자마자 보임 → 누르면 바로 YES24 → 돌아오면 같은 상세 화면.</p>
+      <span class="lbl">열어야 보이는 것</span>
+      <ul><li>스크롤 없이 보여요.</li><li>좁은 화면에서 긴 제목(2~3줄)이면 표지 옆 칸이 길어져 두 버튼이 약간 내려가요.</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>＋ 찾기 쉬움. 도서관 개수와 상관없이 같은 자리.<br>－ 처음 보이는 곳에 "구매"가 들어와 대여 우선 위계가 약해져요. 버튼 두 개와 링크가 가까워 잘못 누를 수 있어요.</p>
+    </div>
+    <div class="cand" data-el="1" data-id="C">
+      <h3>C. 머리띠 오른쪽 점 3개(⋯) 메뉴 안</h3>
+      <div class="phone" data-link="C" data-order="A"></div>
+      <p>머리띠 오른쪽 <code>⋯</code>를 누르면 작은 메뉴에 <code>YES24에서 책 정보·구매 보기 ↗</code> 한 줄. 화면 본문에는 아무것도 늘지 않아요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>책 상세 → ⋯ 누름 → 메뉴 → YES24 → 돌아오면 같은 상세 화면(메뉴 닫힘).</p>
+      <span class="lbl">열어야 보이는 것</span>
+      <ul><li>메뉴를 열기 전에는 YES24가 있다는 걸 알 수 없어요.</li><li>메뉴 항목은 지금 1개뿐(공유 등은 없음).</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>＋ 본문이 가장 깔끔. 대출 위계 그대로.<br>－ "상세에서 연결" 의무를 숨긴 것처럼 보일 수 있어요. 머리띠는 화면 경로 파일(<code>app/books/[isbn13].tsx</code>)도 고쳐야 해 범위가 커져요. 항목 1개짜리 메뉴는 어색해요.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 정할 것 2 ================= -->
+<section id="el2">
+  <h2>정할 것 ②. 본문 순서 — 도서관 목록과 책 소개 <span class="status" id="el2-status">결정 전</span></h2>
+  <div class="bar">채택안(기본 선택):
+    <select id="el2-sel" aria-label="정할 것 2 보기">
+      <option value="">결정 전 — 후보 비교</option>
+      <option value="A">A. 지금 순서 유지</option>
+      <option value="B">B. 책 소개 3줄을 위로</option>
+      <option value="C">C. 도서관 3곳만 먼저 + 더 보기</option>
+    </select>
+    <span style="color:var(--ink-muted)">세 후보 모두 YES24 링크는 ①-A 자리로 그렸어요.</span>
+  </div>
+  <div class="cands">
+    <div class="cand recommended" data-el="2" data-id="A">
+      <h3>A. 지금 순서 유지: 상단 판 → 가까운 도서관 → (YES24) → 책 소개 <span class="badge">추천</span></h3>
+      <div class="phone" data-link="A" data-order="A"></div>
+      <p>지금 화면과 같아요. 도서관 카드는 찾은 만큼 전부 보이고, 책 소개는 맨 아래 전체 글.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>상세 → 첫 화면에서 가까운 도서관 1~2곳 확인 → 스크롤하며 나머지 도서관 → YES24 링크 → 책 소개.</p>
+      <span class="lbl">열어야 보이는 것</span>
+      <ul><li>도서관 4곳이면 첫 화면에 카드 4곳이 다 보이고, 책 소개는 첫 화면 끝 바로 아래부터.</li><li>도시 전체 20곳이면 소개는 훨씬 아래.</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>＋ "빌릴 수 있나?"가 바로 보임(대여 우선). 확정된 구조·시험 그대로라 고칠 게 적음.<br>－ 책 내용이 궁금한 사람은 많이 내려가야 함.</p>
+      <p><b>추천 이유:</b> 이 앱에서 책 상세에 오는 가장 흔한 이유는 "근처에서 빌릴 수 있나"이고, 그 답이 첫 화면에 남아요.</p>
+    </div>
+    <div class="cand" data-el="2" data-id="B">
+      <h3>B. 책 소개 3줄을 상단 판 바로 아래로 (더 보기로 펼침)</h3>
+      <div class="phone" data-link="A" data-order="B"></div>
+      <p>상단 판 아래에 책 소개 3줄 + <code>더 보기</code>. 그 다음 가까운 도서관, 맨 끝에 YES24 링크.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>상세 → 책 소개 3줄 읽기 → (더 보기 누르면 전체 펼침, 다시 누르면 접힘) → 도서관 → YES24.</p>
+      <span class="lbl">열어야 보이는 것</span>
+      <ul><li>소개가 없는 책은 이 칸이 사라져 A와 같아져요.</li><li>첫 화면의 도서관 카드가 약 1곳으로 줄어요.</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>＋ 어떤 책인지 먼저 알 수 있음(검색에서 처음 본 책에 좋음).<br>－ 대여 정보가 한 칸 밀림. 펼침 상태가 새로 생겨 시험이 늘어요.</p>
+    </div>
+    <div class="cand" data-el="2" data-id="C">
+      <h3>C. 도서관 3곳만 먼저 + "도서관 N곳 더 보기" → YES24 → 책 소개</h3>
+      <div class="phone" data-link="A" data-order="C"></div>
+      <p>가까운 도서관은 앞 3곳만 보이고 나머지는 <code>도서관 N곳 더 보기</code>로 펼쳐요. 그래서 YES24 링크와 책 소개가 덜 밀려요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>상세 → 도서관 3곳 → (더 보기 → 전부 펼침) → YES24 → 책 소개.</p>
+      <span class="lbl">열어야 보이는 것</span>
+      <ul><li>4번째 이후 도서관은 펼쳐야 보여요(도시 전체 모드에서도 동일).</li><li>"총 N곳 중 확인 …" 요약 줄은 그대로.</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>＋ 대여 우선 유지 + 아래 내용이 가까워짐.<br>－ 빌릴 수 있는 도서관이 4번째 이후면 놓칠 수 있음. 확정된 소장 목록(LIB-2/LIB-3) 동작이 바뀌어 고칠 파일·시험이 가장 많아요.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 조합 미리보기 ================= -->
+<section id="combo">
+  <h2>③ 고른 조합 미리보기 <span class="status">위 두 선택 상자를 따름</span></h2>
+  <p style="font-size:13.5px">결정 전에는 두 추천(①-A + ②-A)으로 보여요. 넓은 웹(1280)은 가운데 480 칼럼 안에서 같은 순서로 보여 따로 그리지 않았어요(기본값(Claude)).</p>
+  <div class="pair">
+    <figure><div class="phone" id="combo-phone"></div><figcaption>휴대폰 390</figcaption></figure>
+  </div>
+</section>
+
+<!-- ================= 기본값(Claude) ================= -->
+<section id="defaults">
+  <h2>④ 기본값(Claude) — 링크의 상태 <span class="status">기본값(Claude)</span></h2>
+  <p style="font-size:13.5px">이건 묻지 않고 정한 것이에요. 불편한 게 있으면 알려 주세요.</p>
+  <div class="state-bar" role="group" aria-label="링크 상태">
+    <button data-st="ready" aria-pressed="true">보통</button>
+    <button data-st="opening" aria-pressed="false">여는 중</button>
+    <button data-st="failed" aria-pressed="false">못 열었음</button>
+    <button data-st="yes24src" aria-pressed="false">책 정보 출처가 YES24</button>
+  </div>
+  <div class="pair">
+    <figure><div class="phone" id="state-phone"></div><figcaption id="state-cap">보통</figcaption></figure>
+  </div>
+</section>
+
+<!-- ================= 명세 ================= -->
+<section id="spec">
+  <h2>명세 패널</h2>
+  <div class="wide"><table>
+    <thead><tr><th>요소</th><th>채택안</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr></thead>
+    <tbody>
+      <tr><td>① YES24 연결 위치</td><td id="sp1-adopt">—</td><td>—</td><td>—</td><td>—</td><td>A: 링크 14/500 <code>inkStrong</code>, 위 1px <code>seamHairline</code> + 위 여백 20, 아래 안내 <code>type.gauge</code>. B: 13/500. C: 머리띠 ⋯ 메뉴</td><td>후보 카드의 "누르면 이렇게 이어져요"</td><td><span class="st" id="sp1-st">결정 전</span></td></tr>
+      <tr><td>② 본문 순서</td><td id="sp2-adopt">—</td><td>—</td><td>—</td><td>—</td><td>B: 소개 3줄(<code>numberOfLines=3</code>) + <code>더 보기</code>. C: 앞 3곳 + <code>도서관 N곳 더 보기</code></td><td>후보 카드 참고</td><td><span class="st" id="sp2-st">결정 전</span></td></tr>
+      <tr><td>링크 문구</td><td><code>YES24에서 책 정보·구매 보기 ↗</code> (B안이면 <code>YES24에서 보기 ↗</code>)</td><td><code>구매 ↗</code>(글 상세와 같은 말)</td><td>—</td><td>명세 §1.3 예시 문구. 책 상세에선 "정보 보기"도 있어 구매만 쓰지 않음</td><td>상수 <code>YES24_LINK</code></td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+      <tr><td>링크 아래 안내</td><td><code>YES24 사이트로 이동해요</code></td><td>없음</td><td>—</td><td>바깥으로 나간다는 걸 미리 알림</td><td><code>type.gauge</code></td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+      <tr><td>주소 받는 때</td><td>책을 받아 온 뒤 <code>#15</code>를 미리 한 번 부름(늦은 응답은 버림)</td><td>누를 때 부름</td><td>—</td><td>웹에서 "누른 뒤 기다렸다 새 창"은 팝업 차단에 걸리기 쉬움. 미리 받아 두면 누르는 즉시 열림</td><td><code>createLatestRunner</code> 따로 하나</td><td>상세 열기 → (뒤에서 #15) → 링크 누름 → 즉시 열기</td><td><span class="st">기본값(Claude)</span></td></tr>
+      <tr><td>여는 중</td><td>주소 아직 없음 + 누름 → <code>여는 중…</code>, 연타 막음</td><td>—</td><td>—</td><td>두 번 열리지 않게</td><td>글자 <code>textSub</code></td><td>누름 → #15 다시 → 열기</td><td><span class="st">기본값(Claude)</span></td></tr>
+      <tr><td>못 열었음</td><td>링크는 그대로 두고 아래 한 줄 <code>YES24를 열지 못했어요. 다시 눌러 주세요.</code></td><td>링크 숨김</td><td>링크 숨김(의무 ② 깨짐)</td><td>#15 네트워크 실패·<code>openExternalUrl</code> false. 서버는 키 없음/한도에도 검색 주소로 200을 줌</td><td>14 <code>textSub</code></td><td>다시 누름 → #15 다시 → 열기</td><td><span class="st">기본값(Claude)</span></td></tr>
+      <tr><td>출처 표기</td><td>책 정보 <code>source === "yes24"</code>일 때만 ISBN 줄 끝에 <code>· 출처 YES24</code></td><td>늘 표기</td><td>—</td><td>약관 ①은 YES24 데이터가 보이는 화면에 표기. 카카오 정보 책엔 붙이지 않음</td><td><code>type.gauge</code></td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+      <tr><td>로그인</td><td>비로그인도 보임</td><td>—</td><td>—</td><td><code>#15</code>는 인증 없음(core.md LIB-0 #15)</td><td>—</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+      <tr><td>시험 셀렉터</td><td><code>testID="yes24-link"</code>, 실패 안내 <code>yes24-link-failed</code></td><td>—</td><td>—</td><td>기존 <code>detail-info</code>·<code>save-plan</code>·<code>start-loan</code>·<code>availability</code>·<code>description</code>는 그대로</td><td>—</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>고칠 파일(①-A + ②-A 기준)</h3>
+  <ul style="font-size:13.5px">
+    <li><code>mobile/src/features/book-search/BookDetailScreen.tsx</code> — 링크 구역·상수·#15 미리 부르기</li>
+    <li><code>mobile/src/features/book-search/__tests__/detail.test.tsx</code> — 링크 보임·product/search 주소 열기·실패 안내·늦은 응답 무시·출처 표기</li>
+    <li>①-C면 <code>mobile/app/books/[isbn13].tsx</code>(머리띠), ②-C면 소장 목록 시험(<code>availability-*.test.tsx</code>)이 더해져요.</li>
+    <li>바꾸지 않음: 서버·API·<code>publicApi.ts</code>·<code>platform.ts</code>·글 상세(<code>PostDetail.tsx</code>)</li>
+  </ul>
+</section>
+</main>
+
+<script>
+const BOOK = { t:"아주 희미한 빛으로도", a:"최은영", p:"문학동네", g:"2023 · ISBN 9788954699914" };
+const LIBS = [["서울도서관","avail","대출 가능"],["중구립도서관","out","대출 중 · 반납 예정 11/30"],["남산도서관","avail","대출 가능"],["정독도서관","unk","확인 못 함"],["종로도서관","avail","대출 가능"],["용산도서관","out","대출 중"]];
+const DESC = "작가 최은영이 6년 만에 펴내는 소설집. 서로를 이해하려 애쓰는 사람들이 시간과 거리를 건너 다시 만나는 이야기들이 실려 있다. 오래 묵은 마음의 결을 한 겹씩 들추어 보이는 일곱 편의 단편은, 지나간 관계가 남긴 희미한 빛이 지금의 우리를 어떻게 비추는지 조용히 보여 준다. 표제작을 비롯해 …";
+
+function linkBlock(st, small) {
+  const label = st === "opening" ? "여는 중…" : "YES24에서 책 정보·구매 보기 ↗";
+  return `<div class="yes24-row">
+    <button class="btn-link" data-yes24 ${st==="opening"?"disabled":""}>${label}</button>
+    ${st==="failed" ? '<div class="yes24-note" style="font-size:11px">YES24를 열지 못했어요. 다시 눌러 주세요.</div>' : '<div class="gauge" style="letter-spacing:.04em;text-transform:none">YES24 사이트로 이동해요</div>'}
+  </div>`;
+}
+function phoneHTML(link, order, st) {
+  st = st || "ready";
+  const nLibs = order === "C" ? 3 : 4;
+  const libs = LIBS.slice(0, nLibs).map(([n,k,s]) => `<div class="lib-card"><div class="l"><div class="n">${n}</div><div class="s"><span class="dot ${k==="avail"?"":k}"></span>${s}</div></div><span class="live">실시간 ↗</span></div>`).join("");
+  const more = order === "C" ? `<button class="btn-sec" style="margin-top:10px" data-more>도서관 3곳 더 보기</button>` : "";
+  const avail = `<div class="t-sec">가까운 도서관</div>
+    <button class="btn-sec">현재 도시 내 모든 도서관 검색</button>
+    <div data-libs>${libs}</div>${more}
+    <div class="gauge" style="margin-top:6px;letter-spacing:.04em;text-transform:none">오늘 14:05 확인</div>`;
+  const descFull = `<div class="t-sec">책 소개</div><div class="desc">${DESC}</div>`;
+  const descTop = `<div class="t-sec" style="margin-top:12px">책 소개</div><div class="desc clamp" data-desc>${DESC}</div><button class="btn-link small" data-desc-more>더 보기</button>`;
+  const yes = link === "A" ? linkBlock(st) : "";
+  const gauge = BOOK.g + (st === "yes24src" ? " · 출처 YES24" : "");
+  const topLink = link === "B" ? `<button class="btn-link small" data-yes24 style="margin-top:6px">YES24에서 보기 ↗</button>` : "";
+  let body;
+  if (order === "B") body = descTop + avail + yes;
+  else body = avail + yes + descFull;
+  return `<div class="hd"><span class="back">‹</span><span class="en">BOOK</span>${link==="C"?'<button class="more" data-menu aria-label="더 보기">⋯</button>':""}</div>
+  ${link==="C"?'<div class="menu hide" data-menubox><button data-yes24>YES24에서 책 정보·구매 보기 ↗</button></div>':""}
+  <div class="scr"><div class="fold"><span>첫 화면 끝</span></div>
+    <div class="top"><div class="row"><div class="cov"><span class="ct">${BOOK.t}</span><span class="ca">${BOOK.a}</span></div>
+      <div style="flex:1;min-width:0"><div class="t-title">${BOOK.t}</div><div class="t-sub">${BOOK.a}</div><div class="t-sub">${BOOK.p}</div><div class="gauge" style="margin-top:4px">${gauge}</div>${topLink}</div></div>
+      <div class="acts"><button class="btn-pri">빌릴 예정에 저장</button><button class="btn-pri">빌렸어요</button></div>
+    </div>
+    <div class="body">${body}</div>
+  </div>`;
+}
+function wire(ph) {
+  ph.addEventListener("click", (e) => {
+    const t = e.target;
+    if (t.closest("[data-menu]")) { ph.querySelector("[data-menubox]").classList.toggle("hide"); return; }
+    if (t.closest("[data-desc-more]")) { const d = ph.querySelector("[data-desc]"); d.classList.toggle("clamp"); t.textContent = d.classList.contains("clamp") ? "더 보기" : "접기"; return; }
+    if (t.closest("[data-more]")) { ph.querySelector("[data-libs]").innerHTML += LIBS.slice(3).map(([n,k,s]) => `<div class="lib-card"><div class="l"><div class="n">${n}</div><div class="s"><span class="dot ${k==="avail"?"":k}"></span>${s}</div></div><span class="live">실시간 ↗</span></div>`).join(""); t.remove(); return; }
+    const y = t.closest("[data-yes24]");
+    if (y && !y.disabled) {
+      const box = ph.querySelector("[data-menubox]"); if (box) box.classList.add("hide");
+      const old = ph.querySelector(".toast"); if (old) old.remove();
+      const toast = document.createElement("div"); toast.className = "toast";
+      toast.textContent = "새 창(앱은 브라우저)에서 YES24 상품 페이지가 열려요 — 시안이라 실제 이동은 없어요.";
+      ph.appendChild(toast); setTimeout(() => toast.remove(), 2600);
+    }
+  });
+}
+function render(ph, link, order, st) { ph.innerHTML = phoneHTML(link, order, st); }
+document.querySelectorAll(".cand .phone").forEach((ph) => { render(ph, ph.dataset.link, ph.dataset.order); wire(ph); });
+
+const combo = document.getElementById("combo-phone"); wire(combo);
+const NAMES1 = { A:"A. 도서관 목록 아래 텍스트 링크", B:"B. 상단 판 안 작은 링크", C:"C. 머리띠 점 3개 메뉴" };
+const NAMES2 = { A:"A. 지금 순서 유지", B:"B. 책 소개 3줄을 위로", C:"C. 도서관 3곳만 먼저 + 더 보기" };
+function sync() {
+  const s1 = document.getElementById("el1-sel").value, s2 = document.getElementById("el2-sel").value;
+  render(combo, s1 || "A", s2 || "A");
+  [["1", s1], ["2", s2]].forEach(([el, v]) => {
+    document.querySelectorAll(`.cand[data-el="${el}"]`).forEach((c) => {
+      c.classList.toggle("chosen", c.dataset.id === v);
+      const old = c.querySelector(".badge.adopted"); if (old) old.remove();
+      if (c.dataset.id === v) c.querySelector("h3").insertAdjacentHTML("beforeend", '<span class="badge adopted">보는 중</span>');
+    });
+  });
+}
+document.getElementById("el1-sel").addEventListener("change", sync);
+document.getElementById("el2-sel").addEventListener("change", sync);
+sync();
+
+const statePh = document.getElementById("state-phone"); wire(statePh);
+const CAP = { ready:"보통 — 링크 + 이동 안내", opening:"여는 중 — 주소를 아직 못 받았을 때 누르면", failed:"못 열었음 — 링크는 남기고 안내 한 줄", yes24src:"책 정보가 YES24에서 왔을 때 ISBN 줄 끝 출처" };
+function setState(st) {
+  render(statePh, "A", "A", st);
+  document.getElementById("state-cap").textContent = CAP[st];
+  document.querySelectorAll(".state-bar button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.st === st)));
+  if (st !== "yes24src") { const scr = statePh.querySelector(".scr"); requestAnimationFrame(() => { const y = statePh.querySelector(".yes24-row"); if (y) scr.scrollTop = y.offsetTop - 200; }); }
+}
+document.querySelectorAll(".state-bar button").forEach((b) => b.addEventListener("click", () => setState(b.dataset.st)));
+setState("ready");
+</script>
+</body>
+</html>

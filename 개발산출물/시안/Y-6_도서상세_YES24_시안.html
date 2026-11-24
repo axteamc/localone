@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="명세" content="../명세/YES24_큐레이션_및_구매연동_설계명세.md">
+<title>Y-6 도서 상세와 빌릴 예정</title>
+<style>
+  :root {
+    /* 디자인_기준.md와 mobile/src/theme/tokens.ts의 warm 토큰 */
+    --bg: #E1E1DE; --paper: #EFF1F1; --cream: #EFEFE7; --surface: #D0CEC8;
+    --ink: #1D1D1F; --soft: #4D4D4B; --muted: #6B6B66; --strong: #2E333F;
+    --fill: #E9C970; --available: #5B8A5B; --out: #B27A3D;
+    --panel: color-mix(in srgb, var(--paper) 58%, var(--bg));
+    --lit: color-mix(in srgb, var(--paper) 84%, var(--cream));
+    --seam: color-mix(in srgb, var(--strong) 18%, var(--bg));
+    --shadow: color-mix(in srgb, var(--strong) 20%, transparent);
+    --deep: color-mix(in srgb, var(--strong) 32%, transparent);
+    --green-text: color-mix(in srgb, var(--available) 52%, var(--ink));
+    --block: 3px; --card: 9px; --pill: 9999px;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.55 system-ui, "Malgun Gothic", sans-serif; }
+  h1, h2, h3, p, dl, dd { margin: 0; }
+  h1, h2, h3 { font-weight: 400; color: var(--soft); }
+  h1, h2 { font-size: 24px; line-height: 1.25; }
+  h3 { font-size: 16px; }
+  button, select { font: inherit; color: inherit; }
+  button, summary, select { cursor: pointer; }
+  button:disabled { cursor: default; opacity: .54; }
+  :focus-visible { outline: 2px solid var(--strong); outline-offset: 2px; }
+  .layout { display: grid; grid-template-columns: minmax(300px, 424px) minmax(230px, 290px); gap: 28px; margin: 0 auto; padding: 24px 16px; max-width: 774px; align-items: start; }
+  .app { position: relative; height: min(840px, calc(100dvh - 48px)); min-height: 460px; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; overflow: hidden; background: var(--paper); border: 1px solid var(--seam); border-radius: var(--card); box-shadow: 0 14px 40px var(--shadow); }
+  .bar { min-width: 0; min-height: 52px; padding: 4px 8px; display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; border-bottom: 1px solid var(--seam); background: var(--panel); }
+  .bar-title { padding-left: 8px; color: var(--soft); }
+  .icon-button { position: relative; min-width: 44px; min-height: 44px; padding: 0 8px; border: 0; background: transparent; display: inline-grid; place-items: center; gap: 3px; }
+  .icon { display: block; width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 1.65; stroke-linecap: round; stroke-linejoin: round; }
+  .scroll { min-height: 0; overflow: auto; overscroll-behavior: contain; }
+  .hero { display: grid; justify-items: center; padding: 22px 16px 24px; border-bottom: 1px solid var(--seam); background: var(--panel); }
+  .cover { position: relative; display: flex; flex-direction: column; justify-content: space-between; width: 133px; aspect-ratio: 2 / 3; overflow: hidden; padding: 14px 14px 12px; background: var(--fill); color: var(--strong); border-radius: var(--block) var(--card) var(--card) var(--block); box-shadow: 0 10px 18px var(--deep); }
+  .cover::before, .cover::after { content: ""; position: absolute; width: 80px; height: 105px; right: -20px; bottom: 24px; border: 1px solid var(--strong); border-radius: 50%; transform: rotate(-20deg); }
+  .cover::after { right: -9px; bottom: 16px; }
+  .cover-title { z-index: 1; font-size: 18px; line-height: 1.25; }
+  .cover small { z-index: 1; font-size: 10px; }
+  .content { padding: 0 18px 20px; }
+  .content section { padding: 16px 0; border-bottom: 1px solid var(--seam); }
+  .content section:last-child { border: 0; }
+  .meta p { margin-top: 6px; }
+  .kicker, .caption { color: var(--muted); font-size: 12px; }
+  .intro p, .intro details, .bibliography dl, .bibliography details { margin-top: 8px; }
+  summary { min-height: 40px; align-content: center; }
+  .facts { display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; background: var(--panel); border: 1px solid var(--seam); border-radius: var(--card); }
+  .facts div { padding: 10px 12px; }
+  .facts div + div { border-left: 1px solid var(--seam); }
+  .facts .isbn { grid-column: 1 / -1; border-left: 0; border-top: 1px solid var(--seam); }
+  dt { font-size: 12px; color: var(--muted); }
+  dd { margin-top: 2px; overflow-wrap: anywhere; }
+  .preview-fields { margin-top: 8px; }
+  .preview-fields p { margin-top: 6px; }
+  .footer { position: relative; z-index: 3; padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); border-top: 1px solid var(--seam); background: var(--panel); }
+  .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .btn { min-height: 44px; padding: 5px 9px; border: 1px solid var(--seam); border-radius: var(--pill); background: var(--panel); }
+  .btn.primary { background: var(--lit); border-bottom: 2px solid var(--strong); }
+  .text-btn { text-align: left; min-height: 44px; padding: 4px 0; border: 0; background: transparent; text-decoration: underline; text-underline-offset: 3px; }
+  .compact { min-height: 44px; font-size: 12px; white-space: nowrap; }
+  .scrim { position: absolute; z-index: 1; inset: 0; border: 0; background: var(--shadow); }
+  .sheet { position: absolute; z-index: 2; inset: auto 0 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); max-height: min(56dvh, 440px); background: var(--lit); border: 1px solid var(--seam); border-radius: var(--card) var(--card) var(--block) var(--block); box-shadow: 0 -6px 20px var(--shadow); }
+  .sheet-head { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px 0 14px; }
+  .sheet-content { overflow: auto; overscroll-behavior: contain; padding: 0 12px 6px; }
+  .scope { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; column-gap: 8px; padding-bottom: 4px; }
+  .scope button { margin-left: auto; }
+  .empty { padding: 8px 0; }
+  .library { display: flex; align-items: center; gap: 4px; margin-bottom: 6px; padding-right: 7px; background: var(--panel); border: 1px solid var(--seam); border-radius: var(--card); }
+  .library.selected { background: var(--cream); border-color: var(--strong); box-shadow: inset 3px 0 var(--strong); }
+  .library-info { min-width: 0; flex: 1; min-height: 54px; padding: 6px 0 6px 10px; text-align: left; border: 0; background: transparent; border-radius: var(--card); }
+  .library-info:active { background: var(--surface); }
+  .library-info > span { display: block; }
+  .name { font-size: 13px; }
+  .selection-label { padding-left: 6px; color: var(--strong); font-size: 11px; font-weight: 500; }
+  .dot { display: inline-block; width: 6px; height: 6px; margin-right: 4px; border-radius: var(--pill); background: var(--muted); vertical-align: middle; }
+  .dot.available, .live.done .dot { background: var(--available); }
+  .dot.out { background: var(--out); }
+  .live { min-width: 88px; text-align: center; }
+  .live.done { color: var(--green-text); }
+  .live .dot { vertical-align: .12em; }
+  .purchase { display: block; width: 100%; margin-top: 4px; border-top: 1px solid var(--seam); }
+  .cart { padding: 16px 14px; }
+  .cart-head, .plan, .select-all { display: flex; align-items: center; gap: 10px; }
+  .cart-head { justify-content: space-between; }
+  .active-loans { margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid var(--seam); }
+  .active-loans h2, .cart-head h2 { font-size: 20px; }
+  .active-loans p { margin-top: 6px; }
+  .tabbar { display: grid; grid-template-columns: repeat(4, 1fr); margin: 10px -12px -10px; border-top: 1px solid var(--seam); }
+  .tabbar span { display: grid; place-items: center; min-height: 44px; border-right: 1px solid var(--seam); color: var(--muted); font-size: 12px; }
+  .tabbar span:last-child { border: 0; }
+  .tabbar [aria-current] { position: relative; color: var(--strong); }
+  .tabbar [aria-current]::before { content: ""; position: absolute; top: 0; width: 28px; height: 2px; background: var(--strong); }
+  .select-all, .plan { min-height: 44px; cursor: pointer; }
+  .plan { margin: 6px 0; padding: 10px; background: var(--panel); border: 1px solid var(--seam); border-radius: var(--card); }
+  .plan span { display: block; }
+  input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--strong); flex: none; }
+  .notice { position: absolute; z-index: 4; right: 12px; bottom: 76px; left: 12px; padding: 8px 12px; border: 1px solid var(--seam); border-radius: var(--card); background: var(--lit); box-shadow: 0 4px 12px var(--shadow); pointer-events: none; }
+  .app:has(#tabbar:not([hidden])) .notice { bottom: 120px; }
+  dialog { width: min(340px, calc(100% - 24px)); padding: 16px; color: var(--ink); background: var(--lit); border: 1px solid var(--seam); border-radius: var(--card); }
+  dialog::backdrop { background: var(--shadow); }
+  dialog p { margin: 8px 0 12px; }
+  .demo { padding: 16px; background: var(--panel); border: 1px solid var(--seam); border-radius: var(--card); }
+  .demo h2 { font-size: 20px; }
+  .demo p { margin-top: 6px; }
+  .demo form { display: grid; gap: 10px; margin: 14px 0; }
+  .demo label { display: grid; gap: 4px; color: var(--soft); }
+  select { width: 100%; min-height: 40px; padding: 4px 8px; background: var(--lit); border: 1px solid var(--seam); border-radius: var(--card); }
+  #sns-review { grid-column: 1 / -1; width: min(100%, 424px); }
+  .sns-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 6px 8px; background: var(--lit); border: 1px solid var(--seam); border-radius: var(--card); }
+  .sns-book { display: grid; align-content: center; gap: 3px; color: inherit; }
+  .sns-book { text-decoration: none; }
+  .sns-status { font-size: 12px; line-height: 1.5; }
+  @media (max-width: 650px) {
+    .layout { display: flex; flex-direction: column; gap: 12px; padding: 0; }
+    .app, .demo { width: 100%; }
+    .app { height: 100dvh; min-height: 365px; border-radius: 0; }
+    .demo { border-radius: 0; }
+  }
+  @media (max-height: 510px) { .sheet { max-height: 48dvh; } }
+</style>
+</head>
+<body>
+<main class="layout">
+  <div class="app" aria-label="동네한권 도서 상세 시안">
+    <header class="bar">
+      <button type="button" class="icon-button" id="back" aria-label="도서 상세로 돌아가기" hidden>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 5-7 7 7 7"/></svg>
+      </button>
+      <span id="back-spacer" aria-hidden="true"></span>
+      <span class="bar-title" id="bar-title">도서 상세</span>
+      <button type="button" class="icon-button" id="cart-link" aria-label="대출·반납의 빌릴 예정 보기" title="대출·반납">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11M4 6h1m-1 6h1m-1 6h1"/></svg>
+      </button>
+    </header>
+
+    <div id="detail" class="scroll" tabindex="0" aria-label="도서 상세 내용">
+      <div class="hero">
+        <div class="cover" aria-label="창가에 놓인 책 표지" role="img">
+          <small>한서윤</small><span class="cover-title">창가에<br>놓인 책</span><small>작은책방</small>
+        </div>
+      </div>
+      <article class="content">
+        <section class="meta" aria-labelledby="title">
+          <h1 id="title">창가에 놓인 책</h1>
+          <p>한서윤 지음</p>
+          <p class="kicker">출처: YES24</p>
+        </section>
+        <section class="intro" aria-labelledby="intro-title">
+          <h3 id="intro-title">책 소개</h3>
+          <p>매일 지나던 동네 도서관. 오래된 창가에 놓인 한 권의 책이 익숙한 거리를 조금 다르게 보게 한다.</p>
+          <details><summary>책 소개 더 보기</summary>
+            <p>작가는 도서관과 작은 서점의 풍경, 그곳을 오가는 사람들의 이야기를 한 권에 담았다.</p>
+          </details>
+          <button type="button" class="text-btn" id="yes24-info">YES24에서 도서 상세 보기 ↗</button>
+        </section>
+        <section class="bibliography" aria-labelledby="info-title">
+          <h3 id="info-title">도서 정보</h3>
+          <dl class="facts">
+            <div><dt>출판사</dt><dd>작은책방</dd></div>
+            <div><dt>출판 연도</dt><dd>2025</dd></div>
+            <div class="isbn"><dt>ISBN</dt><dd>9788936434120</dd></div>
+          </dl>
+          <div class="preview-fields">
+            <h4>주제 분류</h4><p>문학 › 한국 에세이</p>
+            <details><summary>목차</summary><p>창가의 자리 · 동네의 작은 서점 · 다시 도서관으로</p></details>
+            <details><summary>저자 소개</summary><p>한서윤은 동네의 책과 공간에 관한 글을 쓴다.</p></details>
+          </div>
+        </section>
+      </article>
+    </div>
+
+    <section id="cart" class="scroll cart" aria-label="대출·반납" tabindex="-1" hidden>
+      <section class="active-loans" aria-labelledby="active-title">
+        <h2 id="active-title">내 대출</h2>
+        <div id="active-loans"><p class="caption">대출 중인 책이 없어요.</p></div>
+      </section>
+      <section aria-labelledby="plan-title">
+        <div class="cart-head"><h2 id="plan-title">빌릴 예정</h2><span id="cart-total" class="caption"></span></div>
+        <label class="select-all" id="all"><input type="checkbox" id="select-all">전체 선택</label>
+        <div id="plans"></div>
+      </section>
+    </section>
+
+    <button type="button" class="scrim" id="scrim" tabindex="-1" aria-label="도서관 창 닫기" hidden></button>
+    <footer class="footer">
+      <section class="sheet" id="library-sheet" aria-labelledby="library-title" hidden>
+        <header class="sheet-head">
+          <h3 id="library-title">가까운 도서관</h3>
+          <button type="button" class="icon-button" id="sheet-close" aria-label="도서관 창 닫기">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+          </button>
+        </header>
+        <div class="sheet-content">
+          <div class="scope">
+            <p id="sheet-help" class="caption"></p>
+            <button type="button" class="text-btn compact" id="scope">현재 도시 내 모든 도서관 검색</button>
+          </div>
+          <div id="libraries"></div>
+          <p class="caption" id="basis">2026.11.24 기준 · 실제 상태는 도서관에서 확인해 주세요.</p>
+          <button type="button" class="text-btn purchase" id="yes24-buy" hidden>YES24에서 구매하기 ↗</button>
+        </div>
+      </section>
+      <div id="detail-actions" class="actions">
+        <button type="button" class="btn" id="save" aria-pressed="false">대출 예정</button>
+        <button type="button" class="btn primary" id="find" aria-controls="library-sheet" aria-expanded="false">도서관 확인</button>
+      </div>
+      <div id="cart-actions" class="actions" hidden>
+        <button type="button" class="btn" id="bulk" disabled>빌렸어요</button>
+        <button type="button" class="btn primary" id="batch" aria-controls="library-sheet" aria-expanded="false">일괄 검색</button>
+      </div>
+      <nav id="tabbar" class="tabbar" aria-label="하단 탭" hidden>
+        <span>홈</span><span>독서 기록</span><span aria-current="page">대출·반납</span><span>내 정보</span>
+      </nav>
+    </footer>
+    <p class="notice" id="notice" role="status" hidden></p>
+  </div>
+
+  <aside class="demo" aria-label="시안 설정">
+    <h2>시안 설정</h2>
+    <p><strong>대출 예정</strong>으로 책을 바로 담을 수 있습니다. 우측 상단 리스트 아이콘에서 <strong>대출·반납 → 일괄 검색</strong>을 확인할 수 있습니다.</p>
+    <p class="caption">대출·반납 화면은 동선 시연용입니다. 앱에는 기존 대출·반납 탭 디자인을 사용합니다.</p>
+    <form>
+      <label>실시간 링크 예시
+        <select id="live-result"><option value="ok">열기 성공</option><option value="error">열기 실패</option></select>
+      </label>
+      <label>현재 책 조회 예시
+        <select id="library-result"><option value="list">소장 도서관 있음</option><option value="absent">조회 범위 내 미소장</option><option value="unknown">소장 여부 확인 못 함</option></select>
+      </label>
+      <label>YES24 연결 예시
+        <select id="yes24-result"><option value="product">상품 상세</option><option value="search">ISBN 검색 결과</option><option value="error">열기 실패</option></select>
+      </label>
+    </form>
+    <p class="caption">일괄 검색은 소장 권수 상위 3곳을 고른 뒤, 가까운 순서대로 보여 줍니다. 선택한 책이 있으면 그 책들만 검색합니다.</p>
+    <p class="caption">도서관 카드를 누르면 선택됩니다. 초록색 점과 ‘확인 완료’는 도서관 링크를 연 상태입니다.</p>
+    <p class="caption">주제 분류·목차·저자 소개는 배치 검토용 예시입니다. 현재 앱의 도서 응답은 이 항목들을 제공하지 않습니다.</p>
+  </aside>
+  <section id="sns-review" class="demo" aria-labelledby="sns-review-title">
+    <h2 id="sns-review-title">SNS 게시물의 도서 카드 제안</h2>
+    <article class="sns-card" aria-label="SNS 도서 카드">
+      <button type="button" class="text-btn sns-book" id="sns-book">
+        <span>창가에 놓인 책 · 한서윤</span>
+        <span class="sns-status"><i class="dot available" aria-hidden="true"></i>푸른숲도서관 · 어제(추정) 기준 대출 가능</span>
+      </button>
+      <button type="button" class="btn compact" id="sns-find">도서관 확인</button>
+    </article>
+  </section>
+</main>
+
+<dialog id="preview" aria-labelledby="preview-title">
+  <h3 id="preview-title"></h3><p id="preview-body"></p>
+  <form method="dialog" class="actions">
+    <button class="btn" id="preview-close" value="close" autofocus>닫기</button>
+    <button class="btn primary" id="preview-apply" value="apply" hidden>빌림 표시</button>
+  </form>
+</dialog>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const book = { id: 'current', title: '창가에 놓인 책' };
+  const libraries = [
+    { id: 'woods', name: '푸른숲도서관', distance: 0.7, status: '어제(추정) 기준 · 대출 가능', tone: 'available', books: ['current', 'seed-1', 'seed-2'] },
+    { id: 'river', name: '가람도서관', distance: 1.4, status: '어제(추정) 기준 · 대출 중', tone: 'out', books: ['current', 'seed-1', 'seed-2', 'seed-3'] },
+    { id: 'stars', name: '별빛도서관', distance: 2.1, status: '확인 못 함', tone: '', books: ['seed-3'] },
+    { id: 'village', name: '마을도서관', distance: 3.2, status: '어제(추정) 기준 · 대출 가능', tone: 'available', books: ['current', 'seed-1', 'seed-2', 'seed-3'] },
+    { id: 'hill', name: '언덕도서관', distance: 4.1, status: '어제(추정) 기준 · 미소장', tone: '', books: ['seed-1'] },
+  ];
+  const plans = [
+    { id: 'seed-1', title: '오래된 골목' },
+    { id: 'seed-2', title: '저녁의 산책' },
+    { id: 'seed-3', title: '손바닥 정원' },
+  ];
+  const activeLoans = [];
+  const selected = new Set();
+  const opened = new Set();
+  let selectedLibrary = null;
+  let mode = null;
+  let city = false;
+  let batchBooks = [];
+  let noticeTimer;
+  let previewAction = null;
+
+  function tell(message) {
+    clearTimeout(noticeTimer);
+    $('notice').textContent = message;
+    $('notice').hidden = false;
+    noticeTimer = setTimeout(() => { $('notice').hidden = true; }, 3000);
+  }
+
+  function libraryCard(library, status, tone) {
+    const confirmed = opened.has(library.id);
+    const active = library.id === selectedLibrary;
+    return '<div class="library' + (active ? ' selected' : '') + '" data-library="' + library.id + '">' +
+      '<button type="button" class="library-info" data-select="' + library.id + '" aria-pressed="' + active + '">' +
+      '<span class="name">' + library.name + ' · ' + library.distance + 'km' +
+      (active ? '<span class="selection-label" aria-hidden="true">선택됨</span>' : '') + '</span>' +
+      '<span class="caption"><i class="dot ' + tone + '" aria-hidden="true"></i>' + status + '</span></button>' +
+      '<button type="button" class="btn compact live' + (confirmed ? ' done' : '') + '" data-live="' + library.id +
+      '" aria-label="' + library.name + (confirmed ? ' 링크 열었음, 다시 열기' : ' 실시간 확인') + '">' +
+      (confirmed ? '<i class="dot" aria-hidden="true"></i>확인 완료' : '실시간 ↗') + '</button></div>';
+  }
+
+  function renderLibraries() {
+    const batch = mode === 'batch';
+    const result = $('library-result').value;
+    const scope = city ? libraries : libraries.slice(0, 3);
+    const noHolding = !batch && result === 'absent';
+    $('library-title').textContent = city ? '도시 전체 도서관' : '가까운 도서관';
+    $('sheet-help').textContent = batch ? batchBooks.length + '권 소장 검색' : '현재 책의 대출 상태';
+    $('scope').textContent = city ? '가까운 도서관만 보기' : '현재 도시 내 모든 도서관 검색';
+    $('basis').hidden = noHolding || (!batch && result === 'unknown');
+    $('yes24-buy').hidden = !noHolding;
+    $('yes24-buy').textContent = $('yes24-result').value === 'search' ? 'YES24에서 구매 도서 검색 ↗' : 'YES24에서 구매하기 ↗';
+
+    if (batch) {
+      const candidates = scope
+        .map(library => ({ library, matches: batchBooks.filter(id => library.books.includes(id)).length }))
+        .filter(candidate => candidate.matches > 0)
+        .sort((a, b) => b.matches - a.matches || a.library.distance - b.library.distance)
+        .slice(0, 3)
+        .sort((a, b) => a.library.distance - b.library.distance);
+      $('libraries').innerHTML = candidates.length
+        ? candidates.map(({library, matches}) => libraryCard(library, batchBooks.length + '권 중 ' + matches + '권 소장', 'available')).join('')
+        : '<p class="empty">이 범위에서 소장이 확인된 책이 없어요.</p>';
+    } else if (noHolding) {
+      $('libraries').innerHTML = '<p class="empty">이 범위에서 이 책을 소장한 도서관을 찾지 못했어요.</p>';
+    } else if (result === 'unknown') {
+      $('libraries').innerHTML = '<p class="empty">이 책의 소장 여부를 확인하지 못했어요.</p>';
+    } else {
+      $('libraries').innerHTML = scope.map(library => libraryCard(library, library.status, library.tone)).join('');
+    }
+  }
+
+  function showSheet(nextMode) {
+    mode = nextMode;
+    city = false;
+    selectedLibrary = null;
+    $('library-sheet').hidden = false;
+    $('scrim').hidden = false;
+    $('detail').inert = true;
+    $('cart').inert = true;
+    $(mode).setAttribute('aria-expanded', 'true');
+    renderLibraries();
+    $('sheet-close').focus();
+  }
+
+  function closeSheet(restoreFocus = true) {
+    const trigger = mode && $(mode);
+    mode = null;
+    $('library-sheet').hidden = true;
+    $('scrim').hidden = true;
+    $('detail').inert = false;
+    $('cart').inert = false;
+    trigger?.setAttribute('aria-expanded', 'false');
+    if (restoreFocus) trigger?.focus();
+  }
+
+  function showPreview(title, body, action = null) {
+    $('preview').returnValue = '';
+    $('preview-title').textContent = title;
+    $('preview-body').textContent = body;
+    $('preview-apply').hidden = !action;
+    previewAction = action;
+    $('preview').showModal();
+  }
+
+  function updateCart() {
+    $('cart-total').textContent = plans.length + '권';
+    $('select-all').checked = plans.length > 0 && selected.size === plans.length;
+    $('select-all').indeterminate = selected.size > 0 && selected.size < plans.length;
+    $('all').hidden = plans.length === 0;
+    $('bulk').disabled = selected.size === 0;
+    $('bulk').textContent = selected.size ? '선택한 ' + selected.size + '권 빌렸어요' : '빌렸어요';
+    $('batch').disabled = plans.length === 0;
+    $('save').setAttribute('aria-pressed', String(plans.some(plan => plan.id === book.id)));
+  }
+
+  function renderCart() {
+    $('plans').innerHTML = plans.length ? plans.map(plan => '<label class="plan">' +
+      '<input type="checkbox" data-plan="' + plan.id + '"' + (selected.has(plan.id) ? ' checked' : '') + '>' +
+      '<span>' + plan.title + '</span></label>').join('') : '<p>빌릴 예정인 책이 없어요.</p>';
+    $('active-loans').innerHTML = activeLoans.length ? activeLoans.map(loan =>
+      '<p>' + loan.title + ' <span class="caption">· 대출 중</span></p>').join('') : '<p class="caption">대출 중인 책이 없어요.</p>';
+    updateCart();
+  }
+
+  function setPage(cart) {
+    closeSheet(false);
+    $('detail').hidden = cart;
+    $('cart').hidden = !cart;
+    $('back').hidden = !cart;
+    $('back-spacer').hidden = cart;
+    $('cart-link').hidden = cart;
+    $('bar-title').textContent = cart ? '대출·반납' : '도서 상세';
+    $('detail-actions').hidden = cart;
+    $('cart-actions').hidden = !cart;
+    $('tabbar').hidden = !cart;
+    if (cart) {
+      renderCart();
+      $('cart').focus();
+    } else $('cart-link').focus();
+  }
+
+  $('save').addEventListener('click', () => {
+    if (mode) closeSheet(false);
+    if (plans.some(plan => plan.id === book.id)) {
+      tell('이미 빌릴 예정에 담긴 책이에요.');
+      return;
+    }
+    plans.unshift(book);
+    updateCart();
+    tell('대출·반납의 빌릴 예정에 담았어요.');
+  });
+  $('find').addEventListener('click', () => { if (mode === 'find') closeSheet(); else showSheet('find'); });
+  $('batch').addEventListener('click', () => {
+    if (mode === 'batch') {
+      closeSheet();
+      return;
+    }
+    batchBooks = selected.size ? [...selected] : plans.map(plan => plan.id);
+    if (batchBooks.length) showSheet('batch');
+  });
+  $('sheet-close').addEventListener('click', () => closeSheet());
+  $('scrim').addEventListener('click', () => closeSheet());
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && mode && !$('preview').open) closeSheet();
+  });
+  $('scope').addEventListener('click', () => {
+    city = !city;
+    selectedLibrary = null;
+    renderLibraries();
+  });
+
+  function openLibrary(id) {
+    if ($('live-result').value === 'error') return false;
+    opened.add(id);
+    if (mode) {
+      renderLibraries();
+      $('libraries').querySelector('[data-live="' + id + '"]')?.focus();
+    }
+    const library = libraries.find(item => item.id === id);
+    showPreview(library.name + ' 홈페이지', '도서관 사이트를 여는 예시입니다. 돌아온 뒤 ‘확인 완료’를 눌러 다시 열 수 있어요.');
+    return true;
+  }
+
+  $('libraries').addEventListener('click', (event) => {
+    const choice = event.target.closest('[data-select]');
+    if (choice) {
+      const id = choice.dataset.select;
+      selectedLibrary = selectedLibrary === id ? null : id;
+      renderLibraries();
+      $('libraries').querySelector('[data-select="' + id + '"]')?.focus();
+      return;
+    }
+    const link = event.target.closest('[data-live]');
+    if (link && !openLibrary(link.dataset.live)) {
+      tell('도서관 링크를 열지 못했어요. 같은 버튼으로 다시 시도할 수 있어요.');
+    }
+  });
+  $('sns-book').addEventListener('click', () => {
+    setPage(false);
+    document.querySelector('.app').scrollIntoView();
+  });
+  $('sns-find').addEventListener('click', () => {
+    setPage(false);
+    document.querySelector('.app').scrollIntoView();
+    showSheet('find');
+  });
+
+  function showYes24(purchase) {
+    const result = $('yes24-result').value;
+    if (result === 'error') {
+      tell('YES24를 열지 못했어요. 다시 시도해 주세요.');
+      return;
+    }
+    if (result === 'search') {
+      showPreview('YES24 검색 결과', '현재 책의 ISBN으로 검색한 결과가 열립니다.');
+      return;
+    }
+    showPreview(purchase ? 'YES24 구매 페이지' : 'YES24 도서 상세',
+      purchase ? '해당 책을 구매할 수 있는 YES24 상품 페이지가 열립니다.' : '해당 책의 YES24 상품 정보가 열립니다.');
+  }
+  $('yes24-info').addEventListener('click', () => showYes24(false));
+  $('yes24-buy').addEventListener('click', () => showYes24(true));
+  $('yes24-result').addEventListener('change', () => {
+    $('yes24-info').textContent = $('yes24-result').value === 'search' ? 'YES24에서 도서 검색 ↗' : 'YES24에서 도서 상세 보기 ↗';
+    if (mode) renderLibraries();
+  });
+  $('library-result').addEventListener('change', () => {
+    if (mode !== 'find') return;
+    selectedLibrary = null;
+    renderLibraries();
+  });
+
+  $('cart-link').addEventListener('click', () => setPage(true));
+  $('back').addEventListener('click', () => setPage(false));
+  $('select-all').addEventListener('change', (event) => {
+    selected.clear();
+    if (event.target.checked) plans.forEach(plan => selected.add(plan.id));
+    renderCart();
+  });
+  $('plans').addEventListener('change', (event) => {
+    const { plan } = event.target.dataset;
+    if (!plan) return;
+    if (event.target.checked) selected.add(plan);
+    else selected.delete(plan);
+    updateCart();
+  });
+  $('bulk').addEventListener('click', () => {
+    const count = selected.size;
+    if (!count) return;
+    showPreview('선택한 ' + count + '권을 빌렸어요', '선택한 책을 내 대출로 옮기는 예시입니다.', () => {
+      for (let index = plans.length - 1; index >= 0; index -= 1) {
+        if (selected.has(plans[index].id)) activeLoans.unshift(...plans.splice(index, 1));
+      }
+      selected.clear();
+      renderCart();
+      $('cart').focus();
+      tell(count + '권을 내 대출로 옮겼어요.');
+    });
+  });
+  $('preview').addEventListener('close', () => {
+    const action = previewAction;
+    previewAction = null;
+    if ($('preview').returnValue === 'apply' && action) action();
+  });
+  updateCart();
+</script>
+</body>
+</html>

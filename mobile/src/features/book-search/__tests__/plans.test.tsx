@@ -40,7 +40,7 @@ jest.mock("../../../lib/platform", () => {
 
 jest.mock("../../../lib/publicApi", () => {
   const actual = jest.requireActual<typeof import("../../../lib/publicApi")>("../../../lib/publicApi");
-  return { ...actual, fetchBook: jest.fn(), fetchAvailabilityNearby: jest.fn(), fetchAvailabilityInCity: jest.fn(), fetchLibrary: jest.fn() };
+  return { ...actual, fetchPurchaseLink: jest.fn(async () => { throw new actual.ApiCallError(404, "NOT_FOUND", "x", ""); }), fetchBook: jest.fn(), fetchAvailabilityNearby: jest.fn(), fetchAvailabilityInCity: jest.fn(), fetchLibrary: jest.fn() };
 });
 
 jest.mock("../api", () => {
@@ -148,15 +148,26 @@ beforeEach(async () => {
 });
 
 async function openDetail() {
-  await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+  await renderDetail(BOY.isbn13);
   await screen.findByText("정독도서관");
 }
 
+/** 도서관 고르는 담기 창(N3·N7)은 조회 창 빈 결과의 "나중에 빌릴 책으로 저장"에서 연다(LIB-3b U6 — 하단 "대출 예정"은 바로 담기) */
+const SAVE_FOR_LATER = "나중에 빌릴 책으로 저장";
 async function openSheet() {
   signedIn();
+  fetchAvailabilityNearby.mockResolvedValue(
+    resp([item(1, "정독도서관", { holding: "no", loanable: "no" }), item(2, "종로도서관", { holding: "no", loanable: "no" })])
+  );
   await openDetail();
-  await fireEvent.press(screen.getByTestId("save-plan"));
+  await fireEvent.press(await screen.findByText(SAVE_FOR_LATER));
   await screen.findByTestId("save-plan-sheet");
+}
+
+/** 상세를 띄우고 하단 "도서관 확인"으로 조회 창을 연다(LIB-3b V3 — 창을 열 때만 #12를 부른다) */
+async function renderDetail(isbn13: string) {
+  await render(<BookDetailScreen isbn13={isbn13} />);
+  await fireEvent.press(await screen.findByTestId("find-libraries"));
 }
 
 describe("LIB-3-P2 담기 창(N7·N8)", () => {
@@ -174,7 +185,7 @@ describe("LIB-3-P2 담기 창(N7·N8)", () => {
     expect(screen.getByTestId("plan-candidate-2")).toBeTruthy();
     expect(screen.getAllByText("선택")).toHaveLength(2);
     expect(screen.queryByText("로그인하면 빌릴 예정을 저장할 수 있어요")).toBeNull();
-    await fireEvent.press(screen.getByText("닫기"));
+    await fireEvent.press(within(screen.getByTestId("save-plan-sheet")).getByText("닫기"));
     expect(screen.queryByTestId("save-plan-sheet")).toBeNull();
     expect(saveLoanPlan).not.toHaveBeenCalled();
   });
@@ -215,9 +226,9 @@ describe("LIB-3-P2 담기 창(N7·N8)", () => {
     saveLoanPlan.mockReturnValueOnce(d.promise);
     await openSheet();
     await fireEvent.press(within(screen.getByTestId("plan-candidate-1")).getByText("선택"));
-    await fireEvent.press(screen.getByText("닫기"));
+    await fireEvent.press(within(screen.getByTestId("save-plan-sheet")).getByText("닫기"));
     await act(async () => d.reject(new api.ApiCallError(503, "PROVIDER_UNAVAILABLE", "x", "")));
-    await fireEvent.press(screen.getByTestId("save-plan"));
+    await fireEvent.press(screen.getByText(SAVE_FOR_LATER));
     await screen.findByTestId("save-plan-sheet");
     expect(screen.queryByText(SAVE_FAILED)).toBeNull();
   });
@@ -257,7 +268,7 @@ describe("LIB-3-P2 담기 창(N7·N8)", () => {
   test("sheet without looked-up libraries asks to find libraries first", async () => {
     fetchAvailabilityNearby.mockResolvedValue(resp([]));
     signedIn();
-    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await renderDetail(BOY.isbn13);
     await fireEvent.press(await screen.findByText("나중에 빌릴 책으로 저장"));
     expect(await screen.findByText(SHEET_NO_CANDIDATES)).toBeTruthy();
     expect(screen.queryByText("선택")).toBeNull();
@@ -283,7 +294,7 @@ describe("LIB-3-P2 대출·반납 탭 빌릴 예정(N9·N10)", () => {
     expect(at("내 대출")).toBeLessThan(at("빌릴 예정"));
     expect(at("빌릴 예정")).toBeLessThan(at("첫 책"));
     expect(listLoanPlans).toHaveBeenCalledTimes(1);
-    expect(listLoanPlans.mock.calls[0]?.[0]).toEqual({ cursor: null });
+    expect(listLoanPlans.mock.calls[0]?.[0]).toEqual({ cursor: null, includeUnassigned: true }); // U5
   });
 
   test("release button removes item without confirm dialog", async () => {
@@ -328,7 +339,7 @@ describe("LIB-3-P2 대출·반납 탭 빌릴 예정(N9·N10)", () => {
     await render(<LoansTabScreen />);
     await fireEvent.press(await screen.findByText("빼기"));
     expect(await screen.findByTestId("plan-p2")).toBeTruthy();
-    expect(listLoanPlans.mock.calls[1]?.[0]).toEqual({ cursor: "c1" });
+    expect(listLoanPlans.mock.calls[1]?.[0]).toEqual({ cursor: "c1", includeUnassigned: true });
     expect(screen.queryByText(PLANS_EMPTY)).toBeNull();
     expect(screen.queryByText("더 보기")).toBeNull();
   });
@@ -353,7 +364,7 @@ describe("LIB-3-P2 대출·반납 탭 빌릴 예정(N9·N10)", () => {
     await screen.findByTestId("plan-p1");
     await fireEvent.press(screen.getByText("더 보기"));
     await screen.findByTestId("plan-p2");
-    expect(listLoanPlans.mock.calls[2]?.[0]).toEqual({ cursor: "c1" });
+    expect(listLoanPlans.mock.calls[2]?.[0]).toEqual({ cursor: "c1", includeUnassigned: true });
     expect(screen.getByTestId("plan-p1")).toBeTruthy();
     expect(screen.queryByText("더 보기")).toBeNull();
   });

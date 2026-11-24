@@ -304,7 +304,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 
 | 테이블 | 담당 | 소유자 컬럼 | 꼭 있어야 하는 것 | 핵심 제약 | 근거 | 상태 |
 | --- | --- | --- | --- | --- | --- | --- |
-| `loan_plans` | C (LIB-3) | `user_id` | 책(`book_id`), 도서관(`library_id`, NOT NULL), 상태(`planned`/`released`/`converted`), 만든 시각 | **부분 UNIQUE** (`user_id`, `book_id`, `library_id`) `WHERE status = 'planned'` — 활성 예정은 하나 | R3, AC-PLAN | `확정` |
+| `loan_plans` | C (LIB-3) | `user_id` | 책(`book_id`), 도서관(`library_id`, **NULL 허용 = 도서관 미지정**, C-84), 상태(`planned`/`released`/`converted`), 만든 시각 | **부분 UNIQUE** (`user_id`, `book_id`, `library_id`) `WHERE status = 'planned'` — 활성 예정은 하나 + (`user_id`, `book_id`) `WHERE status = 'planned' AND library_id IS NULL` — 미지정 활성 예정도 하나(C-84, `0027_loan_plans_unassigned` 예정) | R3, AC-PLAN | `확정` |
 | `loans` | C (LOAN-1·2) | `user_id` | 책(`book_id`), 대출일 `loaned_on date`(서버 KST), 반납 예정일 `due_on date`, 상태(`on_loan`/`returned`), 실제 반납일(NULL 허용), 도서관(NULL 허용), 연결된 예정(NULL 허용) | **CHECK** `due_on >= loaned_on` · **CHECK** `(status = 'returned') = (returned_on IS NOT NULL)` · **UNIQUE** `plan_id`(예정 하나는 대출 하나에만) · 연타 방지 **부분 UNIQUE** (`user_id`, `book_id`) `WHERE status = 'on_loan'` | R4, AC-LOAN, AC-RETURN | `확정` · 마지막 부분 UNIQUE(같은 책을 두 권 동시에 못 빌림)는 `미확인(임시)` Q-21 |
 | `library_return_stats` | C (`0009` 표 생성) / D (M2-0-P4에서 `#22` 안 D 블록으로 쓰기) | **없음** | 도서관, 책, 반납일(서울 날짜), 건수 | **PK** (`library_id`, `book_id`, `returned_on`) · `user_id`·`loan_id` 컬럼을 **두지 않는다** · 도서관 없는 대출은 쌓지 않는다 · 동의(`user_settings.return_stats_consent`)가 있고 `RETURN_STATS_WRITE_ENABLED = True`일 때만 +1 | 02 §3·§4-9, R15 | `확정`(D 블록 구조, 2026-11-19 D) · 켜는 시점은 `미확인(임시)` Q-49(기본 `False`) |
 | `posts` | B (LOCAL-1, M2 LOCAL-3 확장) | `user_id`(작성자) | 도서관(`library_id`, NOT NULL), 책(`book_id`, NULL 허용), 이미지 종류(`photo`/`cover`/`color` + M2 `template`), 이미지 값(사진 경로·표지 주소·색·템플릿 키 `minimal`/`ink`), 이미지 위 글자(NULL 허용), 본문(NULL 허용), 독서 기록 연결(`reading_log_id`, M2 LOCAL-3, NULL 허용, `ON DELETE SET NULL`), 상태(`published`/`withdrawn`/`hidden`), 게시 시각 | **CHECK** 상태 세 값 · **CHECK** 이미지 종류와 이미지 값 일치 · **UNIQUE** (`user_id`, `client_request_id`) · **부분 UNIQUE** (`reading_log_id`) `WHERE reading_log_id IS NOT NULL AND status = 'published'`(기록당 공개 글 1개, LOCAL-3) · 응답에 `user_id`·`reading_log_id` 대신 `nickname`·`from_reading_log` 불리언만 | LOCAL-01·07, R8·R10, AC-PUBLISH | `확정` (2026-11-19 D, C-75) |
@@ -339,7 +339,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | 04 규칙 | 테이블 제약 | 시험이 잡을 것 | 상태 |
 | --- | --- | --- | --- |
 | R1 세 갈래 | `availability_observations.holding`·`loanable` CHECK 세 값 | 오류를 `no`로 저장하면 실패 | `확정` |
-| R3 활성 예정 하나 | `loan_plans` 부분 UNIQUE | 같은 책·도서관을 두 번 담으면 한 건 | `확정` |
+| R3 활성 예정 하나 | `loan_plans` 부분 UNIQUE 2개 | 같은 책·도서관을 두 번 담으면 한 건, 같은 책을 도서관 없이 두 번 담아도 한 건(지정·미지정은 공존, C-84) | `확정` |
 | R4 날짜 역전 금지 | `loans` CHECK `due_on >= loaned_on` | 대출일 전날로 고치면 거부, 행 그대로 | `확정` |
 | R4 대출일은 서버 서울 날짜 | DB 제약 없음. 서버가 `today_kst()`로 넣고 본문 값은 받지 않는다 | 본문에 `loaned_on`을 보내도 무시 | `확정` |
 | R5 연체·D-day | **저장하지 않는다**(§6) | — | `확정` |
@@ -425,6 +425,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | 카카오 일 호출 상한 (이전 네이버) | 17,500 | `기본값(Claude)` (C-66) | 같은 파일 |
 | 외부 호출 시간 초과·응답 최대 크기 | 5초·2,000,000바이트 | `기본값(Claude)` | 같은 파일 |
 | 소장 조회 동시 수·요청당 호출 수 | 8·40 | `기본값(Claude)` | 같은 파일 |
+| 일괄 소장 조회(#70) ISBN·예정 ID·후보 도서관 상한 | 20권·50개·3곳, 호출은 위 40·8을 `libSrchByBook`·`bookExist`가 공유 | `확정`(ISBN·3곳·공유, C-84) · 예정 ID 50 `기본값(Claude)` | 같은 파일 |
 | 도서 검색어·페이지·시작 위치 상한 | 100자·20건·1,000 | `기본값(Claude)` | 같은 파일 |
 | 추천·인기 도서 상한 | 20권 | `기본값(Claude)` | 같은 파일 |
 | 도서관 이름 검색 상한·검색어 길이 | 20곳·30자 | `기본값(Claude)` | 같은 파일 |

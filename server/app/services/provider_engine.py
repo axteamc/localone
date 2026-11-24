@@ -317,6 +317,26 @@ class HoldingsPage:
     lib_codes: tuple[str, ...]
 
 
+def accept_holdings_page(
+    page: HoldingsPage, page_no: int, size: int, total: int | None, codes: set[str]
+) -> tuple[int, int]:
+    """libSrchByBook 페이지 무결성 검사(서가 테마·K24 공용). 통과하면 `codes`에 더하고 (총건수, 크기)를 준다.
+
+    끝까지 받았는지는 부른 쪽이 `len(codes) == total`로 본다.
+    """
+    if page.page_no != page_no or not 1 <= page.page_size <= size:
+        raise ProviderError("소장 도서관 페이지 순서나 크기가 올바르지 않아요")
+    if total is None:
+        total, size = page.total, page.page_size
+    if page.total != total or page.page_size != size:
+        raise ProviderError("소장 도서관 페이지 사이의 총건수 또는 크기가 달라졌어요")
+    expected = min(size, total - (page_no - 1) * size)
+    codes.update(page.lib_codes)
+    if len(page.lib_codes) != expected or len(codes) != (page_no - 1) * size + expected:
+        raise ProviderError("소장 도서관 페이지에 누락이나 중복이 있어요")
+    return total, size
+
+
 class LibraryDataProvider(Protocol):
     def book_exist(self, lib_code: str, isbn13: str) -> HoldingResult: ...
 
@@ -904,6 +924,120 @@ class ProviderEngine:
             raise ApiError(429, "PROVIDER_LIMIT", MSG_PROVIDER_LIMIT)
         return items
 
+    async def bulk_availability(
+        self, isbn13s: Sequence[str], libraries: Sequence[tuple[LibraryRow, float | None]]
+    ) -> BulkAvailabilityResult:
+        """여러 ISBN × 주변 도서관 소장 일괄 조회(core K24, book-search LIB-3b #70).
+
+        오늘 bookExist 관측 → ① libSrchByBook 소장 1차(저장 안 함) → ② 상위 후보 bookExist(저장).
+        ①·②가 요청당 호출 예산(40)·동시 수(8)를 함께 쓴다. 실패는 예외 대신 unknown + 사유로 남긴다.
+        """
+        isbns = list(dict.fromkeys(isbn13s))
+        libs = list(libraries)
+        pairs = {(lib.id, i): _BulkPair() for lib, _ in libs for i in isbns}
+        if not pairs:
+            return _bulk_result(isbns, libs, pairs)
+        today = today_kst(self.now_fn())
+        lib_ids = [lib.id for lib, _ in libs]
+        book_ids, todays = await self._db(lambda c: _bulk_today(c, isbns, lib_ids, today))
+        for key, (holding, loanable) in todays.items():
+            pairs[key] = _BulkPair(holding, loanable)
+        provider = self.providers.library_data
+        if provider is None:
+            for pair in pairs.values():
+                if pair.holding == "unknown":
+                    pair.reason = "not_configured"
+            return _bulk_result(isbns, libs, pairs)
+
+        budget = [policy.AVAILABILITY_MAX_CALLS_PER_REQUEST]
+        semaphore = asyncio.Semaphore(policy.AVAILABILITY_MAX_CONCURRENCY)
+
+        async def call(fn: Callable[[], T]) -> T:
+            async with semaphore:  # 예산은 실제 호출 순서대로 쓴다(앞 ISBN 첫 페이지가 먼저)
+                if budget[0] <= 0:
+                    raise ProviderLimitReached("request")
+                budget[0] -= 1
+                return await self._guarded_call("data4library", policy.DATA4LIBRARY_DAILY_LIMIT, fn)
+
+        # ① 소장 1차: ISBN 순서 × 시·도. 오늘 관측이 없는 쌍만 대상
+        groups: list[tuple[str, str, list[LibraryRow]]] = []
+        for isbn13 in isbns:
+            by_region: dict[str, list[LibraryRow]] = {}
+            for lib, _ in libs:
+                if (lib.id, isbn13) in todays:
+                    continue
+                region = lib.region_code
+                if not region or not re.fullmatch(r"[0-9]{2}", region):
+                    pairs[(lib.id, isbn13)].reason = "provider_error"  # 기본값(Claude): 시·도 없으면 1차 불가
+                    continue
+                by_region.setdefault(region, []).append(lib)
+            groups += [(isbn13, region, group) for region, group in by_region.items()]
+
+        async def holdings(isbn13: str, region: str, group: list[LibraryRow]) -> None:
+            codes: set[str] = set()
+            total: int | None = None
+            size = policy.SHELF_HOLDINGS_PAGE_SIZE
+            page_no = 1
+            reason: FallbackReason
+            try:
+                while True:
+                    page = await call(lambda: provider.holdings_page(isbn13, region, page_no, size))
+                    total, size = accept_holdings_page(page, page_no, size, total, codes)
+                    if len(codes) == total:
+                        break
+                    page_no += 1
+            except ProviderLimitReached:
+                reason = "limit"
+            except ProviderError:
+                reason = "provider_error"
+            else:
+                for lib in group:
+                    pair = pairs[(lib.id, isbn13)]
+                    if lib.provider_lib_code in codes:
+                        pair.holding = "yes"
+                    else:
+                        pair.holding = pair.loanable = "no"
+                return
+            for lib in group:  # 일부 페이지만으로 no를 단정하지 않는다
+                pairs[(lib.id, isbn13)].reason = reason
+
+        await asyncio.gather(*(holdings(*g) for g in groups))
+
+        # ② 대출 가능: 임시 순위(소장 권수 ↓ → 거리 ↑(없으면 뒤) → ID ↑) 앞에서부터 남은 예산만큼
+        def held_count(lib: LibraryRow) -> int:
+            return sum(pairs[(lib.id, i)].holding == "yes" for i in isbns)
+
+        ordered = sorted(libs, key=lambda x: (-held_count(x[0]), *_distance_key(x[1], x[0].id)))
+        targets = [
+            (lib, i) for lib, _ in ordered for i in isbns
+            if (lib.id, i) not in todays and pairs[(lib.id, i)].holding == "yes"
+            and pairs[(lib.id, i)].loanable == "unknown"
+        ]
+        successes: dict[str, dict[int, _Fetch]] = {}
+
+        async def exist(lib: LibraryRow, isbn13: str) -> None:
+            pair = pairs[(lib.id, isbn13)]
+            try:
+                result = await call(lambda: provider.book_exist(lib.provider_lib_code, isbn13))
+            except ProviderLimitReached:
+                pair.reason = "limit"
+                return
+            except ProviderError:
+                pair.reason = "provider_error"
+                return
+            if result.holding not in {"yes", "no"} or result.loanable not in {"yes", "no"}:
+                pair.reason = "provider_error"
+                return
+            pair.holding, pair.loanable, pair.reason = result.holding, result.loanable, None
+            successes.setdefault(isbn13, {})[lib.id] = _Fetch(result=result, observed_at=self.now_fn())
+
+        await asyncio.gather(*(exist(lib, i) for lib, i in targets))
+
+        stored = {book_ids[i]: s for i, s in successes.items() if i in book_ids}
+        if stored:
+            await self._db(lambda c: [_store_observations(c, bid, today, s) for bid, s in stored.items()])
+        return _bulk_result(isbns, libs, pairs)
+
 
     async def sync_libraries(self, dtl_region_codes: Sequence[str], page_size: int = 100) -> dict[str, int]:
         """시군구별로 도서관 목록을 받아 해시가 달라진 곳만 고친다(05 §3.1 libraries). 요청 경로에서 부르지 않는다."""
@@ -977,16 +1111,7 @@ class ProviderEngine:
                         raise
                     calls += 1
                     counts["requests"] += 1
-                    if page.page_no != page_no or not 1 <= page.page_size <= size:
-                        raise ProviderError("소장 도서관 페이지 순서나 크기가 올바르지 않아요")
-                    if total is None:
-                        total, size = page.total, page.page_size
-                    if page.total != total or page.page_size != size:
-                        raise ProviderError("소장 도서관 페이지 사이의 총건수 또는 크기가 달라졌어요")
-                    expected = min(size, total - (page_no - 1) * size)
-                    codes.update(page.lib_codes)
-                    if len(page.lib_codes) != expected or len(codes) != (page_no - 1) * size + expected:
-                        raise ProviderError("소장 도서관 페이지에 누락이나 중복이 있어요")
+                    total, size = accept_holdings_page(page, page_no, size, total, codes)
                     if len(codes) == total:
                         unmatched = await self._db(lambda c: replace_holdings(c, target, started, codes))
                         counts["unprocessed"] -= 1
@@ -1516,6 +1641,91 @@ def _store_observations(conn: Connection, book_id: int, today: date, successes: 
             },
         )
 
+
+
+# ─────────── 여러 ISBN 소장 일괄 조회(K24, #70) ───────────
+
+BulkBookStatus = Literal["held", "not_held", "unknown"]
+BULK_FALLBACK_KEYS: tuple[FallbackReason, ...] = ("limit", "provider_error", "not_configured")
+
+
+@dataclass
+class _BulkPair:
+    holding: Tri = "unknown"
+    loanable: Tri = "unknown"
+    reason: FallbackReason | None = None
+
+
+@dataclass(frozen=True)
+class BulkCandidate:
+    library: LibraryRow
+    distance_km: float | None
+    held_isbn13s: tuple[str, ...]
+    loanable_isbn13s: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class BulkAvailabilityResult:
+    complete: bool
+    unknown_pairs: int
+    fallback_counts: dict[str, int]
+    book_status: dict[str, BulkBookStatus]
+    candidates: tuple[BulkCandidate, ...]  # 표시 순서(거리 ↑, 없으면 뒤 → ID ↑)
+
+
+def _bulk_today(
+    conn: Connection, isbns: list[str], library_ids: list[int], today: date
+) -> tuple[dict[str, int], dict[tuple[int, str], tuple[Tri, Tri]]]:
+    """책 ID와 오늘(서울) bookExist 관측. unknown 관측은 캐시로 치지 않는다(05 §3.1)."""
+    book_ids = {
+        r.isbn13: int(r.id)
+        for r in conn.execute(text("SELECT id, isbn13 FROM books WHERE isbn13 = ANY(:isbns)"), {"isbns": isbns})
+    }
+    rows = conn.execute(
+        text(
+            """
+            SELECT o.library_id, b.isbn13, o.holding, o.loanable
+            FROM availability_observations o JOIN books b ON b.id = o.book_id
+            WHERE b.isbn13 = ANY(:isbns) AND o.library_id = ANY(:ids) AND o.observed_on = :today
+              AND o.holding <> 'unknown' AND o.loanable <> 'unknown'
+            """
+        ),
+        {"isbns": isbns, "ids": library_ids, "today": today},
+    ).all()
+    return book_ids, {(int(r.library_id), r.isbn13): (r.holding, r.loanable) for r in rows}
+
+
+def _distance_key(distance_km: float | None, library_id: int) -> tuple[bool, float, int]:
+    return distance_km is None, distance_km or 0.0, library_id
+
+
+def _bulk_result(
+    isbns: list[str], libs: list[tuple[LibraryRow, float | None]], pairs: dict[tuple[int, str], _BulkPair]
+) -> BulkAvailabilityResult:
+    counts = dict.fromkeys(BULK_FALLBACK_KEYS, 0)
+    for pair in pairs.values():
+        if pair.reason in counts and "unknown" in (pair.holding, pair.loanable):
+            counts[pair.reason] += 1
+    status: dict[str, BulkBookStatus] = {}
+    for isbn13 in isbns:
+        holdings = [pairs[(lib.id, isbn13)].holding for lib, _ in libs]
+        status[isbn13] = "held" if "yes" in holdings else (
+            "not_held" if all(h == "no" for h in holdings) else "unknown")
+    found = []
+    for lib, distance in libs:
+        held = tuple(i for i in isbns if pairs[(lib.id, i)].holding == "yes")
+        if held:
+            loanable = tuple(i for i in held if pairs[(lib.id, i)].loanable == "yes")
+            found.append(BulkCandidate(lib, distance, held, loanable))
+    found.sort(key=lambda c: (-len(c.held_isbn13s), -len(c.loanable_isbn13s),
+                              *_distance_key(c.distance_km, c.library.id)))
+    top = sorted(found[: policy.BATCH_AVAILABILITY_TOP_LIBRARIES],
+                 key=lambda c: _distance_key(c.distance_km, c.library.id))
+    unknown = sum(pair.holding == "unknown" for pair in pairs.values())
+    return BulkAvailabilityResult(
+        complete=unknown == 0, unknown_pairs=unknown, fallback_counts=counts,
+        book_status=status, candidates=tuple(top),
+    )
 
 
 # ─────────── YES24 큐레이션·구매 직링크(C-81, K23) ───────────
