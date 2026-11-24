@@ -123,6 +123,7 @@ def insert_bundle(conn: Connection, library: Row, author: UUID, books: dict[str,
             "uid": author, "library_id": post.library_id, "book_id": books[isbn].id,
             "image_kind": post.image_kind, "image_value": post.image_color,
             "overlay_text": post.overlay_text, "body": post.body, "rid": post.client_request_id,
+            "reading_log_id": None,
         }).first() is not None
     if not 1 <= len(GUESTBOOK_BODY) <= GUESTBOOK_BODY_MAX:
         raise ValueError("시연 방명록 길이가 허용 범위를 벗어났습니다.")
