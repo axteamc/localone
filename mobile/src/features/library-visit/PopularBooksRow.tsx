@@ -1,6 +1,7 @@
 // "이 동네 인기 도서" 옆으로 넘기는 한 줄 (계약서 library-visit.md VISIT-1b W1·W2·W7·W10, 예외 #1·#2-d)
 import React, { useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { RecommendationAttribution } from "../../lib/RecommendationAttribution";
 import { WebHorizontalControls, useWebHorizontalScroll } from "../../lib/WebHorizontalControls";
 import { theme, type as T } from "../../theme";
 import type { Book } from "./deps";
@@ -32,7 +33,10 @@ export function PopularBooksRow(props: PopularBooksRowProps) {
     <View testID="popular-books">
       <View style={styles.head}>
         <View style={styles.heading}>
-          <Text style={styles.title}>{TEXT.title}</Text>
+          <View style={styles.titleRow}>
+            <Text style={styles.title}>{TEXT.title}</Text>
+            {status === "ready" && <RecommendationAttribution basisLabel={basisLabel} />}
+          </View>
           {/* W2: 서버가 준 기준을 그대로(전국으로 대체되면 그 기준이 보임) */}
           {basisLabel ? (
             <Text style={styles.basis} numberOfLines={1}>
@@ -120,6 +124,7 @@ const [tl, tr, br, bl] = theme.radii.bookCover;
 const styles = StyleSheet.create({
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginTop: 6, marginBottom: 10 },
   heading: { flexShrink: 1, gap: 2 },
+  titleRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "baseline", columnGap: 8 },
   title: { ...T.title },
   basis: { ...T.gauge, fontSize: 9, letterSpacing: 1.2, textTransform: "none" },
   row: { gap: 12, paddingBottom: 2 },

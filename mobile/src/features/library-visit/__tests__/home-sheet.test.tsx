@@ -130,6 +130,7 @@ describe("VISIT-1b-P1 home sheet", () => {
   test("popular uses first frequent library", async () => {
     await openHome();
     expect(await popular().findByText("정독도서관 · 최근 30일 대출")).toBeTruthy();
+    expect(popular().queryByText("출처: YES24")).toBeNull();
     expect(m.getFrequentLibraries).toHaveBeenCalledWith(3);
     expect(m.fetchRecommendations).toHaveBeenLastCalledWith(101, expect.anything());
     // 방문 기록을 읽기 전에 전국으로 먼저 묻지 않는다
@@ -151,13 +152,32 @@ describe("VISIT-1b-P1 home sheet", () => {
       scope: "national",
       library_id: null,
       basis_label: "전국 · 최근 30일 대출",
+      books: [{ ...book(1), source: "yes24" }],
     });
     await openHome();
     expect(await popular().findByText("전국 · 최근 30일 대출")).toBeTruthy();
+    expect(popular().queryByText("출처: YES24")).toBeNull();
     await screen.findByText("가까운 곳에서 도서관을 찾지 못했어요.");
     const last = m.fetchRecommendations.mock.calls.at(-1)!;
     expect(last[0]).toBeUndefined();
     expect(m.fetchRecommendations.mock.calls.some((c) => c[0] !== undefined)).toBe(false);
+  });
+
+  test("national YES24 recommendations show one attribution for the section", async () => {
+    m.getFrequentLibraries.mockResolvedValue([]);
+    m.fetchLibrariesNearby.mockResolvedValue({ mode: "nearby", radius_km: 3, dtl_region: null, q: null, items: [] });
+    m.fetchRecommendations.mockResolvedValue({
+      ...actual.FAKE_RECOMMENDATIONS,
+      scope: "national",
+      library_id: null,
+      basis_label: "YES24 스테디셀러 · 국내도서",
+      books: [book(1), book(2)],
+    });
+
+    await openHome();
+    await popular().findByText("YES24 스테디셀러 · 국내도서");
+    expect(popular().getAllByTestId("popular-book")).toHaveLength(2);
+    expect(popular().getAllByText("출처: YES24")).toHaveLength(1);
   });
 
   test("popular shows at most 10 books", async () => {

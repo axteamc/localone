@@ -1,7 +1,7 @@
 // LIB-1-P1 검색 진입·결과 (book-search.md LIB-1 P5)
 import { afterEach, beforeEach, describe, expect, jest, test } from "@jest/globals";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import React from "react";
 import { StyleSheet } from "react-native";
 import { useAuth } from "../../../auth/AuthProvider";
@@ -130,11 +130,30 @@ afterEach(() => {
 
 describe("검색 진입 화면", () => {
   test("entry shows national recommendations with basis label", async () => {
+    fetchRecommendations.mockResolvedValue({ ...REC, fallback_reason: "provider_error" });
     await render(<SearchScreen />);
     expect(await screen.findByText("전국 · 최근 30일 대출")).toBeTruthy();
+    expect(screen.queryByText("출처: YES24")).toBeNull();
     expect(screen.getByText(/인기 도서/)).toBeTruthy();
     expect(fetchRecommendations).toHaveBeenCalledTimes(1);
     expect(fetchRecommendations.mock.calls[0]![0]).toBeUndefined(); // 도서관 기준 아님
+  });
+
+  test("stale YES24 recommendations show one attribution for the section", async () => {
+    fetchRecommendations.mockResolvedValue({
+      ...REC,
+      basis_label: "YES24 베스트셀러 · 국내도서",
+      books: [book(1, { source: "yes24" }), book(2, { source: "yes24" })],
+      stale: true,
+      fallback_reason: "provider_error",
+    });
+
+    await render(<SearchScreen />);
+    await screen.findByText("YES24 베스트셀러 · 국내도서");
+    const section = within(screen.getByTestId("popular-section"));
+    expect(section.getByText("책 1")).toBeTruthy();
+    expect(section.getByText("책 2")).toBeTruthy();
+    expect(section.getAllByText("출처: YES24")).toHaveLength(1);
   });
 
   test("entry order is recent then popular", async () => {

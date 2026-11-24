@@ -14,6 +14,7 @@ from app.services import provider_engine as pe
 from tests.provider_fakes import FakeBookSearch, FakeLibraryData, public_reference_data
 from tests.test_lib_engine import NOW, book, engine, isbn, reference_db, seed_book
 from tests.test_lib_engine import FakeHoldingProvider, availability_libraries
+from tests.test_yes24_curated import FakeYes24Provider, make_yes24_item, yes24_db  # noqa: F401
 
 
 @pytest.fixture
@@ -84,7 +85,8 @@ def test_book_detail_bad_isbn_and_unknown(client, reference_db):
 def test_recommendations_national_popular(client, reference_db):
     fake = FakeLibraryData(popular={None: [book(i) for i in range(25)]})
     client.app.state.provider_engine = engine(reference_db, library=fake)
-    response = client.get("/api/v1/books/recommendations")
+    path = "/api/v1/books/recommendations?source=library_loan"
+    response = client.get(path)
     assert response.status_code == 200
     body = response.json()
     assert body["kind"] == "popular" and body["theme"] is None
@@ -92,8 +94,125 @@ def test_recommendations_national_popular(client, reference_db):
     assert body["basis_label"] == "전국 · 최근 30일 대출"
     assert len(body["books"]) == 20 and body["fetched_at"].endswith("+09:00")
     assert body["stale"] is False and body["fallback_reason"] is None
-    assert client.get("/api/v1/books/recommendations").json() == body
+    assert client.get(path).json() == body
     assert len(fake.calls) == 1
+
+
+@pytest.mark.parametrize("source,kind,label", [
+    (None, "steady", "스테디셀러"),
+    ("yes24_steady", "steady", "스테디셀러"),
+    ("yes24_bestseller", "bestseller", "베스트셀러"),
+])
+def test_recommendations_selects_yes24_and_reuses_cache(client, yes24_db, source, kind, label):
+    items = [make_yes24_item(1), make_yes24_item(2)]
+    yes24 = FakeYes24Provider(pe.Yes24CuratedPage(items))
+    library = FakeLibraryData(popular={None: [book()]})
+    client.app.state.provider_engine = pe.ProviderEngine(
+        yes24_db, pe.Providers(yes24=yes24, library_data=library), now_fn=lambda: NOW
+    )
+    path = "/api/v1/books/recommendations"
+    params = {} if source is None else {"source": source}
+    response = client.get(path, params=params)
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body) == {
+        "kind", "scope", "library_id", "basis_label", "theme", "books",
+        "fetched_at", "stale", "fallback_reason",
+    }
+    assert (body["kind"], body["scope"], body["library_id"], body["theme"]) == (
+        "popular", "national", None, None
+    )
+    assert body["basis_label"] == f"YES24 {label} · 국내도서"
+    assert body["fetched_at"] == NOW.isoformat() and body["stale"] is False
+    assert body["fallback_reason"] is None
+    assert [b["isbn13"] for b in body["books"]] == [item.isbn13 for item in items]
+    assert all(b["source"] == "yes24" for b in body["books"])
+    assert client.get(path, params=params).json() == body
+    assert yes24.calls == [("curated_list", (kind, "001", 1, 100))]
+    assert library.calls == []
+
+
+@pytest.mark.parametrize("reason", ["not_configured", "no_data", "provider_error", "limit"])
+def test_recommendations_falls_back_to_library_loans(client, reference_db, monkeypatch, reason):
+    yes24 = None if reason == "not_configured" else FakeYes24Provider(
+        pe.ProviderError("offline") if reason == "provider_error" else None
+    )
+    if reason == "limit":
+        monkeypatch.setattr(policy, "YES24_DAILY_LIMIT", 0)
+    library = FakeLibraryData(popular={None: [book()]})
+    client.app.state.provider_engine = pe.ProviderEngine(
+        reference_db, pe.Providers(yes24=yes24, library_data=library), now_fn=lambda: NOW
+    )
+    response = client.get("/api/v1/books/recommendations")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["basis_label"] == "전국 · 최근 30일 대출"
+    assert body["fallback_reason"] == reason and body["stale"] is False
+    assert [b["isbn13"] for b in body["books"]] == [isbn()]
+    if reason == "limit":
+        assert yes24.calls == []
+
+
+def test_recommendations_uses_stale_yes24_only_if_loans_fail(client, yes24_db):
+    yes24 = FakeYes24Provider(pe.Yes24CuratedPage([make_yes24_item(1)]))
+    providers = pe.Providers(yes24=yes24)
+    path = "/api/v1/books/recommendations?source=yes24_bestseller"
+    client.app.state.provider_engine = pe.ProviderEngine(yes24_db, providers, now_fn=lambda: NOW)
+    assert client.get(path).status_code == 200
+    tomorrow = NOW + timedelta(days=1)
+    yes24.curated_page = pe.ProviderError("offline")
+    client.app.state.provider_engine = pe.ProviderEngine(yes24_db, providers, now_fn=lambda: tomorrow)
+    cached = client.get(path)
+    assert cached.status_code == 200
+    assert cached.json()["stale"] is True and cached.json()["fallback_reason"] == "provider_error"
+    assert cached.json()["basis_label"] == "YES24 베스트셀러 · 국내도서"
+
+    providers = pe.Providers(yes24=yes24, library_data=FakeLibraryData(popular={None: [book()]}))
+    client.app.state.provider_engine = pe.ProviderEngine(yes24_db, providers, now_fn=lambda: tomorrow)
+    fallback = client.get(path)
+    assert fallback.status_code == 200
+    assert fallback.json()["stale"] is False and fallback.json()["fallback_reason"] == "provider_error"
+    assert fallback.json()["basis_label"] == "전국 · 최근 30일 대출"
+
+    # 양쪽 모두 stale이면 원래 요청한 YES24 stale 캐시를 유지한다
+    day_after = NOW + timedelta(days=2)
+    failing_library = FakeLibraryData(popular={None: pe.ProviderError("offline")})
+    providers = pe.Providers(yes24=yes24, library_data=failing_library)
+    client.app.state.provider_engine = pe.ProviderEngine(yes24_db, providers, now_fn=lambda: day_after)
+    both_stale = client.get(path)
+    assert both_stale.status_code == 200
+    assert both_stale.json()["stale"] is True and both_stale.json()["fallback_reason"] == "provider_error"
+    assert both_stale.json()["basis_label"] == "YES24 베스트셀러 · 국내도서"
+
+
+def test_recommendations_yes24_limit_without_any_cache_is_429(client, reference_db, monkeypatch):
+    monkeypatch.setattr(policy, "YES24_DAILY_LIMIT", 0)
+    yes24 = FakeYes24Provider()
+    client.app.state.provider_engine = pe.ProviderEngine(
+        reference_db, pe.Providers(yes24=yes24), now_fn=lambda: NOW
+    )
+    response = client.get("/api/v1/books/recommendations")
+    assert response.status_code == 429 and response.json()["error"]["code"] == "PROVIDER_LIMIT"
+    assert yes24.calls == []
+
+
+def test_recommendations_source_validation_and_library_priority(client, reference_db):
+    yes24 = FakeYes24Provider()
+    library = FakeLibraryData(popular={"test-101": [book()]})
+    client.app.state.provider_engine = pe.ProviderEngine(
+        reference_db, pe.Providers(yes24=yes24, library_data=library), now_fn=lambda: NOW
+    )
+    path = "/api/v1/books/recommendations"
+    invalid = client.get(path, params={"library_id": 101, "source": "invalid"})
+    assert invalid.status_code == 422
+    assert invalid.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert invalid.json()["error"]["detail"] == "source"
+    assert yes24.calls == library.calls == []
+
+    response = client.get(path, params={"library_id": 101, "source": "yes24_bestseller"})
+    assert response.status_code == 200
+    assert response.json()["scope"] == "library" and response.json()["library_id"] == 101
+    assert yes24.calls == []
 
 
 def test_recommendations_library_falls_back_to_national(client, reference_db):
@@ -219,3 +338,34 @@ def test_purchase_link_and_invalid_isbn(client):
     assert client.get("/api/v1/books/bad/purchase-link").status_code == 422
     assert client.get("/api/v1/books/bad/availability?library_id=101").status_code == 422
     assert client.get(f"/api/v1/books/{isbn()}/availability?library_id=9999999").status_code == 404
+
+
+def test_purchase_link_returns_product_or_search(client, yes24_db):
+    item = make_yes24_item(1)
+    unavailable = make_yes24_item(2)
+    yes24 = FakeYes24Provider(details={
+        item.isbn13: item, unavailable.isbn13: pe.ProviderError("offline")
+    })
+    client.app.state.provider_engine = pe.ProviderEngine(
+        yes24_db, pe.Providers(yes24=yes24), now_fn=lambda: NOW
+    )
+    invalid = client.get("/api/v1/books/bad/purchase-link")
+    assert invalid.status_code == 422
+    assert invalid.json()["error"]["code"] == "VALIDATION_ERROR"
+    assert invalid.json()["error"]["detail"] == "isbn13"
+    assert yes24.calls == []
+
+    path = f"/api/v1/books/{item.isbn13}/purchase-link"
+    direct = client.get(path)
+    assert direct.status_code == 200
+    assert direct.json() == {
+        "isbn13": item.isbn13, "provider": "yes24", "kind": "product", "url": item.product_url,
+    }
+    assert client.get(path).json() == direct.json()
+    fallback = client.get(f"/api/v1/books/{unavailable.isbn13}/purchase-link")
+    assert fallback.status_code == 200
+    assert fallback.json() == {
+        "isbn13": unavailable.isbn13, "provider": "yes24", "kind": "search",
+        "url": policy.YES24_SEARCH_URL_TEMPLATE.format(isbn13=unavailable.isbn13),
+    }
+    assert yes24.calls == [("item_detail", item.isbn13), ("item_detail", unavailable.isbn13)]

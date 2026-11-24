@@ -65,3 +65,6 @@ android/
 expo-env.d.ts
 *.tsbuildinfo
 .pytest_cache/
+
+# 개인 디자인 프로필 (~/config/localone 에서 동기화, 미커밋 유지)
+/DESIGN.md

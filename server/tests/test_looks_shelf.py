@@ -4,6 +4,7 @@ A = 운영자, B = 일반 이용자. 101·102·103은 서로 5km 안(1km·2km·4
 """
 
 from datetime import timedelta
+from unittest.mock import Mock
 
 import pytest
 from sqlalchemy import text
@@ -12,10 +13,12 @@ from sqlalchemy.exc import IntegrityError
 from app.common import now_kst, today_kst
 from app.services import provider_engine as pe
 from app.services.theme_holdings import HoldingsTarget, replace_holdings
+from app.settings import Settings
 from tests.provider_fakes import FakeBookSearch, FakeLibraryData, public_reference_data  # noqa: F401
 from tests.test_feed import auth, books, client  # noqa: F401  (픽스처)
 from tests.test_lib_engine import NOW, book, engine, isbn, reference_db, run, seed_book  # noqa: F401
 from tests.test_ops import REASON, ops, q  # noqa: F401  (픽스처)
+from tests.test_yes24_curated import FakeYes24Provider, make_yes24_item, yes24_db  # noqa: F401
 
 NEW_LIB = 106  # 시험 중에만 있는 "새 도서관"(101에서 1.5km)
 BOOK_KEYS = {"isbn13", "title", "author", "cover_url"}
@@ -226,6 +229,45 @@ def test_shelf_full_pages_order_and_shape(client, reference_db, seeded, ops):
                                {"isbn13": isbn(0), "title": "이식 도서 000", "author": None, "cover_url": None}]}
     # 인기 캐시: 다시 읽어도 외부 조회 한 번
     assert shelf(client).json()["pages"] == pages and len(fake.calls) == 1
+
+
+def test_yes24_cli_isbns_feed_shelf_theme_with_confirmed_holdings(
+    client, ops, yes24_db, test_db_url, monkeypatch, capsys, request,
+):
+    items = [make_yes24_item(i, sort_order=rank) for rank, i in enumerate((3, 2, 1), 1)]
+    yes24 = FakeYes24Provider(pe.Yes24CuratedPage(items))
+    holdings_page = Mock(side_effect=lambda isbn13, region, page, size: pe.HoldingsPage(
+        page, size, 0 if isbn13 == items[1].isbn13 else 1,
+        () if isbn13 == items[1].isbn13 else ("test-101",),
+    ))
+    providers = pe.Providers(yes24=yes24, library_data=Mock(holdings_page=holdings_page))
+    monkeypatch.setattr("app.settings.get_settings", lambda: Settings(
+        app_env="test", database_url=test_db_url,
+    ))
+    monkeypatch.setattr(pe, "build_providers", lambda _settings: providers)
+
+    assert pe._main(["sync-yes24-curated", "--print-isbns"]) == 0
+    isbns = capsys.readouterr().out.splitlines()
+    assert isbns == [item.isbn13 for item in items]
+    theme = client.post(
+        "/api/v1/ops/shelf-themes", json=theme_body(isbn13s=isbns), headers=ops["A"],
+    )
+    assert theme.status_code == 201
+
+    def clean_theme():
+        with yes24_db.begin() as conn:
+            conn.execute(text("DELETE FROM library_holdings_snapshots"))
+            conn.execute(text("DELETE FROM shelf_theme_books"))
+            conn.execute(text("DELETE FROM shelf_themes"))
+
+    request.addfinalizer(clean_theme)
+    assert shelf(client).json() == {"pages": []}
+    assert pe._main(["sync-theme-holdings", "--region", "11"]) == 0
+    assert holdings_page.call_count == len(isbns)
+    pages = shelf(client).json()["pages"]
+    assert [page["kind"] for page in pages] == ["theme"]
+    assert [book["isbn13"] for book in pages[0]["books"]] == [isbns[0], isbns[2]]
+    assert shelf(client, 102).json() == {"pages": []}
 
 
 def test_shelf_library_theme_wins_over_common(client, reference_db, seeded, ops):

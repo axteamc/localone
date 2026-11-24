@@ -130,8 +130,10 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | 29 | `moderation_actions` | 운영자의 숨김·복구·기각·제한·해제·룩·테마 처리 기록 | D (M2-0-P2) | `actor_id`(운영자) | LOCAL-08, AC-MOD | `확정` |
 | 30 | `shelf_themes` | 검색 추천·오늘의 서가용 운영자 구성 테마(공통/도서관별) | D (M2-0-P3) | 없음(공공/운영) | LIB-01(C-46 E1), VISIT-04 | `확정`(Q-47, 2026-11-23), 새 제약 적용 전 |
 | 31 | `shelf_theme_books` | 서가 테마에 속한 도서(공통 최대 20권·전용 최대 3권) | D (M2-0-P3) | 없음(공공/운영) | VISIT-04 | `확정`, 새 제약 적용 전 |
-| 32 | `library_holdings_snapshots` | ISBN·광역 지역별 완전 수집 시각 | D (M2-0-P3 후속) | 없음(공공/운영) | VISIT-04, Q-47 | 적용 전 |
-| 33 | `library_holdings_cache` | 해당 도서관 소장 확인 행 | D (M2-0-P3 후속) | 없음(공공/운영) | VISIT-04, Q-47 | 적용 전 |
+| 32 | `library_holdings_snapshots` | ISBN·광역 지역별 완전 수집 시각 | D (M2-0-P3 후속) | 없음(공공/운영) | VISIT-04, Q-47 | `확정` (`0020`) |
+| 33 | `library_holdings_cache` | 해당 도서관 소장 확인 행 | D (M2-0-P3 후속) | 없음(공공/운영) | VISIT-04, Q-47 | `확정` (`0020`) |
+| 34 | `curated_books_cache` | YES24 스테디셀러·베스트셀러 큐레이션 목록 캐시(KST 일 1회 교체) | D (YES24 2단계, `0026`) | 없음(공공/외부) | LIB-01, VISIT-04 | `확정` (2026-11-24 D, C-81, `0026`) |
+| 35 | `book_purchase_links` | 도서별 YES24 상품 직링크 캐시(TTL 14일) | D (YES24 2단계, `0026`) | 없음(공공/외부) | LOCAL-04, Q-41 | `확정` (2026-11-24 D, C-81, `0026`) |
 
 ## 3. 테이블별 골격
 
@@ -197,7 +199,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | `cover_url` | `text` | NULL 허용 | **주소만 저장하고 이미지는 복사하지 않는다.** `http://`는 `https://`로 바꿔 넣는다 | `확정`(2026-11-13) · 이용 조건 `미확인(임시)` Q-41 |
 | `description` | `text` | NULL 허용, 2,000자 이하 CHECK | 책 소개(제공자 원문에서 태그를 없앤 글). 책 상세 맨 아래(LIB-1 결정 2) | `확정`(2026-11-16 D, C-64) · 2,000자 `기본값(Claude)` |
 | `pub_year` | `smallint` | NULL 허용, 1000~2999 CHECK | 출판 연도. 1열 결과 목록 "출판사·연도"(LIB-1 결정 1) | `확정`(2026-11-16 D, C-64) |
-| `source` | `text` | NOT NULL, CHECK `IN ('naver','data4library','manual','kakao')` | 서지 출처 (`0007_books_source_kakao.py`, C-66) | `확정` |
+| `source` | `text` | NOT NULL, CHECK `IN ('kakao','naver','data4library','yes24','manual')` | 서지 출처 (`0007_books_source_kakao.py` C-66 → `0026_yes24_curated.py` C-81에서 `'yes24'` 추가) | `확정` |
 | `fetched_at` | `timestamptz` | NOT NULL | | `기본값(Claude)` |
 
 **`availability_observations`** — 같은 (도서관, 책)은 서울 날짜 하루에 한 행이고, 그날 자정(KST)까지 다시 부르지 않는다.
@@ -237,7 +239,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | `usage_date` | `date` | PK (`provider`, `usage_date`) | 서울 날짜 | `기본값(Claude)` |
 | `call_count` | `integer` | NOT NULL, 기본 `0`, CHECK `>= 0` | 원자적 증가(`UPDATE … SET call_count = call_count + 1`) | `기본값(Claude)` |
 
-상한: 정보나루 일 21,000건(30,000의 70%) `확정`, 네이버 일 25,000건은 제공자 한도이며 앱 상한은 `미확인(임시)` Q-41, 예스24·카카오는 `미확인(임시)` Q-41·Q-12. Redis 대신 DB에 둔다(Q-14).
+상한: 정보나루 일 21,000건(30,000의 70%) `확정`, 예스24 일 14,000건(20,000의 70%, 초당 10회, C-81) `확정`, 카카오 일 17,500건 `기본값(Claude)`(C-66), 네이버는 미사용(구 저장분 호환). Redis 대신 DB에 둔다(Q-14).
 
 **`inbox_items`** (M2 `M2-0-P1` — `core.md` C5)
 
@@ -287,6 +289,15 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 
 두 새 테이블에는 RLS를 켜고 정책 0개를 유지한다. 세부 타입과 적재·조회 계약은 [M2-0 개정안](명세/M2-0_서가테마_계약개정_초안.md)을 따른다.
 
+**YES24 큐레이션·구매 직링크 캐시 (`0026_yes24_curated`, C-81)**
+
+| 대상 | 핵심 제약과 의미 |
+| --- | --- |
+| `curated_books_cache` | `id bigint` IDENTITY PK, `provider text NOT NULL CHECK (provider IN ('yes24'))`, `list_kind text NOT NULL CHECK (list_kind IN ('steady','bestseller','new_notable'))`, `category_id text NOT NULL CHECK (char_length(trim(category_id)) BETWEEN 1 AND 32)`, `rank smallint NOT NULL CHECK (rank BETWEEN 1 AND 100)`, `book_id bigint NOT NULL REFERENCES books(id)`, `basis_label text NOT NULL`, `source_published_at timestamptz NULL`, `fetched_at timestamptz NOT NULL DEFAULT now()`. 유니크 2개: `(provider, list_kind, category_id, rank)` 및 `(provider, list_kind, category_id, book_id)`. |
+| `book_purchase_links` | PK `(book_id, provider)`, `book_id bigint NOT NULL REFERENCES books(id)`, `provider text NOT NULL CHECK (provider IN ('yes24'))`, `external_item_id text NOT NULL`, `product_url text NOT NULL CHECK (product_url ~ '^https://www\.yes24\.com/')`, `item_status text NULL`, `fetched_at timestamptz NOT NULL DEFAULT now()`. TTL 14일. 가격·재고 컬럼 미보관. |
+
+두 새 테이블 모두 `ENABLE ROW LEVEL SECURITY`, 정책 0개를 유지한다(`H-ARCH-01`). 세부 계약은 `../team/contracts/core.md` LIB-0 K23 및 [YES24 설계명세](명세/YES24_큐레이션_및_구매연동_설계명세.md)를 따른다.
+
 ### 3.2 주니어 영역 (존재·목적·소유자 컬럼·핵심 제약까지)
 
 컬럼 세부·길이·개수·화면 동작은 세부 명세서가 정하고 계약서 §3.4/C5가 옮긴다. 아래 "핵심 제약"은 계약서가 빼거나 바꾸지 못한다.
@@ -321,7 +332,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | RLS 시험 | 테이블마다 `relrowsecurity = true`이고 `pg_policies`에 정책 0개인지 확인하는 시험 한 줄(AUTH-1의 `test_users_rls_enabled`와 같은 모양) | `기본값(Claude)` |
 | 접근 경로 | 앱 → FastAPI → DB만. 앱에 `service_role`·secret 키를 넣지 않는다 | `확정`(NFR-04) |
 | `auth` 스키마 | `auth.users`에 FK를 걸지 않는다(시험 DB에 `auth` 스키마가 없다) | `기본값(Claude)`(AUTH-1 §3.4) |
-| 공개 데이터 | `libraries`·`books`·`availability_observations`·`popular_books_cache`·공개 상태의 `posts`는 로그인 없이 읽는다(02 §2 방문자). 파일럿 동안 게시물을 참여자에게만 보이는 방법은 `미확인(임시)` Q-54 | `확정` / Q-54 |
+| 공개 데이터 | `libraries`·`books`·`availability_observations`·`popular_books_cache`·`curated_books_cache`·`book_purchase_links`·공개 상태의 `posts`는 로그인 없이 읽는다(02 §2 방문자). 파일럿 동안 게시물을 참여자에게만 보이는 방법은 `미확인(임시)` Q-54 | `확정` / Q-54 |
 
 ## 5. 04 규칙 → 제약 → 시험
 
@@ -395,7 +406,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | Q-18 | 정보나루 기준일 필드 유무·`pageSize` 최대 | 기준일 없으면 전날로 추정하고 표시 | `availability_observations` |
 | Q-21 | 같은 책 중복 대출 기준 | 대출 중인 같은 책은 한 건 | `loans` 부분 UNIQUE |
 | Q-31 | 인기순 집계 기준 | 인기순용 컬럼·인덱스 없음 | `posts` |
-| Q-41 | 표지·구매 API 조건, 네이버 앱 상한 | 표지는 주소만 저장 | `books.cover_url`, `provider_daily_usage` |
+| Q-41 | 표지·구매 API 조건 | **예스24 해소(2026-11-24, C-81)**: 상업 이용 허용·3대 의무(`cover`만 사용, 일 14,000 상한, `itemDetail` 직링크). 카카오 표지 조건만 미확인 유지 | `books.cover_url`, `book_purchase_links`, `provider_daily_usage` |
 | Q-42 | 인기 도서 API 선택 | 캐시 표 모양만 | `popular_books_cache` |
 | Q-48 | 실시간 확인 주소 규칙 | **폐기·확정**: 검색 딥링크는 불가(ISBN 검색 주소 없음, 검색해도 주소가 안 바뀌거나 POST), 항상 `homepage`로 이동. 컬럼은 비워 둠 | `libraries.isbn_search_url_template` |
 | Q-49 | 반납 집계 동의·재식별 방지 | 표와 동의 칸만, 쓰기 꺼 둠 | `library_return_stats`, `user_settings` |
@@ -410,7 +421,8 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | 정책 | 값 | 상태 | 구현 원본 |
 | --- | --- | --- | --- |
 | 정보나루 일 호출 상한 | 21,000 | `확정` | `server/app/policy.py` |
-| 네이버 일 호출 상한 | 17,500 | `기본값(Claude)` | 같은 파일 |
+| 예스24 일 호출 상한·초당 간격·직링크 TTL | 14,000 · 0.2초 · 14일 | `확정` (C-81) | 같은 파일 |
+| 카카오 일 호출 상한 (이전 네이버) | 17,500 | `기본값(Claude)` (C-66) | 같은 파일 |
 | 외부 호출 시간 초과·응답 최대 크기 | 5초·2,000,000바이트 | `기본값(Claude)` | 같은 파일 |
 | 소장 조회 동시 수·요청당 호출 수 | 8·40 | `기본값(Claude)` | 같은 파일 |
 | 도서 검색어·페이지·시작 위치 상한 | 100자·20건·1,000 | `기본값(Claude)` | 같은 파일 |
