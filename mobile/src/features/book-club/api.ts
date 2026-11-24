@@ -251,3 +251,27 @@ export function activeRestrictionUntil(items: Restriction[], now = Date.now()): 
   if (active.some((r) => r.ends_at === null)) return "";
   return active.reduce((a, b) => (Date.parse(b.ends_at!) > Date.parse(a.ends_at!) ? b : a)).ends_at;
 }
+
+// ─────────── CLUB-2-P4 알림함 화면 (서버 D core M2-0-P1 #48·#49) ───────────
+
+export type InboxKind = "club_confirmed" | "club_changed" | "club_canceled" | "club_ended" | "club_next" | "moderation";
+export type InboxItem = {
+  id: string;
+  kind: InboxKind;
+  title: string;
+  target: { club_id?: string; post_id?: string; guestbook_id?: string };
+  created_at: string;
+  read: boolean;
+};
+export type InboxPage = { items: InboxItem[]; next_cursor: string | null };
+
+/** #48 최신순, 30개씩 */
+export function fetchInbox(cursor: string | null, signal?: AbortSignal): Promise<InboxPage> {
+  const q = cursor ? `?cursor=${encodeURIComponent(cursor)}` : "";
+  return send<InboxPage>(`me/inbox${q}`, { method: "GET" }, signal);
+}
+
+/** #49 `{ all: true }` — 열면 모두 읽음(K2-O8) */
+export function markAllRead(): Promise<{ has_unread: boolean }> {
+  return send<{ has_unread: boolean }>("me/inbox/read", { method: "POST", headers: JSON_HEADERS, body: JSON.stringify({ all: true }) });
+}

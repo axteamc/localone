@@ -133,6 +133,9 @@
 - [구현 중 변경] CLUB-1 시험 `mobile/src/features/book-club/__tests__/club.test.tsx:254-263`의 제한 문구 단언을 CLUB-2 C3(댓글 칸 "지금은 댓글을 쓸 수 없어요")에 맞춰 바꿈(같은 강도로 두 문구 모두 단언) — 파트 표 P3 허용 파일 밖
 - [Claude가 정함] (구현) 모임 화면은 열 때 #68로 지금 걸린 제한을 읽어 참가 버튼 자리·댓글 칸에 미리 안내(실패하면 조용히 넘기고 누를 때 403으로 안내). 만든 사람 ⋯은 내 댓글이면 지우기, 남의 댓글이면 "댓글 처리 요청" 사유 창 — `ClubScreen.tsx:240,349,537`
 - [Claude가 정함] (구현) 다음 모임 창은 장소(이전 값)·날짜·시작·끝 글자 칸(CLUB-1 `toKstIso` 재사용), 모두 비우면 미정. 만든 뒤 새 모임 화면으로 감 — `NextClubSheet.tsx`
+- [Claude가 정함] (구현) "내 참가 제한"은 따로 경로가 없어(P4 파일 목록에 경로 없음) 알림함 맨 위에 보임. 불참 n번째는 #68 목록(해제·180일 지난 것 제외)에서 오래된 순으로 셈, 기간이 지난 것은 "제한 기간은 끝났어요", 재검토 글은 선택(500자) — `RestrictionNotice.tsx`
+- [계약 보완 필요] 댓글 운영 제한 문구 "모임 댓글과 참가가 n일 제한돼요"의 n일을 알 칸이 `Restriction`에 없음(`starts_at` 없음) — 앱은 "모임 댓글과 참가가 제한돼요. (M.D HH:mm까지)"로 보임 — C3
+- [계약 보완 필요] 내 정보 알림 아이콘(`mobile/src/features/my-collection/InboxBell.tsx:18-19` `TODO(연결): C CLUB-2-P4`)은 A 파일이라 손대지 않음 — 이 PR 머지 뒤 켜야 함
 - [처리 못 함] 앱 전체 시험 중 `library-visit/__tests__/home-list.test.tsx` "no hardcoded colors" 1개가 main에서도 실패(`home-facade.test.tsx:362-364` 색 코드, `033e415`) — CI는 jest를 돌리지 않아 막히지 않음, 내 파일 아님
 - [처리 못 함] `[D→C]` #180·#233·#240·#255·#258 이슈 닫기 — auto mode 권한 분류기가 `gh issue close` 거부(내용은 처리)
 
@@ -183,6 +186,6 @@
 | CLUB-2-P1 기록·후기·다음 모임 서버 | `feat/book-club-CLUB-2` | #284 (Draft) | 완료 | 종료 안내 `server/app/routers/club_records.py:51-58`, #60 `:76-113`, #61 `:131-150`, #62 `:158-195`, #63 `:232-269`, #64 `:272-283`, 마이그레이션 `server/migrations/versions/0021_club_records.py` · `tests/test_club_records.py` 13 passed, 서버 전체 711 passed · 가드 제거 6건 확인 | — (CI ok 45137081622) |
 | CLUB-2-P2 출석·제한·운영 요청 서버 | 같은 브랜치 | #284 | 완료 | `is_restricted` `server/app/routers/clubs.py:51-67`, #65 `server/app/routers/club_moderation.py:67-112`, #66 `:121-155`, #67 `:181-205`, #68 `:208-220` · `tests/test_club_restrictions.py` 13 passed, 서버 전체 724 passed · 가드 제거 9건 확인 | — |
 | CLUB-2-P3 기록 화면·다음 모임 | 같은 브랜치 | #284 | 완료 | 기록 화면 `mobile/src/features/book-club/ClubRecordScreen.tsx:83-390`(순서 `:268,280,342,380`), 출석 `AttendanceSheet.tsx:51-110`, 다음 모임 `NextClubSheet.tsx:44-78`, 모임 화면 연결 `ClubScreen.tsx:148,240,349,537`, `api.ts:184-253`, 경로 `mobile/app/clubs/[clubId]/record.tsx` · `__tests__/club-record.test.tsx` 23 passed, 앱 전체 761 passed(남의 1개 실패는 main에서도 같음) · tsc·web export 통과 · 가드 제거 8건 확인 | — |
-| CLUB-2-P4 알림함·제한 안내 화면 | 같은 브랜치 | #284 | 진행 | | |
+| CLUB-2-P4 알림함·제한 안내 화면 | 같은 브랜치 | #284 | 완료 | 알림함 `mobile/src/features/book-club/InboxScreen.tsx:48-200`(열면 모두 읽음 `:87`, 90일 `:84`, 로그아웃 비움 `:72`, 누르면 모임 화면 `:119`), 제한 안내 `RestrictionNotice.tsx:42-120`, `api.ts:255-279`, 경로 `mobile/app/inbox.tsx` · `__tests__/inbox.test.tsx` 14 passed, 앱 전체 775 passed(남의 1개 실패는 main에서도 같음) · tsc·web export 통과 · 가드 제거 7건 확인 | `InboxBell.tsx` `/inbox` 연결 스위치는 A(MY-2) 파일 — 머지 뒤 켬 |
 
-- **다음 세션 이어하기 메모**: 구현(3) 진행 중. 계약 발행 본문 SHA `68a6c60`. P1·P2·P3 완료 → P4부터.
+- **다음 세션 이어하기 메모**: 구현(3) 진행 중. 계약 발행 본문 SHA `68a6c60`. P1~P4 완료 → verify.md·Ready.
