@@ -1,6 +1,7 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
-import { theme, type as T } from "../../theme";
+import { type Theme } from "../../theme";
+import { lookKit, useLook } from "./useLibraryLook";
 
 export type TemplateKey = "minimal" | "ink";
 
@@ -17,6 +18,7 @@ type TemplateCardProps = {
 };
 
 export function TemplateCard({ template, overlayText, book, width }: TemplateCardProps) {
+  const { T, styles } = useLook(makeStyles);
   const ink = template === "ink";
   const fontSize = Math.max(9, Math.min(T.title.fontSize, width / 11));
   return (
@@ -38,13 +40,15 @@ export function TemplateCard({ template, overlayText, book, width }: TemplateCar
   );
 }
 
-const C = theme.colors;
-const styles = StyleSheet.create({
-  card: {
-    aspectRatio: 1, alignSelf: "center", justifyContent: "center", gap: 8,
-    borderRadius: theme.radii.card, backgroundColor: C.paper, overflow: "hidden",
-  },
-  ink: { backgroundColor: C.cream },
-  handwriting: { fontStyle: "italic", color: C.inkStrong },
-  book: { color: C.inkMuted },
-});
+const makeStyles = (theme: Theme) => {
+  const { C } = lookKit(theme);
+  return StyleSheet.create({
+    card: {
+      aspectRatio: 1, alignSelf: "center", justifyContent: "center", gap: 8,
+      borderRadius: theme.radii.card, backgroundColor: C.paper, overflow: "hidden",
+    },
+    ink: { backgroundColor: C.cream },
+    handwriting: { fontStyle: "italic", color: C.inkStrong },
+    book: { color: C.inkMuted },
+  });
+};
