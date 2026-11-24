@@ -159,3 +159,48 @@
 
 - to:D #230 방명록 카드 색 PANTONE 공식 sRGB 대조(지금은 서드파티 값, 첫 후보 11-0602)
 - 미실행: Android 실기기·에뮬레이터 화면(이 PC에 없음), 실제 로그인 상태의 방명록 올리기·지우기 화면(로컬 로그인 수단 없음 — 자동 시험으로만 확인), 블러 성능 Q-46
+
+## VISIT-4 (PR #293)
+
+- 대상 커밋: `7005005` · 작성일: 2026-11-24 · 기준: 02 VISIT-05·VISIT-07·LOCAL-03(방문 기록 카드 북마크), AC-STAMP·AC-UI·AC-VISIT, `specs/local-feed/세부/VISIT-4.md` 예외 #1~#4, `team/contracts/local-feed.md` VISIT-4 P5
+- 서버: `pytest` 격리 DB(`localone_v4`) 760개 통과. 앱: `jest` 848개 중 847 통과(실패 1은 이 브랜치와 무관한 #295), `tsc` 통과. 웹 화면은 연습 DB(`localone_demo4`, 도서관 101 oxford·102 modern) + `expo start --web`으로 직접 열어 봄(비로그인 화면). 로그인 흐름은 jest(가짜 응답)로만 확인.
+- Android: 에뮬레이터·기기를 이 PC에서 못 띄워 **미실행** — CI `Android 빌드 점검`으로 빌드만 확인. iOS: D 확인 대기.
+
+### 1. 수용 기준 전수 점검
+
+| 요구사항 ID | AC | 준비 | 행동 | 기대 | 실제 | 증거 | 웹 | Android | iOS (D) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| VISIT-05 | AC-STAMP 하루 한 번 | 로그인, 같은 도서관 | #36 세 번(공개·비공개·공개) | 행 1개, 마지막 공개 | 일치 | `test_stamps.py::test_stamp_is_one_per_user_library_seoul_day` | 통과(서버) | — | — |
+| VISIT-05 | AC-STAMP 날짜는 서울 기준 | 시계 23:59/00:01 KST | 찍기 | 서버 서울 날짜 | 일치 | `test_stamp_date_comes_from_server_seoul_today`, `test_delayed_visibility_change_after_midnight_returns_409_without_creating_row` | 통과(서버) | — | — |
+| VISIT-05 | AC-STAMP 다른 도서관 | 101·102 | 각각 찍기 | 도서관마다 따로 | 일치 | `test_today_stamp_ignores_yesterday_and_other_users` | 통과(서버) | — | — |
+| VISIT-05 | AC-STAMP 인증 문구 없음 | 스탬프 카드 | 렌더 | "인증"·"확인됨" 없음 | 없음 | `stamp.test.tsx` "stamp card is one cell with seal nickname time and no menu" | 통과(jest) | 미실행 | 대기 |
+| VISIT-05 | AC-STAMP 본인만(비공개는 남에게 안 보임) | A 비공개 | B·비로그인 #32 | 카드 없음 | 없음 | `test_private_stamp_never_appears_to_others` | 통과(서버) | — | — |
+| VISIT-05 | 누르면 바로 나만 보기 → "피드에도 남기기"로 공개 | 로그인 | 버튼 → 안내 글자 버튼 | private 후 public, 카드 1개 | 일치 | jest "stamp press saves private at once and toast switches to public" | 통과(jest) | 미실행 | 대기 |
+| VISIT-05 | 남긴 날 "오늘 다녀감" + ⋯ 바꾸기 | #35 stamped | ⋯ → 바꾸기 두 번 | 표시·카드 따라 바뀜, 비공개면 즉시 숨김 | 일치 | jest "stamped today shows label and menu flips visibility", "visibility change refreshes sorted feed…" | 통과(jest) | 미실행 | 대기 |
+| LOCAL-03 | 방문 기록 카드 북마크 | 공개 스탬프 | #69 PUT/DELETE, 카드 연타 | 멱등, 1번만 호출 | 일치 | `test_stamp_bookmark_requires_public_stamp_and_updates_saved_at_on_resave`, jest "stamp card bookmark toggle blocks rapid double tap" | 통과 | 미실행 | 대기 |
+| VISIT-07 | AC-VISIT 도서관마다 룩 | 101 oxford / 102 modern | 방문 페이지 열기 | 바탕·카드·곡률·책장·버튼이 그 룩 | 일치(웹 직접 봄 + jest) | jest "visit page uses look tokens for cards radii and shelf" | 통과 | 미실행 | 대기 |
+| VISIT-07 | 이어 읽기에서 방문 중 도서관 룩 유지 | 방문 101, 102 글 | 상세 열기 | 상세 oxford | 일치 | jest "continue reading keeps visiting library look" | 통과(jest) | 미실행 | 대기 |
+| VISIT-07 | 홈과 무관 | 방문 뒤 | 홈 카드·글쓰기 | 기본 룩 | 일치 | jest "home and compose keep default look" | 통과(jest) | 미실행 | 대기 |
+| VISIT-07 | 룩 없음·모르는 값 | `look` null/"neon"/조회 실패 | 렌더 | warm | 일치 | jest "unknown or null look falls back to warm" | 통과(jest) | 미실행 | 대기 |
+| VISIT-07 | 룩별 대비 | 4룩 | 대비 계산 | 본문 4.5:1 이상 | 본문(`text`·`inkStrong`·`inkSoft`) 통과. `inkMuted` 작은 글자는 4룩 모두 미달(검토 메모) | jest "all looks keep body text contrast" | 통과(본문) | — | — |
+| — | AC-RACE | 도서관 X 룩 조회 지연 | Y로 이동 후 X 응답 | Y 룩 유지 | 일치 | jest "library switch drops late look response", "old scope cannot change current stamp or feed" | 통과(jest) | 미실행 | 대기 |
+| NFR-01 | AC-UI 비로그인·실패 상태 | 비로그인 / 503 | 누르기 | 로그인 안내 창 / 버튼 그대로 + 안내 | 일치 | jest "signed out stamp shows login sheet without request", "stamp failure keeps button and shows retry notice" | 통과(jest) + 웹 비로그인 화면 직접 봄 | 미실행 | 대기 |
+
+### 2. 명세서 예외 상황 점검
+
+| 예외 # | 확인한 방법 | 문구 일치 | 기록 무변경 | 결과 |
+| :--- | :--- | :--- | :--- | :--- |
+| 1 끊김 | jest "stamp failure keeps button and shows retry notice", "visibility change failure keeps label…" | 예(`남기지 못했어요. 다시 눌러 주세요`) | 피드 카드 없음 | 통과 |
+| 2 아무것도 없음 | jest "empty feed still shows stamp button" | 예 | — | 통과 |
+| 3 연타 | jest "stamp button press sets visibility once", "rapid double tap on toast public keeps one public card"; 서버 UPSERT | 예 | 행 1개·카드 1개 | 통과 |
+| 4 비로그인·남의 것 | jest "signed out stamp shows login sheet without request"; 서버 `test_stamp_endpoints_require_auth`; 남의 카드 메뉴 0개 | 예(`로그인하면 다녀왔어요를 남길 수 있어요`) | 요청 0번·행 0 | 통과 |
+
+### 3. 명세서와 달라진 점
+
+- 없음(결정 1·2는 D 결정으로 B 반영 — 명세서에 이미 기록)
+
+### 4. 남은 문제
+
+- #295 (to:D) `home-list.test.tsx` 색 코드 시험 실패 — main `033e415` 탓, 이 브랜치 무관
+- Android 실제 기기 확인 미실행(이 PC에서 에뮬레이터 못 띄움) — CI 빌드 점검만
+- 허용 파일 밖이라 기본 룩 그대로인 조각(`AskDefaultCard`·`DefaultLibraryGate`·경로 `contentStyle`), `inkMuted` 대비 미달 — 명세 검토 메모
