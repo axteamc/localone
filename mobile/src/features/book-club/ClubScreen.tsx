@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../auth/AuthProvider";
+import { REPORT_TEXT, ReportedTarget, ReportSheet, type ReportTarget } from "../local-feed/ReportSheet";
 import { createLatestRunner } from "../../lib/latest";
 import { actionColors, cardSurface, panel, theme, type as T } from "../../theme";
 import {
@@ -188,6 +189,9 @@ export function ClubScreen({ clubId }: { clubId: string }) {
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<{ text: string; retry: (() => void) | null } | null>(null);
   const [restrictedUntil, setRestrictedUntil] = useState<string | null>(null); // "" = 기간 없음
+  const reportIdentity = JSON.stringify([clubId, status, account]);
+  const [report, setReport] = useState<{ target: ReportTarget; identity: string } | null>(null);
+  const openReport = (target: ReportTarget) => setReport({ target, identity: reportIdentity });
   const [dialog, setDialog] = useState<Dialog>(null);
   const [reason, setReason] = useState("");
   const [draft, setDraft] = useState("");
@@ -389,6 +393,11 @@ export function ClubScreen({ clubId }: { clubId: string }) {
         >
           <Text style={styles.more}>⋯</Text>
         </Pressable>
+      ) : club && !club.is_host && status !== "loading" ? (
+        <Pressable accessibilityRole="button" accessibilityLabel="모임 신고하기" hitSlop={10}
+          onPress={() => openReport({ kind: "club", id: club.id })}>
+          <Text style={styles.line}>{REPORT_TEXT.open}</Text>
+        </Pressable>
       ) : (
         <View style={styles.headSide} />
       )}
@@ -426,6 +435,7 @@ export function ClubScreen({ clubId }: { clubId: string }) {
     <View style={styles.root}>
       {head(club)}
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" testID="club-scroll">
+        <ReportedTarget kind="club" id={club.id}>
         <View style={styles.info} testID="club-info">
           {club.book ? <View style={styles.cover} /> : null}
           <View style={styles.flex}>
@@ -459,6 +469,7 @@ export function ClubScreen({ clubId }: { clubId: string }) {
             <Text style={styles.body}>{club.cancel_reason}</Text>
           </View>
         ) : null}
+        </ReportedTarget>
         {notice ? (
           <View style={styles.msg} accessibilityRole="alert" testID="club-notice">
             <Text style={styles.body}>{notice}</Text>
@@ -495,7 +506,8 @@ export function ClubScreen({ clubId }: { clubId: string }) {
         </Text>
         {comments.length === 0 ? <Text style={styles.empty}>{CLUB_TEXT.emptyComments}</Text> : null}
         {comments.map((m) => (
-          <View key={m.id} style={styles.comment} testID={`club-comment-${m.id}`}>
+          <ReportedTarget key={m.id} kind="club_comment" id={m.id}>
+          <View style={styles.comment} testID={`club-comment-${m.id}`}>
             <View style={styles.flex}>
               <Text style={styles.commentMeta}>{m.author_nickname}</Text>
               <Text style={styles.body}>{m.body}</Text>
@@ -515,7 +527,14 @@ export function ClubScreen({ clubId }: { clubId: string }) {
                 <Text style={styles.more}>⋯</Text>
               </Pressable>
             ) : null}
+            {!m.mine && status !== "loading" ? (
+              <Pressable accessibilityRole="button" accessibilityLabel="댓글 신고하기" hitSlop={8}
+                onPress={() => openReport({ kind: "club_comment", id: m.id })}>
+                <Text style={styles.line}>{REPORT_TEXT.open}</Text>
+              </Pressable>
+            ) : null}
           </View>
+          </ReportedTarget>
         ))}
         {nextCursor ? (
           <Pressable accessibilityRole="button" onPress={() => void loadMoreComments()} style={styles.secondary}>
@@ -565,6 +584,12 @@ export function ClubScreen({ clubId }: { clubId: string }) {
         )}
       </View>
 
+      {report?.identity === reportIdentity ? (
+        <ReportSheet target={report.target} onClose={() => setReport(null)} onDone={() => {
+          setReport(null);
+          setNotice(REPORT_TEXT.done);
+        }} />
+      ) : null}
       <ClubDialog
         dialog={dialog}
         reason={reason}

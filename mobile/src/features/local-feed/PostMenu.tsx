@@ -1,10 +1,12 @@
 // 피드 카드 길게 누르기(웹 호버 ⋯) 작은 창 — contracts/local-feed.md LOCAL-2 H10(#el-card-menu 후보 A)·C3.
 // 위: 아이콘 3개 한 줄(좋아요·북마크·공유). 아래: 책 줄(책 제목 검색·저자의 다른 책) 또는 도서 없음(예스24, M2).
 import { useRouter } from "expo-router";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { useAuth } from "../../auth/AuthProvider";
 import { actionColors, cardSurface, theme, type as T } from "../../theme";
-import { ApiCallError, setBookmark, setReaction, type FeedPost, type PostReactionPatch } from "./api";
+import { ApiCallError, fetchPost, setBookmark, setReaction, type FeedPost, type PostReactionPatch } from "./api";
+import { REPORT_TEXT, ReportSheet } from "./ReportSheet";
 import { shareNotice, sharePost } from "./share";
 
 const C = theme.colors;
@@ -86,6 +88,26 @@ export function PostMenu({
   failText,
 }: PostMenuProps) {
   const router = useRouter();
+  const { userId } = useAuth();
+  const identity = JSON.stringify([post.id, signedIn, userId]);
+  const [ownership, setOwnership] = useState<{ identity: string; mine: boolean } | null>(null);
+  const [reportFor, setReportFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (!signedIn || authLoading) return;
+    const ctrl = new AbortController();
+    // FeedPost omits ownership. The existing detail response provides the viewer-specific flag.
+    async function loadOwner() {
+      try {
+        const detail = await fetchPost(post.id, ctrl.signal);
+        if (!ctrl.signal.aborted) setOwnership({ identity, mine: detail.is_mine });
+      } catch {
+        // A failed ownership lookup cannot reveal a report action on the viewer's own post.
+      }
+    }
+    void loadOwner();
+    return () => ctrl.abort();
+  }, [identity, post.id, signedIn, authLoading]);
+
   const busy = useRef({ reaction: false, bookmark: false, share: false });
   const [, rerender] = useState(0);
 
@@ -133,6 +155,14 @@ export function PostMenu({
     router.push({ pathname: "/search", params: { q } });
   };
 
+  if (reportFor === identity) {
+    return <ReportSheet target={{ kind: "post", id: post.id }} onClose={onClose} onDone={() => {
+      onNotice(REPORT_TEXT.done);
+      onClose();
+    }} />;
+  }
+
+  const canReport = !authLoading && (!signedIn || (ownership?.identity === identity && !ownership.mine));
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="메뉴 닫기">
@@ -171,6 +201,9 @@ export function PostMenu({
               }}
             />
           )}
+          {canReport ? (
+            <Row label={REPORT_TEXT.open} onPress={() => setReportFor(identity)} />
+          ) : null}
         </Pressable>
       </Pressable>
     </Modal>

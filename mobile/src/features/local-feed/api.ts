@@ -87,6 +87,21 @@ async function send<T>(path: string, init: RequestInit, signal?: AbortSignal): P
   return response.json() as Promise<T>;
 }
 
+export type ReportKind = "post" | "guestbook" | "club" | "club_comment";
+export type ReportReason = "spam" | "abuse" | "privacy" | "other";
+
+export async function reportTarget(
+  target: { kind: ReportKind; id: string },
+  reason: ReportReason,
+  text: string | null,
+): Promise<void> {
+  await send<{ ok: true }>("reports", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ target_kind: target.kind, target_id: target.id, reason, text }),
+  });
+}
+
 /** #23 `POST /api/v1/uploads/post-images` */
 export async function uploadPostImage(fileUri: string, signal?: AbortSignal): Promise<UploadedImage> {
   const form = await buildImageFormData(fileUri);

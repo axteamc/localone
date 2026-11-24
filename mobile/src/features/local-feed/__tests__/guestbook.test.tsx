@@ -1,6 +1,6 @@
 // VISIT-3-P3 방명록 카드·쓰기·혼합 피드 — contracts/local-feed.md VISIT-3 P5 (VISIT-3-P3 행), 명세 결정 2·3·예외 #1~#4
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import React from "react";
 import { useAuth } from "../../../auth/AuthProvider";
 import * as publicApi from "../../../lib/publicApi";
@@ -264,12 +264,13 @@ describe("VISIT-3-P3 방명록 쓰기", () => {
 });
 
 describe("VISIT-3-P3 방명록 카드", () => {
-  test("only my guestbook card has menu and withdraw asks first", async () => {
+  test("guestbook menus are visible on both cards and my withdrawal asks first", async () => {
     await enter([gbItem(gb("mine", { mine: true })), gbItem(gb("other"))]);
     await screen.findByTestId("guestbook-card-other");
-    expect(screen.getAllByLabelText(GUESTBOOK_CARD_TEXT.menuLabel)).toHaveLength(1);
+    expect(screen.getAllByLabelText(GUESTBOOK_CARD_TEXT.menuLabel)).toHaveLength(2);
     withdrawGuestbook.mockResolvedValue(undefined);
-    await fireEvent.press(screen.getByLabelText(GUESTBOOK_CARD_TEXT.menuLabel));
+    const ownMenu = within(screen.getByTestId("guestbook-card-mine")).getByLabelText(GUESTBOOK_CARD_TEXT.menuLabel);
+    await fireEvent.press(ownMenu);
     expect(screen.getByText(GUESTBOOK_CARD_TEXT.menuTitle)).toBeTruthy();
     await fireEvent.press(screen.getByText(GUESTBOOK_CARD_TEXT.withdraw));
     expect(screen.getByText(GUESTBOOK_CARD_TEXT.confirmTitle)).toBeTruthy();

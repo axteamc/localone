@@ -14,6 +14,7 @@ import { ON_FILL_LIGHT } from "../../theme/tokens";
 import { ApiCallError, emitPostReaction, emitPostWithdrawn, fetchPost, type Post } from "./api";
 import { PostImage, PostMoreMenu } from "./ComposeScreen";
 import { LoginPrompt, MENU_TEXT } from "./PostMenu";
+import { REPORT_TEXT, ReportedTarget, ReportSheet } from "./ReportSheet";
 import { ReactionButton, SaveButton } from "./ReactionButton";
 import { LibraryOtherPosts, SameBookPosts } from "./SameBookPosts";
 import { shareNotice, sharePost } from "./share";
@@ -95,7 +96,8 @@ export type PostDetailProps = {
 export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { status } = useAuth();
+  const { status, userId } = useAuth();
+  const reportIdentity = JSON.stringify([postId, status, userId]);
   const signedIn = status === "signedIn";
   const authLoading = status === "loading"; // 복원 중에는 로그인 안내를 띄우지 않는다(①-5)
   const [layoutWidth, setLayoutWidth] = useState<number | null>(null);
@@ -108,6 +110,7 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
   const [loan, setLoan] = useState<AvailabilityItem | null | "failed">(null);
   const [login, setLogin] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [reportFor, setReportFor] = useState<string | null>(null);
   const [othersMenu, setOthersMenu] = useState(false);
   const postRunner = useRef(createLatestRunner()).current;
   const loanRunner = useRef(createLatestRunner()).current;
@@ -307,6 +310,14 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
                   >
                     <Text style={styles.smallMenuText}>{MENU_TEXT.share}</Text>
                   </Pressable>
+                  {!authLoading ? (
+                    <Pressable accessibilityRole="button" style={styles.smallMenuItem} onPress={() => {
+                      setOthersMenu(false);
+                      setReportFor(reportIdentity);
+                    }}>
+                      <Text style={styles.smallMenuText}>{REPORT_TEXT.open}</Text>
+                    </Pressable>
+                  ) : null}
                 </View>
               ) : null}
             </View>
@@ -379,17 +390,9 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
   return (
     <View style={styles.screen} onLayout={onScreenLayout}>
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top }]} testID="detail-scroll">
-        {wide ? (
-          <View style={styles.wideRow}>
-            {image}
-            {info}
-          </View>
-        ) : (
-          <>
-            {image}
-            {info}
-          </>
-        )}
+        <ReportedTarget kind="post" id={post.id}>
+          {wide ? <View style={styles.wideRow}>{image}{info}</View> : <>{image}{info}</>}
+        </ReportedTarget>
         <SameBookPosts postId={post.id} isbn13={post.book?.isbn13 ?? null} onOpen={openPost} />
         <LibraryOtherPosts postId={post.id} libraryId={visitLibraryId ?? post.library.id} onOpen={openPost} />
       </ScrollView>
@@ -399,6 +402,13 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
         </View>
       ) : null}
       {login ? <LoginPrompt onClose={() => setLogin(false)} /> : null}
+      {reportFor === reportIdentity ? (
+        <ReportSheet
+          target={{ kind: "post", id: post.id }}
+          onClose={() => setReportFor(null)}
+          onDone={() => { setReportFor(null); showNotice(REPORT_TEXT.done); }}
+        />
+      ) : null}
     </View>
   );
 }
