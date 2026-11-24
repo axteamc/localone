@@ -1,4 +1,5 @@
-// 도서관 카드: 머리 줄 → 상태 한 줄·주소 전화 접기(왼쪽) + 작은 "실시간 ↗"(오른쪽)(book-search.md LIB-2 A2·A3·A11·A14, C-70, V-1·V-7·V-8)
+// 도서관 카드(Y-6 시안 조회 카드): "이름 · 거리 (오늘 운영)" → 상태 점·글 → 주소 전화 접기(왼쪽) + "실시간 ↗"(오른쪽)
+// (book-search.md LIB-2 A2·A3·A11·A14, C-70, V-1·V-7·V-8)
 // LIB-3b V5: 카드 본문을 누르면 한 곳 선택·해제(테두리·왼쪽 표시선·"선택됨"). 오른쪽 필 버튼은 링크만 열고 선택과 따로다.
 // LIB-3b V6: 필 버튼 "실시간 ↗" ↔ 열기 성공 뒤 초록 점 "확인 완료". 두 상태 같은 크기, 높이 44.
 import { useRef, useState } from "react";
@@ -122,58 +123,56 @@ export function LibraryAvailabilityCard({
         />
       )}
       {selected && <View style={[styles.selectBar, styles.passThrough]} />}
-      <View style={[styles.head, styles.passThrough]}>
-        <View style={styles.flexName}>
-          <Text style={styles.name}>{lib.name}</Text>
+      {/* Y-6 시안: 왼쪽 글자 묶음(이름 · 거리 / 상태 점·글 / 작은 부가 줄) + 오른쪽 필 */}
+      <View style={[styles.info, styles.boxNone]}>
+        <View style={[styles.nameRow, styles.passThrough]}>
+          <Text style={styles.name} numberOfLines={1}>{lib.name}</Text>
+          {!!distance && <Text style={styles.sep}>·</Text>}
+          {!!distance && <Text style={styles.name}>{distance}</Text>}
           {selected && <Text style={styles.selectedTag}>{SELECTED_LABEL}</Text>}
+          {/* LIB-2 머리 줄(C-70): 오늘 운영은 이름 줄 오른쪽에 작게 */}
+          {!!todayLabel && <Text style={[styles.meta, styles.todayRight]} numberOfLines={1}>{todayLabel}</Text>}
         </View>
-        {(!!distance || !!todayLabel) && (
-          <View style={styles.headSide}>
-            {!!distance && <Text style={styles.meta}>{distance}</Text>}
-            {!!todayLabel && <Text style={styles.meta}>{todayLabel}</Text>}
-          </View>
-        )}
-      </View>
 
-      <View style={[styles.body, styles.boxNone]}>
-        <View style={[styles.bodyMain, styles.boxNone]}>
-          <View style={[styles.statusRow, styles.boxNone]}>
-            <View style={[styles.statusMain, styles.passThrough]}>
-              <View style={[styles.dot, { backgroundColor: line.dot }]} />
-              <Text style={styles.statusText} numberOfLines={1}>{line.parts.join(" · ")}</Text>
-            </View>
-            {line.retry && (
-              <Pressable accessibilityRole="button" onPress={onRetry} hitSlop={8}>
-                <Text style={styles.retry}>다시 시도</Text>
-              </Pressable>
-            )}
+        <View style={[styles.statusRow, styles.boxNone]}>
+          <View style={[styles.statusMain, styles.passThrough]}>
+            <View style={[styles.dot, { backgroundColor: line.dot }]} />
+            <Text style={styles.statusText} numberOfLines={1}>{line.parts.join(" · ")}</Text>
           </View>
+          {line.retry && (
+            <Pressable accessibilityRole="button" onPress={onRetry} hitSlop={8}>
+              <Text style={styles.retry}>다시 시도</Text>
+            </Pressable>
+          )}
+        </View>
 
-          {(!!lib.address || !!lib.tel) && !infoOpen && (
+        {/* LIB-2 A2: 주소·전화 접기는 작은 부가 줄로 남긴다 */}
+        {(!!lib.address || !!lib.tel) && !infoOpen && (
+          <View style={[styles.extraRow, styles.boxNone]}>
             <Pressable testID={`info-open-${lib.id}`} accessibilityRole="button" onPress={() => setInfoOpen(true)} hitSlop={8}>
               <Text style={styles.fold}>주소·전화 ⌄</Text>
             </Pressable>
-          )}
-          {(!!lib.address || !!lib.tel) && infoOpen && (
-            <View style={[styles.info, styles.boxNone]}>
-              {!!lib.address && <Text style={styles.infoText}>{lib.address}</Text>}
-              {/* 전화는 글자로만 보인다. 눌러서 걸지 않는다(A2). */}
-              {!!lib.tel && (
-                <Text selectable style={styles.infoText}>
-                  {`전화 ${lib.tel}`}
-                </Text>
-              )}
-              <Pressable testID={`info-close-${lib.id}`} accessibilityRole="button" onPress={() => setInfoOpen(false)} hitSlop={8}>
-                <Text style={styles.fold}>접기 ⌃</Text>
-              </Pressable>
-            </View>
-          )}
-        </View>
-
-        {/* A11 ④ 오른쪽 작은 버튼. V6: 높이 44·고정 폭으로 두 상태 크기가 같다. `live_check = null`이면 버튼 없음 */}
-        {live !== null && <LivePill url={live.url} testID={`live-check-${lib.id}`} onOpenFailed={setOpenFailed} />}
+          </View>
+        )}
+        {(!!lib.address || !!lib.tel) && infoOpen && (
+          <View style={[styles.infoOpen, styles.boxNone]}>
+            {!!lib.address && <Text style={styles.infoText}>{lib.address}</Text>}
+            {/* 전화는 글자로만 보인다. 눌러서 걸지 않는다(A2). */}
+            {!!lib.tel && (
+              <Text selectable style={styles.infoText}>
+                {`전화 ${lib.tel}`}
+              </Text>
+            )}
+            <Pressable testID={`info-close-${lib.id}`} accessibilityRole="button" onPress={() => setInfoOpen(false)} hitSlop={8}>
+              <Text style={styles.fold}>접기 ⌃</Text>
+            </Pressable>
+          </View>
+        )}
+        {openFailed && <Text style={[styles.meta, styles.passThrough]}>{OPEN_FAILED}</Text>}
       </View>
-      {openFailed && <Text style={[styles.meta, styles.passThrough]}>{OPEN_FAILED}</Text>}
+
+      {/* A11 ④ 오른쪽 작은 버튼. V6: 높이 44·고정 폭으로 두 상태 크기가 같다. `live_check = null`이면 버튼 없음 */}
+      {live !== null && <LivePill url={live.url} testID={`live-check-${lib.id}`} onOpenFailed={setOpenFailed} />}
     </View>
     </View>
   );
@@ -185,46 +184,48 @@ export const LIVE_PILL_SIZE = { width: 96, height: 44 } as const;
 const c = theme.colors;
 const ACT = actionColors(c);
 const styles = StyleSheet.create({
-  // A11(C-70, DESIGN.md "정보 카드 질감"): 무광 면 + 1px 줄눈 + 아래 2px 받침, 그림자 없음
-  foot: { backgroundColor: c.reliefBottomMid, borderRadius: theme.radii.infoCard, paddingBottom: 2 },
+  // Y-6 시안 조회 카드: 바탕 panel·1px 줄눈·곡률 card, 받침 없음. 선택 = 크림 바탕 + 진한 테두리 + 왼쪽 3px 선
+  foot: { borderRadius: theme.radii.infoCard },
   card: {
-    backgroundColor: c.panelLit,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingRight: 7,
+    backgroundColor: c.panelFrosted,
     borderWidth: 1,
     borderColor: c.seamHairline,
     borderRadius: theme.radii.infoCard,
-    padding: 12,
-    gap: 6,
     overflow: "hidden",
   },
-  cardSelected: { borderColor: c.inkStrong },
-  selectBar: { position: "absolute", left: 0, top: 0, bottom: 0, width: 4, backgroundColor: c.inkStrong },
+  cardSelected: { borderColor: c.inkStrong, backgroundColor: c.cream },
+  selectBar: { position: "absolute", left: 0, top: 0, bottom: 0, width: 3, backgroundColor: c.inkStrong },
   passThrough: { pointerEvents: "none" },
   boxNone: { pointerEvents: "box-none" },
-  statusMain: { flexDirection: "row", alignItems: "center", gap: 6, flexShrink: 1 },
-  flexName: { flex: 1 },
-  selectedTag: { fontSize: 12, color: c.inkStrong, fontWeight: "500", marginTop: 2 },
-  head: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 8 },
-  headSide: { alignItems: "flex-end" },
-  name: { fontSize: 16, fontWeight: "500", color: c.text },
-  meta: { fontSize: 13, color: c.textSub },
+  info: { flex: 1, minWidth: 0, minHeight: 54, paddingVertical: 6, paddingLeft: 10, gap: 2, justifyContent: "center" },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  sep: { fontSize: 13, color: c.textSub },
+  todayRight: { marginLeft: "auto", paddingLeft: 6, flexShrink: 0 },
+  name: { fontSize: 13, color: c.text, flexShrink: 1 },
+  selectedTag: { fontSize: 11, color: c.inkStrong, fontWeight: "500" },
   statusRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 },
-  dot: { width: 8, height: 8, borderRadius: "50%" }, // B9 예외: 점 모양만 50%
-  statusText: { fontSize: 14, color: c.text, flexShrink: 1 },
-  retry: { fontSize: 14, color: c.inkStrong, fontWeight: "500", textDecorationLine: "underline" },
-  info: { gap: 2, alignItems: "flex-start" },
-  fold: { fontSize: 13, color: c.textSub, fontWeight: "500", paddingVertical: 2 },
-  infoText: { fontSize: 13, color: c.inkSoft, lineHeight: 19 },
-  body: { flexDirection: "row", alignItems: "center", gap: 10 },
-  bodyMain: { flex: 1, minWidth: 0, gap: 6, alignItems: "flex-start" },
+  statusMain: { flexDirection: "row", alignItems: "center", gap: 4, flexShrink: 1 },
+  dot: { width: 6, height: 6, borderRadius: "50%" }, // B9 예외: 점 모양만 50%
+  statusText: { fontSize: 12, color: c.text, flexShrink: 1 },
+  retry: { fontSize: 12, color: c.inkStrong, fontWeight: "500", textDecorationLine: "underline" },
+  extraRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", columnGap: 8 },
+  meta: { fontSize: 11, color: c.textSub },
+  fold: { fontSize: 11, color: c.textSub, paddingVertical: 2 },
+  infoOpen: { gap: 2, alignItems: "flex-start" },
+  infoText: { fontSize: 12, color: c.inkSoft, lineHeight: 17 },
   liveInner: { flexDirection: "row", alignItems: "center", gap: 5 },
   liveBtn: {
     flexShrink: 0,
     ...LIVE_PILL_SIZE,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     ...ACT.secondary,
     borderRadius: theme.radii.control,
     alignItems: "center",
     justifyContent: "center",
   },
-  liveBtnText: { ...ACT.secondaryText, fontSize: 13, fontWeight: "500" },
+  liveBtnText: { ...ACT.secondaryText, fontSize: 12, fontWeight: "500" },
 });

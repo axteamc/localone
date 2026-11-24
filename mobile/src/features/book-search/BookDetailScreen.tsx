@@ -1,7 +1,8 @@
-// 책 상세(book-search.md LIB-3b V1~V4·V7, Y-6 시안): 큰 표지 → 제목·저자 → 책 소개(더 보기·YES24 상세) → 도서 정보
+// 책 상세(book-search.md LIB-3b V1~V4·V7, Y-6 시안): 큰 표지 → 제목·저자 → 책 소개(더 보기) → 도서 정보 → 본문 끝 보조 행동
 // 하단 고정 `대출 예정 | 도서관 확인`(V3). 대출 예정 = 도서관 미지정 저장(U6), 도서관 확인 = 현재 책 단일 조회 창(#12).
 // 조회 창을 열 때만 도서관을 찾는다(LIB-2 A10 — 책을 받아 온 뒤, 창을 연 뒤).
-// loan-assistant.md LOAN-1 M10 ① "빌렸어요"는 제목 아래 보조 버튼으로 둔다(사용자 결정 2026-11-24, 계약 반영 대기).
+// 본문 맨 아래: loan-assistant.md LOAN-1 M10 ① "빌렸어요" 사각 버튼 → YES24 링크(V2)
+// (사용자 결정 2026-11-24, 개발산출물/시안/Y-6_빌렸어요_위치_시안.html 후보 C — 계약 반영 대기).
 import { Stack, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
@@ -39,6 +40,7 @@ export const YES24_SEARCH = "YES24에서 도서 검색 ↗"; // V2 kind=search(�
 export const YES24_BUY = "YES24에서 구매하기 ↗"; // V7
 export const YES24_OPEN_FAILED = "YES24를 열지 못했어요. 다시 시도해 주세요.";
 export const LIBRARY_SHEET_TITLE = "가까운 도서관";
+export const SCOPE_CAPTION = "현재 책의 대출 상태"; // Y-6 시안 조회 창 범위 줄
 export const BASIS_NOTE = "실제 상태는 도서관에서 확인해 주세요.";
 export const OPEN_PLANS_LABEL = "빌릴 예정 보기"; // V4 아이콘 접근성 이름
 
@@ -189,10 +191,9 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
   }
 
   const b = state.book;
-  const facts: [string, string][] = [];
-  if (b.publisher) facts.push(["출판사", b.publisher]);
-  if (b.pub_year !== null) facts.push(["출판 연도", String(b.pub_year)]);
-  facts.push(["ISBN", b.isbn13]);
+  const topFacts: [string, string][] = [];
+  if (b.publisher) topFacts.push(["출판사", b.publisher]);
+  if (b.pub_year !== null) topFacts.push(["출판 연도", String(b.pub_year)]);
   const longDesc = (b.description?.length ?? 0) > 160; // 대략 5줄 넘는 소개만 접는다(기본값(Claude))
 
   return (
@@ -214,15 +215,16 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
           ),
         }}
       />
-      <ScrollView style={styles.flex} contentContainerStyle={styles.pad}>
-        <View testID="detail-info" style={styles.head}>
+      <ScrollView style={styles.flex} contentContainerStyle={styles.scrollBody}>
+        {/* Y-6 시안: 표지 띠(바탕·아래 줄눈) → 왼쪽 정렬 제목·저자·출처 → 구역마다 위 줄눈 */}
+        <View style={styles.hero}>
           <BookCover book={b} style={styles.cover} fontSize={15} />
+        </View>
+        <View style={styles.content}>
+        <View testID="detail-info" style={styles.meta}>
           <Text style={styles.title}>{b.title}</Text>
           {!!b.author && <Text style={styles.sub}>{b.author}</Text>}
           {b.source === "yes24" && <Text style={styles.kicker}>{SOURCE_YES24}</Text>}
-          <View style={styles.loanRow}>
-            <StartLoanButton variant="detail" input={{ isbn13: b.isbn13 }} />
-          </View>
         </View>
 
         {saveNote === "login" && (
@@ -251,36 +253,51 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
         )}
         {saveNote === "failed" && <Text style={styles.error}>{SAVE_FAILED}</Text>}
 
-        {(b.description !== null || link !== null) && (
-          <View testID="description">
+        {b.description !== null && (
+          <View testID="description" style={styles.block}>
             <Text style={styles.section} numberOfLines={1}>책 소개</Text>
-            {b.description !== null && (
-              <Text style={styles.desc} numberOfLines={longDesc && !descOpen ? DESC_LINES : undefined}>
-                {b.description}
-              </Text>
-            )}
+            <Text style={styles.desc} numberOfLines={longDesc && !descOpen ? DESC_LINES : undefined}>
+              {b.description}
+            </Text>
             {longDesc && (
               <Pressable accessibilityRole="button" onPress={() => setDescOpen((v) => !v)} hitSlop={8}>
                 <Text style={styles.textBtn}>{descOpen ? "접기" : "책 소개 더 보기"}</Text>
               </Pressable>
             )}
-            {link !== null && (
-              <Pressable testID="yes24-detail" accessibilityRole="link" onPress={() => void openLink()} hitSlop={8}>
-                <Text style={styles.textBtn}>{link.kind === "product" ? YES24_DETAIL : YES24_SEARCH}</Text>
-              </Pressable>
-            )}
-            {linkFailed && <Text style={styles.error}>{YES24_OPEN_FAILED}</Text>}
           </View>
         )}
 
-        <View testID="bibliography">
+        <View testID="bibliography" style={styles.block}>
           <Text style={styles.section} numberOfLines={1}>도서 정보</Text>
-          {facts.map(([k, v]) => (
-            <View key={k} style={styles.factRow}>
-              <Text style={styles.factKey}>{k}</Text>
-              <Text style={styles.factValue}>{v}</Text>
+          {/* Y-6 시안 정보 칸: 출판사·출판 연도 2칸 + ISBN 1칸, 테두리 칸 */}
+          <View style={styles.facts}>
+            {topFacts.length > 0 && (
+              <View style={styles.factsRow}>
+                {topFacts.map(([k, v], i) => (
+                  <View key={k} style={[styles.factCell, i > 0 && styles.factCellLeft]}>
+                    <Text style={styles.factKey}>{k}</Text>
+                    <Text style={styles.factValue}>{v}</Text>
+                  </View>
+                ))}
+              </View>
+            )}
+            <View style={[styles.factCell, topFacts.length > 0 && styles.factCellTop]}>
+              <Text style={styles.factKey}>ISBN</Text>
+              <Text style={styles.factValue}>{b.isbn13}</Text>
             </View>
-          ))}
+          </View>
+        </View>
+
+        {/* 본문 맨 아래 보조 행동(사용자 결정 2026-11-24): "빌렸어요" 사각 버튼(C) → YES24 링크 */}
+        <View testID="detail-end" style={styles.block}>
+          <StartLoanButton variant="detail" input={{ isbn13: b.isbn13 }} />
+          {link !== null && (
+            <Pressable testID="yes24-detail" accessibilityRole="link" onPress={() => void openLink()} hitSlop={8}>
+              <Text style={styles.textBtn}>{link.kind === "product" ? YES24_DETAIL : YES24_SEARCH}</Text>
+            </Pressable>
+          )}
+          {linkFailed && <Text style={styles.error}>{YES24_OPEN_FAILED}</Text>}
+        </View>
         </View>
       </ScrollView>
 
@@ -295,8 +312,16 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
           <View testID="library-sheet" style={styles.sheet}>
             <View style={styles.sheetHead}>
               <Text style={styles.sheetTitle} numberOfLines={1}>{LIBRARY_SHEET_TITLE}</Text>
-              <Pressable accessibilityRole="button" onPress={() => setFindOpen(false)} hitSlop={8}>
-                <Text style={styles.close}>닫기</Text>
+              {/* 시안: X 아이콘(44×44). 글자 대신 선 두 개로 그린다(Android 기본 글꼴에 없는 기호 문제(이슈 128)와 같은 이유) */}
+              <Pressable
+                testID="library-sheet-close"
+                accessibilityRole="button"
+                accessibilityLabel="도서관 창 닫기"
+                onPress={() => setFindOpen(false)}
+                style={styles.closeBtn}
+              >
+                <View style={[styles.closeLine, styles.closeLineA]} />
+                <View style={[styles.closeLine, styles.closeLineB]} />
               </Pressable>
             </View>
             <ScrollView contentContainerStyle={styles.sheetPad}>
@@ -409,27 +434,27 @@ function AvailabilitySection({
         <Text style={styles.summary} numberOfLines={1}>{`도시 전체 도서관 · ${a.selectedRegionLabel}`}</Text>
       )}
       {/* A4: 도시 전체 버튼은 구역 머리에 늘 보인다. 도시 전체 모드에서는 내 주변 다시 보기도 함께 */}
+      {/* 시안: 왼쪽 "현재 책의 대출 상태" 안내 + 오른쪽 밑줄 글자 버튼(높이 44) */}
       <View style={styles.scopeRow}>
-        <Pressable
-          testID="search-city"
-          accessibilityRole="button"
-          onPress={() => {
-            setPicking(false);
-            a.searchCity();
-          }}
-          style={({ pressed }) => [styles.scopeBtn, pressed && ACT.secondaryPressed]}
-        >
-          <Text style={styles.scopeBtnText} numberOfLines={1}>현재 도시 내 모든 도서관 검색</Text>
-        </Pressable>
-        {city && (
+        <Text style={styles.caption} numberOfLines={1}>{SCOPE_CAPTION}</Text>
+        <View style={styles.scopeLinks}>
+          {city && (
+            <Pressable accessibilityRole="button" onPress={nearbyAgain} style={styles.scopeBtn}>
+              <Text style={styles.scopeBtnText} numberOfLines={1}>내 주변 다시 보기</Text>
+            </Pressable>
+          )}
           <Pressable
+            testID="search-city"
             accessibilityRole="button"
-            onPress={nearbyAgain}
-            style={({ pressed }) => [styles.scopeBtn, pressed && ACT.secondaryPressed]}
+            onPress={() => {
+              setPicking(false);
+              a.searchCity();
+            }}
+            style={styles.scopeBtn}
           >
-            <Text style={styles.scopeBtnText} numberOfLines={1}>내 주변 다시 보기</Text>
+            <Text style={styles.scopeBtnText} numberOfLines={1}>현재 도시 내 모든 도서관 검색</Text>
           </Pressable>
-        )}
+        </View>
       </View>
 
       {busy && <ActivityIndicator accessibilityLabel="도서관 찾는 중" style={styles.availBusy} />}
@@ -477,14 +502,15 @@ function AvailabilitySection({
               onToggleSelect={() => setSelected((s) => (s === item.library.id ? null : item.library.id))}
             />
           ))}
-          {!!footer && <Text style={styles.footer}>{footer}</Text>}
-          <Text style={styles.footer}>{BASIS_NOTE}</Text>
+          {!!footer && <Text style={styles.caption}>{footer}</Text>}
+          <Text style={styles.caption}>{BASIS_NOTE}</Text>
         </View>
       )}
 
+      {/* 시안: 창 맨 아래 가로 전체, 위 줄눈 */}
       {showBuy && (
-        <Pressable testID="yes24-buy" accessibilityRole="link" onPress={onOpenPurchase} hitSlop={8}>
-          <Text style={styles.textBtn}>{YES24_BUY}</Text>
+        <Pressable testID="yes24-buy" accessibilityRole="link" onPress={onOpenPurchase} style={styles.purchase}>
+          <Text style={styles.textBtnFlat}>{YES24_BUY}</Text>
         </Pressable>
       )}
     </View>
@@ -494,19 +520,23 @@ function AvailabilitySection({
 const c = theme.colors;
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
-  availability: { gap: 10 },
+  availability: { gap: 6 },
   availBusy: { marginVertical: 16 },
-  cards: { gap: 12 },
-  scopeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  scopeBtn: {
-    ...ACT.secondary,
-    borderRadius: theme.radii.control,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-  },
-  scopeBtnText: { fontSize: 14, ...ACT.secondaryText, fontWeight: "500" },
+  cards: { gap: 6 },
+  scopeRow: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", columnGap: 8 },
+  scopeLinks: { flexDirection: "row", flexWrap: "wrap", columnGap: 12, marginLeft: "auto" },
+  scopeBtn: { minHeight: 44, justifyContent: "center" },
+  scopeBtnText: { fontSize: 12, color: c.text, textDecorationLine: "underline" },
+  caption: { fontSize: 12, color: c.textSub, lineHeight: 18 },
   summary: { ...typeScale.gauge },
-  footer: { ...typeScale.gauge, marginTop: 2 },
+  purchase: {
+    minHeight: 44,
+    justifyContent: "center",
+    marginTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: c.seamHairline,
+  },
+  textBtnFlat: { fontSize: 14, color: c.text, textDecorationLine: "underline" },
   stateBoxInline: {
     ...cardSurface(theme, { onPanel: true }),
     padding: 18,
@@ -516,13 +546,24 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: c.panelFrosted },
   center: { alignItems: "center", justifyContent: "center" },
   flex: { flex: 1 },
-  pad: { padding: 16, paddingBottom: 32 },
-  head: { alignItems: "center", gap: 4 },
-  cover: { width: 150, height: 212, marginBottom: 12 },
-  title: { ...typeScale.title, lineHeight: 28, textAlign: "center" },
-  sub: { fontSize: 14, color: c.textSub, textAlign: "center" },
-  kicker: { ...typeScale.gauge, marginTop: 2 },
-  loanRow: { alignItems: "center", marginTop: 2 },
+  // Y-6 시안 값: 표지 띠 22/24 여백·아래 줄눈, 본문 좌우 18, 구역 16 여백 + 위 줄눈
+  scrollBody: { paddingBottom: 20 },
+  hero: {
+    alignItems: "center",
+    paddingTop: 22,
+    paddingBottom: 24,
+    paddingHorizontal: 16,
+    backgroundColor: c.panelFrosted,
+    borderBottomWidth: 1,
+    borderBottomColor: c.seamHairline,
+  },
+  cover: { width: 133, height: 200 },
+  content: { paddingHorizontal: 18 },
+  meta: { paddingVertical: 16, gap: 6 },
+  block: { paddingVertical: 16, borderTopWidth: 1, borderTopColor: c.seamHairline },
+  title: { ...typeScale.title, fontSize: 24, lineHeight: 30 },
+  sub: { fontSize: 14, color: c.text },
+  kicker: { fontSize: 12, color: c.textSub },
   note: {
     marginTop: 12,
     ...cardSurface(theme, { onPanel: true }),
@@ -532,18 +573,22 @@ const styles = StyleSheet.create({
   },
   noteText: { fontSize: 15, color: c.text },
   error: { marginTop: 8, fontSize: 14, color: c.loanOut },
-  section: { ...typeScale.title, marginTop: 22, marginBottom: 6 },
-  desc: { fontSize: 15, color: c.inkSoft, lineHeight: 23 },
-  textBtn: { fontSize: 14, color: c.inkStrong, fontWeight: "500", textDecorationLine: "underline", marginTop: 8 },
-  factRow: {
-    flexDirection: "row",
-    gap: 12,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: c.seamHairline,
+  section: { fontSize: 16, fontWeight: "400", color: c.inkSoft, marginBottom: 8 },
+  desc: { fontSize: 14, color: c.text, lineHeight: 22 },
+  textBtn: { fontSize: 14, color: c.text, textDecorationLine: "underline", marginTop: 8, paddingVertical: 4 },
+  facts: {
+    borderWidth: 1,
+    borderColor: c.seamHairline,
+    borderRadius: theme.radii.infoCard,
+    backgroundColor: c.panelFrosted,
+    overflow: "hidden",
   },
-  factKey: { width: 72, fontSize: 14, color: c.textSub },
-  factValue: { flex: 1, fontSize: 14, color: c.text },
+  factsRow: { flexDirection: "row" },
+  factCell: { flex: 1, paddingVertical: 10, paddingHorizontal: 12 },
+  factCellLeft: { borderLeftWidth: 1, borderLeftColor: c.seamHairline },
+  factCellTop: { borderTopWidth: 1, borderTopColor: c.seamHairline },
+  factKey: { fontSize: 12, color: c.textSub },
+  factValue: { fontSize: 14, color: c.text, marginTop: 2 },
   actions: {
     flexDirection: "row",
     gap: 8,
@@ -579,13 +624,16 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: 16,
-    paddingTop: 14,
-    paddingBottom: 8,
+    paddingLeft: 14,
+    paddingRight: 8,
+    paddingTop: 4,
   },
-  sheetTitle: { ...typeScale.title },
-  close: { fontSize: 15, color: c.text, fontWeight: "500" },
-  sheetPad: { paddingHorizontal: 16, paddingBottom: 16 },
+  sheetTitle: { fontSize: 16, fontWeight: "400", color: c.inkSoft },
+  closeBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  closeLine: { position: "absolute", width: 18, height: 1.6, backgroundColor: c.inkStrong },
+  closeLineA: { transform: [{ rotate: "45deg" }] },
+  closeLineB: { transform: [{ rotate: "-45deg" }] },
+  sheetPad: { paddingHorizontal: 12, paddingBottom: 6 },
   headerIcon: { padding: 8, minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
   icon: { width: 20, gap: 4 },
   iconLine: { height: 2, backgroundColor: c.inkStrong },

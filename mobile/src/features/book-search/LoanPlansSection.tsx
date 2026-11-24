@@ -28,7 +28,7 @@ import { BookCover } from "./SearchScreen";
 
 export const PLANS_TITLE = "빌릴 예정";
 export const PLANS_EMPTY =
-  "아직 빌릴 예정에 담은 책이 없어요. 책을 찾은 뒤 '빌릴 예정에 저장'을 눌러 보세요.";
+  "아직 빌릴 예정에 담은 책이 없어요. 책 상세에서 '대출 예정'을 눌러 보세요.";
 export const PLANS_FAILED = "빌릴 예정 목록을 불러오지 못했어요.";
 export const RELEASE_FAILED = "빼지 못했어요. 다시 시도해 주세요.";
 export const RELEASE_CONFLICT = "이미 바뀐 내용이에요. 새로 고친 뒤 다시 시도해 주세요."; // L3-#7

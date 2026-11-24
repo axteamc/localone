@@ -1,5 +1,5 @@
 // "빌렸어요" 버튼(loan-assistant.md LOAN-1 M10, C6 M-#1·#8).
-// - detail: 책 상세 "빌릴 예정에 저장" 아래 보조 버튼. 확인창 없이 바로 기록하고, 결과 안내를 버튼 아래에 직접 보인다.
+// - detail: 책 상세 본문 맨 아래 사각 버튼 + 설명 한 줄(Y-6 시안 후보 C, 2026-11-24). 확인창 없이 바로 기록하고, 결과 안내를 버튼 아래에 직접 보인다.
 // - plan: 빌릴 예정 카드 아래 줄눈 행동 줄 오른쪽의 텍스트 행동("빌렸어요->"). 결과 안내는 부모(빌릴 예정 구역)가 배너로 보인다.
 // 대출일·예정일은 서버가 정한다(M2). 진행 중에는 "기록 중…"으로 막아 한 번만 보낸다(M-#8).
 import { useRouter } from "expo-router";
@@ -12,6 +12,7 @@ import { startLoan, type Loan } from "./api";
 export const START_LABEL = "빌렸어요";
 export const START_PLAN_LABEL = "빌렸어요->";
 export const START_BUSY = "기록 중…";
+export const START_HINT = "이 책을 빌렸으면 눌러 내 대출에 기록해요"; // 상세 사각 버튼 설명(기본값(Claude), 시안 명세)
 export const LOGIN_TO_LOAN = "로그인하면 대출을 기록할 수 있어요";
 export const START_FAILED = "대출을 기록하지 못했어요. 다시 시도해 주세요.";
 export const START_CONFLICT = "이미 바뀐 내용이에요. 목록을 새로 고쳤어요.";
@@ -84,7 +85,7 @@ export function StartLoanButton(props: Props) {
       disabled={busy}
       onPress={() => void press()}
       style={({ pressed }) => [
-        compact ? styles.planLink : [styles.wide, props.leftSlot ? styles.detailRight : styles.wideMargin],
+        compact ? styles.planLink : props.leftSlot ? [styles.wide, styles.detailRight] : styles.block,
         !compact && pressed && ACT.secondaryPressed,
         compact && pressed && styles.dim,
         busy && styles.dim,
@@ -93,6 +94,7 @@ export function StartLoanButton(props: Props) {
       <Text style={compact ? styles.planLinkText : styles.wideText} numberOfLines={1}>
         {busy ? START_BUSY : compact ? START_PLAN_LABEL : START_LABEL}
       </Text>
+      {!compact && !props.leftSlot && <Text style={styles.hint}>{START_HINT}</Text>}
     </Pressable>
   );
 
@@ -152,7 +154,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  wideMargin: { marginTop: 10 },
+  // 책 상세 본문 맨 아래 사각 버튼(Y-6 빌렸어요 위치 시안 후보 C): 가로 꽉 참, 1px ink-strong, 곡률 radii.infoCard, 글자 14 + 설명 11
+  block: {
+    width: "100%",
+    minHeight: 48,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: c.inkStrong,
+    borderRadius: theme.radii.infoCard,
+    backgroundColor: c.panelLit,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  hint: { fontSize: 11, color: c.textSub, marginTop: 2 },
   detailRight: { flex: 1, flexShrink: 0 },
   wideText: { ...ACT.secondaryText, fontSize: 15, fontWeight: "500" },
   planLink: { paddingVertical: 4, paddingHorizontal: 2, flexShrink: 0 },

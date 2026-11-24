@@ -1,7 +1,7 @@
 // LIB-1-P2 책 상세 (book-search.md LIB-1 P5)
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { act, fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, within } from "@testing-library/react-native";
 import React from "react";
 import { StyleSheet } from "react-native";
 import { useAuth } from "../../../auth/AuthProvider";
@@ -180,9 +180,28 @@ describe("상세 화면", () => {
     expect(screen.queryByTestId("library-sheet")).toBeNull();
     // 출처 표기는 YES24 책만(V1)
     expect(screen.queryByText("출처: YES24")).toBeNull();
-    // M10 ① "빌렸어요"는 제목 아래에 남는다(사용자 결정 2026-11-24)
-    expect(at("한강")).toBeLessThan(at("빌렸어요"));
-    expect(at("빌렸어요")).toBeLessThan(at("책 소개"));
+    // M10 ① "빌렸어요"는 본문 맨 아래 사각 버튼(도서 정보 다음, 사용자 결정 2026-11-24 시안 후보 C)
+    expect(at("책 소개")).toBeLessThan(at("빌렸어요"));
+    expect(at(BOY.isbn13)).toBeLessThan(at("빌렸어요"));
+  });
+
+  test("detail end: book info, then 빌렸어요 block, then YES24 link (decision 2026-11-24 C)", async () => {
+    (api.fetchPurchaseLink as jest.Mock<typeof api.fetchPurchaseLink>).mockResolvedValueOnce({
+      isbn13: BOY.isbn13,
+      provider: "yes24",
+      kind: "search",
+      url: "https://www.yes24.com/Product/Search?query=9788936434120",
+    });
+    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await screen.findByText("YES24에서 도서 검색 ↗");
+    const json = JSON.stringify(screen.toJSON());
+    const at = (s: string) => json.indexOf(s);
+    expect(at("도서 정보")).toBeLessThan(at("빌렸어요"));
+    expect(at("빌렸어요")).toBeLessThan(at("이 책을 빌렸으면 눌러 내 대출에 기록해요"));
+    expect(at("빌렸어요")).toBeLessThan(at("YES24에서 도서 검색 ↗"));
+    // YES24 링크는 책 소개 구역 안에 있지 않다(본문 맨 아래로 옮김)
+    expect(within(screen.getByTestId("description")).queryByText("YES24에서 도서 검색 ↗")).toBeNull();
+    expect(within(screen.getByTestId("detail-end")).getByText("YES24에서 도서 검색 ↗")).toBeTruthy();
   });
 
   test("yes24 book shows source once", async () => {
