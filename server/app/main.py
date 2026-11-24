@@ -151,9 +151,13 @@ def create_app(
     # ── [/loan-assistant-C] ──
 
     # ── [book-club-C] ──
+    from app.routers.club_moderation import router as club_moderation_router  # CLUB-2 #65~#68
+    from app.routers.club_records import router as club_records_router  # CLUB-2 #60~#64, 종료 안내
     from app.routers.clubs import router as clubs_router  # CLUB-1 #50~#59
 
     app.include_router(clubs_router)
+    app.include_router(club_records_router)
+    app.include_router(club_moderation_router)
     # ── [/book-club-C] ──
 
     # ── [my-collection-A] ──

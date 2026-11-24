@@ -19,7 +19,7 @@ type CommentRequest = {
 };
 type Restriction = {
   id: string; user_id: string; reason_kind: "comment" | "no_show"; reason_text: string;
-  ends_at: string | null; review_requested_at: string | null;
+  ends_at: string | null; review_requested_at: string | null; review_text: string | null;
 };
 type Tab = "reports" | "requests" | "reviews" | "direct";
 
@@ -30,7 +30,12 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "direct", label: "직접 처리" },
 ];
 const KIND_LABEL: Record<TargetKind, string> = { post: "게시물", guestbook: "방명록", club: "모임", club_comment: "모임 댓글" };
-const RESTRICT_DAYS = 7; // 댓글 제한 기본 기간(K2-O5 결정 전 임시, 운영자가 바꿀 수 있음)
+const RESTRICTION_PERIODS = [
+  { label: "1일", days: 1 },
+  { label: "3일", days: 3 },
+  { label: "7일", days: 7 },
+  { label: "영구", days: null },
+] as const;
 
 async function send<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
   let res: Response;
@@ -110,8 +115,6 @@ export function OpsScreen() {
     return <View style={styles.center}><Text style={T.title}>찾을 수 없어요</Text></View>;
   }
 
-  const restrictUntil = new Date(Date.now() + RESTRICT_DAYS * 86_400_000).toISOString();
-
   return (
     <ScrollView style={styles.page} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
       <Text style={T.pageTitle}>운영</Text>
@@ -157,9 +160,11 @@ export function OpsScreen() {
             <View style={styles.row}>
               <Btn label="삭제만" primary disabled={busy}
                 onPress={() => act(`club-comment-requests/${q.id}/decide`, { decision: "delete_only" })} />
-              <Btn label={`삭제와 ${RESTRICT_DAYS}일 참가 제한`} disabled={busy}
-                onPress={() => act(`club-comment-requests/${q.id}/decide`,
-                  { decision: "delete_and_restrict", restriction_ends_at: restrictUntil })} />
+              {RESTRICTION_PERIODS.map(({ label, days }) => (
+                <Btn key={label} label={`삭제와 ${label} 참가 제한`} disabled={busy}
+                  onPress={() => act(`club-comment-requests/${q.id}/decide`,
+                    { decision: "delete_and_restrict", restriction_days: days })} />
+              ))}
               <Btn label="거절" disabled={busy}
                 onPress={() => act(`club-comment-requests/${q.id}/decide`, { decision: "rejected" })} />
             </View>
@@ -171,6 +176,7 @@ export function OpsScreen() {
           <View key={v.id} style={styles.card}>
             <Text style={styles.meta}>{v.reason_kind === "comment" ? "댓글" : "불참"} 제한 · {v.ends_at ? `${v.ends_at.slice(0, 10)}까지` : "기간 없음"}</Text>
             <Text style={styles.body}>{v.reason_text}</Text>
+            {v.review_text ? <Text style={styles.body}>재검토 요청 글: {v.review_text}</Text> : null}
             <View style={styles.row}>
               <Btn label="제한 해제" primary disabled={busy}
                 onPress={() => act(`restrictions/${v.id}/lift`, {}, "제한을 풀었어요.")} />

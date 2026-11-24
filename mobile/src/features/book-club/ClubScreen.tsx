@@ -1,4 +1,5 @@
 // CLUB-1-P2 모임 화면 `/clubs/[clubId]` — contracts/book-club.md CLUB-1 K1-O4·K1-O6~O8·C3·C6·P4, 명세 결정 1~3·예외 #1~#6
+// CLUB-2-P3: 끝난 모임 "기록·후기 쓰기"(큰 틀 결정 3), 만든 사람 댓글 처리 요청(K2-9), 제한 중 안내(K2-O4·C3)
 // 순서: 머리(만든 사람만 ⋯) → 약속 정보 → 주 버튼 → 참가자 → 댓글 → 아래 고정 댓글 칸(큰 틀 결정 2)
 import * as Crypto from "expo-crypto";
 import { useFocusEffect, useRouter } from "expo-router";
@@ -13,13 +14,16 @@ import {
   cancelClub,
   closeClub,
   COMMENT_MAX,
+  activeRestrictionUntil,
   deleteClubComment,
   fetchClub,
+  fetchMyRestrictions,
   fetchClubComments,
   joinClub,
   leaveClub,
   postClubComment,
   REASON_MAX,
+  requestCommentModeration,
   type Club,
   type ClubComment,
 } from "./api";
@@ -53,6 +57,14 @@ export const CLUB_TEXT = {
   startedNoLeave: "시작한 모임이라 취소할 수 없어요",
   changed: "바뀜",
   restricted: "지금은 모임에 참가할 수 없어요",
+  commentRestricted: "지금은 댓글을 쓸 수 없어요",
+  writeRecord: "기록·후기 쓰기",
+  moderationTitle: "댓글 처리 요청",
+  moderationPlaceholder: "관리자에게 알릴 이유를 적어 주세요",
+  moderationSend: "관리자에게 요청",
+  moderationDone: "요청했어요. 관리자가 확인할 때까지 댓글은 그대로 보여요",
+  moderationAgain: "이미 요청한 댓글이에요",
+  moderationFailed: "요청하지 못했어요. 다시 해 주세요.",
   restrictedUntil: (iso: string) => {
     const d = new Date(Date.parse(iso) + 9 * 60 * 60 * 1000);
     const hh = String(d.getUTCHours()).padStart(2, "0");
@@ -101,6 +113,7 @@ type Dialog =
   | { kind: "cancel" }
   | { kind: "menu" }
   | { kind: "deleteComment"; comment: ClubComment }
+  | { kind: "moderation"; comment: ClubComment }
   | { kind: "login" }
   | null;
 
@@ -117,6 +130,7 @@ function MainButton({
   onJoin,
   onLeave,
   onLogin,
+  onRecord,
 }: {
   club: Club;
   signedIn: boolean;
@@ -125,10 +139,15 @@ function MainButton({
   onJoin(): void;
   onLeave(): void;
   onLogin(): void;
+  onRecord(): void;
 }) {
   if (!signedIn) return <Btn label={CLUB_TEXT.loginToJoin} onPress={onLogin} />;
   if (club.status === "canceled") return <Btn label={CLUB_TEXT.canceled} disabled />;
-  if (club.status === "ended") return <Btn label={CLUB_TEXT.ended} disabled />; // 기록·후기는 CLUB-2
+  if (club.status === "ended") {
+    // 끝난 모임: 만든 사람·끝까지 참가한 사람은 참가 버튼 자리가 "기록·후기 쓰기"(큰 틀 결정 3)
+    if (club.is_host || club.my_participation === "joined") return <Btn label={CLUB_TEXT.writeRecord} onPress={onRecord} />;
+    return <Btn label={CLUB_TEXT.ended} disabled />;
+  }
   if (club.is_host) return <Btn label={CLUB_TEXT.hostOwn} disabled />; // 만든 사람은 참가자 수에 세지 않는다(K1-O4)
   if (club.my_participation === "joined") {
     if (started(club)) return <Btn label={CLUB_TEXT.startedNoLeave} disabled />;
@@ -174,6 +193,8 @@ export function ClubScreen({ clubId }: { clubId: string }) {
   const [draft, setDraft] = useState("");
   const [commentWarn, setCommentWarn] = useState<string | null>(null);
   const [commentBusy, setCommentBusy] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const moderating = useRef(false);
   const sending = useRef(false);
   const commentSending = useRef(false);
   const commentRequestId = useRef<string>(Crypto.randomUUID());
@@ -211,6 +232,21 @@ export function ClubScreen({ clubId }: { clubId: string }) {
     void reload();
     return () => runner.cancel();
   }, [reload, runner]);
+
+  // 제한 중이면 열자마자 참가 버튼 자리·댓글 칸에 안내(K2-O4). 실패하면 조용히 넘기고 누를 때 서버 응답으로 안내한다
+  useEffect(() => {
+    if (!signedIn) return;
+    let alive = true;
+    fetchMyRestrictions()
+      .then((items) => {
+        const until = activeRestrictionUntil(items);
+        if (alive && until !== null) setRestrictedUntil(until);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [signedIn, account]);
 
   // 고치기 화면 등에서 돌아오면 새 시각·장소로 다시 읽는다(처음 포커스는 위에서 이미 읽음)
   const reloadRef = useRef(reload);
@@ -310,6 +346,19 @@ export function ClubScreen({ clubId }: { clubId: string }) {
       if (!why) return;
       setDialog(null);
       void act(() => cancelClub(clubId, why), CLUB_TEXT.failed, () => setDialog({ kind: "cancel" }));
+    } else if (d.kind === "moderation") {
+      const why = reason.trim();
+      if (!why || moderating.current) return;
+      moderating.current = true;
+      setDialog(null);
+      try {
+        const res = await requestCommentModeration(d.comment.id, why);
+        setNotice(res.alreadyRequested ? CLUB_TEXT.moderationAgain : CLUB_TEXT.moderationDone); // 댓글은 그대로 둔다
+      } catch {
+        setActionError({ text: CLUB_TEXT.moderationFailed, retry: () => setDialog({ kind: "moderation", comment: d.comment }) });
+      } finally {
+        moderating.current = false;
+      }
     } else if (d.kind === "deleteComment") {
       setDialog(null);
       try {
@@ -368,8 +417,9 @@ export function ClubScreen({ clubId }: { clubId: string }) {
 
   const club = load.club;
   const when = formatClubWhen(club.starts_at, club.ends_at);
-  const restrictedLabel =
-    restrictedUntil === null ? null : CLUB_TEXT.restricted + (restrictedUntil ? CLUB_TEXT.restrictedUntil(restrictedUntil) : "");
+  const untilText = restrictedUntil ? CLUB_TEXT.restrictedUntil(restrictedUntil) : "";
+  const restrictedLabel = restrictedUntil === null ? null : CLUB_TEXT.restricted + untilText;
+  const commentRestrictedLabel = restrictedUntil === null ? null : CLUB_TEXT.commentRestricted + untilText;
   const isFull = club.capacity !== null && club.participant_count >= club.capacity && club.my_participation !== "joined";
 
   return (
@@ -400,12 +450,18 @@ export function ClubScreen({ clubId }: { clubId: string }) {
           onJoin={doJoin}
           onLeave={() => setDialog({ kind: "leave" })}
           onLogin={() => setDialog({ kind: "login" })}
+          onRecord={() => router.push(`/clubs/${clubId}/record`)}
         />
         {isFull && club.status === "open" ? <Text style={styles.note}>{CLUB_TEXT.fullNote}</Text> : null}
         {club.status === "canceled" && club.cancel_reason ? (
           <View style={styles.msg} testID="club-cancel-reason">
             <Text style={styles.msgTitle}>{CLUB_TEXT.cancelReason}</Text>
             <Text style={styles.body}>{club.cancel_reason}</Text>
+          </View>
+        ) : null}
+        {notice ? (
+          <View style={styles.msg} accessibilityRole="alert" testID="club-notice">
+            <Text style={styles.body}>{notice}</Text>
           </View>
         ) : null}
         {actionError ? (
@@ -444,12 +500,16 @@ export function ClubScreen({ clubId }: { clubId: string }) {
               <Text style={styles.commentMeta}>{m.author_nickname}</Text>
               <Text style={styles.body}>{m.body}</Text>
             </View>
-            {m.mine ? (
+            {m.mine || club.is_host ? (
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="댓글 메뉴"
                 testID={`club-comment-menu-${m.id}`}
-                onPress={() => setDialog({ kind: "deleteComment", comment: m })}
+                onPress={() => {
+                  if (m.mine) return setDialog({ kind: "deleteComment", comment: m });
+                  setReason(""); // 만든 사람만: 남의 댓글 처리 요청(K2-9)
+                  setDialog({ kind: "moderation", comment: m });
+                }}
                 hitSlop={8}
               >
                 <Text style={styles.more}>⋯</Text>
@@ -474,9 +534,9 @@ export function ClubScreen({ clubId }: { clubId: string }) {
           <Pressable accessibilityRole="button" onPress={() => setDialog({ kind: "login" })} style={styles.commentInput}>
             <Text style={styles.placeholder}>{CLUB_TEXT.loginToComment}</Text>
           </Pressable>
-        ) : restrictedLabel ? (
-          <View style={styles.commentInput}>
-            <Text style={styles.placeholder}>{restrictedLabel}</Text>
+        ) : commentRestrictedLabel ? (
+          <View style={styles.commentInput} testID="club-comment-restricted">
+            <Text style={styles.placeholder}>{commentRestrictedLabel}</Text>
           </View>
         ) : (
           <View style={styles.commentRow}>
@@ -567,23 +627,30 @@ function ClubDialog({
         <SheetButtons cancel={CLUB_TEXT.close} onCancel={onClose} confirm={CLUB_TEXT.login} onConfirm={onLogin} />
       </>
     );
-  } else if (dialog.kind === "cancel") {
+  } else if (dialog.kind === "cancel" || dialog.kind === "moderation") {
     const empty = reason.trim().length === 0;
+    const mod = dialog.kind === "moderation";
     body = (
       <>
-        <Text style={styles.sheetTitle}>{CLUB_TEXT.cancelConfirm}</Text>
+        <Text style={styles.sheetTitle}>{mod ? CLUB_TEXT.moderationTitle : CLUB_TEXT.cancelConfirm}</Text>
         <TextInput
           value={reason}
           onChangeText={onReason}
-          placeholder={CLUB_TEXT.cancelPlaceholder}
+          placeholder={mod ? CLUB_TEXT.moderationPlaceholder : CLUB_TEXT.cancelPlaceholder}
           placeholderTextColor={C.inkMuted}
           maxLength={REASON_MAX}
           multiline
           style={styles.reason}
-          accessibilityLabel={CLUB_TEXT.cancelPlaceholder}
-          testID="club-cancel-reason-input"
+          accessibilityLabel={mod ? CLUB_TEXT.moderationPlaceholder : CLUB_TEXT.cancelPlaceholder}
+          testID={mod ? "club-moderation-reason-input" : "club-cancel-reason-input"}
         />
-        <SheetButtons cancel={CLUB_TEXT.close} onCancel={onClose} confirm={CLUB_TEXT.cancelDo} onConfirm={onConfirm} disabled={empty} />
+        <SheetButtons
+          cancel={CLUB_TEXT.close}
+          onCancel={onClose}
+          confirm={mod ? CLUB_TEXT.moderationSend : CLUB_TEXT.cancelDo}
+          onConfirm={onConfirm}
+          disabled={empty}
+        />
       </>
     );
   } else {

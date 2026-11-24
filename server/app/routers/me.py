@@ -120,13 +120,17 @@ def _anonymize_profile(conn: Connection, user_id: UUID, now: datetime) -> None:
     )
 
 
+
+def _delete_own_club_reviews(conn: Connection, user_id: UUID, now: datetime) -> None:
+    conn.execute(text("DELETE FROM club_reviews WHERE user_id = :uid"), {"uid": user_id})
+
+
 # C5 표 순서: ① 공개 철회 → ② 개인 삭제 → ③ 프로필 익명화. ⓪(users 상태)은 withdraw_user_account가 맨 앞에서 한다.
 # 남기는 표(운영 기록, Z10): reports(B LOCAL-4), club_comment_requests·participation_restrictions(C CLUB-2),
 #   moderation_actions·operators(D)
 # 대기(아직 main에 없음 — 그 Step 머지 뒤 P5 후속으로 더한다, core.md M2-0 P5 세부):
 #   posts.reading_log_id NULL(B LOCAL-3) → reading_logs 삭제(A READ-1)
 #   stamp_bookmarks → visit_stamps 삭제(B VISIT-4)
-#   club_reviews 삭제(C CLUB-2)
 WITHDRAWAL_STEPS: list[WithdrawalStep] = [
     _withdraw_published_posts,  # LOCAL-1 (B)
     _withdraw_published_guestbook,  # VISIT-3 (B, 0012)
@@ -138,6 +142,7 @@ WITHDRAWAL_STEPS: list[WithdrawalStep] = [
     _delete_own_loan_plans,  # LIB-3 (C)
     _delete_own_inbox_items,  # M2-0-P1 (D)
     _delete_own_user_settings,  # M2-0-P4 (D)
+    _delete_own_club_reviews,  # CLUB-2 (C)
     _anonymize_profile,
 ]
 
