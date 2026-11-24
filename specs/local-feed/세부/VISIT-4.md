@@ -142,8 +142,8 @@
 
 | 파트 | 브랜치 | PR 번호 | 상태 (대기/진행/검토요청/완료) | 구현 근거 (`파일:줄`) 및 테스트 결과 | 열린 `to:` 이슈 / `TODO(연결)` |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| VISIT-4-P1 | `feat/local-feed-VISIT-4` | - | 대기 | - | - |
+| VISIT-4-P1 | `feat/local-feed-VISIT-4` | (Draft) | 진행 | `server/migrations/versions/0023_visit_stamps.py`(main의 0021·0022 뒤로 번호 옮김), `server/app/routers/stamps.py`(#35·#36·#69), `server/app/routers/feed.py`(#32 `stamp`), `server/app/main.py` `[local-feed-B]` · `server/tests/test_stamps.py` 15개 통과(격리 DB `localone_v4`, 5434). 가드 제거 확인은 도중에 멈춰 다시 해야 함 | - |
 | VISIT-4-P2 | 같은 브랜치 | - | 대기 | - | - |
 | VISIT-4-P3 | 같은 브랜치 | - | 대기 | - | - |
 
-- **다음 세션 이어하기 메모**: 구현 중(이슈 #290, 계약 본문 `ef5c717`). P1(스탬프 서버)부터.
+- **다음 세션 이어하기 메모**: 새 대화로 넘김(#292 대화 길이 가드레일, 2026-11-24). P1 코드·시험 15개 통과까지 완료. 남은 P1 일: 가드 제거 확인 다시(UPSERT ON CONFLICT·`stamped_on = :day`·`user_id = :uid`·피드 `visibility='public'`·북마크 공개 검사·`saved_at` 갱신·`mine`), 서버 전체 시험, 주니어에게 보여 주기(화면 없음) → 커밋·CI. 그다음 P2·P3. 시험 DB: `docker start localone-test-db` 후 `DATABASE_URL=postgresql+psycopg://localone:localone@localhost:5434/localone_v4`(5433은 다른 프로젝트가 씀). VISIT-4 끝나면 새 대화에서 LOCAL-3·4 묶음 기획(#291).
