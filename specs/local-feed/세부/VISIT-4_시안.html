@@ -147,10 +147,10 @@
 <main>
 
 <!-- ===== 중심 요소 1 ===== -->
-<section class="element" id="el-stamp-choose" data-chosen="A">
+<section class="element" id="el-stamp-choose" data-chosen="B">
   <h2>정할 것 1. "다녀왔어요"를 누른 뒤 나만 볼지·피드에 남길지 고르는 모양 <span class="status">확인</span></h2>
   <div class="flow"><b>이미 정해져 있어요.</b> 그날 그 도서관에 처음 들어오면 피드 오른쪽 위에 "다녀왔어요" 버튼이 있어요. 눌러야 남고, 하루에 한 도서관 한 번만 남아요. 남길 때 <b>나만 볼지, 이 도서관 피드에 카드로 남길지</b> 정하고, 나중에 바꿀 수도 있어요. 정할 것은 <b>그 "나만 볼지·피드에 남길지"를 고르는 모양</b>이에요.</div>
-  <div class="decided"><b>고른 것: 후보 A — 누르면 아래에서 고르는 창.</b> "a가 좋아요. 누구에게 보일지 매번 골라서요" → (1차 수정, B·C를 눌러 보고 다시) "a로 할게요. 번거롭긴 해도 더 잘 보여서요" · B와 비교: "b는 피드에 남기려면 안내를 놓칠수 있어요" · 차선 없음 · 불편한 점: "a는 창에서 한번 더 눌러야해서 c보다 번거로워요"</div>
+  <div class="decided"><b>정한 것: 후보 B — 바로 "나만 보기"로 남고 아래 안내에서 "피드에도 남기기"(D가 정함, 2026-11-23).</b> 사용자는 A를 골랐어요(아래 선택 상자로 다시 볼 수 있음). B의 단점(사용자 말): "b는 피드에 남기려면 안내를 놓칠수 있어요" · 차선 없음</div>
   <div class="pick">다시 보기: <select data-for="el-stamp-choose">
     <option value="A">후보 A — 누르면 아래에서 고르는 창</option>
     <option value="B">후보 B — 바로 남고 아래 안내에서 바꾸기</option>
@@ -236,10 +236,10 @@
 </section>
 
 <!-- ===== 중심 요소 2 ===== -->
-<section class="element" id="el-stamp-done" data-chosen="A">
+<section class="element" id="el-stamp-done" data-chosen="B">
   <h2>정할 것 2. 오늘 이미 남긴 뒤의 버튼 모양과, 나만 보기·피드에 남기기를 바꾸는 자리 <span class="status">확인</span></h2>
   <div class="flow"><b>이미 정한 것.</b> "다녀왔어요"를 누르면 아래에서 고르는 창이 떠요(정할 것 1). 같은 날 다시 들어와도 스탬프는 하나예요. 정할 것은 <b>오늘 이미 남긴 뒤 피드 오른쪽 위에 무엇이 보이고, 나만 보기 ↔ 피드에 남기기를 어디서 바꾸는지</b>예요. 휴대폰은 "나만 보기로 남긴 뒤" 다시 들어온 모습이에요.</div>
-  <div class="decided"><b>고른 것: 후보 A — 진한 버튼 그대로, 다시 누르면 같은 창.</b> "a가 좋아요. 같은 창이라 헷갈리지 않아요" → (1차 수정, B·C를 눌러 보고 다시) "a로 할래요. 오늘 다녀온게 바로 보여서요" · C와 비교: "a 가 버튼이 진해서 c보다 잘 보여요" · 차선 없음 · 불편한 점: "a는 진한 버튼이라서 눈에 잘 걸려요"</div>
+  <div class="decided"><b>정한 것: 후보 B — 작은 글자 표시로 바뀌고, 바꾸기는 ⋯ 메뉴 안(D가 정함, 2026-11-23).</b> 사용자는 A를 골랐어요(아래 선택 상자로 다시 볼 수 있음). 차선 없음</div>
   <div class="pick">다시 보기: <select data-for="el-stamp-done">
     <option value="A">후보 A — 진한 버튼 그대로, 다시 누르면 같은 창</option>
     <option value="B">후보 B — 작은 글자 표시로 바뀌고, 바꾸기는 ⋯ 메뉴 안</option>
@@ -512,16 +512,16 @@
 <section id="fullflow">
   <h2>처음부터 끝까지 이렇게 써요</h2>
   <ol>
-    <li>사용자가 지도 홈에서 도서관을 누르면 동네한권이 그 도서관 방문 페이지를 연다.</li>
-    <li>동네한권이 그날 처음 들어온 사용자에게 피드 오른쪽 위 "다녀왔어요" 버튼을 보여 준다.</li>
-    <li>사용자가 "다녀왔어요"를 누르면 동네한권이 아래에서 "나만 보기 / 피드에 남기기" 고르는 창을 띄운다.</li>
-    <li>사용자가 "피드에 남기기"를 고르면 동네한권이 오늘 스탬프를 남기고 버튼을 진하게 바꾸고, 피드 맨 위에 내 스탬프 카드를 보여 준다. "나만 보기"를 고르면 피드는 그대로 두고 버튼만 바꾼다.</li>
-    <li>사용자가 창에서 "닫기"를 누르면 동네한권이 아무것도 남기지 않는다.</li>
-    <li>동네한권이 오늘 이미 남긴 사용자에게는 같은 자리에 진한 "다녀왔어요 ✓" 버튼을 보여 준다.</li>
-    <li>사용자가 진한 버튼을 다시 누르면 동네한권이 같은 고르는 창을 "지금은 ○○예요"와 함께 띄우고, 반대쪽을 고르면 피드의 내 스탬프 카드를 넣거나 뺀다.</li>
-    <li>동네한권이 "피드에 남기기"로 남긴 스탬프를 게시물·방명록과 같은 한 칸짜리 작은 카드(도장 · 닉네임 · 다녀왔어요 · 언제)로 피드에 섞어 보여 준다.</li>
+    <li>사용자가 지도 홈에서 도서관을 누르면 동네한권이 그 도서관 방문 페이지를 그 도서관 룩(색과 모서리 모양 전부)으로 연다.</li>
+    <li>동네한권이 오늘 아직 남기지 않은 사용자에게 피드 머리 오른쪽에 "다녀왔어요" 버튼을 보여 준다.</li>
+    <li>사용자가 "다녀왔어요"를 누르면 동네한권이 오늘 스탬프를 "나만 보기"로 남기고, 버튼 자리를 작은 글자 "오늘 다녀감 · 나만 보기"와 ⋯로 바꾼다.</li>
+    <li>동네한권이 아래에 "나만 보기로 남겼어요 · 피드에도 남기기" 안내를 5초 동안 보여 준다.</li>
+    <li>사용자가 안내의 "피드에도 남기기"를 누르면 동네한권이 스탬프를 피드에 남기고, 피드 맨 위에 내 스탬프 카드를 넣고 "피드에 남겼어요"를 보여 준다.</li>
+    <li>사용자가 같은 날 다시 들어오면 동네한권이 버튼 대신 "오늘 다녀감 · {나만 보기|피드에 남김}"과 ⋯를 보여 준다.</li>
+    <li>사용자가 ⋯를 누르고 "피드에 남기기로 바꾸기" 또는 "나만 보기로 바꾸기"를 고르면 동네한권이 공개 여부를 바꾸고 피드의 내 스탬프 카드를 넣거나 뺀다.</li>
+    <li>동네한권이 피드에 남긴 스탬프를 게시물·방명록과 같은 한 칸짜리 작은 카드(도장 · 닉네임 · 다녀왔어요 · 언제)로 시간 순서대로 섞어 보여 준다.</li>
     <li>사용자가 스탬프 카드의 북마크를 누르면 동네한권이 그 카드를 저장하고 "저장했어요"를 보여 준다. 다시 누르면 저장을 푼다.</li>
-    <li>동네한권이 방문 페이지와 거기서 연 게시물 상세를 그 도서관 룩(색과 모서리 모양 전부)으로 보여 준다. 이어 읽기로 다른 도서관 게시물을 열어도 방문 중인 도서관 룩을 유지한다.</li>
+    <li>사용자가 게시물을 누르면 동네한권이 상세를 방문 중인 도서관 룩으로 연다(이어 읽기로 다른 도서관 글을 열어도 같은 룩).</li>
     <li>사용자가 ‹로 지도 홈에 돌아가면 동네한권이 기본 색으로 보여 준다.</li>
   </ol>
 </section>
@@ -531,8 +531,8 @@
   <h2>명세</h2>
   <div class="wide"><table>
     <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
-    <tr data-el="el-stamp-choose"><td>1. 공개 여부 고르는 모양</td><td>후보 A — 누르면 아래에서 고르는 창</td><td>차선 없음</td><td>B 바로 남고 아래 안내에서 바꾸기 · C 버튼 옆 스위치로 미리 정하기</td><td>"a로 할게요. 번거롭긴 해도 더 잘 보여서요" · "창에 나만 보기랑 피드에 크게 남겨서요" · 불편한 점: "a는 창에서 한번 더 눌러야해서 c보다 번거로워요"</td><td>창: 제목 "오늘 {도서관}에 다녀왔어요", 작은 설명, "나만 보기"·"피드에 남기기", "닫기"</td><td>다녀왔어요 → 고르는 창 → 고르면 남음 / 닫기면 안 남음</td><td><span class="st">확인</span></td></tr>
-    <tr data-el="el-stamp-done"><td>2. 이미 남긴 뒤 버튼·바꾸는 자리</td><td>후보 A — 진한 버튼 그대로, 다시 누르면 같은 창</td><td>차선 없음</td><td>B 작은 글자 표시 + ⋯ 메뉴에서 바꾸기 · C 버튼 자리에 스위치</td><td>"a로 할래요. 오늘 다녀온게 바로 보여서요" · 불편한 점: "a는 진한 버튼이라서 눈에 잘 걸려요"</td><td>버튼 글자 다녀왔어요 ✓ · 채움(ink-strong 바탕) · 곡률 9999 · 창 작은 설명에 지금 상태</td><td>다시 들어옴 → 진한 버튼 → 같은 창 → 바꾸면 카드 생김/빠짐</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-stamp-choose"><td>1. 공개 여부 고르는 모양</td><td>후보 B — 바로 나만 보기로 남고 아래 안내에서 피드에도 남기기</td><td>차선 없음</td><td>A 누르면 아래에서 고르는 창(사용자가 고른 안) · C 버튼 옆 스위치</td><td>D가 정함(사용자 이유 아님). B의 단점(사용자 말) "b는 피드에 남기려면 안내를 놓칠수 있어요"</td><td>안내 한 줄 + 글자 버튼, 5초 뒤 사라짐</td><td>다녀왔어요 → 바로 나만 보기 → 안내에서 피드에도 남기기 → 피드 카드</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-stamp-done"><td>2. 이미 남긴 뒤 버튼·바꾸는 자리</td><td>후보 B — 작은 글자 표시 + ⋯ 메뉴에서 바꾸기</td><td>차선 없음</td><td>A 진한 버튼 그대로·같은 창(사용자가 고른 안) · C 버튼 자리 스위치</td><td>D가 정함(사용자 이유 아님)</td><td>글자 오늘 다녀감 · 나만 보기|피드에 남김 (ink-muted 작게) + ⋯, 메뉴 한 줄 + 닫기</td><td>다시 들어옴 → 작은 글자 표시 → ⋯ → 바꾸기 → 카드 생김/빠짐</td><td><span class="st">확인</span></td></tr>
     <tr data-el="el-stamp-card"><td>3. 피드의 스탬프 카드 모양</td><td>후보 A — 한 칸짜리 작은 카드(도장 + 닉네임)</td><td>차선 없음</td><td>B 두 칸을 가로지르는 한 줄 띠 · C 도장 그림이 주인공인 정사각 카드</td><td>"a가 좋아요. 방명록처럼 자연스럽게 섞여서요" · 불편한 점: 없음 — "방명록이랑 비슷해서 자연스러워요"</td><td>한 칸 폭 · 곡률 r-info · 도장 원 + 닉네임 · 다녀왔어요 + 언제 + 북마크</td><td>피드에 섞임 → 북마크 누르면 저장 / 카드는 눌러도 이동 없음</td><td><span class="st">확인</span></td></tr>
     <tr data-el="el-look"><td>4. 룩이 바뀌는 범위</td><td>후보 A — 색과 모서리 모양까지 전부</td><td>차선 없음</td><td>B 색만, 모서리 모양은 그대로 · C 머리 띠와 책장만</td><td>"a가 좋아요. 도서관마다 다른곳에 온 느낌이라서요" · 불편한 점: 없음 — "괜찮을거같아요"</td><td>룩 토큰 색 전부 + 곡률(아치 18·9 / 모던 6·6)</td><td>도서관 누름 → 방문 페이지·상세가 그 룩 → 홈은 기본</td><td><span class="st">확인</span></td></tr>
     <tr><td>"다녀왔어요" 버튼 자리·모양</td><td>피드 머리 오른쪽, 무광 판 + 아래 받침, 곡률 9999(필)</td><td>—</td><td>—</td><td>이미 정해짐(V4-1)</td><td>글자 "다녀왔어요"</td><td>—</td><td><span class="st">확인(정해짐)</span></td></tr>
@@ -578,8 +578,8 @@
     if (act === 'openA') { if (done) { toast(ph, '(이미 남긴 날 모양은 정할 것 2에서 봐요)'); return; } show(ph, 'dim', true); show(ph, 'sheet', true); }
     if (act === 'cancel') { show(ph, 'dim', false); show(ph, 'sheet', false); }
     if (act === 'pick') { show(ph, 'dim', false); show(ph, 'sheet', false); stamped(ph, t.dataset.vis); toast(ph, t.dataset.vis === 'public' ? '피드에 남겼어요' : '나만 보기로 남겼어요'); }
-    if (act === 'stampB') { if (done) { toast(ph, '(이미 남긴 날 모양은 정할 것 2에서 봐요)'); return; } stamped(ph, 'private'); var s = part(ph, 'snack'); s.classList.remove('hide'); clearTimeout(s._t); s._t = setTimeout(function () { s.classList.add('hide'); }, 5000); }
-    if (act === 'toPublicB') { show(ph, 'snack', false); stamped(ph, 'public'); toast(ph, '피드에 남겼어요'); }
+    if (act === 'stampB') { if (done) { toast(ph, '(이미 남긴 날 모양은 정할 것 2에서 봐요)'); return; } stamped(ph, 'private'); var btn = ph.querySelector('.stamp'); btn.outerHTML = '<span class="mini stamp done" data-part="bLabel" style="background:none;border:0;color:var(--sub)">오늘 다녀감 · 나만 보기 ⋯</span>'; var s = part(ph, 'snack'); s.classList.remove('hide'); clearTimeout(s._t); s._t = setTimeout(function () { s.classList.add('hide'); }, 5000); }
+    if (act === 'toPublicB') { show(ph, 'snack', false); stamped(ph, 'public'); var lb = part(ph, 'bLabel'); if (lb) lb.textContent = '오늘 다녀감 · 피드에 남김 ⋯'; toast(ph, '피드에 남겼어요'); }
     if (act === 'switchC') { t.classList.toggle('on'); }
     if (act === 'stampC') { if (done) { toast(ph, '(이미 남긴 날 모양은 정할 것 2에서 봐요)'); return; } var on = ph.querySelector('.switch').classList.contains('on'); show(ph, 'mini', false); stamped(ph, on ? 'public' : 'private'); toast(ph, on ? '피드에 남겼어요' : '나만 보기로 남겼어요'); }
   });
