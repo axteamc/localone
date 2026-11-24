@@ -2,12 +2,15 @@
 
 import hashlib
 import json
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
+from threading import Event
 from uuid import uuid4
 
-from sqlalchemy import text
+from sqlalchemy import event, text
 
 from app.common import now_kst
+from app.routers.club_moderation import LOCK_USER_FOR_ATTENDANCE
 from tests.conftest import USER_A_ID, USER_B_ID
 from tests.provider_fakes import public_reference_data  # noqa: F401  (픽스처)
 from tests.test_club_records import (  # noqa: F401  (픽스처·도우미)
@@ -175,6 +178,54 @@ def test_attendance_rejects_unknown_version_even_with_valid_index(client, auth, 
     assert no_show_users(db_engine, club_id) == set()
 
 
+def test_attendance_follows_join_user_before_club_lock_order(client, auth, db_engine):
+    club_id = ended_club(client, db_engine, auth, joiners=("B",))
+    version = roster_version_of(client, auth["A"], club_id)
+    locking_member = Event()
+    sql = LOCK_USER_FOR_ATTENDANCE.text.replace(":uid", "%(uid)s")
+
+    def observe_lock(conn, cursor, statement, parameters, context, executemany):
+        if statement == sql:
+            locking_member.set()
+
+    engine = client.app.state.engine
+    event.listen(engine, "before_cursor_execute", observe_lock)
+    try:
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            with db_engine.begin() as conn:
+                # #55 먼저 users 행을 잡은 직후, #65가 그 행을 기다리기 시작한다.
+                conn.execute(text("SELECT id FROM users WHERE id = :id FOR SHARE"), {"id": USER_B_ID})
+                pending = pool.submit(attendance, client, auth["A"], club_id, 0, version=version)
+                assert locking_member.wait(5)
+                # #55는 종료 확인 전에 모임 행을 잠근다. #65가 먼저 잡았으면 두 요청이 서로 기다린다.
+                conn.execute(text("SELECT id FROM clubs WHERE id = :id FOR UPDATE NOWAIT"), {"id": club_id})
+            assert pending.result(timeout=5).status_code == 200
+    finally:
+        event.remove(engine, "before_cursor_execute", observe_lock)
+    assert no_show_users(db_engine, club_id) == {USER_B_ID}
+
+
+def test_roster_change_during_member_lock_rejects_all_marks(client, auth, db_engine):
+    club_id = ended_club(client, db_engine, auth, joiners=("B", "C", "D"))
+    version = roster_version_of(client, auth["A"], club_id)
+
+    def withdraw_unselected_member(conn, cursor, statement, parameters, context, executemany):
+        if context.compiled is not None and context.compiled.statement is LOCK_USER_FOR_ATTENDANCE:
+            withdraw_directly(db_engine, USER_B_ID)
+
+    engine = client.app.state.engine
+    event.listen(engine, "before_cursor_execute", withdraw_unselected_member)
+    try:
+        res = attendance(client, auth["A"], club_id, 1, version=version)
+    finally:
+        event.remove(engine, "before_cursor_execute", withdraw_unselected_member)
+    assert error(res)[:2] == (409, "CLUB_ATTENDANCE_ROSTER_CHANGED")
+    assert roster_version_of(client, auth["A"], club_id) == expected_version(USER_C_ID, USER_D_ID)
+    assert no_show_users(db_engine, club_id) == set()
+    assert count(db_engine, "participation_restrictions") == 0
+    assert inbox_kinds(client, auth["C"], "moderation") == []
+
+
 def test_no_show_mark_creates_tiered_restriction_within_180_days(client, auth, db_engine):
     add_restriction(db_engine, USER_B_ID, ends=now_kst() - timedelta(days=170), created_days_ago=181)  # 안 셈
     expected = [3, 7, 30, None]
@@ -196,6 +247,7 @@ def test_lifted_and_canceled_no_shows_are_not_counted(client, auth, db_engine):
         conn.execute(text("UPDATE clubs SET status = 'canceled', cancel_reason = '사정' WHERE id = :id"),
                      {"id": canceled})
     assert error(attendance(client, auth["A"], canceled, 0))[:2] == (409, "CLUB_CLOSED")  # 취소는 세지 않음
+    add_restriction(db_engine, USER_B_ID, ends=now_kst() - timedelta(days=1), created_days_ago=5, source=canceled)
     club_id = ended_club_with(db_engine, USER_A_ID, [USER_B_ID])
     attendance(client, auth["A"], club_id, 0)
     (row,) = restrictions(db_engine, USER_B_ID, f"source_id = '{club_id}'")

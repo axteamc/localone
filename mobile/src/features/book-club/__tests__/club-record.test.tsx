@@ -315,12 +315,14 @@ describe("출석 확인", () => {
       new api.ApiCallError(409, "CLUB_ATTENDANCE_ROSTER_CHANGED", "참가 명단이 바뀌었어요. 다시 확인해 주세요.", "")
     );
     await openRecord();
+    await fireEvent.changeText(screen.getByTestId("record-review-input"), "아직 저장하지 않은 후기");
     await fireEvent.press(screen.getByTestId("attend-missed-1")); // "민트"
     await fireEvent.press(screen.getByTestId("attend-send"));
     await fireEvent.press(screen.getByTestId("attend-confirm-do"));
     expect(await screen.findByText(ATTEND_TEXT.rosterChanged)).toBeTruthy();
     await waitFor(() => expect(m.fetchClubRecord).toHaveBeenCalledTimes(2)); // 같은 화면에서 새 명단을 다시 읽는다
     expect(await screen.findByText(ATTEND_TEXT.note(2))).toBeTruthy();
+    expect(screen.getByTestId("record-review-input").props.value).toBe("아직 저장하지 않은 후기");
     expect(screen.queryByText("해바라기")).toBeNull();
     expect(screen.getByTestId("attend-missed-0").props.accessibilityState.selected).toBe(false); // 선택이 비었다
     expect(screen.getByTestId("attend-missed-1").props.accessibilityState.selected).toBe(false);
@@ -333,6 +335,63 @@ describe("출석 확인", () => {
     await fireEvent.press(screen.getByTestId("attend-confirm-do"));
     await waitFor(() => expect(m.putAttendance).toHaveBeenCalledTimes(2));
     expect(m.putAttendance).toHaveBeenLastCalledWith("club-1", ROSTER_V2, [{ participant_index: 0 }]);
+  });
+
+  test("a changed roster returned by attendance does not transfer recorded indexes", async () => {
+    m.fetchClubRecord.mockResolvedValueOnce(rec(HOST, { is_host: true }));
+    const participants = club().participants.slice(1);
+    m.putAttendance.mockResolvedValueOnce(rec(
+      { ...HOST, attendance_roster_version: ROSTER_V2 },
+      { is_host: true, participants, participant_count: 2 },
+    ));
+    await openRecord();
+    await fireEvent.press(screen.getByTestId("attend-missed-1"));
+    await fireEvent.press(screen.getByTestId("attend-send"));
+    await fireEvent.press(screen.getByTestId("attend-confirm-do"));
+    expect(await screen.findByText(ATTEND_TEXT.note(2))).toBeTruthy();
+    expect(screen.queryByText(ATTEND_TEXT.recorded)).toBeNull();
+    expect(screen.getByTestId("attend-missed-1").props.accessibilityState.disabled).toBe(false);
+  });
+
+  test("a failed roster refresh blocks stale marks and can retry without losing the review draft", async () => {
+    m.fetchClubRecord
+      .mockResolvedValueOnce(rec(HOST, { is_host: true }))
+      .mockRejectedValueOnce(new api.ApiCallError(0, "NETWORK", "x", ""))
+      .mockResolvedValueOnce(rec({ ...HOST, attendance_roster_version: ROSTER_V2 }, { is_host: true }));
+    m.putAttendance.mockRejectedValueOnce(new api.ApiCallError(409, "CLUB_ATTENDANCE_ROSTER_CHANGED", "x", ""));
+    await openRecord();
+    await fireEvent.changeText(screen.getByTestId("record-review-input"), "쓰던 후기");
+    await fireEvent.press(screen.getByTestId("attend-missed-1"));
+    await fireEvent.press(screen.getByTestId("attend-send"));
+    await fireEvent.press(screen.getByTestId("attend-confirm-do"));
+    expect(await screen.findByText(ATTEND_TEXT.reloadFailed)).toBeTruthy();
+    expect(screen.getByTestId("attend-missed-1").props.accessibilityState.disabled).toBe(true);
+    expect(screen.getByTestId("record-review-input").props.value).toBe("쓰던 후기");
+    await fireEvent.press(screen.getByText(ATTEND_TEXT.reload));
+    expect(await screen.findByText(ATTEND_TEXT.rosterChanged)).toBeTruthy();
+    expect(screen.getByTestId("attend-missed-1").props.accessibilityState.disabled).toBe(false);
+    expect(screen.getByTestId("attend-send").props.accessibilityState.disabled).toBe(true);
+    expect(m.putAttendance).toHaveBeenCalledTimes(1);
+  });
+
+  test("a late review save cannot restore the previous attendance roster", async () => {
+    m.fetchClubRecord.mockResolvedValueOnce(rec(HOST, { is_host: true }));
+    const saved = deferred<ClubRecord>();
+    m.putClubReview.mockReturnValueOnce(saved.promise);
+    m.putAttendance.mockResolvedValueOnce(rec(
+      { ...HOST, attendance_roster_version: ROSTER_V2 },
+      { is_host: true, participants: club().participants.slice(1), participant_count: 2 },
+    ));
+    await openRecord();
+    await fireEvent.changeText(screen.getByTestId("record-review-input"), "후기");
+    await fireEvent.press(screen.getByTestId("record-review-save"));
+    await fireEvent.press(screen.getByTestId("attend-missed-1"));
+    await fireEvent.press(screen.getByTestId("attend-send"));
+    await fireEvent.press(screen.getByTestId("attend-confirm-do"));
+    expect(await screen.findByText(ATTEND_TEXT.note(2))).toBeTruthy();
+    await act(async () => saved.resolve(rec({ ...HOST, review: { body: "후기", updated_at: PAST_END } }, { is_host: true })));
+    expect(await screen.findByText(RECORD_TEXT.saved)).toBeTruthy();
+    expect(screen.getByText(ATTEND_TEXT.note(2))).toBeTruthy();
   });
 
   test("closing the confirm sends nothing", async () => {
@@ -378,6 +437,20 @@ describe("계정·모임 전환", () => {
     expect(screen.queryByTestId("record-review-share")).toBeNull();
     expect(screen.getByTestId("record-review-save").props.accessibilityState.disabled).toBe(true);
   }
+
+  test.each(["account", "club"] as const)("late next club creation does not navigate after %s switch", async (kind) => {
+    const created = deferred<Club>();
+    m.createNextClub.mockReturnValueOnce(created.promise);
+    const view = await render(<ClubRecordScreen clubId="club-1" />);
+    await screen.findByTestId("record-card");
+    await fireEvent.press(screen.getByTestId("record-next-create"));
+    await fireEvent.press(screen.getByTestId("next-club-submit"));
+    expect(m.createNextClub).toHaveBeenCalledTimes(1);
+    await switchWhilePending(view, kind);
+    await act(async () => created.resolve(club({ id: "old-account-next-club" })));
+    expect(mockPush).not.toHaveBeenCalled();
+    expect(screen.getByText("새 화면 모임")).toBeTruthy();
+  });
 
   test.each([
     ["account", "success"],

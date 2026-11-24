@@ -17,7 +17,8 @@ const mockPush = jest.fn();
 const mockReplace = jest.fn();
 const mockUseLocalSearchParams = jest.fn<() => Record<string, string | string[] | undefined>>();
 
-const mockRecordedTabScreens: Array<{ name: string; options?: { title?: string } }> = [];
+type TabOptions = { title?: string; headerRight?: () => React.ReactNode };
+const mockRecordedTabScreens: Array<{ name: string; options?: TabOptions }> = [];
 const mockRecordedStackScreens: Array<{ name: string; options?: { headerShown?: boolean } }> = [];
 let mockLastStackScreenOptions: { title?: string } | undefined;
 let mockLastTabsScreenOptions: Record<string, unknown> | undefined;
@@ -28,6 +29,7 @@ jest.mock("../features/book-search/LoanPlansSection", () => ({ LoanPlansSection:
 jest.mock("../features/loan-assistant/LoansSection", () => ({ LoansSection: () => null }));
 // LOAN-3: 루트의 알림 누름 구독은 loan-assistant reminders.test.ts에서 본다(기기 알림 모듈을 읽지 않게)
 jest.mock("../features/loan-assistant/notifications.platform", () => ({ subscribeNotificationTap: () => () => undefined }));
+jest.mock("../features/my-collection/api", () => ({ fetchInboxUnread: jest.fn() }));
 
 const mockComposeScreen = jest.fn<(props: { libraryId: number; isbn13?: string | null }) => void>();
 const mockVisitScreen = jest.fn<(props: { libraryId: number | null; distanceM: number | null }) => void>();
@@ -96,7 +98,7 @@ jest.mock("expo-router", () => {
   }
   MockTabs.Screen = function MockTabsScreen(props: {
     name: string;
-    options?: { title?: string };
+    options?: TabOptions;
   }) {
     mockRecordedTabScreens.push({ name: props.name, options: props.options });
     return ReactLib.createElement(
@@ -133,6 +135,7 @@ jest.mock("expo-router", () => {
       back: jest.fn(),
     }),
     useLocalSearchParams: () => mockUseLocalSearchParams(),
+    useFocusEffect: (callback: () => void) => ReactLib.useEffect(callback, [callback]),
   };
 });
 
@@ -195,6 +198,15 @@ describe("APP-0-P2 routes and tabs", () => {
     for (const screen of mockRecordedTabScreens) {
       expect(screen.options).not.toHaveProperty("tabBarIcon");
     }
+  });
+
+  test("home header bell opens the inbox", async () => {
+    await render(<TabsLayout />);
+    const HeaderRight = mockRecordedTabScreens.find((tab) => tab.name === "index")?.options?.headerRight;
+    if (!HeaderRight) throw new Error("Home header action is missing");
+    const header = await render(<HeaderRight />);
+    await fireEvent.press(header.getByRole("button", { name: "알림함" }));
+    expect(mockPush).toHaveBeenCalledWith("/inbox");
   });
 
   test("root layout wraps stack in AuthProvider and hides tabs header", async () => {

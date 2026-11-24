@@ -1,7 +1,7 @@
 // CLUB-2-P3 다음 모임 만들기 창 — contracts/book-club.md CLUB-2 K2-4·K2-O6·C3, 명세 결정 1·예외 #3
 // 이름·책·소개·도서관은 서버가 이전 모임에서 복사한다. 여기서는 장소(이전 값으로 채움)와 날짜·시각만 받는다.
 import * as Crypto from "expo-crypto";
-import React, { useRef, useState } from "react";
+import React, { useLayoutEffect, useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { actionColors, theme } from "../../theme";
 import { ApiCallError, createNextClub, PLACE_MAX, type Club } from "./api";
@@ -39,7 +39,15 @@ export function NextClubSheet({
   const [warn, setWarn] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const sending = useRef(false);
+  const alive = useRef(true);
   const requestId = useRef(Crypto.randomUUID()); // 창을 열 때 한 번. 실패 뒤 다시 눌러도 같은 값(멱등)
+
+  useLayoutEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
 
   function collect(): { place: string | null; starts_at: string | null; ends_at: string | null } | null {
     const p = place.trim();
@@ -61,13 +69,17 @@ export function NextClubSheet({
     setBusy(true);
     setWarn(null);
     try {
-      onCreated(await createNextClub(clubId, input, requestId.current));
+      const created = await createNextClub(clubId, input, requestId.current);
+      if (alive.current) onCreated(created);
     } catch (e) {
+      if (!alive.current) return;
       const timeBad = e instanceof ApiCallError && e.status === 422 && (e.detail === "ends_at" || e.detail === "starts_at");
       setWarn(timeBad ? EDITOR_TEXT.timeOrder : NEXT_TEXT.failed); // 쓰던 값은 그대로
     } finally {
-      sending.current = false;
-      setBusy(false);
+      if (alive.current) {
+        sending.current = false;
+        setBusy(false);
+      }
     }
   }
 

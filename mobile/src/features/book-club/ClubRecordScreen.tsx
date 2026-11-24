@@ -2,7 +2,7 @@
 // 순서(결정 1): 머리 → 기록 카드 → 내 후기 → 다음 모임 → (만든 사람만) 출석 확인
 import * as Crypto from "expo-crypto";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../auth/AuthProvider";
@@ -106,7 +106,7 @@ function RecordView({ clubId }: { clubId: string }) {
   const shareRequestId = useRef(Crypto.randomUUID()); // 화면에서 한 번. 실패 뒤 다시 눌러도 같은 값(멱등)
   const runner = useMemo(() => createLatestRunner(), []);
   const alive = useRef(true); // 이 계정·모임 화면이 아직 떠 있는지. 바뀐 뒤 늦게 온 저장·공유 응답은 버린다
-  useEffect(() => {
+  useLayoutEffect(() => {
     alive.current = true;
     return () => {
       alive.current = false;
@@ -143,14 +143,16 @@ function RecordView({ clubId }: { clubId: string }) {
   const toClub = () => router.replace(`/clubs/${clubId}`);
 
   async function save(body: string) {
-    if (savingRef.current) return;
+    if (savingRef.current || sharingRef.current) return;
     savingRef.current = true;
     setSaving(true);
     setNotice(null);
     try {
       const record = await putClubReview(clubId, body);
       if (!alive.current) return;
-      setLoad({ state: "ok", record });
+      setLoad((current) => current.state === "ok"
+        ? { state: "ok", record: { ...current.record, review: record.review, shared_post_id: record.shared_post_id } }
+        : current);
       setNotice({ text: RECORD_TEXT.saved, retry: null });
     } catch {
       if (!alive.current) return;
@@ -164,14 +166,16 @@ function RecordView({ clubId }: { clubId: string }) {
   }
 
   async function share() {
-    if (sharingRef.current) return; // 연타: 첫 누름만(예외 #3)
+    if (sharingRef.current || savingRef.current) return; // 연타·저장 중 공유 방지
     sharingRef.current = true;
     setSharing(true);
     setNotice(null);
     try {
       const record = await shareClubReview(clubId, shareRequestId.current);
       if (!alive.current) return;
-      setLoad({ state: "ok", record });
+      setLoad((current) => current.state === "ok"
+        ? { state: "ok", record: { ...current.record, shared_post_id: record.shared_post_id } }
+        : current);
       setNotice({ text: RECORD_TEXT.sharedNow, retry: null });
     } catch {
       if (!alive.current) return;
@@ -281,7 +285,7 @@ function RecordView({ clubId }: { clubId: string }) {
   const text = draft.trim();
   const tooLong = text.length > REVIEW_MAX;
   const unchanged = record.review !== null && text === record.review.body;
-  const canSave = text.length > 0 && !tooLong && !unchanged && !saving;
+  const canSave = text.length > 0 && !tooLong && !unchanged && !saving && !sharing;
 
   return (
     <View style={styles.root}>
@@ -330,8 +334,8 @@ function RecordView({ clubId }: { clubId: string }) {
           {record.review && !record.shared_post_id ? (
             <Pressable
               accessibilityRole="button"
-              accessibilityState={{ disabled: sharing }}
-              disabled={sharing}
+              accessibilityState={{ disabled: saving || sharing }}
+              disabled={saving || sharing}
               onPress={() => void share()}
               testID="record-review-share"
               style={({ pressed }) => [styles.secondary, pressed && !sharing && ACT.secondaryPressed, sharing && styles.dim]}
@@ -402,11 +406,14 @@ function RecordView({ clubId }: { clubId: string }) {
           <AttendanceSheet
             record={record}
             onRecorded={(next) => {
-              if (alive.current) setLoad({ state: "ok", record: next });
+              if (!alive.current) return;
+              setLoad((current) => current.state === "ok"
+                ? { state: "ok", record: {
+                    ...current.record, club: next.club, attendance_roster_version: next.attendance_roster_version,
+                  } }
+                : current);
             }}
-            onReload={() => {
-              if (alive.current) void reload();
-            }}
+            onReload={() => fetchClubRecord(clubId)}
           />
         ) : null}
       </ScrollView>

@@ -61,8 +61,9 @@ SELECT_PEOPLE_FOR_ATTENDANCE = text(
     "WHERE p.club_id = :id AND p.state = 'joined' AND p.user_id <> c.host_id ORDER BY p.joined_at, p.user_id"
 )  # CLUB-1 SELECT_PARTICIPANTS와 같은 순서 = 앱이 받은 Club.participants 순서
 COUNT_NO_SHOW = text(
-    "SELECT count(*) FROM participation_restrictions WHERE user_id = :uid AND reason_kind = 'no_show' "
-    "AND lifted_at IS NULL AND created_at > :since"
+    "SELECT count(*) FROM participation_restrictions r WHERE user_id = :uid AND reason_kind = 'no_show' "
+    "AND lifted_at IS NULL AND created_at > :since AND NOT EXISTS ("
+    "SELECT 1 FROM clubs WHERE id = r.source_id AND status = 'canceled')"
 )
 INSERT_RESTRICTION = text(
     "INSERT INTO participation_restrictions (user_id, reason_kind, source_id, reason_text, starts_at, ends_at) "
@@ -80,7 +81,19 @@ def roster_changed() -> ApiError:
     return ApiError(409, "CLUB_ATTENDANCE_ROSTER_CHANGED", MSG_ROSTER_CHANGED)
 
 
-LOCK_USER_FOR_ATTENDANCE = text("SELECT status FROM users WHERE id = :uid FOR UPDATE")
+LOCK_USER_FOR_ATTENDANCE = text("SELECT status FROM users WHERE id = :uid FOR NO KEY UPDATE")
+SELECT_ATTENDANCE_CLUB = text("SELECT * FROM clubs WHERE id = :id")
+
+
+def check_attendance_club(club: Any, host_id: UUID, now: datetime) -> None:
+    if not club or club.status == "hidden":
+        raise not_found()
+    if club.host_id != host_id:
+        raise ApiError(403, "NOT_HOST", MSG_NOT_HOST)
+    if club.status == "canceled":
+        raise ApiError(409, "CLUB_CLOSED", MSG_CLOSED)
+    if not ended(club, now):
+        raise ApiError(409, "CLUB_NOT_ENDED", MSG_NOT_ENDED)
 
 
 @router.put("/clubs/{club_id}/attendance")
@@ -92,31 +105,27 @@ async def put_attendance(
         raise validation_error("attendance_roster_version")
 
     def tx(c: Connection) -> dict[str, Any]:
-        lock_active_user(c, user.id)
-        club = c.execute(SELECT_CLUB_FOR_UPDATE, {"id": club_id}).first()
-        if not club or club.status == "hidden":
-            raise not_found()
-        if club.host_id != user.id:
-            raise ApiError(403, "NOT_HOST", MSG_NOT_HOST)
-        if club.status == "canceled":
-            raise ApiError(409, "CLUB_CLOSED", MSG_CLOSED)  # 패널티 없음(K1-12)
-        now = now_kst()
-        if not ended(club, now):
-            raise ApiError(409, "CLUB_NOT_ENDED", MSG_NOT_ENDED)
+        args = {"id": club_id}
+        check_attendance_club(c.execute(SELECT_ATTENDANCE_CLUB, args).first(), user.id, now_kst())
         # ① 받은 버전이 지금 명단과 같을 때만 인덱스를 그 명단의 사람으로 고정한다
-        people = c.execute(SELECT_PEOPLE_FOR_ATTENDANCE, {"id": club_id}).all()
+        people = c.execute(SELECT_PEOPLE_FOR_ATTENDANCE, args).all()
         if roster_version(people) != version:
             raise roster_changed()  # 새 명단에서 같은 인덱스를 다시 해석하지 않는다
         idx = [m.participant_index for m in body.marks]
         if len(set(idx)) != len(idx) or any(i < 0 or i >= len(people) for i in idx):
             raise validation_error("marks")
         chosen = [people[i].user_id for i in idx]
-        # ② 고른 사람의 users 행을 ID 순서로 잠근다(탈퇴·다른 모임의 불참 확인과 줄 세우기, 교착 방지)
-        for uid in sorted(chosen):
-            if c.execute(LOCK_USER_FOR_ATTENDANCE, {"uid": uid}).scalar_one_or_none() != "active":
+        # ② 호스트와 고른 사람을 한 ID 순서로 잠근다. 참가·취소와 같이 모임보다 사용자 행을 먼저 잠근다.
+        for uid in sorted([user.id, *chosen]):
+            if uid == user.id:
+                lock_active_user(c, uid)
+            elif c.execute(LOCK_USER_FOR_ATTENDANCE, {"uid": uid}).scalar_one_or_none() != "active":
                 raise roster_changed()
         # ③ 잠근 뒤 명단을 다시 읽어 버전과 참가 상태를 재검증한다. 하나라도 다르면 전체 중단(무변경)
-        fresh = c.execute(SELECT_PEOPLE_FOR_ATTENDANCE, {"id": club_id}).all()
+        club = c.execute(SELECT_CLUB_FOR_UPDATE, args).first()
+        now = now_kst()
+        check_attendance_club(club, user.id, now)
+        fresh = c.execute(SELECT_PEOPLE_FOR_ATTENDANCE, args).all()
         if roster_version(fresh) != version:
             raise roster_changed()
         status = {p.user_id: p.attendance_status for p in fresh}
