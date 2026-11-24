@@ -1,0 +1,619 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 짝 문서: 세부/<STEP>.md 이면 이 줄을 지워도 된다(같은 이름으로 찾는다). 다른 곳이면 상대 경로를 적는다. -->
+<meta name="명세" content="MY-2.md">
+<title>MY-2 시안</title>
+<!--
+  시안 템플릿 (../team/prompts/1_기획.md 1B 2단계 시안 사이클). 복사해서 specs/<기능>/세부/<STEP>_시안.html 로 쓴다.
+  아래 내용은 "검색창을 누르면 보이는 화면"의 예시다. 내용은 전부 바꿔 쓰되 **부품(아래 목록)은 그대로 가져다 쓴다.**
+
+  검사: sh ../team/tools/check_mockup.sh <이 파일>   (훅이 저장할 때마다·차례 끝에 자동으로 돌린다. 통과해야 끝낼 수 있다)
+
+  지킬 것 (검사기 번호)
+  - 정할 중심 요소 하나 = <section class="element" id="el-…"> 하나(M10·M11). 후보 화면 3개, 연속값이면 data-kind="continuous" + 기준·3단계 4개(M12).
+  - 후보 = <article class="cand" data-id="…">. 안에: 휴대폰 틀 .phone(M17), 눌러 볼 수 있는 것 하나 이상(M18),
+    "누르면 이렇게 이어져요"·"화면을 열어야 보이는 것"·"얻는 것 / 포기하는 것"·"표준 근거: P-번호"(M15·M16).
+  - 표준 근거는 ../team/docs/앱_표준_패턴.md 의 번호. 후보 3개는 서로 다른 패턴. 목록 밖은 "새 패턴 — 이유", 한 요소에 하나까지.
+  - 추천은 후보 하나에만 class="cand recommended" + "추천 이유"(M13).
+  - 채택 후: data-chosen="<후보 id>", 상태 "확인", 명세 패널 이유 칸에 사용자 말 그대로(M20·M32). 후보는 지우지 않는다 — 선택 상자로 다시 본다(M21).
+  - 명세 패널 #spec: 요소마다 <tr data-el="el-…">(M31), 머리 칸 채택안·차선·탈락안·이유·값·유저 플로우·상태(M30).
+  - 세부 시안은 #except(예외 4장면, M40)·#fullflow(M41). 명세서 확인 목록의 '확인' 행은 "시안 #el-…"를 적는다(X10).
+  - 색·곡률은 :root 토큰(var(--이름))만(M03). 외부 연결 없음(M02).
+
+  부품 목록 (class) — 휴대폰 화면은 이것만 조립해도 된다
+  - .phone 휴대폰 틀 240×430 · .scr 화면 한 장(data-screen="이름", 첫 장 말고는 class="scr hide")
+  - .search 맨 위 검색창 / .field 검색 화면의 입력 칸 / .tabbar 하단 탭 바 / .vhead + .back 머리와 "‹"
+  - .map·.pin·.me 지도·핀·내 위치 / .chip 떠 있는 작은 버튼 / .btn·.btn.ghost 버튼 / .switch 스위치 / .seg 세그먼트
+  - .sheet 아래에서 올라오는 카드 / .menu ⋯ 메뉴 / .toast 아래 한 줄 안내 / .note-card 버튼 없는 작은 카드
+  - .covers 책 표지 줄 / .li 목록 한 줄 / .two-col 두 칸 / .vbody 아직 안 그린 자리(점선)
+  동작 (data-…) — 스크립트를 새로 쓰지 않아도 된다
+  - data-open="화면이름"   같은 .phone 안의 그 화면만 보이기
+  - data-toast="id"        그 안내를 2초 보이기 / data-menu="id" 메뉴 열고 닫기 / data-close="id" 닫기 / data-show="id" 다시 띄우기
+  - data-swap="켜기 글자|끄기 글자"  누를 때마다 글자 바꾸기 / .switch 는 누르면 켜짐·꺼짐
+  - <select data-for="el-…"> 채택안·탈락안 다시 보기 (옵션 값 = 후보 data-id)
+-->
+<style>
+  #mc button, #mc-empty button { display:block; width:100%; padding:7px 8px; border:0; background:transparent; color:inherit; text-align:left; font:inherit; cursor:pointer; }
+  #mc button + button, #mc-empty button + button { border-top:1px solid #ddd; }
+  #el-photo .av.photo-picked { background:linear-gradient(145deg, #c1a18e, #785e4c); }
+
+  :root {
+    /* 개발산출물/디자인_기준.md 토큰 (warm, M1 기본). 새 색이 필요하면 여기에 이름을 붙여 더한다 */
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+    --cream:#EFEFE7; --paper:#EFF1F1; --ink-strong:#2E333F; --text:#1D1D1F; --sub:#71716F;
+    --me-dot:#3B7BDB; --on-dark-sub:#CFD2D8;
+    --r-card:18px; --r-pill:18px;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; line-height:1.5; }
+  header.page, main { max-width:1280px; margin:0 auto; padding:0 16px; }
+  header.page { padding-top:20px; }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:17px; margin:0 0 4px; } h3 { font-size:15px; margin:0 0 8px; }
+  .how, .flow, .decided { background:var(--cream); border-radius:var(--r-card); padding:12px 16px; margin:10px 0 0; }
+  .decided { border-left:5px solid var(--ink-strong); }
+  section.element { margin-top:32px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:var(--r-pill); background:var(--surface2); margin-left:6px; font-weight:400; }
+  .pick { margin:8px 0 0; font-size:14px; }
+  .pick select { font:inherit; padding:4px 8px; border-radius:10px; border:1px solid var(--surface3); background:var(--paper); }
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-card); padding:14px; border:3px solid transparent; }
+  .cand.recommended { border-color:var(--fill1); } .cand.chosen { border-color:var(--ink-strong); }
+  .badge { display:inline-block; font-size:12px; font-weight:700; padding:1px 9px; border-radius:var(--r-pill); background:var(--fill1); margin-left:6px; }
+  .badge.adopted { background:var(--ink-strong); color:var(--paper); }
+  .cand p, .cand li { font-size:13.5px; margin:6px 0; } .cand ul { padding-left:18px; margin:4px 0; }
+  .lbl { font-weight:700; font-size:12.5px; color:var(--sub); margin-top:10px; display:block; }
+  /* ---- 휴대폰 부품 ---- */
+  .phone { width:240px; height:430px; margin:0 auto 10px; background:var(--bg); border-radius:26px; border:5px solid var(--ink-strong); position:relative; overflow:hidden; font-size:11px; }
+  .scr { position:absolute; inset:0; padding:12px 10px; background:var(--paper); overflow:hidden; }
+  .scr.dark { background:var(--ink-strong); color:var(--paper); }
+  .map { position:absolute; inset:0; background:
+      linear-gradient(115deg, transparent 47%, var(--cream) 47%, var(--cream) 51%, transparent 51%),
+      linear-gradient(20deg, transparent 60%, var(--cream) 60%, var(--cream) 63%, transparent 63%), var(--bg); }
+  .pin { position:absolute; display:flex; flex-direction:column; align-items:center; transform:translateX(-50%); cursor:pointer; background:none; border:0; padding:0; font:inherit; color:inherit; }
+  .pin i { width:16px; height:16px; border-radius:50% 50% 50% 0; background:var(--fill1); transform:rotate(-45deg); border:2px solid var(--ink-strong); display:block; }
+  .pin b { margin-top:5px; font-size:10px; } .pin span { font-size:9px; color:var(--sub); }
+  .me { position:absolute; width:12px; height:12px; border-radius:50%; background:var(--me-dot); border:2px solid var(--paper); }
+  .search { position:absolute; left:10px; right:10px; top:12px; height:34px; border-radius:var(--r-pill); background:var(--paper); display:flex; align-items:center; padding:0 12px; gap:6px; box-shadow:0 1px 4px rgba(0,0,0,.15); cursor:pointer; }
+  .search .ph { flex:1; color:var(--sub); }
+  .field { height:34px; border-radius:var(--r-pill); display:flex; align-items:center; padding:0 12px; gap:6px; background:var(--cream); color:var(--sub); }
+  .scr.dark .field { background:var(--paper); color:var(--text); }
+  .tabbar { position:absolute; left:0; right:0; bottom:0; height:38px; background:var(--paper); display:flex; justify-content:space-around; align-items:center; font-size:9px; color:var(--sub); }
+  .tabbar b { color:var(--text); }
+  .btn { border:0; font:inherit; cursor:pointer; border-radius:var(--r-pill); padding:4px 10px; background:var(--ink-strong); color:var(--paper); }
+  .btn.ghost { background:var(--surface2); color:var(--text); }
+  .chip { position:absolute; border:0; cursor:pointer; font:inherit; border-radius:var(--r-pill); padding:5px 10px; background:var(--paper); box-shadow:0 1px 4px rgba(0,0,0,.18); font-size:10px; }
+  .vhead { padding:4px 2px 8px; } .row { display:flex; align-items:center; gap:6px; }
+  .back { font-size:24px; font-weight:800; line-height:1; background:none; border:0; cursor:pointer; text-shadow:0 1px 3px rgba(0,0,0,.2); padding:0 6px 0 0; color:inherit; }
+  .vname { font-size:14px; font-weight:700; } .vsub { color:var(--sub); font-size:10px; }
+  .vbody { margin:8px 2px; height:200px; border-radius:var(--r-card); border:2px dashed var(--surface3); display:flex; align-items:center; justify-content:center; text-align:center; color:var(--sub); padding:10px; }
+  .sheet { position:absolute; left:8px; right:8px; bottom:46px; background:var(--paper); border-radius:16px; padding:10px 12px; box-shadow:0 2px 10px rgba(0,0,0,.2); }
+  .menu { position:absolute; right:10px; top:40px; background:var(--paper); border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.2); padding:4px 0; width:150px; display:none; z-index:2; }
+  .menu.on { display:block; } .menu div { padding:7px 12px; cursor:pointer; }
+  .toast { position:absolute; left:14px; right:14px; bottom:48px; background:var(--ink-strong); color:var(--paper); border-radius:12px; padding:7px 10px; font-size:10px; display:none; }
+  .toast.on { display:block; }
+  .note-card { position:absolute; left:50%; bottom:46px; transform:translate(-50%,6px); background:var(--paper); border-radius:14px; padding:6px 12px; box-shadow:0 2px 10px rgba(0,0,0,.2); font-size:10px; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .3s, transform .3s; }
+  .note-card.on { opacity:1; transform:translate(-50%,0); }
+  .switch { width:30px; height:17px; border-radius:9px; background:var(--surface3); position:relative; border:0; cursor:pointer; flex:none; }
+  .switch::after { content:""; position:absolute; left:2px; top:2px; width:13px; height:13px; border-radius:50%; background:var(--paper); transition:left .15s; }
+  .switch.on { background:var(--ink-strong); } .switch.on::after { left:15px; }
+  .seg { display:flex; background:var(--surface2); border-radius:var(--r-pill); padding:2px; width:max-content; }
+  .seg button { border:0; font:inherit; border-radius:var(--r-pill); padding:3px 9px; background:none; cursor:pointer; color:inherit; }
+  .seg button.on { background:var(--ink-strong); color:var(--paper); }
+  .covers { display:flex; gap:6px; margin-top:6px; overflow:hidden; }
+  .covers i { width:40px; height:56px; border-radius:5px 9px 9px 5px; background:var(--fill2); display:block; flex:none; }
+  .covers i:nth-child(3n+2){ background:var(--fill3); } .covers i:nth-child(3n){ background:var(--fill1); }
+  .li { padding:7px 2px; border-bottom:1px solid var(--surface2); } .scr.dark .li { border-color:rgba(255,255,255,.18); }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .sec { font-weight:700; font-size:10.5px; margin-top:10px; }
+  .hide { display:none !important; }
+  /* ---- 표 ---- */
+  table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-card); overflow:hidden; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--surface2); }
+  th { background:var(--surface2); }
+  .st { font-size:12px; padding:1px 8px; border-radius:var(--r-pill); background:var(--surface2); white-space:nowrap; }
+  #spec, #except, #fullflow { margin-top:32px; }
+  .state button { font:inherit; border:0; border-radius:var(--r-pill); padding:4px 12px; background:var(--surface2); cursor:pointer; margin:2px; }
+  .state button[aria-pressed="true"] { background:var(--ink-strong); color:var(--paper); }
+  .wide { overflow-x:auto; }
+</style>
+</head>
+<body>
+<style>
+  /* MY-2 시안 추가 부품 */
+  .av { width:44px; height:44px; border-radius:50%; background:var(--fill3); border:1px solid var(--surface3); flex:none; }
+  .av.big { width:72px; height:72px; margin:6px auto 2px; display:block; cursor:pointer; }
+  .av.none { background:var(--cream); }
+  .mehead { background:var(--cream); margin:-12px -10px 8px; padding:12px 10px 10px; border-bottom:1px solid var(--surface2); }
+  .gauge { font-size:8px; letter-spacing:.08em; color:var(--sub); }
+  .nick { font-size:14px; } .bio { color:var(--sub); font-size:10px; }
+  .gear { margin-left:auto; width:24px; height:24px; border-radius:50%; background:var(--paper); border:1px solid var(--surface3); display:flex; align-items:center; justify-content:center; font-size:11px; flex:none; }
+  .tabs3 { display:flex; gap:4px; margin:4px 0 6px; } .tabs3 span { flex:1; text-align:center; padding:3px 0; border-radius:var(--r-pill); background:var(--surface2); font-size:9px; } .tabs3 span.on { background:var(--paper); border:1px solid var(--surface3); }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:5px; } .grid2 i { display:block; height:62px; border-radius:var(--r-card); background:var(--fill2); } .grid2 i:nth-child(2n){ background:var(--fill3); height:50px; }
+  .ehead { display:flex; align-items:center; gap:4px; padding:0 0 8px; border-bottom:1px solid var(--surface2); margin-bottom:8px; }
+  .ehead .t { flex:1; font-size:13px; } .ehead .t.mid { text-align:center; }
+  .link { background:none; border:0; font:inherit; cursor:pointer; color:var(--text); padding:2px 4px; }
+  .link.sub { color:var(--sub); }
+  .flabel { font-size:9px; color:var(--sub); margin:8px 0 3px; }
+  .input { border:1px solid var(--surface3); border-radius:9px; background:var(--cream); padding:6px 8px; font-size:11px; min-height:28px; }
+  .count { text-align:right; font-size:8.5px; color:var(--sub); margin-top:2px; }
+  .savebar { position:absolute; left:10px; right:10px; bottom:12px; }
+  .savebar .btn { width:100%; padding:8px 0; }
+  .btn:disabled { opacity:.45; cursor:default; }
+  .sline { display:flex; align-items:center; gap:8px; padding:9px 2px; border-bottom:1px solid var(--surface2); cursor:pointer; }
+  .sline .k { width:52px; color:var(--sub); font-size:10px; flex:none; } .sline .v { flex:1; } .sline .go { color:var(--sub); }
+  .center { text-align:center; } .small { font-size:9px; color:var(--sub); }
+  .hband { margin:-12px -10px 0; padding:6px 10px; font-size:9px; letter-spacing:.1em; color:var(--sub); background:var(--cream); border-bottom:1px solid var(--surface2); display:flex; align-items:center; }
+  .bell { position:relative; } .bell.hb { margin-left:auto; font-size:12px; cursor:pointer; letter-spacing:0; }
+  .dot { position:absolute; top:1px; right:1px; width:6px; height:6px; border-radius:50%; background:var(--ink-strong); }
+  .dot.off { display:none; }
+  .errcard { background:var(--cream); border:1px solid var(--surface3); border-radius:9px; padding:7px 8px; margin-top:8px; font-size:10px; }
+  .warn { color:var(--text); font-size:9px; margin-top:3px; }
+</style>
+<header class="page">
+  <h1>내 정보 모음 · MY-2 시안 — 프로필 수정 화면</h1>
+  <div class="how"><b>보는 법.</b> 화면 3개를 비교해 보세요. 휴대폰 안의 <b>"프로필 수정"</b>부터 눌러 보면 고치는 화면이 열리고, 저장까지 눌러 볼 수 있어요. 화면마다 아래에 <b>누르면 어떻게 이어지는지</b>를 적어 뒀어요. 노란 테두리가 <b>추천</b>이에요. 고르는 건 직접 해 주세요.</div>
+</header>
+<main>
+
+<!-- ===== 중심 요소 1 ===== -->
+<section class="element" id="el-layout" data-chosen="A">
+  <h2>정할 것 1. 프로필 수정 화면을 어떻게 놓을까 <span class="status">확인</span></h2>
+  <div class="flow"><b>정해진 것.</b> 내 정보 위쪽의 "프로필 수정"을 누르면 고치는 화면이 열려요. 고칠 수 있는 건 <b>사진·닉네임·한 줄 소개</b> 세 가지예요. 팔로우·팔로워 수는 없어요. 정할 것은 <b>고치는 화면에 세 가지를 어떻게 놓고, 어디서 저장하느냐</b>예요.</div>
+  <div class="decided"><b>고른 것: 후보 A.</b> "사진이랑 입력칸이 한번에 보이고 입력하기 편하게 나와있어" · 차선 C("나쁘진 않았어") · B는 "왔다갔다 하는게 별로였어"</div>
+  <div class="pick">다시 보기: <select data-for="el-layout">
+    <option value="A">후보 A — 한 화면에 모두 + 맨 아래 저장</option>
+    <option value="B">후보 B — 한 줄씩 눌러 고치기</option>
+    <option value="C">후보 C — 위로 올라오는 화면 + 위에 저장</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 한 화면에 모두 + 맨 아래 저장 <span class="badge">추천</span></h3>
+      <div class="phone">
+        <div class="scr" data-screen="me">
+          <div class="mehead"><div class="row"><span class="av"></span><div><div class="gauge">MEMBER · PROFILE</div><div class="nick">책읽는고양이</div><div class="bio">동네 도서관 순례 중</div><button class="btn ghost" data-open="edit" style="margin-top:4px">프로필 수정</button></div><span class="gear">⚙</span></div></div>
+          <div class="tabs3"><span class="on">내 게시물</span><span>좋아요</span><span>북마크</span></div>
+          <div class="grid2"><i></i><i></i><i></i><i></i></div>
+          <div class="toast" id="ta">저장했어요</div>
+        </div>
+        <div class="scr hide" data-screen="edit">
+          <div class="ehead"><button class="back" data-open="me">‹</button><span class="t">프로필 수정</span></div>
+          <span class="av big"></span><div class="center small">사진 바꾸기</div>
+          <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
+          <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+          <div class="savebar"><button class="btn" data-open="me" data-toast="ta">저장</button></div>
+        </div>
+      </div>
+      <p>밀려 들어오는 화면 하나에 사진(위 가운데)·닉네임·한 줄 소개가 다 보이고, 맨 아래 큰 "저장" 하나로 한꺼번에 저장해요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>"프로필 수정" 누름 → 옆에서 고치는 화면이 들어옴 → 세 가지를 한 번에 고침 → 맨 아래 "저장" → 내 정보로 돌아오며 "저장했어요".</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>사진 72 크기 원, 그 아래 "사진 바꾸기"</li><li>칸마다 글자 수(닉네임 /40, 소개 /60)</li><li>저장 버튼은 화면 맨 아래에 늘 붙어 있음</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>무엇을 고칠 수 있는지 한눈에 보이고, 저장은 한 번이에요. / 키보드가 올라오면 아래 "저장"을 찾으려고 키보드를 내려야 할 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-71 한 화면에 칸을 모두 두고 "올리기" + P-02 밀려 들어오는 다음 화면</p>
+      <p><b>추천 이유:</b> 칸이 세 개뿐이라 P-71의 "짧은 글"에 맞고, 내 정보에서 옆으로 들어갔다 돌아오는 길이 다른 화면(게시물 상세)과 같아요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 한 줄씩 눌러 고치기</h3>
+      <div class="phone">
+        <div class="scr" data-screen="me">
+          <div class="mehead"><div class="row"><span class="av"></span><div><div class="gauge">MEMBER · PROFILE</div><div class="nick">책읽는고양이</div><div class="bio">동네 도서관 순례 중</div><button class="btn ghost" data-open="list" style="margin-top:4px">프로필 수정</button></div><span class="gear">⚙</span></div></div>
+          <div class="tabs3"><span class="on">내 게시물</span><span>좋아요</span><span>북마크</span></div>
+          <div class="grid2"><i></i><i></i><i></i><i></i></div>
+        </div>
+        <div class="scr hide" data-screen="list">
+          <div class="ehead"><button class="back" data-open="me">‹</button><span class="t">프로필 수정</span></div>
+          <div class="sline"><span class="k">사진</span><span class="v"><span class="av" style="width:28px;height:28px;display:inline-block;vertical-align:middle"></span></span><span class="go">›</span></div>
+          <div class="sline" data-open="nick"><span class="k">닉네임</span><span class="v">책읽는고양이</span><span class="go">›</span></div>
+          <div class="sline"><span class="k">한 줄 소개</span><span class="v">동네 도서관 순례 중</span><span class="go">›</span></div>
+          <p class="small" style="margin-top:10px">"닉네임" 줄을 눌러 보세요.</p>
+          <div class="toast" id="tb">저장했어요</div>
+        </div>
+        <div class="scr hide" data-screen="nick">
+          <div class="ehead"><button class="back" data-open="list">‹</button><span class="t">닉네임</span><button class="link" data-open="list" data-toast="tb">저장</button></div>
+          <div class="input">책읽는고양이</div><div class="count">6/40</div>
+          <p class="small">같은 닉네임을 다른 사람도 쓸 수 있어요.</p>
+        </div>
+      </div>
+      <p>고치는 화면은 설정처럼 줄 세 개예요. 줄 하나를 누르면 그것만 고치는 작은 화면이 열리고, 거기서 따로 저장해요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>"프로필 수정" 누름 → 사진·닉네임·소개 줄 목록 → "닉네임" 줄 누름 → 닉네임만 고치는 화면 → 위 "저장" → 목록으로 돌아오며 "저장했어요" → 다른 줄도 같은 식.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>줄마다 지금 값이 미리 보임(소개가 길면 줄임표)</li><li>하나 고칠 때마다 저장이 한 번씩</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>하나만 고칠 때 빠르고, 칸 하나에 화면이 넓어요. / 셋 다 고치면 들어갔다 나오기를 세 번 해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-14 설정 화면 안 항목 (카카오톡·인스타그램 프로필 편집의 줄 목록)</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 위로 올라오는 화면 + 위에 저장</h3>
+      <div class="phone">
+        <div class="scr" data-screen="me">
+          <div class="mehead"><div class="row"><span class="av"></span><div><div class="gauge">MEMBER · PROFILE</div><div class="nick">책읽는고양이</div><div class="bio">동네 도서관 순례 중</div><button class="btn ghost" data-open="up" style="margin-top:4px">프로필 수정</button></div><span class="gear">⚙</span></div></div>
+          <div class="tabs3"><span class="on">내 게시물</span><span>좋아요</span><span>북마크</span></div>
+          <div class="grid2"><i></i><i></i><i></i><i></i></div>
+          <div class="toast" id="tcs">저장했어요</div>
+        </div>
+        <div class="scr hide" data-screen="up">
+          <div class="ehead"><button class="link sub" data-open="me">✕</button><span class="t mid">프로필 수정</span><button class="link" data-open="me" data-toast="tcs">저장</button></div>
+          <div class="row" style="gap:10px"><span class="av" style="cursor:pointer"></span><span class="small">사진을 누르면 바꿀 수 있어요</span></div>
+          <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
+          <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+        </div>
+      </div>
+      <p>아래에서 위로 덮는 화면이에요. 사진은 왼쪽 작게, 칸 두 개가 그 아래. "저장"은 오른쪽 위, 닫기는 왼쪽 위 ✕예요(독서 기록 쓰기 화면과 같은 모양).</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>"프로필 수정" 누름 → 아래에서 화면이 올라옴 → 세 가지를 한 번에 고침 → 오른쪽 위 "저장" → 화면이 내려가며 "저장했어요".</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>저장이 위에 있어 키보드에 안 가려짐</li><li>✕를 누르면 고친 게 있을 때만 "버릴까요?"를 물음</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>키보드가 올라와도 저장이 보이고, 독서 기록 쓰기와 손이 같아요. / 저장 버튼이 작고 위 끝이라 눈에 덜 띄어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-03 전체 화면 위로 올라오는 화면(닫기 ✕) — 인스타그램 프로필 편집</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 중심 요소 2 ===== -->
+<section class="element" id="el-photo" data-chosen="C">
+  <h2>정할 것 2. 사진을 바꾸고 지우는 모양 <span class="status">확인</span></h2>
+  <div class="decided"><b>고른 것: 후보 C.</b> "볼펜모양 누르면 사진 설정하는기능" · "C가 제일 보기 좋다고 생각하고 이해하기도 빠를거같아" · 차선 없음 · 화면 안 안내 글자 "사진 모서리 ✎를 눌러 보세요"는 빼 달라고 해서 뺐어요(시안 안내용이었고 앱에는 넣지 않아요). 사진을 지운 뒤 "기본 그림으로 바뀌었어요" 같은 설명 글자도 "넣을필요 없다"고 해서 뺐어요 — 사진 자리가 기본 그림으로 바뀌는 것만 보여요. · 불편한 점: "설명이 없으면 처음에 좀 헷갈릴수 있다고 생각해 깔끔한건 장점이야"</div>
+  <div class="flow"><b>정해진 것.</b> 고치는 화면은 정할 것 1에서 고른 A(사진 위 가운데, 칸 두 개, 맨 아래 "저장")예요. 사진은 <b>찍거나 앨범에서 고를 수 있고, 지울 수도 있어요</b>(지우면 기본 그림). 사진의 위치 정보는 저장할 때 지워져요. 바꾼 사진도 맨 아래 "저장"을 눌러야 저장돼요. 정할 것은 <b>사진 쪽을 누르면 무엇이 뜨느냐</b>예요.</div>
+  <div class="pick">다시 보기: <select data-for="el-photo">
+    <option value="A">후보 A — 아래에서 올라오는 작은 창</option>
+    <option value="B">후보 B — 사진 아래 버튼이 늘 보임</option>
+    <option value="C">후보 C — 사진 옆 작은 메뉴</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 아래에서 올라오는 작은 창 <span class="badge">추천</span></h3>
+      <div class="phone">
+        <div class="scr" data-screen="e">
+          <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+          <span class="av big" data-open="sheet"></span><div class="center small" data-open="sheet" style="cursor:pointer">사진 바꾸기</div>
+          <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
+          <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+          <p class="small center" style="margin-top:6px">↑ 사진을 눌러 보세요</p>
+          <div class="savebar"><button class="btn">저장</button></div>
+        </div>
+        <div class="scr hide" data-screen="sheet">
+          <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+          <span class="av big"></span><div class="center small">사진 바꾸기</div>
+          <div class="flabel">닉네임</div><div class="input">책읽는고양이</div>
+          <div class="sheet" style="bottom:10px">
+            <div class="li" data-open="e" style="cursor:pointer">사진 찍기</div>
+            <div class="li" data-open="e" style="cursor:pointer">앨범에서 고르기</div>
+            <div class="li" data-open="gone" style="cursor:pointer">사진 지우기</div>
+            <div class="li center small" data-open="e" style="border:0;cursor:pointer">닫기</div>
+          </div>
+        </div>
+        <div class="scr hide" data-screen="gone">
+          <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+          <span class="av big none" data-open="sheet2"></span><div class="center small" data-open="sheet2" style="cursor:pointer">사진 고르기</div>
+          <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
+          <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+          <p class="small center" style="margin-top:6px">기본 그림으로 바뀌었어요. "저장"을 눌러야 지워져요.</p>
+          <div class="savebar"><button class="btn" data-open="e">저장</button></div>
+        </div>
+        <div class="scr hide" data-screen="sheet2">
+          <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+          <span class="av big none"></span><div class="center small">사진 고르기</div>
+          <div class="sheet" style="bottom:10px">
+            <div class="li" data-open="e" style="cursor:pointer">사진 찍기</div>
+            <div class="li" data-open="e" style="cursor:pointer">앨범에서 고르기</div>
+            <div class="li center small" data-open="gone" style="border:0;cursor:pointer">닫기</div>
+          </div>
+        </div>
+      </div>
+      <p>사진(이나 그 아래 "사진 바꾸기")을 누르면 화면 아래에서 작은 창이 올라와요. 찍기·앨범·지우기 중 하나를 골라요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>사진 누름 → 아래 작은 창 → "앨범에서 고르기" → 기기 앨범이 열림 → 고르면 동그라미 안 사진이 바뀜 → 맨 아래 "저장". "사진 지우기"를 누르면 기본 그림으로 바뀌고, "저장"을 눌러야 지워져요.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>사진이 없을 때는 "사진 지우기" 줄이 없어요(지운 뒤 다시 눌러 보세요)</li><li>평소 화면엔 사진과 "사진 바꾸기" 글자만 있어 깔끔해요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>할 일이 한 곳에 모여 있고 평소 화면이 깔끔해요. / 무엇이든 한 번 더 눌러야 해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-04 아래에서 올라오는 시트 (iOS 공유 시트, 카카오톡 프로필 사진 바꾸기)</p>
+      <p><b>추천 이유:</b> 찍기·앨범·지우기 세 가지를 평소엔 숨겨 두고 한 번에 보여 줘요. 휴대폰 아래쪽이라 엄지로 누르기 쉬워요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 사진 아래 버튼이 늘 보임</h3>
+      <div class="phone">
+        <div class="scr" data-screen="e">
+          <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+          <span class="av big"></span>
+          <div class="center" style="margin-top:4px"><button class="btn ghost" data-toast="tb2a">찍기</button> <button class="btn ghost" data-toast="tb2b">앨범</button> <button class="btn ghost" data-open="gone">지우기</button></div>
+          <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
+          <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+          <div class="toast" id="tb2a">카메라가 열려요</div><div class="toast" id="tb2b">기기 앨범이 열려요</div>
+          <div class="savebar"><button class="btn">저장</button></div>
+        </div>
+        <div class="scr hide" data-screen="gone">
+          <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+          <span class="av big none"></span>
+          <div class="center" style="margin-top:4px"><button class="btn ghost">찍기</button> <button class="btn ghost">앨범</button> <button class="btn ghost" disabled>지우기</button></div>
+          <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
+          <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+          <div class="savebar"><button class="btn" data-open="e">저장</button></div>
+        </div>
+      </div>
+      <p>사진 바로 아래에 "찍기 · 앨범 · 지우기" 버튼 세 개가 늘 보여요. 창이 뜨지 않고 바로 해요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>"앨범" 누름 → 기기 앨범이 바로 열림 → 고르면 사진이 바뀜 → 맨 아래 "저장". "지우기"는 누르면 바로 기본 그림.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>사진이 없으면 "지우기"가 흐려져요</li><li>버튼 줄 때문에 칸들이 조금 아래로 내려가요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>한 번만 누르면 돼요. 무엇을 할 수 있는지 처음부터 보여요. / 화면에 버튼이 많아 보이고, 지우기를 실수로 누르기 쉬워요.</p>
+      <span class="lbl">표준 근거</span><p>새 패턴 — 이유: 할 일이 셋뿐이라 숨기지 않고 사진 바로 아래에 늘어놓는 모양(목록에 맞는 번호 없음)</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 사진 옆 작은 메뉴</h3>
+      <div class="phone">
+        <div class="scr" data-screen="e">
+          <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+          <div style="position:relative;width:72px;margin:0 auto"><span class="av big"></span><button class="gear" style="position:absolute;right:-6px;bottom:0;cursor:pointer" data-menu="mc" aria-label="사진 바꾸기">✎</button></div>
+          <div class="menu" id="mc" style="top:100px;right:20px;width:120px"><button data-photo-pick="mc" data-toast="my2-photo-camera">사진 찍기</button><button data-photo-pick="mc">앨범에서 고르기</button><button data-open="gone" data-close="mc">사진 지우기</button></div>
+          <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
+          <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+          <div class="toast" id="my2-photo-camera">카메라가 열려요</div>
+          <div class="savebar"><button class="btn">저장</button></div>
+        </div>
+        <div class="scr hide" data-screen="gone">
+          <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+          <div style="position:relative;width:72px;margin:0 auto"><span class="av big none"></span><button class="gear" style="position:absolute;right:-6px;bottom:0" data-menu="mc-empty" aria-label="사진 바꾸기">✎</button></div>
+          <div class="menu" id="mc-empty" style="top:100px;right:20px;width:120px"><button data-photo-pick="mc-empty" data-toast="my2-photo-camera">사진 찍기</button><button data-photo-pick="mc-empty">앨범에서 고르기</button></div>
+          <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
+          <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+          <div class="savebar"><button class="btn" data-open="e">저장</button></div>
+        </div>
+      </div>
+      <p>사진 모서리에 작은 연필(✎) 동그라미가 붙어 있고, 누르면 그 옆에 작은 메뉴가 떠요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>✎ 누름 → 사진 옆 작은 메뉴 → "앨범에서 고르기" → 기기 앨범 → 사진이 바뀜 → 맨 아래 "저장".</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>"사진 바꾸기" 글자가 없고 ✎ 표시만 있어요</li><li>메뉴가 화면 위쪽에 떠서 한 손으로는 손이 멀어요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>화면이 가장 깔끔하고, 메뉴가 사진 바로 옆이라 무엇을 바꾸는지 분명해요. / ✎가 작아서 처음 쓰는 사람은 못 찾을 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-11 작은 더 보기 메뉴 안 항목 (인스타그램 프로필 사진의 연필 표시)</p>
+    </article>
+  </div>
+</section>
+
+
+<!-- ===== 중심 요소 3 ===== -->
+<section class="element" id="el-bell" data-chosen="C">
+  <h2>정할 것 3. 알림 아이콘을 어디에 둘까 <span class="status">확인</span></h2>
+  <div class="decided"><b>고른 것: 후보 C.</b> "C가 제일인거같고 왜 좋냐면 알람을 어디서든 바로 확인할수 있다는점" · 차선 없음 · 불편한 점: (홈을 열 때마다 점이 켜져 있으면) "거슬리긴 하지만 알람끄기 기능이 있으면 해결될거같은데"</div>
+  <div class="flow"><b>정해진 것.</b> 알림 아이콘(종 🔔)을 누르면 알림함 화면으로 가요(알림함 화면은 다른 담당이 만들어요). 읽지 않은 알림이 있으면 종 옆에 <b>점 하나</b>만 보여요(숫자 없음). 정할 것은 <b>종이 어느 화면의 어디에 있느냐</b>예요. 휴대폰 위 "점 켜기" 스위치로 읽지 않은 알림이 있을 때 모습도 볼 수 있어요.</div>
+  <div class="pick">다시 보기: <select data-for="el-bell">
+    <option value="A">후보 A — 내 정보, 설정 ⚙ 왼쪽</option>
+    <option value="B">후보 B — 내 정보, 맨 위 머리 띠 오른쪽</option>
+    <option value="C">후보 C — 홈과 내 정보 둘 다</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 내 정보, 설정 ⚙ 왼쪽 <span class="badge">추천</span></h3>
+      <div class="row small" style="justify-content:center;margin-bottom:4px">점 켜기 <button class="switch on" data-bell="A"></button></div>
+      <div class="phone">
+        <div class="scr">
+          <div class="hband">MY</div>
+          <div class="mehead"><div class="row"><span class="av"></span><div><div class="gauge">MEMBER · PROFILE</div><div class="nick">책읽는고양이</div><div class="bio">동네 도서관 순례 중</div><button class="btn ghost" style="margin-top:4px">프로필 수정</button></div>
+            <span class="gear bell" data-toast="tba" style="margin-left:auto;cursor:pointer">🔔<i class="dot" data-dot="A"></i></span><span class="gear" style="margin-left:4px">⚙</span></div></div>
+          <div class="tabs3"><span class="on">내 게시물</span><span>좋아요</span><span>북마크</span></div>
+          <div class="grid2"><i></i><i></i><i></i><i></i></div>
+          <div class="toast" id="tba">알림함 화면으로 가요</div>
+        </div>
+      </div>
+      <p>내 정보 프로필 줄 오른쪽 위에 종 🔔과 설정 ⚙이 나란히 있어요. 종이 왼쪽이에요. 홈에는 종이 없어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>하단 "내 정보" 탭 → 프로필 줄 오른쪽 위 🔔(점이 있으면 새 알림) → 누르면 알림함 화면.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>종과 ⚙가 같은 크기(24)로 나란히, 점은 종 오른쪽 위 6px</li><li>홈 화면은 지금 그대로</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>내 것(설정·알림)이 한곳에 모이고 홈은 깔끔해요. / 알림을 보려면 내 정보 탭까지 가야 해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-13 아이콘 하나 누르면 채워짐(상태 표시) — 알림 종에 점</p>
+      <p><b>추천 이유:</b> 알림은 모임·게시물 같은 "내 것"에 대한 소식이라, 내 것이 모인 내 정보에 두면 찾을 곳이 하나예요. 홈은 도서관 블록이 주인공이라 비워 둬요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 내 정보, 맨 위 머리 띠 오른쪽</h3>
+      <div class="row small" style="justify-content:center;margin-bottom:4px">점 켜기 <button class="switch on" data-bell="B"></button></div>
+      <div class="phone">
+        <div class="scr">
+          <div class="hband">MY <span class="bell hb" data-toast="tbb">🔔<i class="dot" data-dot="B"></i></span></div>
+          <div class="mehead"><div class="row"><span class="av"></span><div><div class="gauge">MEMBER · PROFILE</div><div class="nick">책읽는고양이</div><div class="bio">동네 도서관 순례 중</div><button class="btn ghost" style="margin-top:4px">프로필 수정</button></div><span class="gear">⚙</span></div></div>
+          <div class="tabs3"><span class="on">내 게시물</span><span>좋아요</span><span>북마크</span></div>
+          <div class="grid2"><i></i><i></i><i></i><i></i></div>
+          <div class="toast" id="tbb">알림함 화면으로 가요</div>
+        </div>
+      </div>
+      <p>종은 화면 맨 위 "MY" 머리 띠 오른쪽 끝에 있고, ⚙는 프로필 줄에 그대로 있어요. 홈에는 종이 없어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>하단 "내 정보" 탭 → 맨 위 머리 띠 오른쪽 🔔 → 누르면 알림함 화면.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>종은 머리 띠 안, ⚙와 떨어져 있음</li><li>아래로 내려도 머리 띠는 그대로라 종이 늘 보임</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>화면 맨 위라 다른 앱처럼 찾기 쉽고 늘 보여요. / 설정 ⚙과 알림 🔔이 서로 다른 줄에 흩어져요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-11 머리 오른쪽 자리(인스타그램 홈 위 하트·종처럼 머리 띠 끝 아이콘)</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 홈과 내 정보 둘 다</h3>
+      <div class="row small" style="justify-content:center;margin-bottom:4px">점 켜기 <button class="switch on" data-bell="C"></button></div>
+      <div class="phone">
+        <div class="scr" data-screen="home">
+          <div class="hband">HOME <span class="bell hb" data-toast="tbc">🔔<i class="dot" data-dot="C"></i></span></div>
+          <div class="vbody" style="height:250px">파사드 홈(도서관 블록)<br>지금 그대로</div>
+          <div class="tabbar"><b>홈</b><span>독서 기록</span><span>대출·반납</span><button class="link small" data-open="me">내 정보</button></div>
+          <div class="toast" id="tbc">알림함 화면으로 가요</div>
+        </div>
+        <div class="scr hide" data-screen="me">
+          <div class="hband">MY</div>
+          <div class="mehead"><div class="row"><span class="av"></span><div><div class="gauge">MEMBER · PROFILE</div><div class="nick">책읽는고양이</div><div class="bio">동네 도서관 순례 중</div><button class="btn ghost" style="margin-top:4px">프로필 수정</button></div>
+            <span class="gear bell" data-toast="tbc2" style="margin-left:auto;cursor:pointer">🔔<i class="dot" data-dot="C"></i></span><span class="gear" style="margin-left:4px">⚙</span></div></div>
+          <div class="tabs3"><span class="on">내 게시물</span><span>좋아요</span><span>북마크</span></div>
+          <div class="grid2"><i></i><i></i></div>
+          <div class="tabbar"><button class="link small" data-open="home">홈</button><span>독서 기록</span><span>대출·반납</span><b>내 정보</b></div>
+          <div class="toast" id="tbc2">알림함 화면으로 가요</div>
+        </div>
+      </div>
+      <p>홈 맨 위 "HOME" 머리 띠 오른쪽에도 종이 있고, 내 정보에는 후보 A처럼 ⚙ 왼쪽에 있어요. 아래 탭으로 두 화면을 오가 보세요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>앱을 열면 홈 머리 띠 🔔 → 누르면 알림함 화면. 내 정보에서도 ⚙ 왼쪽 🔔 → 같은 알림함.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>점은 두 종에 똑같이 켜지고 꺼짐</li><li>홈 머리 띠에 아이콘이 하나 늘어남</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>앱을 열자마자 새 알림이 있는지 보여요. / 같은 종이 두 곳에 있어 홈 머리가 덜 깔끔하고, 둘이 같은지 헷갈릴 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>새 패턴 — 같은 알림 아이콘을 두 화면에 두기(홈에서 바로 알림을 보고 싶은 경우와 비교하려고 넣음)</p>
+    </article>
+  </div>
+</section>
+
+
+<!-- ===== 잘 안 될 때 (예외 네 장면) ===== -->
+<section id="except">
+  <h2>잘 안 될 때 보이는 화면</h2>
+  <p class="small">고른 모양(정할 것 1 A · 2 C · 3 C)으로 그렸어요. 휴대폰 안에는 실제 앱에 나오는 글자만 넣었고, 설명은 휴대폰 아래에 적었어요.</p>
+  <div class="state" id="exTabs">
+    <button aria-pressed="true" data-ex="fail">인터넷이 끊김</button><button aria-pressed="false" data-ex="empty">처음이라 비어 있음</button><button aria-pressed="false" data-ex="double">저장 두 번 빠르게</button><button aria-pressed="false" data-ex="guest">로그인 안 함</button><button aria-pressed="false" data-ex="photo">사진을 못 올림</button><button aria-pressed="false" data-ex="nick">닉네임을 다 지움</button>
+  </div>
+  <div class="phone" id="exPhone" style="margin:8px 0 0">
+    <div class="scr" data-ex-screen="fail">
+      <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+      <div style="position:relative;width:72px;margin:0 auto"><span class="av big"></span><span class="gear" style="position:absolute;right:-6px;bottom:0">✎</span></div>
+      <div class="flabel">닉네임</div><div class="input">책 읽는 고양이</div><div class="count">8/40</div>
+      <div class="flabel">한 줄 소개</div><div class="input">주말마다 정독도서관</div><div class="count">11/60</div>
+      <div class="errcard">저장하지 못했어요<div class="small">인터넷 연결을 확인해 주세요. 고친 내용은 그대로 있어요.</div></div>
+      <div class="savebar"><button class="btn">다시 저장하기</button></div>
+    </div>
+    <div class="scr hide" data-ex-screen="empty">
+      <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+      <div style="position:relative;width:72px;margin:0 auto"><span class="av big none"></span><span class="gear" style="position:absolute;right:-6px;bottom:0">✎</span></div>
+      <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
+      <div class="flabel">한 줄 소개</div><div class="input" style="color:var(--sub)">나를 한 줄로 소개해 보세요</div><div class="count">0/60</div>
+      <div class="savebar"><button class="btn">저장</button></div>
+    </div>
+    <div class="scr hide" data-ex-screen="double">
+      <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+      <div style="position:relative;width:72px;margin:0 auto"><span class="av big"></span><span class="gear" style="position:absolute;right:-6px;bottom:0">✎</span></div>
+      <div class="flabel">닉네임</div><div class="input">책 읽는 고양이</div><div class="count">8/40</div>
+      <div class="flabel">한 줄 소개</div><div class="input">주말마다 정독도서관</div><div class="count">11/60</div>
+      <div class="savebar"><button class="btn" disabled>저장 중…</button></div>
+    </div>
+    <div class="scr hide" data-ex-screen="guest">
+      <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+      <p style="margin-top:40px" class="center">로그인하면 내 프로필을 고칠 수 있어요.</p>
+      <div class="center"><button class="btn">로그인하기</button></div>
+    </div>
+    <div class="scr hide" data-ex-screen="photo">
+      <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+      <div style="position:relative;width:72px;margin:0 auto"><span class="av big"></span><span class="gear" style="position:absolute;right:-6px;bottom:0">✎</span></div>
+      <div class="warn center">이 사진은 올릴 수 없어요. 다른 사진을 골라 주세요.</div>
+      <div class="flabel">닉네임</div><div class="input">책읽는고양이</div><div class="count">6/40</div>
+      <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+      <div class="savebar"><button class="btn">저장</button></div>
+    </div>
+    <div class="scr hide" data-ex-screen="nick">
+      <div class="ehead"><button class="back">‹</button><span class="t">프로필 수정</span></div>
+      <div style="position:relative;width:72px;margin:0 auto"><span class="av big"></span><span class="gear" style="position:absolute;right:-6px;bottom:0">✎</span></div>
+      <div class="flabel">닉네임</div><div class="input"></div><div class="warn">닉네임을 1자 이상 써 주세요</div>
+      <div class="flabel">한 줄 소개</div><div class="input">동네 도서관 순례 중</div><div class="count">10/60</div>
+      <div class="savebar"><button class="btn">저장</button></div>
+    </div>
+  </div>
+  <div class="flow" style="margin-top:10px" id="exNote"></div>
+  <div class="flow" style="margin-top:10px"><b>그 밖에.</b> 고친 게 있는데 ‹를 누르면 "저장하지 않고 나갈까요? 고친 내용은 사라져요" [저장하기] [나가기]를 물어요. 알림이 있는지 확인하지 못하면 종은 점 없이 그대로 보여요(따로 안내 없음).</div>
+</section>
+
+<!-- ===== 처음부터 끝까지 ===== -->
+<section id="fullflow">
+  <h2>처음부터 끝까지 이렇게 써요</h2>
+  <ol>
+    <li>사용자가 하단 "내 정보" 탭을 누르면 동네한권이 위쪽에 내 사진·닉네임·한 줄 소개와 "프로필 수정" 버튼을 보여 준다.</li>
+    <li>사용자가 "프로필 수정"을 누르면 동네한권이 옆에서 들어오는 프로필 수정 화면을 열고, 위 가운데에 사진, 그 아래에 닉네임 칸과 한 줄 소개 칸을 한꺼번에 보여 준다.</li>
+    <li>사용자가 닉네임·한 줄 소개 칸에 글자를 고치면 동네한권이 칸 아래에 글자 수(/40, /60)를 보여 준다.</li>
+    <li>사용자가 맨 아래 "저장"을 누르면 동네한권이 고친 칸만 저장하고, 내 정보로 돌아가 "저장했어요"를 잠깐 보여 준다.</li>
+    <li>사용자가 고친 뒤 저장하지 않고 ‹를 누르면 동네한권이 "저장하지 않고 나갈까요? 고친 내용은 사라져요"를 묻는다.</li>
+    <li>사용자가 사진 모서리의 볼펜 모양(✎)을 누르면 동네한권이 사진 옆에 "사진 찍기"·"앨범에서 고르기"·"사진 지우기"(사진이 있을 때만) 작은 메뉴를 띄운다.</li>
+    <li>사용자가 "앨범에서 고르기"로 사진을 고르면 동네한권이 사진 자리를 새 사진으로 바꿔 보여 주고, "저장"을 누를 때 위치 정보를 지운 뒤 저장한다.</li>
+    <li>사용자가 "사진 지우기"를 누르면 동네한권이 사진 자리를 기본 그림으로 바꾸고, "저장"을 누를 때 사진을 지운다.</li>
+    <li>읽지 않은 알림이 있으면 동네한권이 홈 머리 띠 오른쪽 종과 내 정보 ⚙ 왼쪽 종에 똑같이 점 하나를 보여 준다(숫자 없음).</li>
+    <li>사용자가 홈이나 내 정보의 종을 누르면 동네한권이 알림함 화면을 연다.</li>
+  </ol>
+</section>
+
+<!-- ===== 명세 패널 ===== -->
+<section id="spec">
+  <h2>명세</h2>
+  <div class="wide"><table>
+    <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
+    <tr data-el="el-layout"><td>1. 수정 화면 배치</td><td>후보 A 한 화면에 모두 + 맨 아래 저장</td><td>후보 C 위로 올라오는 화면 + 위에 저장</td><td>후보 B 한 줄씩 눌러 고치기 ("왔다갔다 하는게 별로였어")</td><td>"A가 제일 편하고 알아보기 좋은데" / "사진이랑 입력칸이 한번에 보이고 입력하기 편하게 나와있어"</td><td>사진 72 원, 닉네임 /40, 소개 /60, 입력 칸 곡률 9</td><td>프로필 수정 → 고치는 화면 → 저장 → 내 정보</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-photo"><td>2. 사진 고르기·지우기</td><td>후보 C 사진 모서리 ✎ → 사진 옆 작은 메뉴</td><td>차선 없음</td><td>후보 A 아래에서 올라오는 작은 창 · 후보 B 사진 아래 버튼이 늘 보임</td><td>"C가 제일 보기 좋다고 생각하고 이해하기도 빠를거같아" / "볼펜모양 누르면 사진 설정하는기능"</td><td>찍기·앨범·지우기(사진 있을 때만), 안내 글자 없음</td><td>✎ 누름 → 사진 옆 메뉴 → 고름 → 저장</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-bell"><td>3. 알림 아이콘 자리</td><td>후보 C 홈 머리 띠 오른쪽 + 내 정보 ⚙ 왼쪽</td><td>차선 없음</td><td>후보 A 내 정보 ⚙ 왼쪽만 · 후보 B 내 정보 머리 띠 오른쪽만</td><td>"C가 제일인거같고 왜 좋냐면 알람을 어디서든 바로 확인할수 있다는점"</td><td>종 24, 점 6px 하나, 숫자 없음</td><td>홈 🔔 또는 내 정보 🔔 → 알림함 화면</td><td><span class="st">확인</span></td></tr>
+    <tr><td>한 줄 소개 길이</td><td>60자, 글자 수 표시</td><td>—</td><td>—</td><td>묻지 않음</td><td>60</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>저장 안 하고 나갈 때</td><td>"저장하지 않고 나갈까요? 고친 내용은 사라져요" [저장하기] [나가기]</td><td>—</td><td>—</td><td>묻지 않음</td><td>고친 게 없으면 바로 닫힘</td><td>‹ → 확인창 → 저장하기면 저장 후 내 정보, 나가기면 저장 없이 내 정보</td><td><span class="st">확인(사용자, 2026-11-23 문구·버튼 변경)</span></td></tr>
+  </table></div>
+</section>
+</main>
+<script>
+  // 채택안 표시: section 의 data-chosen 에 후보 id → 검은 테두리 + "채택" 표시. 선택 상자로 탈락안을 다시 볼 수 있다.
+  function mark(el, id) {
+    el.querySelectorAll('.cand').forEach(function (c) {
+      c.classList.toggle('chosen', c.dataset.id === id);
+      var old = c.querySelector('.badge.adopted'); if (old) old.remove();
+      if (id && c.dataset.id === el.dataset.chosen) { var s = document.createElement('span'); s.className = 'badge adopted'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+    });
+    var sel = el.querySelector('select[data-for]'); if (sel && id) sel.value = id;
+  }
+  document.querySelectorAll('section.element').forEach(function (el) {
+    mark(el, el.dataset.chosen || '');
+    var sel = el.querySelector('select[data-for]');
+    if (sel) { if (!el.dataset.chosen) sel.insertAdjacentHTML('afterbegin', '<option value="" selected>(아직 고르지 않음)</option>');
+      sel.addEventListener('change', function () { mark(el, sel.value || el.dataset.chosen); }); }
+  });
+  // 휴대폰 부품 동작
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-open],[data-toast],[data-menu],[data-close],[data-show],[data-swap],[data-photo-pick],.switch'); if (!t) return;
+    if (t.classList.contains('switch')) t.classList.toggle('on');
+    if (t.dataset.photoPick) {
+      var menu = document.getElementById(t.dataset.photoPick);
+      var photo = menu.closest('.phone');
+      menu.classList.remove('on');
+      photo.querySelector('[data-screen="gone"]').classList.add('hide');
+      var edit = photo.querySelector('[data-screen="e"]');
+      edit.classList.remove('hide');
+      edit.querySelector('.av').classList.add('photo-picked');
+    }
+    if (t.dataset.open) { var ph = t.closest('.phone'); ph.querySelectorAll('.scr[data-screen]').forEach(function (s) { s.classList.toggle('hide', s.dataset.screen !== t.dataset.open); }); }
+    if (t.dataset.menu) { document.getElementById(t.dataset.menu).classList.toggle('on'); return; }
+    if (t.dataset.show) { document.getElementById(t.dataset.show).classList.remove('hide'); }
+    if (t.dataset.swap) { var w = t.dataset.swap.split('|'); t.textContent = t.textContent === w[0] ? w[1] : w[0]; }
+    if (t.dataset.close) { var c = document.getElementById(t.dataset.close); c.classList.remove('on'); if (c.classList.contains('sheet')) c.classList.add('hide'); }
+    if (t.dataset.toast) { var m = document.getElementById(t.dataset.toast); m.classList.add('on'); clearTimeout(m._t); m._t = setTimeout(function () { m.classList.remove('on'); }, 2000); }
+  });
+  // 정할 것 3: 점 켜기 스위치
+  document.querySelectorAll('[data-bell]').forEach(function (sw) {
+    sw.addEventListener('click', function () {
+      var on = sw.classList.contains('on');
+      document.querySelectorAll('[data-dot="' + sw.dataset.bell + '"]').forEach(function (d) { d.classList.toggle('off', on); /* 바깥 처리기가 나중에 on을 바꾸므로 누르기 전 상태 기준 */ });
+    });
+  });
+  // 예외 화면 전환: 탭을 누르면 휴대폰 안 화면과 아래 설명이 바뀐다
+  var exNotes = {
+    fail: '저장이 안 되면 고친 닉네임·소개·사진이 그대로 남고, 아래 버튼이 "다시 저장하기"로 바뀌어요. 누르면 같은 내용으로 다시 저장해요.',
+    empty: '처음 들어오면 사진은 기본 그림, 한 줄 소개 칸은 흐린 안내 글자만 있어요. 아무것도 안 고치고 "저장"을 누르면 저장 없이 내 정보로 돌아가요.',
+    double: '"저장"을 한 번 누르면 버튼이 "저장 중…"으로 흐려져서 두 번째 누름은 아무 일도 없어요. 저장은 한 번만 돼요.',
+    guest: '로그인하지 않고 이 화면 주소로 바로 들어오면 고치는 칸 대신 로그인 안내만 보여요. 남의 프로필을 고치는 길은 없어요.',
+    photo: '사진이 너무 크거나 사진이 아닌 파일이면 사진 아래에 한 줄 안내가 나오고, 사진은 그대로예요. 닉네임·소개 칸도 그대로예요.',
+    nick: '닉네임을 다 지우고 "저장"을 누르면 칸 아래에 안내가 나오고 저장되지 않아요. 41자부터는 칸에 더 써지지 않아요.'
+  };
+  var exNote = document.getElementById('exNote'); exNote.textContent = exNotes.fail;
+  document.querySelectorAll('#exTabs button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#exTabs button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      document.querySelectorAll('#exPhone [data-ex-screen]').forEach(function (s) { s.classList.toggle('hide', s.dataset.exScreen !== b.dataset.ex); });
+      exNote.textContent = exNotes[b.dataset.ex];
+    });
+  });
+</script>
+</body>
+</html>
