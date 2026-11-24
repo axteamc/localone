@@ -14,7 +14,8 @@ import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
 import { ApiCallError, fetchLibrary, type LibraryDetail } from "../../lib/publicApi";
 import { getDefaultLibrary, recordVisit } from "../../lib/visits";
-import { actionColors, cardSurface, panel, theme, type as T } from "../../theme";
+import { actionColors, cardSurface, type Theme } from "../../theme";
+import { LibraryLookProvider, lookKit, useLibraryLook, useLook } from "./useLibraryLook";
 import { FOLD_AT, VisitHeader, VisitHeaderFolded } from "./VisitHeader";
 import { AskDefaultCard } from "./AskDefaultCard";
 import {
@@ -33,7 +34,6 @@ import { StampButton } from "./StampButton";
 import { VisitMenu } from "./VisitMenu";
 import { pickVisitMent } from "./visitMent";
 
-const C = theme.colors;
 const MENT_DELAY_MS = 300; // 전환 끝나고 0.3초 (G3)
 const MENT_SHOW_MS = 2500; // 2.5초 뒤 사라짐 (G3)
 const NOTICE_MS = 2000; // ⋯ 메뉴 한 줄 안내 2초 (G4)
@@ -97,7 +97,17 @@ export type VisitScreenProps = {
   loadShelf?: (libraryId: number, signal: AbortSignal) => Promise<ShelfResponse>; // 기본: fetchShelf(#31, VISIT-3)
 };
 
-export function VisitScreen({
+/** VISIT-4-P3: 방문 중인 도서관 룩(V4-8)을 이 화면 아래 조각 전부에 내려 준다 */
+export function VisitScreen(props: VisitScreenProps) {
+  const look = useLibraryLook(props.libraryId ?? 0);
+  return (
+    <LibraryLookProvider value={look}>
+      <VisitScreenInner {...props} />
+    </LibraryLookProvider>
+  );
+}
+
+function VisitScreenInner({
   libraryId,
   distanceM,
   loadFeed = defaultLoadFeed,
@@ -106,6 +116,7 @@ export function VisitScreen({
   askCard,
   loadShelf,
 }: VisitScreenProps) {
+  const { ACT, styles } = useLook(makeStyles);
   const router = useRouter();
   const navigation = useNavigation();
   const { status, userId } = useAuth();
@@ -604,8 +615,9 @@ export function VisitScreen({
   );
 }
 
-const ACT = actionColors(theme.colors);
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => {
+  const { C, T, ACT, panel } = lookKit(theme);
+  return StyleSheet.create({
   screen: { flex: 1, backgroundColor: panel.backgroundColor },
   content: { paddingBottom: SHELF_HEIGHT + SHELF_FADE_HEIGHT + 24, minHeight: "100%" },
   center: { alignItems: "center", justifyContent: "center", padding: 24, gap: 6 },
@@ -707,4 +719,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   secondaryText: { ...ACT.secondaryText, fontSize: 15, fontWeight: "500" },
-});
+  });
+};

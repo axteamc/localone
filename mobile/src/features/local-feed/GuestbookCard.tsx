@@ -1,11 +1,10 @@
 // VISIT-3-P3 방명록 카드·내 방명록 메뉴 — contracts/local-feed.md VISIT-3 V3-6·V3-10, V3-O4·V3-O6, 명세 결정 3
 import React, { useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
-import { actionColors, theme, type as T } from "../../theme";
+import { actionColors, type Theme } from "../../theme";
+import { lookKit, useLook } from "./useLibraryLook";
 import type { GuestbookItem } from "./api";
 
-const C = theme.colors;
-const ACT = actionColors(theme.colors);
 
 /**
  * 방명록 카드 바탕 색 후보(2026-11-19 D 결정, 구현 후 D가 화면에서 확인해 확정 — 명세 결정 3 `미확인(임시)`).
@@ -61,6 +60,7 @@ export type GuestbookCardProps = {
 
 /** 2열 메이슨리 한 칸짜리 글 카드. 눌러도 다른 화면으로 가지 않는다(V3-O4) */
 export function GuestbookCard({ entry, width, onMenu }: GuestbookCardProps) {
+  const { styles } = useLook(makeStyles);
   return (
     <View style={[styles.card, { width }]} testID={`guestbook-card-${entry.id}`}>
       <View style={styles.tagRow}>
@@ -103,6 +103,7 @@ export type GuestbookMenuProps = {
 
 /** 내 카드 ⋯ → "지우기" → 확인창 → "지우기"(V3-O6). 되돌리기 없음 */
 export function GuestbookMenu({ entry, busy, onClose, onWithdraw }: GuestbookMenuProps) {
+  const { ACT, styles } = useLook(makeStyles);
   const [confirming, setConfirming] = useState(false);
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
@@ -148,7 +149,9 @@ export function GuestbookMenu({ entry, busy, onClose, onWithdraw }: GuestbookMen
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => {
+  const { C, T, ACT } = lookKit(theme);
+  return StyleSheet.create({
   card: {
     backgroundColor: GUESTBOOK_CARD_COLOR,
     borderRadius: theme.radii.infoCard,
@@ -185,4 +188,5 @@ const styles = StyleSheet.create({
   primaryText: { ...ACT.primaryText, fontSize: 15, fontWeight: "500" },
   secondary: { ...ACT.secondary, borderRadius: theme.radii.control, minHeight: 44, justifyContent: "center", alignItems: "center" },
   secondaryText: { ...ACT.secondaryText, fontSize: 15, fontWeight: "500" },
-});
+  });
+};

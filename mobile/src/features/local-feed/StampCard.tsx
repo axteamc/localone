@@ -3,11 +3,11 @@
 // 카드를 눌러도 이동하지 않고, 내 카드여도 메뉴가 없다(바꾸기는 StampButton의 ⋯).
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { theme } from "../../theme";
+import { type Theme } from "../../theme";
+import { lookKit, useLook } from "./useLibraryLook";
 import type { StampItem } from "./api";
 import { guestbookTime } from "./GuestbookCard";
 
-const C = theme.colors;
 
 export const STAMP_CARD_TEXT = {
   visited: "다녀왔어요",
@@ -35,6 +35,7 @@ export type StampCardProps = {
 };
 
 export function StampCard({ stamp, width, onToggleBookmark }: StampCardProps) {
+  const { C, styles } = useLook(makeStyles);
   const on = stamp.my_bookmark;
   return (
     <View style={[styles.card, { width }]} testID={`stamp-card-${stamp.id}`}>
@@ -61,7 +62,9 @@ export function StampCard({ stamp, width, onToggleBookmark }: StampCardProps) {
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => {
+  const { C } = lookKit(theme);
+  return StyleSheet.create({
   card: {
     backgroundColor: C.paper,
     borderRadius: theme.radii.infoCard,
@@ -87,4 +90,5 @@ const styles = StyleSheet.create({
   meta: { fontSize: 11, color: C.inkMuted, flexShrink: 1 },
   mark: { minWidth: 44, minHeight: 44, alignItems: "flex-end", justifyContent: "center" },
   ribbon: { width: 12, height: 16, borderTopLeftRadius: 2, borderTopRightRadius: 2, borderBottomLeftRadius: 1, borderBottomRightRadius: 1 },
-});
+  });
+};

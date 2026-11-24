@@ -3,11 +3,10 @@ import * as Crypto from "expo-crypto";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
-import { actionColors, theme, type as T } from "../../theme";
+import { actionColors, type Theme } from "../../theme";
+import { lookKit, useLook } from "./useLibraryLook";
 import { ApiCallError, GUESTBOOK_MAX, postGuestbook, type GuestbookItem } from "./api";
 
-const C = theme.colors;
-const ACT = actionColors(theme.colors);
 
 export const GUESTBOOK_TEXT = {
   chooserTitle: "무엇을 올릴까요?",
@@ -37,6 +36,7 @@ export type ComposeChooserProps = { visible: boolean; onPost(): void; onGuestboo
 
 /** "+"를 누르면 아래에서 뜨는 고르기 창(결정 2) */
 export function ComposeChooser({ visible, onPost, onGuestbook, onClub, onClose }: ComposeChooserProps) {
+  const { ACT, styles } = useLook(makeStyles);
   if (!visible) return null;
   return (
     <Modal transparent animationType="fade" onRequestClose={onClose}>
@@ -72,6 +72,7 @@ export function ComposeChooser({ visible, onPost, onGuestbook, onClub, onClose }
 
 /** 로그인하지 않은 사람이 "방명록 남기기"를 고를 때(예외 #4). 서버에 묻지 않는다 */
 export function GuestbookLoginSheet({ visible, onClose }: { visible: boolean; onClose(): void }) {
+  const { ACT, styles } = useLook(makeStyles);
   const router = useRouter();
   if (!visible) return null;
   return (
@@ -113,6 +114,7 @@ export type GuestbookComposerProps = {
 
 /** 쓰는 창. client_request_id는 창을 열 때 한 번 만들고 성공·닫기 때 버린다(V3-9) */
 export function GuestbookComposer({ libraryId, libraryName, visible, onClose, onPosted }: GuestbookComposerProps) {
+  const { C, ACT, styles } = useLook(makeStyles);
   const [body, setBody] = useState("");
   const [warn, setWarn] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -204,7 +206,9 @@ export function GuestbookComposer({ libraryId, libraryName, visible, onClose, on
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => {
+  const { C, T, ACT } = lookKit(theme);
+  return StyleSheet.create({
   backdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: C.shadowDeep },
   // 쓰는 창은 위쪽에 두어 키보드가 입력 칸을 가리지 않게 한다(플랫폼 분기 없음)
   dialogBackdrop: { flex: 1, justifyContent: "flex-start", paddingTop: 72, paddingHorizontal: 16, backgroundColor: C.shadowDeep },
@@ -253,4 +257,5 @@ const styles = StyleSheet.create({
   primaryText: { ...ACT.primaryText, fontSize: 15, fontWeight: "500" },
   secondary: { ...ACT.secondary, borderRadius: theme.radii.control, minHeight: 48, justifyContent: "center", alignItems: "center" },
   secondaryText: { ...ACT.secondaryText, fontSize: 15, fontWeight: "500" },
-});
+  });
+};

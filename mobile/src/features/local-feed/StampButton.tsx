@@ -6,7 +6,8 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
-import { actionColors, theme, type as T } from "../../theme";
+import { actionColors, type Theme } from "../../theme";
+import { lookKit, useLook } from "./useLibraryLook";
 import {
   ApiCallError,
   emitStampChanged,
@@ -17,8 +18,6 @@ import {
   type TodayStamp,
 } from "./api";
 
-const C = theme.colors;
-const ACT = actionColors(theme.colors);
 const PRIVATE_NOTICE_MS = 5000; // V4-O1 안내 5초
 
 export const STAMP_TEXT = {
@@ -47,6 +46,7 @@ type Action = "first" | "change";
 type ReadState = "idle" | "loading" | "ok" | "error";
 
 export function StampButton({ libraryId }: { libraryId: number }) {
+  const { ACT, styles } = useLook(makeStyles);
   const { status, userId } = useAuth();
   const signedInUser = status === "signedIn" ? userId ?? null : null;
   const [today, setToday] = useState<TodayStamp | null>(null);
@@ -203,6 +203,7 @@ export function StampButton({ libraryId }: { libraryId: number }) {
 
 /** 비로그인 안내(V4-O4). VISIT-3 GuestbookLoginSheet와 같은 모양. 스탬프 카드 북마크도 같이 쓴다 */
 export function StampLoginSheet({ visible, title, onClose }: { visible: boolean; title: string; onClose(): void }) {
+  const { ACT, styles } = useLook(makeStyles);
   const router = useRouter();
   if (!visible) return null;
   return (
@@ -234,7 +235,9 @@ export function StampLoginSheet({ visible, title, onClose }: { visible: boolean;
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => {
+  const { C, T, ACT } = lookKit(theme);
+  return StyleSheet.create({
   wrap: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", minHeight: 44, gap: 2, flexShrink: 1 },
   // V4-1: 무광 판 + 아래 받침, 완전한 필(9999)
   button: {
@@ -272,4 +275,5 @@ const styles = StyleSheet.create({
   primaryText: { ...ACT.primaryText, fontSize: 15, fontWeight: "500" },
   secondary: { ...ACT.secondary, borderRadius: theme.radii.control, minHeight: 44, justifyContent: "center", alignItems: "center" },
   secondaryText: { ...ACT.secondaryText, fontSize: 15, fontWeight: "500" },
-});
+  });
+};
