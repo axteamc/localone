@@ -28,6 +28,10 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
 
 jest.mock("expo-router", () => ({
   useRouter: () => ({ back: jest.fn(), push: jest.fn(), replace: jest.fn(), canGoBack: () => true }),
+  useFocusEffect: (callback: () => void) => {
+    const ReactLib = jest.requireActual<typeof import("react")>("react");
+    ReactLib.useEffect(callback, [callback]);
+  },
 }));
 
 jest.mock("../auth/AuthProvider", () => ({

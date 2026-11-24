@@ -8,6 +8,7 @@ book-club 계약 CLUB-1 C1~C7·P4. 표는 D가 `0012_m2_targets.py`로 만들었
 
 import base64
 import binascii
+import hashlib
 import json
 from datetime import datetime
 from typing import Any
@@ -49,8 +50,20 @@ def not_found(detail: str = "club_id") -> ApiError:
 
 
 def is_restricted(conn: Connection, user_id: UUID, now: datetime) -> datetime | None | bool:
-    """참가 제한 확인 자리(K1-10). 제한 중이면 만료 시각(무기한이면 True), 아니면 False."""
-    return False  # TODO(연결): CLUB-2 — participation_restrictions로 본문을 채운다
+    """참가 제한 확인(K1-10, CLUB-2 K2-10). 제한 중이면 만료 시각(무기한이면 True), 아니면 False.
+
+    사유(불참·댓글 운영)와 모임에 관계없이 해제 전·기간 안의 제한이 하나라도 있으면 막는다(K2-O4).
+    여러 개면 가장 늦게 끝나는 것을 돌려준다.
+    """
+    rows = conn.execute(text(
+        "SELECT ends_at FROM participation_restrictions WHERE user_id = :uid AND lifted_at IS NULL "
+        "AND starts_at <= :now AND (ends_at IS NULL OR ends_at > :now)"
+    ), {"uid": user_id, "now": now}).scalars().all()
+    if not rows:
+        return False
+    if any(ends is None for ends in rows):
+        return True  # 4번째 불참·영구 댓글 제한(K2-8·K2-O5)
+    return max(rows)
 
 
 def iso_or_empty(until: datetime | None | bool) -> str:
@@ -121,10 +134,24 @@ def load_club(c: Connection, club_id: UUID) -> Any:
     return row
 
 
-def club_view(c: Connection, club_id: UUID, viewer: CurrentUser | None) -> dict[str, Any]:
-    """응답 `Club`(C3). user_id는 넣지 않는다."""
+def participant_rows(c: Connection, club_id: UUID) -> list[Any]:
+    """`Club.participants` 명단(만든 사람 제외, `joined_at, user_id` 순서). 행마다 user_id·nickname."""
+    return list(c.execute(SELECT_PARTICIPANTS, {"id": club_id}).all())
+
+
+def roster_version(people: list[Any]) -> str:
+    """명단 버전(CLUB-2 C3): 정렬 명단의 UUID 문자열 배열을 공백 없는 JSON으로 → SHA-256 소문자 16진수."""
+    ids = [str(p.user_id) for p in people]
+    return hashlib.sha256(json.dumps(ids, separators=(",", ":")).encode("utf-8")).hexdigest()
+
+
+def club_view(
+    c: Connection, club_id: UUID, viewer: CurrentUser | None, people: list[Any] | None = None
+) -> dict[str, Any]:
+    """응답 `Club`(C3). user_id는 넣지 않는다. `people`을 주면 그 명단 스냅샷을 그대로 쓴다(#60·#65 명단 버전)."""
     row = load_club(c, club_id)
-    people = c.execute(SELECT_PARTICIPANTS, {"id": club_id}).all()
+    if people is None:
+        people = participant_rows(c, club_id)
     mine = None
     if viewer is not None:
         mine = c.execute(SELECT_MINE, {"id": club_id, "uid": viewer.id}).scalar_one_or_none()
@@ -411,8 +438,6 @@ async def join_club(request: Request, club_id: UUID, user: CurrentUser = Depends
         mine = c.execute(SELECT_MINE, {"id": club_id, "uid": user.id}).scalar_one_or_none()
         if mine == "joined":
             return club_view(c, club_id, user)  # 멱등
-        if mine == "removed":
-            raise ApiError(403, "PARTICIPATION_RESTRICTED", MSG_RESTRICTED, "")
         if club.capacity is not None and c.execute(COUNT_JOINED, {"id": club_id}).scalar_one() >= club.capacity:
             raise ApiError(409, "CLUB_FULL", MSG_FULL)
         c.execute(UPSERT_PARTICIPATION, {"id": club_id, "uid": user.id, "state": "joined"})

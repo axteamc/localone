@@ -16,9 +16,8 @@ export const INBOX_TEXT = { bell: "알림함" } as const;
 
 /**
  * `/inbox` 화면(C CLUB-2-P4)이 연결됐는지. 연결 전에는 종을 그리지 않는다(C7: 빈 화면을 만들지 않음).
- * TODO(연결): C CLUB-2-P4 — `/inbox`가 머지되면 true로 바꾼다. 홈 머리 띠 종도 그때 D가 연결한다(Y2-O6).
  */
-export const inboxLink = { ready: false };
+export const inboxLink = { ready: true };
 
 // ─────────── 계정별 공유 상태 ───────────
 

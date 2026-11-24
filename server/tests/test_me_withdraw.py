@@ -378,6 +378,7 @@ def test_withdraw_steps_follow_z10_order():
         "_delete_own_loan_plans",
         "_delete_own_inbox_items",
         "_delete_own_user_settings",
+        "_delete_own_club_reviews",
         "_anonymize_profile",
     ]
 
@@ -389,6 +390,10 @@ def test_withdraw_cleans_m2_tables_in_order(client, auth, db_engine, public_refe
     _join(db_engine, theirs_club, A)
     _join(db_engine, theirs_club, B)
     cm_mine, cm_theirs = _comment(db_engine, theirs_club, A), _comment(db_engine, theirs_club, B)
+    with db_engine.begin() as conn:
+        conn.execute(text("INSERT INTO club_reviews (club_id, user_id, body) "
+                          "VALUES (:club, :a, '내 후기'), (:club, :b, '다른 사람 후기')"),
+                     {"club": theirs_club, "a": A, "b": B})
     my_club = _club(db_engine, A, starts="now() + interval '1 day'")
     _join(db_engine, my_club, A)
     _join(db_engine, my_club, B)
@@ -417,6 +422,9 @@ def test_withdraw_cleans_m2_tables_in_order(client, auth, db_engine, public_refe
     # 알림함: 내 것 삭제. B에게는 원래 것 + 내 모임 취소 안내 1
     assert _inbox(db_engine, A) == []
     assert _inbox(db_engine, B) == [("club_next", {}), ("club_canceled", {"club_id": my_club})]
+    # 모임 후기: 탈퇴한 이용자의 비공개 글만 삭제
+    assert scalar(db_engine, "SELECT count(*) FROM club_reviews WHERE user_id = :u", u=A) == 0
+    assert scalar(db_engine, "SELECT body FROM club_reviews WHERE user_id = :u", u=B) == "다른 사람 후기"
     # 설정: 내 행만 삭제
     assert scalar(db_engine, "SELECT count(*) FROM user_settings WHERE user_id = :u", u=A) == 0
     assert scalar(db_engine, "SELECT count(*) FROM user_settings WHERE user_id = :u", u=B) == 1

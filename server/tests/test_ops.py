@@ -274,6 +274,57 @@ def test_decide_delete_and_restrict(client, ops, db_engine):
     assert len(actions(db_engine)) == 2
 
 
+@pytest.mark.parametrize("days", [1, 3, 7, None])
+def test_comment_restriction_period_and_participation(client, ops, db_engine, days):
+    club = seed_club(db_engine, host=A)
+    past_club = seed_club(db_engine, host=A)
+    own_club = seed_club(db_engine, host=B)
+    one(db_engine, "UPDATE clubs SET starts_at = now() - interval '2 days', ends_at = now() - interval '1 day' "
+                   "WHERE id = :c RETURNING id", c=past_club)
+    with db_engine.begin() as conn:
+        conn.execute(text(
+            "INSERT INTO club_participations (club_id, user_id, state) "
+            "VALUES (:club, :u, 'joined'), (:past, :u, 'joined'), (:own, :u, 'joined')"
+        ), {"club": club, "past": past_club, "own": own_club, "u": B})
+    req = seed_request(db_engine, seed_comment(db_engine, club))
+    decision = f"/api/v1/ops/club-comment-requests/{req}/decide"
+    response = client.post(decision, json={**REASON, "decision": "delete_and_restrict", "restriction_days": days},
+                           headers=ops["A"])
+    assert response.status_code == 200
+    rid = response.json()["restriction_id"]
+    restriction = q(db_engine, "SELECT starts_at, ends_at FROM participation_restrictions WHERE id = :i", i=rid)[0]
+    if days is None:
+        assert restriction.ends_at is None
+    else:
+        assert abs((restriction.ends_at - restriction.starts_at) - timedelta(days=days)) < timedelta(seconds=2)
+    states = dict(q(db_engine, "SELECT CAST(club_id AS text), state FROM club_participations WHERE user_id = :u", u=B))
+    assert states == {club: "removed", past_club: "joined", own_club: "joined"}
+    assert inbox_of(db_engine, B) == [("moderation", {"club_id": club})]
+    assert inbox_of(db_engine, A) == []
+    participation = f"/api/v1/clubs/{club}/participation"
+    assert client.put(participation, headers=ops["B"]).status_code == 403
+    assert client.post(f"/api/v1/ops/restrictions/{rid}/lift", json=REASON, headers=ops["A"]).status_code == 200
+    assert client.put(participation, headers=ops["B"]).status_code == 200
+
+
+def test_operator_can_read_first_review_explanation(client, ops, db_engine):
+    club = seed_club(db_engine, host=A)
+    req = seed_request(db_engine, seed_comment(db_engine, club))
+    rid = one(db_engine, "INSERT INTO participation_restrictions (user_id, reason_kind, source_id, reason_text) "
+                        "VALUES (:u, 'comment', :s, '사유') RETURNING id", u=B, s=req)
+    url = f"/api/v1/me/restrictions/{rid}/review-request"
+    first = client.post(url, json={"text": "  재검토 부탁드립니다. "}, headers=ops["B"])
+    duplicate = client.post(url, json={"text": "다른 글"}, headers=ops["B"])
+    assert (first.status_code, duplicate.status_code) == (201, 200)
+    assert "review_text" not in first.json()
+    listing = "/api/v1/ops/restrictions?state=review"
+    assert client.get(listing, headers=ops["B"]).status_code == 404
+    items = client.get(listing, headers=ops["A"]).json()["items"]
+    assert [(item["id"], item["review_text"]) for item in items] == [(str(rid), "재검토 부탁드립니다.")]
+    active = client.get("/api/v1/ops/restrictions?state=active", headers=ops["A"]).json()["items"]
+    assert active[0]["id"] == str(rid) and "review_text" not in active[0]
+
+
 def test_decide_delete_only_and_rejected(client, ops, db_engine):
     club_id = seed_club(db_engine, host=A)
     c1, c2 = seed_comment(db_engine, club_id), seed_comment(db_engine, club_id)
@@ -293,6 +344,9 @@ def test_decide_delete_only_and_rejected(client, ops, db_engine):
     {"decision": "delete_and_restrict"},  # 기간 없음
     {"decision": "delete_only", "restriction_ends_at": FUTURE},  # 제한 아닌데 기간
     {"decision": "delete_and_restrict", "restriction_ends_at": PAST},  # 지난 시각
+    {"decision": "delete_and_restrict", "restriction_days": 2},
+    {"decision": "delete_and_restrict", "restriction_days": None, "restriction_ends_at": FUTURE},
+    {"decision": "delete_only", "restriction_days": None},
     {"decision": "approve"},
 ])
 def test_decide_bad_body_is_422(client, ops, db_engine, body):
