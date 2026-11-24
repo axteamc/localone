@@ -356,6 +356,7 @@ describe("도서관별 보기 (R2-O1·R2-O3, C6)", () => {
     await screen.findByTestId("shelf-book-11");
     expect(libCalls(101)).toHaveLength(1);
 
+    await act(async () => mockBlurListeners.forEach((fn) => fn()));
     // 기록을 지우고 돌아옴 → 101이 첫 줄로
     fetchReadingStats.mockResolvedValueOnce({
       ...STATS,
@@ -390,6 +391,7 @@ describe("PR #287 검토 보완 (P4 줄 요청·복귀 갱신)", () => {
     expect(await screen.findByTestId("shelf-book-11")).toBeTruthy();
     expect(within(screen.getByTestId("reading-head")).getByText("6권")).toBeTruthy();
 
+    await act(async () => mockBlurListeners.forEach((fn) => fn()));
     // 기록 화면에서 "파친코"(11)를 지우고 돌아옴
     logsAre({ 101: [LIB_101[0]!] });
     fetchReadingStats.mockResolvedValue({
@@ -472,6 +474,47 @@ describe("PR #287 검토 보완 — 받은 줄 유지", () => {
 });
 
 describe("useReadingLogs 거르기 (C2·C6)", () => {
+  test("returning refreshes stats even while the first request is pending", async () => {
+    const first = deferred<ReadingStats>();
+    const updatedStats = { ...STATS, total: 11 };
+    fetchReadingStats.mockReturnValueOnce(first.promise).mockResolvedValue(updatedStats);
+    const { result } = await renderHook(() => useReadingLogs());
+    const firstSignal = fetchReadingStats.mock.calls[0]?.[0];
+
+    await act(async () => focusListeners.forEach((fn) => fn()));
+    expect(fetchReadingStats).toHaveBeenCalledTimes(1);
+    await act(async () => mockBlurListeners.forEach((fn) => fn()));
+    await act(async () => focusListeners.forEach((fn) => fn()));
+    expect(fetchReadingStats).toHaveBeenCalledTimes(2);
+    expect(firstSignal?.aborted).toBe(true);
+    await act(async () => first.resolve(STATS));
+    expect(result.current.stats).toEqual(updatedStats);
+  });
+
+  test("a refreshing library shelf only paginates with the new first page's cursor", async () => {
+    const fresh = deferred<ReadingLogPage>();
+    fetchReadingLogs.mockImplementation((q) => {
+      if (q.libraryId === undefined) return Promise.resolve(page(ALL));
+      if (q.cursor) return Promise.resolve(page([LIB_101[1]!]));
+      return Promise.resolve(page([LIB_101[0]!], "before-refresh"));
+    });
+    const { result } = await renderHook(() => useReadingLogs());
+    await act(async () => result.current.setFilter(101));
+    await waitFor(() => expect(result.current.hasMore).toBe(true));
+    fetchReadingLogs.mockReturnValueOnce(fresh.promise);
+    await act(async () => mockBlurListeners.forEach((fn) => fn()));
+    await act(async () => focusListeners.forEach((fn) => fn()));
+
+    expect(result.current.items).toEqual([LIB_101[0]]);
+    await act(async () => result.current.loadMore());
+    expect(libCalls(101).map(([q]) => q.cursor)).toEqual([null, null]);
+
+    await act(async () => fresh.resolve(page([LIB_101[0]!], "after-refresh")));
+    await act(async () => result.current.loadMore());
+    expect(libCalls(101).map(([q]) => q.cursor)).toEqual([null, null, "after-refresh"]);
+    expect(result.current.items).toEqual(LIB_101);
+  });
+
   test("switching shelves aborts pending pagination and lets the new shelf paginate", async () => {
     const stalePage = deferred<ReadingLogPage>();
     fetchReadingLogs.mockImplementation((q) => {

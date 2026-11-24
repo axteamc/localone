@@ -82,7 +82,7 @@ export function useReadingLogs(): {
     // 같은 책장을 다시 받을 때(탭 복귀·다시 해 보기)는 보이던 책을 그대로 두고 바꾼다
     setLib((prev) =>
       prev && prev.owner === owner && prev.libraryId === libraryId && prev.items
-        ? { ...prev, failed: false }
+        ? { ...prev, nextCursor: null, failed: false }
         : { owner, libraryId, items: null, nextCursor: null, failed: false }
     );
     void runner.run((signal) => fetchReadingLogs({ libraryId, cursor: null }, signal)).then((result) => {
@@ -108,11 +108,9 @@ export function useReadingLogs(): {
   // ── 통계(#46) ──
   const [statsSlot, setStatsSlot] = useState<StatsSlot | null>(null);
   const [statsTick, setStatsTick] = useState(0);
-  const statsSettledRef = useRef(false);
 
   useEffect(() => {
     if (!owner) {
-      statsSettledRef.current = false;
       setStatsSlot(null);
       return;
     }
@@ -127,25 +125,29 @@ export function useReadingLogs(): {
       .catch(() => {
         if (ctrl.signal.aborted) return;
         setStatsSlot({ owner, stats: null, failed: true });
-      })
-      .finally(() => {
-        if (!ctrl.signal.aborted) statsSettledRef.current = true;
       });
     return () => ctrl.abort();
   }, [owner, statsTick]);
 
-  // 탭으로 돌아오면(쓰기·지우기 뒤) 숫자·도서관 순서와 열린 한 도서관 책장을 다시 받는다. 첫 응답 전의 focus는 무시
+  // 첫 진입에서 조회하고, 화면을 떠났다가 돌아오면 진행 중인 조회도 새 요청으로 교체한다.
+  const leftScreenRef = useRef(false);
   const libraryIdRef = useRef(libraryId);
   libraryIdRef.current = libraryId;
-  useEffect(
-    () =>
-      navigation.addListener("focus", () => {
-        if (!statsSettledRef.current) return;
-        setStatsTick((n) => n + 1);
-        if (libraryIdRef.current !== null) setLibTick((n) => n + 1);
-      }),
-    [navigation]
-  );
+  useEffect(() => {
+    const offBlur = navigation.addListener("blur", () => {
+      leftScreenRef.current = true;
+    });
+    const offFocus = navigation.addListener("focus", () => {
+      if (!leftScreenRef.current) return;
+      leftScreenRef.current = false;
+      setStatsTick((n) => n + 1);
+      if (libraryIdRef.current !== null) setLibTick((n) => n + 1);
+    });
+    return () => {
+      offBlur();
+      offFocus();
+    };
+  }, [navigation]);
 
   const stats = owner && statsSlot?.owner === owner ? statsSlot.stats : null;
   const statsFailed = Boolean(owner && statsSlot?.owner === owner && statsSlot.failed);

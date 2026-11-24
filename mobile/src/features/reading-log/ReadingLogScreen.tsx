@@ -8,7 +8,6 @@ import { useNavigation, useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -21,7 +20,7 @@ import {
 import { useAuth } from "../../auth/AuthProvider";
 import { actionColors, cardSurface, theme, type as T } from "../../theme";
 import { CUBE_PALETTE } from "../../theme/tokens";
-import { APP_MAX_WIDTH } from "../../theme/WebFrame";
+import { APP_MAX_WIDTH, isDesktopPointer } from "../../theme/WebFrame";
 import { paletteIndexOf } from "../library-visit/direction";
 import { fetchReadingLogs, shelfDate, shelfStore, type ReadingLog, type ReadingStats, type ReadingStatsLibrary } from "./api";
 import { Cover, TEXT as EDITOR_TEXT, Toast, monthDay, styles as base } from "./ReadingLogEditor";
@@ -308,7 +307,7 @@ export function ReadingLogScreen() {
   const statsLine = <StatsLine stats={logs.stats} failed={logs.statsFailed} onRefresh={logs.retryStats} />;
   const thisYear = new Date().getFullYear().toString();
   // 가로 줄: 3권 + 다음 표지 약 10%가 화면 오른쪽 끝에 보이는 폭(R2-O1). 넓은 웹은 앱 칼럼 폭(480, WebFrame)으로 잰다
-  const frameWidth = Platform.OS === "web" ? Math.min(windowWidth, APP_MAX_WIDTH) : windowWidth;
+  const frameWidth = isDesktopPointer() ? Math.min(windowWidth, APP_MAX_WIDTH) : windowWidth;
   const rowCover = Math.max(72, Math.min(140, Math.floor((frameWidth - 16 - 3 * GAP) / 3.1)));
 
   const monthShelf = (items: ReadingLog[], withStats: boolean) => (
