@@ -59,6 +59,7 @@
   .fhead .right { display:flex; align-items:center; gap:5px; }
   .stamp { border:1px solid var(--surface3); border-bottom:2px solid var(--ink-strong); background:var(--paper); border-radius:var(--r-pill); padding:4px 10px; font:inherit; font-size:10px; font-weight:500; cursor:pointer; color:var(--text); white-space:nowrap; }
   .stamp.done { background:var(--ink-strong); color:var(--paper); border-color:var(--ink-strong); }
+  .stamp-menu-trigger { min-width:44px; min-height:44px; flex-shrink:0; }
   .mini { display:flex; align-items:center; gap:3px; font-size:8px; color:var(--sub); }
   .switch { width:22px; height:13px; border-radius:7px; background:var(--surface3); position:relative; border:0; cursor:pointer; flex:none; padding:0; }
   .switch::after { content:""; position:absolute; left:2px; top:2px; width:9px; height:9px; border-radius:50%; background:var(--paper); transition:left .15s; }
@@ -181,7 +182,7 @@
       <button class="tbtn" data-act="reset" data-for="A">처음부터 다시</button>
       <p>버튼을 누르면 아래에서 작은 창이 올라와요. 창에서 "나만 보기" 또는 "피드에 남기기"를 골라야 남아요.</p>
       <span class="lbl">누르면 이렇게 이어져요</span>
-      <p>"다녀왔어요" 누름 → 아래에서 고르는 창 → "피드에 남기기" 누름 → 창이 닫히고 버튼이 진하게 바뀜 → 피드 맨 위에 내 스탬프 카드. "닫기"를 누르면 아무것도 남지 않아요.</p>
+      <p>"다녀왔어요" 누름 → 아래에서 고르는 창 → "피드에 남기기" 누름 → 창이 닫히고 버튼이 진하게 바뀜 → 도서관 피드에 시간 순서대로 내 스탬프 카드. "닫기"를 누르면 아무것도 남지 않아요.</p>
       <span class="lbl">화면을 열어야 보이는 것</span>
       <ul><li>창에 두 줄(제목 + 작은 설명)과 "닫기"</li><li>고르기 전에는 남지 않음 — 창을 닫으면 버튼 그대로</li><li>"나만 보기"를 고르면 피드는 그대로, 버튼만 진하게</li></ul>
       <span class="lbl">얻는 것 / 포기하는 것</span>
@@ -198,13 +199,17 @@
         <div class="feed"><div class="col" data-col="1"><div class="pc f2" style="height:88px">오늘 읽은 문장</div><div class="gb"><div class="tag"><i></i>방명록</div>2층 창가 자리 오늘 햇살 좋아요<div class="meta">창가자리 · 5분 전</div></div></div><div class="col"><div class="pc f3" style="height:110px">2층 창가 추천</div><div class="pc f1" style="height:70px">밝은 밤</div><div class="pc s3" style="height:80px">사진</div></div></div>
         <button class="fab" tabindex="-1">+</button>
         <div class="shelf"><b>요즘 사람들이 읽은 책</b><div class="bks"><i></i><i></i><i></i></div><div class="plank"></div></div>
+        <div class="bsheet hide" data-part="menu" style="bottom:auto;top:86px;left:auto;right:8px;width:150px;border-radius:var(--r-info);box-shadow:0 2px 10px var(--shadow-mid);padding:6px 10px">
+          <button class="closeb" style="align-self:flex-start;color:var(--text)" data-act2="flipB" data-part="flip">피드에 남기기로 바꾸기</button>
+          <button class="closeb" style="align-self:flex-start" data-act2="closeB">닫기</button>
+        </div>
         <div class="snack hide" data-part="snack"><span>나만 보기로 남겼어요</span><button data-act="toPublicB">피드에도 남기기</button></div>
         <div class="toast hide" data-part="toast"></div>
       </div>
       <button class="tbtn" data-act="reset" data-for="B">처음부터 다시</button>
       <p>버튼을 누르는 순간 "나만 보기"로 남아요. 아래에 몇 초 동안 안내가 뜨고, 거기서 "피드에도 남기기"를 누르면 피드에 카드로 보여요.</p>
       <span class="lbl">누르면 이렇게 이어져요</span>
-      <p>"다녀왔어요" 누름 → 바로 남음(버튼이 진하게) → 아래 안내 "나만 보기로 남겼어요 · 피드에도 남기기" → 누르면 피드 맨 위에 내 스탬프 카드. 안내는 5초 뒤 사라져요.</p>
+      <p>"다녀왔어요" 누름 → 바로 남음(버튼이 진하게) → 아래 안내 "나만 보기로 남겼어요 · 피드에도 남기기" → 누르면 도서관 피드에 시간 순서대로 내 스탬프 카드. 안내는 5초 뒤 사라져요.</p>
       <span class="lbl">화면을 열어야 보이는 것</span>
       <ul><li>누르는 한 번에 끝남 — 창이 뜨지 않음</li><li>피드에 남기려면 안내가 사라지기 전에 눌러야 함(놓치면 나중에 버튼을 다시 눌러 바꿈)</li></ul>
       <span class="lbl">얻는 것 / 포기하는 것</span>
@@ -225,7 +230,7 @@
       <button class="tbtn" data-act="reset" data-for="C">처음부터 다시</button>
       <p>버튼 왼쪽에 작은 스위치 "피드에도"가 있어요. 스위치를 먼저 켜고 끈 다음, 버튼을 누르면 그대로 남아요.</p>
       <span class="lbl">누르면 이렇게 이어져요</span>
-      <p>(필요하면) "피드에도" 스위치 켬 → "다녀왔어요" 누름 → 바로 남음(버튼이 진하게, 스위치는 사라짐) → 스위치를 켰으면 피드 맨 위에 내 스탬프 카드.</p>
+      <p>(필요하면) "피드에도" 스위치 켬 → "다녀왔어요" 누름 → 바로 남음(버튼이 진하게, 스위치는 사라짐) → 스위치를 켰으면 도서관 피드에 시간 순서대로 내 스탬프 카드.</p>
       <span class="lbl">화면을 열어야 보이는 것</span>
       <ul><li>스위치는 처음엔 꺼짐(나만 보기)</li><li>피드 머리 오른쪽에 스위치 + 버튼 두 개가 나란히 — 자리가 좁아짐</li></ul>
       <span class="lbl">얻는 것 / 포기하는 것</span>
@@ -238,7 +243,7 @@
 <!-- ===== 중심 요소 2 ===== -->
 <section class="element" id="el-stamp-done" data-chosen="B">
   <h2>정할 것 2. 오늘 이미 남긴 뒤의 버튼 모양과, 나만 보기·피드에 남기기를 바꾸는 자리 <span class="status">확인</span></h2>
-  <div class="flow"><b>이미 정한 것.</b> "다녀왔어요"를 누르면 아래에서 고르는 창이 떠요(정할 것 1). 같은 날 다시 들어와도 스탬프는 하나예요. 정할 것은 <b>오늘 이미 남긴 뒤 피드 오른쪽 위에 무엇이 보이고, 나만 보기 ↔ 피드에 남기기를 어디서 바꾸는지</b>예요. 휴대폰은 "나만 보기로 남긴 뒤" 다시 들어온 모습이에요.</div>
+  <div class="flow"><b>이미 정한 것.</b> "다녀왔어요"를 누르면 바로 나만 보기로 남고, 아래 안내에서 피드에도 남길 수 있어요(정할 것 1). 같은 날 다시 들어와도 스탬프는 하나예요. 정할 것은 <b>오늘 이미 남긴 뒤 피드 오른쪽 위에 무엇이 보이고, 나만 보기 ↔ 피드에 남기기를 어디서 바꾸는지</b>예요. 휴대폰은 "나만 보기로 남긴 뒤" 다시 들어온 모습이에요.</div>
   <div class="decided"><b>정한 것: 후보 B — 작은 글자 표시로 바뀌고, 바꾸기는 ⋯ 메뉴 안(D가 정함, 2026-11-23).</b> 사용자는 A를 골랐어요(아래 선택 상자로 다시 볼 수 있음). 차선 없음</div>
   <div class="pick">다시 보기: <select data-for="el-stamp-done">
     <option value="A">후보 A — 진한 버튼 그대로, 다시 누르면 같은 창</option>
@@ -270,20 +275,20 @@
       <button class="tbtn" data-act2="reset" data-for="A">처음부터 다시</button>
       <p>남긴 뒤에도 같은 자리에 진한 "다녀왔어요 ✓" 버튼이 있어요. 다시 누르면 정할 것 1과 같은 창이 뜨고, 지금 어떻게 남겼는지가 위에 적혀 있어요.</p>
       <span class="lbl">누르면 이렇게 이어져요</span>
-      <p>다시 들어옴 → 진한 "다녀왔어요 ✓" → 누름 → 같은 창("지금은 나만 보기예요") → "피드에 남기기" → 피드 맨 위에 내 스탬프 카드. 반대로 고르면 카드가 피드에서 빠져요.</p>
+      <p>다시 들어옴 → 진한 "다녀왔어요 ✓" → 누름 → 같은 창("지금은 나만 보기예요") → "피드에 남기기" → 도서관 피드에 시간 순서대로 내 스탬프 카드. 반대로 고르면 카드가 피드에서 빠져요.</p>
       <span class="lbl">화면을 열어야 보이는 것</span>
       <ul><li>창은 정할 것 1과 똑같고, 작은 설명만 "지금은 ○○예요"로 바뀜</li><li>지금과 같은 쪽을 다시 골라도 아무것도 바뀌지 않음</li></ul>
       <span class="lbl">얻는 것 / 포기하는 것</span>
       <p>남기기와 바꾸기가 같은 버튼·같은 창이라 하나만 알면 돼요. / 남긴 뒤에도 진한 버튼이 계속 눈에 띄어요.</p>
       <span class="lbl">표준 근거</span><p>표준 근거: P-13 누르면 채워지는 표시 (하트·북마크처럼 상태가 버튼에 남음)</p>
-      <p><b>추천 이유:</b> 정할 것 1에서 "매번 고르는" 창을 골랐으니, 바꿀 때도 같은 창이면 따로 배울 게 없어요. 오늘 남겼는지 버튼만 보고 바로 알 수 있어요.</p>
+      <p><b>추천 이유:</b> 정할 것 1의 후보 A와 조합하면, 바꿀 때도 같은 창을 쓸 수 있어요. 오늘 남겼는지 버튼만 보고 바로 알 수 있어요.</p>
     </article>
     <!-- 후보 B -->
     <article class="cand" data-id="B">
       <h3>후보 B — 작은 글자 표시로 바뀌고, 바꾸기는 ⋯ 메뉴 안</h3>
       <div class="phone" data-cand2="B">
         <div class="hd"><button class="back">‹</button><div class="vname">정독도서관</div><div class="vinfo">320m · 오늘 09:00–18:00</div></div>
-        <div class="fhead"><span class="ftitle">이 도서관 이야기</span><div class="right"><span class="mini" data-part="label">오늘 다녀감 · 나만 보기</span><button class="closeb" style="font-size:12px;padding:0 2px" data-act2="menuB" aria-label="더 보기">⋯</button></div></div>
+        <div class="fhead"><span class="ftitle">이 도서관 이야기</span><div class="right"><span class="mini" data-part="label">오늘 다녀감 · 나만 보기</span><button class="closeb stamp-menu-trigger" data-act2="menuB" aria-label="더 보기">⋯</button></div></div>
         <div class="feed"><div class="col" data-col="1"><div class="pc f2" style="height:88px">오늘 읽은 문장</div><div class="gb"><div class="tag"><i></i>방명록</div>2층 창가 자리 오늘 햇살 좋아요<div class="meta">창가자리 · 5분 전</div></div></div><div class="col"><div class="pc f3" style="height:110px">2층 창가 추천</div><div class="pc f1" style="height:70px">밝은 밤</div></div></div>
         <button class="fab" tabindex="-1">+</button>
         <div class="shelf"><b>요즘 사람들이 읽은 책</b><div class="bks"><i></i><i></i><i></i></div><div class="plank"></div></div>
@@ -296,7 +301,7 @@
       <button class="tbtn" data-act2="reset" data-for="B">처음부터 다시</button>
       <p>남긴 뒤에는 버튼이 사라지고 "오늘 다녀감 · 나만 보기" 작은 글자만 남아요. 바꾸려면 옆 ⋯를 눌러 메뉴에서 바꿔요.</p>
       <span class="lbl">누르면 이렇게 이어져요</span>
-      <p>다시 들어옴 → 작은 글자 "오늘 다녀감 · 나만 보기" → ⋯ 누름 → "피드에 남기기로 바꾸기" → 피드 맨 위에 내 스탬프 카드, 글자는 "· 피드에 남김"으로.</p>
+      <p>다시 들어옴 → 작은 글자 "오늘 다녀감 · 나만 보기" → ⋯ 누름 → "피드에 남기기로 바꾸기" → 도서관 피드에 시간 순서대로 내 스탬프 카드, 글자는 "· 피드에 남김"으로.</p>
       <span class="lbl">화면을 열어야 보이는 것</span>
       <ul><li>눈에 띄는 진한 버튼은 남기기 전에만 있음</li><li>메뉴는 한 줄(지금 반대쪽으로 바꾸기) + 닫기</li></ul>
       <span class="lbl">얻는 것 / 포기하는 것</span>
@@ -317,7 +322,7 @@
       <button class="tbtn" data-act2="reset" data-for="C">처음부터 다시</button>
       <p>남긴 뒤에는 버튼 자리에 "오늘 다녀감 · 피드에 보이기" 스위치가 생겨요. 스위치를 켜면 바로 피드에 카드가 생기고, 끄면 빠져요.</p>
       <span class="lbl">누르면 이렇게 이어져요</span>
-      <p>다시 들어옴 → "오늘 다녀감 · 피드에 보이기" 스위치(꺼짐) → 켬 → 바로 피드 맨 위에 내 스탬프 카드. 다시 끄면 카드가 빠져요.</p>
+      <p>다시 들어옴 → "오늘 다녀감 · 피드에 보이기" 스위치(꺼짐) → 켬 → 바로 도서관 피드에 시간 순서대로 내 스탬프 카드. 다시 끄면 카드가 빠져요.</p>
       <span class="lbl">화면을 열어야 보이는 것</span>
       <ul><li>창 없이 스위치 한 번으로 바뀜</li><li>스위치가 작아서 실수로 켤 수 있음</li></ul>
       <span class="lbl">얻는 것 / 포기하는 것</span>
@@ -500,10 +505,21 @@
   </div>
   <div class="stwrap">
     <div class="phone"><div class="hd"><button class="back">‹</button><div class="vname">정독도서관</div><div class="vinfo">320m · 오늘 09:00–18:00</div></div>
-      <div class="fhead"><span class="ftitle">이 도서관 이야기</span><div class="right"><button class="stamp" data-exbtn>다녀왔어요</button></div></div>
-      <div class="feed"><div class="col"><div class="pc f2" style="height:88px">오늘 읽은 문장</div></div><div class="col"><div class="pc f3" style="height:110px">2층 창가 추천</div></div></div>
+      <div class="fhead"><span class="ftitle">이 도서관 이야기</span><div class="right"><button class="stamp" data-exbtn>다녀왔어요</button><span class="mini hide" data-exlabel data-part="label">오늘 다녀감 · 피드에 남김</span><button class="closeb stamp-menu-trigger hide" data-exmenu data-act2="menuB" aria-label="더 보기">⋯</button></div></div>
+      <div class="feed"><div class="col" data-col="1"><div class="pc f2" style="height:88px">오늘 읽은 문장</div></div><div class="col"><div class="pc f3" style="height:110px">2층 창가 추천</div></div></div>
       <div class="shelf"><b>요즘 사람들이 읽은 책</b><div class="bks"><i></i><i></i><i></i></div><div class="plank"></div></div>
-      <div class="toast" data-exmsg></div></div>
+        <div class="bsheet hide" data-part="menu" style="bottom:auto;top:86px;left:auto;right:8px;width:150px;border-radius:var(--r-info);box-shadow:0 2px 10px var(--shadow-mid);padding:6px 10px">
+          <button class="closeb" style="align-self:flex-start;color:var(--text)" data-act2="flipB" data-part="flip">피드에 남기기로 바꾸기</button>
+          <button class="closeb" style="align-self:flex-start" data-act2="closeB">닫기</button>
+        </div>
+      <div class="dimx hide" data-exdim></div>
+      <div class="bsheet hide" data-exlogin role="dialog" aria-label="로그인 안내">
+        <div class="t">로그인하면 다녀왔어요를 남길 수 있어요</div>
+        <div class="sub">피드와 책장은 로그인 없이도 볼 수 있어요.</div>
+        <div class="choice"><button data-exclose>로그인하기</button></div>
+        <button class="closeb" data-exclose>닫기</button>
+      </div>
+      <div class="toast" data-exmsg data-part="toast"></div></div>
     <p class="stnote" data-exnote></p>
   </div>
 </section>
@@ -516,7 +532,7 @@
     <li>동네한권이 오늘 아직 남기지 않은 사용자에게 피드 머리 오른쪽에 "다녀왔어요" 버튼을 보여 준다.</li>
     <li>사용자가 "다녀왔어요"를 누르면 동네한권이 오늘 스탬프를 "나만 보기"로 남기고, 버튼 자리를 작은 글자 "오늘 다녀감 · 나만 보기"와 ⋯로 바꾼다.</li>
     <li>동네한권이 아래에 "나만 보기로 남겼어요 · 피드에도 남기기" 안내를 5초 동안 보여 준다.</li>
-    <li>사용자가 안내의 "피드에도 남기기"를 누르면 동네한권이 스탬프를 피드에 남기고, 피드 맨 위에 내 스탬프 카드를 넣고 "피드에 남겼어요"를 보여 준다.</li>
+    <li>사용자가 안내의 "피드에도 남기기"를 누르면 동네한권이 스탬프를 피드에 남기고, 도서관 피드에 시간 순서대로 내 스탬프 카드를 표시하고 "피드에 남겼어요"를 보여 준다.</li>
     <li>사용자가 같은 날 다시 들어오면 동네한권이 버튼 대신 "오늘 다녀감 · {나만 보기|피드에 남김}"과 ⋯를 보여 준다.</li>
     <li>사용자가 ⋯를 누르고 "피드에 남기기로 바꾸기" 또는 "나만 보기로 바꾸기"를 고르면 동네한권이 공개 여부를 바꾸고 피드의 내 스탬프 카드를 넣거나 뺀다.</li>
     <li>동네한권이 피드에 남긴 스탬프를 게시물·방명록과 같은 한 칸짜리 작은 카드(도장 · 닉네임 · 다녀왔어요 · 언제)로 시간 순서대로 섞어 보여 준다.</li>
@@ -574,22 +590,38 @@
     var act = t.dataset.act;
     if (act === 'reset') { var ph0 = document.querySelector('.phone[data-cand="' + t.dataset.for + '"]'); ph0.innerHTML = initial[t.dataset.for]; return; }
     var ph = t.closest('.phone'); if (!ph) return;
-    var done = ph.querySelector('.stamp').classList.contains('done');
+    var done = ph.querySelector('.stamp')?.classList.contains('done');
     if (act === 'openA') { if (done) { toast(ph, '(이미 남긴 날 모양은 정할 것 2에서 봐요)'); return; } show(ph, 'dim', true); show(ph, 'sheet', true); }
     if (act === 'cancel') { show(ph, 'dim', false); show(ph, 'sheet', false); }
     if (act === 'pick') { show(ph, 'dim', false); show(ph, 'sheet', false); stamped(ph, t.dataset.vis); toast(ph, t.dataset.vis === 'public' ? '피드에 남겼어요' : '나만 보기로 남겼어요'); }
-    if (act === 'stampB') { if (done) { toast(ph, '(이미 남긴 날 모양은 정할 것 2에서 봐요)'); return; } stamped(ph, 'private'); var btn = ph.querySelector('.stamp'); btn.outerHTML = '<span class="mini stamp done" data-part="bLabel" style="background:none;border:0;color:var(--sub)">오늘 다녀감 · 나만 보기 ⋯</span>'; var s = part(ph, 'snack'); s.classList.remove('hide'); clearTimeout(s._t); s._t = setTimeout(function () { s.classList.add('hide'); }, 5000); }
-    if (act === 'toPublicB') { show(ph, 'snack', false); stamped(ph, 'public'); var lb = part(ph, 'bLabel'); if (lb) lb.textContent = '오늘 다녀감 · 피드에 남김 ⋯'; toast(ph, '피드에 남겼어요'); }
+    if (act === 'stampB') {
+      t.outerHTML = '<span class="mini" data-part="label">오늘 다녀감 · 나만 보기</span><button class="closeb stamp-menu-trigger" data-act2="menuB" aria-label="더 보기">⋯</button>';
+      ph._vis = 'private';
+      var snack = part(ph, 'snack');
+      snack.classList.remove('hide');
+      setTimeout(function () { snack.classList.add('hide'); }, 5000);
+    }
+    if (act === 'toPublicB' && !part(ph, 'snack').classList.contains('hide') && ph._vis === 'private') {
+      show(ph, 'snack', false);
+      updateVisibility(ph, 'public');
+    }
     if (act === 'switchC') { t.classList.toggle('on'); }
     if (act === 'stampC') { if (done) { toast(ph, '(이미 남긴 날 모양은 정할 것 2에서 봐요)'); return; } var on = ph.querySelector('.switch').classList.contains('on'); show(ph, 'mini', false); stamped(ph, on ? 'public' : 'private'); toast(ph, on ? '피드에 남겼어요' : '나만 보기로 남겼어요'); }
   });
 
   // ---- 정할 것 2 휴대폰 동작 ----
-  var CARD2 = '<div class="sc" data-mine><div class="tag"><i></i>다녀왔어요</div><div class="seal">11.23</div>책벌레님이 다녀갔어요<div class="meta">2시간 전</div></div>';
+  var CARD2 = '<div class="sca" data-mine><div class="seal">11.23</div><div class="who">책벌레 · 다녀왔어요</div><div class="meta">방금</div><button class="bm" data-act3="bm" aria-label="북마크"></button></div>';
   function setPublic(ph, on) {
     var col = ph.querySelector('[data-col="1"]'), mine = ph.querySelector('[data-mine]');
     if (on && !mine) col.insertAdjacentHTML('afterbegin', CARD2);
     if (!on && mine) mine.remove();
+  }
+  function updateVisibility(ph, visibility) {
+    ph._vis = visibility;
+    var isPublic = visibility === 'public';
+    setPublic(ph, isPublic);
+    part(ph, 'label').textContent = '오늘 다녀감 · ' + (isPublic ? '피드에 남김' : '나만 보기');
+    toast(ph, isPublic ? '피드에 남겼어요' : '나만 보기로 바꿨어요');
   }
   var initial2 = {};
   document.querySelectorAll('.phone[data-cand2]').forEach(function (ph) { initial2[ph.dataset.cand2] = ph.innerHTML; ph._vis = 'private'; });
@@ -606,8 +638,11 @@
       ph._vis = t.dataset.vis; setPublic(ph, ph._vis === 'public'); toast(ph, ph._vis === 'public' ? '피드에 남겼어요' : '나만 보기로 바꿨어요'); }
     if (act === 'menuB') { part(ph, 'flip').textContent = ph._vis === 'public' ? '나만 보기로 바꾸기' : '피드에 남기기로 바꾸기'; show(ph, 'menu', true); }
     if (act === 'closeB') { show(ph, 'menu', false); }
-    if (act === 'flipB') { show(ph, 'menu', false); ph._vis = ph._vis === 'public' ? 'private' : 'public'; setPublic(ph, ph._vis === 'public');
-      part(ph, 'label').textContent = '오늘 다녀감 · ' + (ph._vis === 'public' ? '피드에 남김' : '나만 보기'); toast(ph, ph._vis === 'public' ? '피드에 남겼어요' : '나만 보기로 바꿨어요'); }
+    if (act === 'flipB' && !part(ph, 'menu').classList.contains('hide')) {
+      show(ph, 'menu', false);
+      show(ph, 'snack', false);
+      updateVisibility(ph, ph._vis === 'public' ? 'private' : 'public');
+    }
     if (act === 'switchC') { t.classList.toggle('on'); ph._vis = t.classList.contains('on') ? 'public' : 'private'; setPublic(ph, ph._vis === 'public'); toast(ph, ph._vis === 'public' ? '피드에 남겼어요' : '나만 보기로 바꿨어요'); }
   });
 
@@ -630,13 +665,40 @@
 
   // ---- 예외 화면 전환 (문구는 Claude 추천안, 정할 것을 다 고른 뒤 한 번에 묻는다) ----
   var ex = [
-    { msg:'남기지 못했어요. 다시 눌러 주세요', btn:'다녀왔어요', note:'"다녀왔어요"를 눌렀는데 인터넷이 끊기면: 버튼은 그대로(안 남은 상태), 아래 한 줄 안내. 피드·책장은 그대로 보여요. 다시 누르면 다시 시도해요.' },
-    { msg:'', btn:'다녀왔어요', note:'아직 아무도 다녀가지 않은 도서관: 피드에 스탬프 카드가 하나도 없어도 화면은 평소와 같아요. 버튼은 그대로 있어요.' },
-    { msg:'피드에 남겼어요', btn:'다녀왔어요 ✓', note:'고르는 창에서 "피드에 남기기"를 빠르게 두 번 눌러도 스탬프는 하나, 피드 카드도 하나만 생겨요.' },
-    { msg:'로그인하면 다녀왔어요를 남길 수 있어요 · 로그인하기 / 닫기', btn:'다녀왔어요', note:'로그인하지 않은 사람이 버튼을 누르면: 아래에서 로그인 안내 창(방명록과 같은 모양). 피드·책장은 로그인 없이 그대로 봐요. 남의 스탬프 카드에는 바꾸는 메뉴가 없어요.' }
+    { msg:'남기지 못했어요. 다시 눌러 주세요', note:'인터넷이 끊기면 버튼, 피드, 책장은 그대로예요. 다시 누르면 다시 시도해요.' },
+    { msg:'', note:'피드에 스탬프 카드가 하나도 없어도 "다녀왔어요" 버튼은 그대로 있어요.' },
+    { msg:'피드에 남겼어요', note:'"다녀왔어요"나 아래 안내의 "피드에도 남기기"를 두 번 눌러도 스탬프와 피드 카드는 하나씩만 남아요.' },
+    { msg:'', note:'로그인하지 않고 누르면 로그인 안내 창이 열려요. 피드와 책장은 그대로예요. 남의 스탬프 카드에는 바꾸는 메뉴가 없어요.' }
   ];
-  var exMsg = document.querySelector('[data-exmsg]'), exNote = document.querySelector('[data-exnote]'), exBtn = document.querySelector('[data-exbtn]');
-  function setEx(i) { exMsg.textContent = ex[i].msg; exMsg.classList.toggle('hide', !ex[i].msg); exNote.textContent = ex[i].note; exBtn.textContent = ex[i].btn; exBtn.classList.toggle('done', i === 2); }
+  var exPhone = document.querySelector('#except .phone');
+  var exMsg = exPhone.querySelector('[data-exmsg]'), exNote = document.querySelector('[data-exnote]');
+  var exBtn = exPhone.querySelector('[data-exbtn]');
+  var exLogin = exPhone.querySelector('[data-exlogin]'), exDim = exPhone.querySelector('[data-exdim]');
+  var currentEx;
+  function showLogin(on) {
+    exLogin.classList.toggle('hide', !on);
+    exDim.classList.toggle('hide', !on);
+  }
+  function setEx(i) {
+    currentEx = i;
+    var stamped = i === 2, label = exPhone.querySelector('[data-exlabel]');
+    exPhone._vis = stamped ? 'public' : 'private';
+    clearTimeout(exMsg._t);
+    exMsg.textContent = ex[i].msg;
+    exMsg.classList.toggle('hide', !ex[i].msg);
+    exNote.textContent = ex[i].note;
+    exBtn.classList.toggle('hide', stamped);
+    label.classList.toggle('hide', !stamped);
+    label.textContent = '오늘 다녀감 · 피드에 남김';
+    exPhone.querySelector('[data-exmenu]').classList.toggle('hide', !stamped);
+    show(exPhone, 'menu', false);
+    setPublic(exPhone, stamped);
+    showLogin(i === 3);
+  }
+  exBtn.addEventListener('click', function () { if (currentEx === 3) showLogin(true); });
+  exPhone.querySelectorAll('[data-exclose]').forEach(function (button) {
+    button.addEventListener('click', function () { showLogin(false); });
+  });
   setEx(0);
   document.querySelectorAll('#exTabs button').forEach(function (b) {
     b.addEventListener('click', function () {
