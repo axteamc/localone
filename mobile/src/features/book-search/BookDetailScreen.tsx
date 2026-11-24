@@ -1,28 +1,49 @@
-// 책 상세: 표지 + 제목·저자·출판사·연도 → 빌릴 예정에 저장 → 가까운 도서관 → 책 소개
-// book-search.md LIB-1 B4·B5·B12, S-4·S-9·S-11 / LIB-2 A1~A3·A7·A10·A11, V-1·V-4·V-9 / LIB-3 N7·N8
-// loan-assistant.md LOAN-1 M10 ① — "빌릴 예정에 저장" 아래 "빌렸어요"
-import { useRouter } from "expo-router";
+// 책 상세(book-search.md LIB-3b V1~V4·V7, Y-6 시안): 큰 표지 → 제목·저자 → 책 소개(더 보기·YES24 상세) → 도서 정보
+// 하단 고정 `대출 예정 | 도서관 확인`(V3). 대출 예정 = 도서관 미지정 저장(U6), 도서관 확인 = 현재 책 단일 조회 창(#12).
+// 조회 창을 열 때만 도서관을 찾는다(LIB-2 A10 — 책을 받아 온 뒤, 창을 연 뒤).
+// loan-assistant.md LOAN-1 M10 ① "빌렸어요"는 제목 아래 보조 버튼으로 둔다(사용자 결정 2026-11-24, 계약 반영 대기).
+import { Stack, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
-import { ApiCallError, fetchBook, type AvailabilityItem, type Book } from "../../lib/publicApi";
+import { openExternalUrl } from "../../lib/platform";
+import {
+  ApiCallError,
+  fetchBook,
+  fetchPurchaseLink,
+  type AvailabilityItem,
+  type Book,
+  type PurchaseLink,
+} from "../../lib/publicApi";
 import { actionColors, cardSurface, theme, type as typeScale } from "../../theme";
 import { StartLoanButton } from "../loan-assistant/StartLoanButton";
+import { saveLoanPlan } from "./api";
 import { availabilitySummary, checkedAtLabel } from "./availabilityText";
 import { EmptyAvailability } from "./EmptyAvailability";
 import { LibraryAvailabilityCard } from "./LibraryAvailabilityCard";
 import { pushRecentBook } from "./recentBooks";
 import { RegionPicker } from "./RegionPicker";
-import { SavePlanSheet } from "./SavePlanSheet";
+import { SAVE_FAILED, SavePlanSheet } from "./SavePlanSheet";
 import { BookCover, SEARCH_FAILED } from "./SearchScreen";
 import { useAvailability } from "./useAvailability";
 
 export const NOT_FOUND = "찾을 수 없어요.";
 export const LOGIN_TO_SAVE = "로그인하면 빌릴 예정을 저장할 수 있어요";
 export const SAVED_NOTE = "빌릴 예정 메모에 저장했어요. 대출·반납 탭에서 볼 수 있어요."; // N8
+export const PLAN_LABEL = "대출 예정"; // V3
+export const FIND_LABEL = "도서관 확인"; // V3
+export const SOURCE_YES24 = "출처: YES24"; // V1
+export const YES24_DETAIL = "YES24에서 도서 상세 보기 ↗"; // V2 kind=product
+export const YES24_SEARCH = "YES24에서 도서 검색 ↗"; // V2 kind=search(시안)
+export const YES24_BUY = "YES24에서 구매하기 ↗"; // V7
+export const YES24_OPEN_FAILED = "YES24를 열지 못했어요. 다시 시도해 주세요.";
+export const LIBRARY_SHEET_TITLE = "가까운 도서관";
+export const BASIS_NOTE = "실제 상태는 도서관에서 확인해 주세요.";
+export const OPEN_PLANS_LABEL = "빌릴 예정 보기"; // V4 아이콘 접근성 이름
 
 const ISBN13 = /^[0-9]{13}$/;
+const DESC_LINES = 5; // "책 소개 더 보기" 전 줄 수(기본값(Claude))
 
 type State =
   | { kind: "loading" }
@@ -34,12 +55,19 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
   const router = useRouter();
   const { userId, status: authStatus } = useAuth();
   const runner = useMemo(() => createLatestRunner(), []);
+  const linkRunner = useMemo(() => createLatestRunner(), []);
   const [state, setState] = useState<State>(
     ISBN13.test(isbn13) ? { kind: "loading" } : { kind: "notFound" }
   );
-  const [saveNote, setSaveNote] = useState<"login" | "saved" | null>(null);
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [candidates, setCandidates] = useState<AvailabilityItem[]>([]); // 시트 후보 = 지금 찾아본 도서관(N3)
+  const [saveNote, setSaveNote] = useState<"login" | "saved" | "failed" | null>(null);
+  const [saving, setSaving] = useState(false);
+  const savingRef = useRef(false); // 연타해도 한 번만 보낸다(L3-#3)
+  const [sheetOpen, setSheetOpen] = useState(false); // 도서관 고르는 담기 창(N3·N7, 빈 결과에서)
+  const [findOpen, setFindOpen] = useState(false); // 도서관 확인 창(V3)
+  const [candidates, setCandidates] = useState<AvailabilityItem[]>([]); // 담기 창 후보 = 지금 찾아본 도서관(N3)
+  const [link, setLink] = useState<PurchaseLink | null>(null);
+  const [linkFailed, setLinkFailed] = useState(false);
+  const [descOpen, setDescOpen] = useState(false);
 
   const load = useCallback(async () => {
     if (!ISBN13.test(isbn13)) {
@@ -59,31 +87,72 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
   }, [isbn13, runner]);
 
   useEffect(() => {
+    setFindOpen(false);
+    setLink(null);
+    setDescOpen(false);
     void load();
-    return () => runner.cancel();
+    return () => {
+      runner.cancel();
+      linkRunner.cancel();
+    };
     // userId가 바뀌어도 다시 부르지 않는다(같은 책)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isbn13]);
 
+  const readyBook = state.kind === "ready" ? state.book : null;
+
+  // V2 YES24 링크(#15). 실패하면 링크만 숨긴다(책 상세는 그대로).
+  useEffect(() => {
+    if (!readyBook) return;
+    void linkRunner.run((signal) => fetchPurchaseLink(readyBook.isbn13, signal)).then((r) => {
+      if (r.status === "ok" && r.value) setLink(r.value);
+    });
+  }, [readyBook, linkRunner]);
+
   // 책을 받아 온 뒤에만 최근 본 도서에 남긴다(B4). 로그인 복원이 끝난 뒤의 계정으로 한 번만 남긴다
   // (복원 중 guest 키로 가지 않게 — D 이월 메모, 이슈 113). 저장 실패는 화면을 막지 않는다(S-6).
   const recordedFor = useRef<string | null>(null);
-  const readyBook = state.kind === "ready" ? state.book : null;
   useEffect(() => {
     if (!readyBook || authStatus === "loading" || recordedFor.current === readyBook.isbn13) return;
     recordedFor.current = readyBook.isbn13;
     void pushRecentBook(userId, readyBook).catch(() => undefined);
   }, [readyBook, authStatus, userId]);
 
-  // 책 옆 버튼·빈 결과의 "나중에 빌릴 책으로 저장"이 같이 쓴다. 비로그인은 창을 열지 않는다(N7).
-  const onSave = () => {
-    if (authStatus === "loading") return; // 로그인 복원 중에는 로그인 안내를 띄우지 않는다(사후 검토 ②-3, ①-5와 같은 정책)
+  /** V3 "대출 예정" — 도서관 없이 바로 담는다(U6). 로그인 복원 중에는 아무것도 하지 않는다(②-3). */
+  const onPlan = async () => {
+    if (authStatus === "loading" || savingRef.current || !readyBook) return;
+    if (authStatus !== "signedIn") {
+      setSaveNote("login");
+      return;
+    }
+    savingRef.current = true;
+    setSaving(true);
+    setSaveNote(null);
+    try {
+      await saveLoanPlan(readyBook.isbn13, null); // 201 새로 / 200 이미 있음 — 둘 다 저장된 것(U4)
+      setSaveNote("saved");
+    } catch (e) {
+      setSaveNote(e instanceof ApiCallError && e.status === 401 ? "login" : "failed");
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
+
+  // 빈 결과의 "나중에 빌릴 책으로 저장" — 지금 찾아본 도서관 중에서 골라 담는다(N3·N7 흐름 그대로, U6).
+  const onSaveWithLibrary = () => {
+    if (authStatus === "loading") return;
     if (authStatus === "signedIn") {
       setSaveNote(null);
       setSheetOpen(true);
     } else {
       setSaveNote("login");
     }
+  };
+
+  const openLink = async () => {
+    if (!link) return;
+    setLinkFailed(!(await openExternalUrl(link.url)));
   };
 
   if (state.kind === "loading") {
@@ -120,42 +189,42 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
   }
 
   const b = state.book;
-  const gaugeLine = [b.pub_year === null ? null : String(b.pub_year), b.isbn13 ? `ISBN ${b.isbn13}` : null]
-    .filter((v): v is string => !!v)
-    .join(" · ");
-
-  const saveButton = (
-    <Pressable
-      testID="save-plan"
-      accessibilityRole="button"
-      onPress={onSave}
-      style={({ pressed }) => [styles.saveBtn, pressed && ACT.primaryPressed]}
-    >
-      <Text style={styles.saveBtnText} numberOfLines={1}>빌릴 예정에 저장</Text>
-    </Pressable>
-  );
+  const facts: [string, string][] = [];
+  if (b.publisher) facts.push(["출판사", b.publisher]);
+  if (b.pub_year !== null) facts.push(["출판 연도", String(b.pub_year)]);
+  facts.push(["ISBN", b.isbn13]);
+  const longDesc = (b.description?.length ?? 0) > 160; // 대략 5줄 넘는 소개만 접는다(기본값(Claude))
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.pad}>
-      <View style={styles.topPanel}>
+    <View style={styles.screen}>
+      {/* V4: 우측 상단 리스트 아이콘(숫자 없음) → 대출·반납 탭의 빌릴 예정 */}
+      <Stack.Screen
+        options={{
+          headerRight: () => (
+            <Pressable
+              testID="open-plans"
+              accessibilityRole="button"
+              accessibilityLabel={OPEN_PLANS_LABEL}
+              onPress={() => router.push("/loans")}
+              hitSlop={8}
+              style={styles.headerIcon}
+            >
+              <ListIcon />
+            </Pressable>
+          ),
+        }}
+      />
+      <ScrollView style={styles.flex} contentContainerStyle={styles.pad}>
         <View testID="detail-info" style={styles.head}>
-          <BookCover book={b} style={styles.cover} fontSize={13} />
-          <View style={styles.flex}>
-            <Text style={styles.title}>{b.title}</Text>
-            {!!b.author && <Text style={styles.sub}>{b.author}</Text>}
-            {!!b.publisher && <Text style={styles.sub}>{b.publisher}</Text>}
-            {!!gaugeLine && (
-              <Text style={styles.gauge} numberOfLines={1}>
-                {gaugeLine}
-              </Text>
-            )}
+          <BookCover book={b} style={styles.cover} fontSize={15} />
+          <Text style={styles.title}>{b.title}</Text>
+          {!!b.author && <Text style={styles.sub}>{b.author}</Text>}
+          {b.source === "yes24" && <Text style={styles.kicker}>{SOURCE_YES24}</Text>}
+          <View style={styles.loanRow}>
+            <StartLoanButton variant="detail" input={{ isbn13: b.isbn13 }} />
           </View>
         </View>
 
-        <StartLoanButton variant="detail" input={{ isbn13: b.isbn13 }} leftSlot={saveButton} />
-      </View>
-
-      <View style={styles.bodyPad}>
         {saveNote === "login" && (
           <View style={styles.note}>
             <Text style={styles.noteText}>{LOGIN_TO_SAVE}</Text>
@@ -180,55 +249,150 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
             </Pressable>
           </View>
         )}
+        {saveNote === "failed" && <Text style={styles.error}>{SAVE_FAILED}</Text>}
 
-        {/* B5 ③ 가까운 도서관. 책을 받아 온 뒤에만 조회한다(A10). */}
-        <AvailabilitySection isbn13={b.isbn13} onItems={setCandidates} onSaveForLater={onSave} />
-
-        <SavePlanSheet
-          visible={sheetOpen}
-          isbn13={b.isbn13}
-          candidates={candidates}
-          onClose={() => setSheetOpen(false)}
-          onSaved={() => {
-            setSheetOpen(false);
-            setSaveNote("saved");
-          }}
-          onLoginRequired={() => {
-            setSheetOpen(false);
-            setSaveNote("login");
-          }}
-        />
-
-        {b.description !== null && (
+        {(b.description !== null || link !== null) && (
           <View testID="description">
             <Text style={styles.section} numberOfLines={1}>책 소개</Text>
-            <Text style={styles.desc}>{b.description}</Text>
+            {b.description !== null && (
+              <Text style={styles.desc} numberOfLines={longDesc && !descOpen ? DESC_LINES : undefined}>
+                {b.description}
+              </Text>
+            )}
+            {longDesc && (
+              <Pressable accessibilityRole="button" onPress={() => setDescOpen((v) => !v)} hitSlop={8}>
+                <Text style={styles.textBtn}>{descOpen ? "접기" : "책 소개 더 보기"}</Text>
+              </Pressable>
+            )}
+            {link !== null && (
+              <Pressable testID="yes24-detail" accessibilityRole="link" onPress={() => void openLink()} hitSlop={8}>
+                <Text style={styles.textBtn}>{link.kind === "product" ? YES24_DETAIL : YES24_SEARCH}</Text>
+              </Pressable>
+            )}
+            {linkFailed && <Text style={styles.error}>{YES24_OPEN_FAILED}</Text>}
           </View>
         )}
+
+        <View testID="bibliography">
+          <Text style={styles.section} numberOfLines={1}>도서 정보</Text>
+          {facts.map(([k, v]) => (
+            <View key={k} style={styles.factRow}>
+              <Text style={styles.factKey}>{k}</Text>
+              <Text style={styles.factValue}>{v}</Text>
+            </View>
+          ))}
+        </View>
+      </ScrollView>
+
+      {findOpen && (
+        <>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="도서관 창 닫기"
+            onPress={() => setFindOpen(false)}
+            style={styles.scrim}
+          />
+          <View testID="library-sheet" style={styles.sheet}>
+            <View style={styles.sheetHead}>
+              <Text style={styles.sheetTitle} numberOfLines={1}>{LIBRARY_SHEET_TITLE}</Text>
+              <Pressable accessibilityRole="button" onPress={() => setFindOpen(false)} hitSlop={8}>
+                <Text style={styles.close}>닫기</Text>
+              </Pressable>
+            </View>
+            <ScrollView contentContainerStyle={styles.sheetPad}>
+              <AvailabilitySection
+                isbn13={b.isbn13}
+                onItems={setCandidates}
+                onSaveForLater={onSaveWithLibrary}
+                purchase={link}
+                onOpenPurchase={() => void openLink()}
+              />
+            </ScrollView>
+          </View>
+        </>
+      )}
+
+      <View style={styles.actions}>
+        <Pressable
+          testID="save-plan"
+          accessibilityRole="button"
+          accessibilityState={{ disabled: saving }}
+          disabled={saving}
+          onPress={() => void onPlan()}
+          style={({ pressed }) => [styles.actionBtn, ACT.secondary, pressed && ACT.secondaryPressed, saving && styles.dim]}
+        >
+          <Text style={[styles.actionText, ACT.secondaryText]} numberOfLines={1}>{PLAN_LABEL}</Text>
+        </Pressable>
+        <Pressable
+          testID="find-libraries"
+          accessibilityRole="button"
+          accessibilityState={{ expanded: findOpen }}
+          onPress={() => setFindOpen((v) => !v)}
+          style={({ pressed }) => [styles.actionBtn, ACT.primary, pressed && ACT.primaryPressed]}
+        >
+          <Text style={[styles.actionText, ACT.primaryText]} numberOfLines={1}>{FIND_LABEL}</Text>
+        </Pressable>
       </View>
-    </ScrollView>
+
+      <SavePlanSheet
+        visible={sheetOpen}
+        isbn13={b.isbn13}
+        candidates={candidates}
+        onClose={() => setSheetOpen(false)}
+        onSaved={() => {
+          setSheetOpen(false);
+          setSaveNote("saved");
+        }}
+        onLoginRequired={() => {
+          setSheetOpen(false);
+          setSaveNote("login");
+        }}
+      />
+    </View>
   );
+}
+
+function ListIcon() {
+  return (
+    <View style={styles.icon}>
+      {[0, 1, 2].map((i) => (
+        <View key={i} style={styles.iconLine} />
+      ))}
+    </View>
+  );
+}
+
+/** V7: 단일 조회 결과가 하나 이상이고 **모두** `holding = "no"`로 확정된 때만. `unknown`이 섞이면 숨긴다. */
+export function allConfirmedNotHeld(items: AvailabilityItem[]): boolean {
+  return items.length > 0 && items.every((i) => i.holding === "no");
 }
 
 function AvailabilitySection({
   isbn13,
   onItems,
   onSaveForLater,
+  purchase,
+  onOpenPurchase,
 }: {
   isbn13: string;
   onItems(items: AvailabilityItem[]): void;
   onSaveForLater(): void;
+  purchase: PurchaseLink | null;
+  onOpenPurchase(): void;
 }) {
   const a = useAvailability(isbn13);
   useEffect(() => onItems(a.items), [a.items, onItems]);
   const [picking, setPicking] = useState(false); // "지역 다시 고르기"(A12)
+  const [selected, setSelected] = useState<number | null>(null); // V5 한 곳 선택(기본값(Claude): 표시만)
   useEffect(() => setPicking(false), [isbn13]);
+  useEffect(() => setSelected(null), [a.items]); // 조회 범위가 바뀌면 선택을 푼다
   const today = a.checkedAt?.slice(0, 10) ?? "";
   const footer = a.checkedAt ? checkedAtLabel(a.checkedAt) : null;
   const busy = a.status === "locating" || a.status === "loading";
   const city = a.scope === "city";
   const summary = availabilitySummary(a.items);
   const showPicker = a.status === "need_region" || picking;
+  const showBuy = !busy && !showPicker && a.status !== "error" && purchase !== null && allConfirmedNotHeld(a.items);
 
   const chooseRegion = (code: string) => {
     setPicking(false);
@@ -241,10 +405,9 @@ function AvailabilitySection({
 
   return (
     <View testID="availability" style={styles.availability}>
-      <Text style={styles.section} numberOfLines={1}>
-        {city ? "도시 전체 도서관" : "가까운 도서관"}
-        {city && a.selectedRegionLabel ? ` · ${a.selectedRegionLabel}` : ""}
-      </Text>
+      {city && !!a.selectedRegionLabel && (
+        <Text style={styles.summary} numberOfLines={1}>{`도시 전체 도서관 · ${a.selectedRegionLabel}`}</Text>
+      )}
       {/* A4: 도시 전체 버튼은 구역 머리에 늘 보인다. 도시 전체 모드에서는 내 주변 다시 보기도 함께 */}
       <View style={styles.scopeRow}>
         <Pressable
@@ -305,10 +468,24 @@ function AvailabilitySection({
       {!busy && !showPicker && a.status !== "error" && a.items.length > 0 && (
         <View testID="availability-list" style={styles.cards}>
           {a.items.map((item) => (
-            <LibraryAvailabilityCard key={item.library.id} item={item} today={today} onRetry={a.retry} />
+            <LibraryAvailabilityCard
+              key={item.library.id}
+              item={item}
+              today={today}
+              onRetry={a.retry}
+              selected={selected === item.library.id}
+              onToggleSelect={() => setSelected((s) => (s === item.library.id ? null : item.library.id))}
+            />
           ))}
           {!!footer && <Text style={styles.footer}>{footer}</Text>}
+          <Text style={styles.footer}>{BASIS_NOTE}</Text>
         </View>
+      )}
+
+      {showBuy && (
+        <Pressable testID="yes24-buy" accessibilityRole="link" onPress={onOpenPurchase} hitSlop={8}>
+          <Text style={styles.textBtn}>{YES24_BUY}</Text>
+        </Pressable>
       )}
     </View>
   );
@@ -317,7 +494,7 @@ function AvailabilitySection({
 const c = theme.colors;
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
-  availability: { marginTop: 8, gap: 10 },
+  availability: { gap: 10 },
   availBusy: { marginVertical: 16 },
   cards: { gap: 12 },
   scopeRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
@@ -338,44 +515,80 @@ const styles = StyleSheet.create({
   },
   screen: { flex: 1, backgroundColor: c.panelFrosted },
   center: { alignItems: "center", justifyContent: "center" },
-  flex: { flex: 1, minWidth: 0 },
-  pad: { paddingBottom: 32 },
-  bodyPad: { paddingHorizontal: 16, paddingTop: 12 },
-  topPanel: {
-    backgroundColor: c.panelLit,
-    borderBottomWidth: 1,
-    borderBottomColor: c.seamHairline,
-    borderBottomLeftRadius: theme.radii.block,
-    borderBottomRightRadius: theme.radii.block,
-    boxShadow: `0 1px 0 ${c.seamHighlight}`,
-    padding: 16,
-  },
-  head: { flexDirection: "row", gap: 14, alignItems: "flex-start" },
-  cover: { width: 84, height: 118 },
-  title: { ...typeScale.title, lineHeight: 28 },
-  sub: { fontSize: 14, color: c.textSub, marginTop: 3 },
-  gauge: { ...typeScale.gauge, marginTop: 5 },
-  saveBtn: {
-    flex: 1.55,
-    flexShrink: 0,
-    height: 48,
-    ...ACT.primary,
-    borderRadius: theme.radii.control,
-    paddingHorizontal: 12,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  saveBtnText: { ...ACT.primaryText, fontSize: 15, fontWeight: "500" },
+  flex: { flex: 1 },
+  pad: { padding: 16, paddingBottom: 32 },
+  head: { alignItems: "center", gap: 4 },
+  cover: { width: 150, height: 212, marginBottom: 12 },
+  title: { ...typeScale.title, lineHeight: 28, textAlign: "center" },
+  sub: { fontSize: 14, color: c.textSub, textAlign: "center" },
+  kicker: { ...typeScale.gauge, marginTop: 2 },
+  loanRow: { alignItems: "center", marginTop: 2 },
   note: {
-    marginTop: 10,
+    marginTop: 12,
     ...cardSurface(theme, { onPanel: true }),
     padding: 14,
     gap: 10,
     alignItems: "flex-start",
   },
   noteText: { fontSize: 15, color: c.text },
-  section: { ...typeScale.title, marginTop: 20, marginBottom: 6 },
+  error: { marginTop: 8, fontSize: 14, color: c.loanOut },
+  section: { ...typeScale.title, marginTop: 22, marginBottom: 6 },
   desc: { fontSize: 15, color: c.inkSoft, lineHeight: 23 },
+  textBtn: { fontSize: 14, color: c.inkStrong, fontWeight: "500", textDecorationLine: "underline", marginTop: 8 },
+  factRow: {
+    flexDirection: "row",
+    gap: 12,
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: c.seamHairline,
+  },
+  factKey: { width: 72, fontSize: 14, color: c.textSub },
+  factValue: { flex: 1, fontSize: 14, color: c.text },
+  actions: {
+    flexDirection: "row",
+    gap: 8,
+    padding: 12,
+    backgroundColor: c.panelLit,
+    borderTopWidth: 1,
+    borderTopColor: c.seamHairline,
+  },
+  actionBtn: {
+    flex: 1,
+    height: 48,
+    borderRadius: theme.radii.control,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 12,
+  },
+  actionText: { fontSize: 15, fontWeight: "500" },
+  dim: { opacity: 0.5 },
+  scrim: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: c.shadowSoft },
+  sheet: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 72,
+    maxHeight: "78%",
+    backgroundColor: c.panelLit,
+    borderWidth: 1,
+    borderColor: c.seamHairline,
+    borderTopLeftRadius: theme.radii.infoCard,
+    borderTopRightRadius: theme.radii.infoCard,
+  },
+  sheetHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 8,
+  },
+  sheetTitle: { ...typeScale.title },
+  close: { fontSize: 15, color: c.text, fontWeight: "500" },
+  sheetPad: { paddingHorizontal: 16, paddingBottom: 16 },
+  headerIcon: { padding: 8, minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
+  icon: { width: 20, gap: 4 },
+  iconLine: { height: 2, backgroundColor: c.inkStrong },
   stateBox: {
     margin: 16,
     ...cardSurface(theme, { onPanel: true }),

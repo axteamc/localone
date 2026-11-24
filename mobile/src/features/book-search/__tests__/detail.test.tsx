@@ -1,7 +1,7 @@
 // LIB-1-P2 책 상세 (book-search.md LIB-1 P5)
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import React from "react";
 import { StyleSheet } from "react-native";
 import { useAuth } from "../../../auth/AuthProvider";
@@ -9,6 +9,7 @@ import { theme } from "../../../theme";
 import * as api from "../../../lib/publicApi";
 import type { Book, BookSearchResponse } from "../../../lib/publicApi";
 import { BookDetailScreen } from "../BookDetailScreen";
+import * as plansApi from "../api";
 import * as recent from "../recentBooks";
 import { SearchScreen } from "../SearchScreen";
 
@@ -33,7 +34,12 @@ jest.mock("../../../lib/publicApi", () => {
   const actual = jest.requireActual<typeof import("../../../lib/publicApi")>(
     "../../../lib/publicApi"
   );
-  return { ...actual, searchBooks: jest.fn(), fetchRecommendations: jest.fn(), fetchBook: jest.fn() };
+  return { ...actual, fetchPurchaseLink: jest.fn(async () => { throw new actual.ApiCallError(404, "NOT_FOUND", "x", ""); }), searchBooks: jest.fn(), fetchRecommendations: jest.fn(), fetchBook: jest.fn() };
+});
+
+jest.mock("../api", () => {
+  const actual = jest.requireActual<typeof import("../api")>("../api");
+  return { ...actual, saveLoanPlan: jest.fn() };
 });
 
 jest.mock("../recentBooks", () => {
@@ -46,6 +52,7 @@ const searchBooks = jest.mocked(api.searchBooks);
 const fetchRecommendations = jest.mocked(api.fetchRecommendations);
 const pushRecentBook = jest.mocked(recent.pushRecentBook);
 const mockedUseAuth = jest.mocked(useAuth);
+const saveLoanPlan = jest.mocked(plansApi.saveLoanPlan);
 
 const USER_A = "00000000-0000-4000-8000-00000000000a";
 
@@ -153,22 +160,35 @@ describe("상세로 가면 최근 본 도서에 남김", () => {
 });
 
 describe("상세 화면", () => {
-  test("detail order is info, save, then description", async () => {
+  test("detail order is cover, title, intro, then book info (LIB-3b V1)", async () => {
     await render(<BookDetailScreen isbn13={BOY.isbn13} />);
     await screen.findByText("소년이 온다");
-    expect(screen.getByText("한강")).toBeTruthy();
-    expect(screen.getByText("창비")).toBeTruthy();
-    expect(screen.getByText(`2014 · ISBN ${BOY.isbn13}`)).toBeTruthy();
-    expect(screen.queryByText(/창비 · 2014/)).toBeNull();
     const json = JSON.stringify(screen.toJSON());
     const at = (s: string) => json.indexOf(s);
-    expect(at("소년이 온다")).toBeGreaterThan(-1);
-    expect(at("소년이 온다")).toBeLessThan(at("빌릴 예정에 저장"));
-    expect(at("빌릴 예정에 저장")).toBeLessThan(at("책 소개"));
+    expect(at(BOY.cover_url!)).toBeGreaterThan(-1); // 큰 표지가 맨 위
+    expect(at(BOY.cover_url!)).toBeLessThan(at("소년이 온다"));
+    expect(at("소년이 온다")).toBeLessThan(at("한강"));
+    expect(at("한강")).toBeLessThan(at("책 소개"));
     expect(at("책 소개")).toBeLessThan(at("1980년 5월"));
-    // LIB-2부터 B5 ③ 가까운 도서관 칸이 저장 버튼과 책 소개 사이에 들어온다
-    expect(at("빌릴 예정에 저장")).toBeLessThan(at("가까운 도서관"));
-    expect(at("가까운 도서관")).toBeLessThan(at("책 소개"));
+    expect(at("1980년 5월")).toBeLessThan(at("도서 정보"));
+    expect(at("도서 정보")).toBeLessThan(at("창비"));
+    expect(at("창비")).toBeLessThan(at("2014"));
+    expect(screen.getByText(BOY.isbn13)).toBeTruthy();
+    // V3 하단 버튼 두 개, 조회 창은 누르기 전에는 없다
+    expect(screen.getByText("대출 예정")).toBeTruthy();
+    expect(screen.getByText("도서관 확인")).toBeTruthy();
+    expect(screen.queryByTestId("library-sheet")).toBeNull();
+    // 출처 표기는 YES24 책만(V1)
+    expect(screen.queryByText("출처: YES24")).toBeNull();
+    // M10 ① "빌렸어요"는 제목 아래에 남는다(사용자 결정 2026-11-24)
+    expect(at("한강")).toBeLessThan(at("빌렸어요"));
+    expect(at("빌렸어요")).toBeLessThan(at("책 소개"));
+  });
+
+  test("yes24 book shows source once", async () => {
+    fetchBook.mockResolvedValueOnce({ ...BOY, source: "yes24" });
+    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    expect(await screen.findAllByText("출처: YES24")).toHaveLength(1);
   });
 
   test("no description hides section", async () => {
@@ -213,15 +233,42 @@ describe("상세 화면", () => {
     expect(screen.getByText("소년이 온다")).toBeTruthy(); // 상세 그대로
   });
 
-  test("save while logged in opens plan sheet", async () => {
+  test("plan button saves without library and shows memo note (U6)", async () => {
     signedIn(USER_A);
+    let release!: (v: plansApi.LoanPlan) => void;
+    saveLoanPlan.mockReturnValueOnce(new Promise((r) => (release = r)));
     await render(<BookDetailScreen isbn13={BOY.isbn13} />);
-    await fireEvent.press(await screen.findByTestId("save-plan"));
-    expect(screen.getByText("어느 도서관에서 빌릴 예정인가요?")).toBeTruthy(); // LIB-3 N7
+    const btn = await screen.findByTestId("save-plan");
+    await fireEvent.press(btn);
+    await fireEvent.press(btn); // 연타해도 한 번
+    expect(saveLoanPlan).toHaveBeenCalledTimes(1);
+    expect(saveLoanPlan).toHaveBeenCalledWith(BOY.isbn13, null);
+    await act(async () =>
+      release({
+        id: "p1",
+        book: { isbn13: BOY.isbn13, title: BOY.title, author: BOY.author, cover_url: null },
+        library: null,
+        status: "planned",
+        created_at: "2026-11-24T10:00:00+09:00",
+      })
+    );
+    expect(await screen.findByText("빌릴 예정 메모에 저장했어요. 대출·반납 탭에서 볼 수 있어요.")).toBeTruthy();
+    expect(screen.queryByText("어느 도서관에서 빌릴 예정인가요?")).toBeNull(); // 도서관 고르는 창을 열지 않는다
     expect(screen.queryByText("로그인하면 빌릴 예정을 저장할 수 있어요")).toBeNull();
     // 로그인했으면 계정 키에 남는다
     expect((await recent.listRecentBooks(USER_A)).map((b) => b.isbn13)).toEqual([BOY.isbn13]);
     expect(await recent.listRecentBooks(null)).toEqual([]);
+  });
+
+  test("plan save failure shows retry wording and 401 shows login", async () => {
+    signedIn(USER_A);
+    saveLoanPlan.mockRejectedValueOnce(new api.ApiCallError(503, "X", "x", ""));
+    saveLoanPlan.mockRejectedValueOnce(new api.ApiCallError(401, "AUTH_REQUIRED", "x", ""));
+    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await fireEvent.press(await screen.findByTestId("save-plan"));
+    expect(await screen.findByText("저장하지 못했어요. 다시 시도해 주세요.")).toBeTruthy();
+    await fireEvent.press(screen.getByTestId("save-plan"));
+    expect(await screen.findByText("로그인하면 빌릴 예정을 저장할 수 있어요")).toBeTruthy();
   });
 
   test("no cover shows text cover", async () => {

@@ -39,6 +39,7 @@ jest.mock("../../../lib/publicApi", () => {
     fetchAvailabilityInCity: jest.fn(),
     fetchLibrariesNearby: jest.fn(),
     fetchLibrary: jest.fn(),
+    fetchPurchaseLink: jest.fn(async () => { throw new actual.ApiCallError(404, "NOT_FOUND", "x", ""); }),
   };
 });
 
@@ -140,9 +141,15 @@ beforeEach(async () => {
   fetchLibrariesNearby.mockResolvedValue({ mode: "nearby", radius_km: 5, dtl_region: null, q: null, items: [] });
 });
 
+/** 상세를 띄우고 하단 "도서관 확인"으로 조회 창을 연다(LIB-3b V3 — 창을 열 때만 #12를 부른다) */
+async function renderDetail(isbn13: string) {
+  await render(<BookDetailScreen isbn13={isbn13} />);
+  await fireEvent.press(await screen.findByTestId("find-libraries"));
+}
+
 describe("도시 전체 도서관", () => {
   test("city search uses nearest library region", async () => {
-    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await renderDetail(BOY.isbn13);
     await screen.findByText("정독도서관");
     await fireEvent.press(screen.getByText(CITY_BTN));
     expect(await screen.findByText("가 도서관")).toBeTruthy();
@@ -162,7 +169,7 @@ describe("도시 전체 도서관", () => {
       q: null,
       items: [{ ...libDetail(3, null) }, { ...libDetail(4, "11020") }],
     });
-    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await renderDetail(BOY.isbn13);
     await screen.findByText(EMPTY_NEARBY);
     await fireEvent.press(screen.getByText(CITY_BTN));
     await screen.findByText("가 도서관");
@@ -187,7 +194,7 @@ describe("도시 전체 도서관", () => {
         "city"
       )
     );
-    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await renderDetail(BOY.isbn13);
     await screen.findByText("정독도서관");
     await fireEvent.press(screen.getByText(CITY_BTN));
     expect(await screen.findByText("총 2곳 중 확인 1곳 · 미확인 1곳")).toBeTruthy();
@@ -201,7 +208,7 @@ describe("도시 전체 도서관", () => {
     fetchAvailabilityInCity.mockResolvedValueOnce(
       resp([item(2, "나 도서관", { holding: "unknown", loanable: "unknown" })], "city")
     );
-    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await renderDetail(BOY.isbn13);
     await screen.findByText("정독도서관");
     await fireEvent.press(screen.getByText(CITY_BTN));
     await fireEvent.press(await screen.findByText("다시 시도"));
@@ -213,7 +220,7 @@ describe("도시 전체 도서관", () => {
   });
 
   test("city search button stays visible above nearby list", async () => {
-    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await renderDetail(BOY.isbn13);
     await screen.findByText("종로도서관");
     expect(screen.getByTestId("search-city")).toBeTruthy();
     expect(at(CITY_BTN)).toBeGreaterThan(-1);
@@ -225,7 +232,7 @@ describe("도시 전체 도서관", () => {
 describe("빈 결과", () => {
   test("empty nearby shows city retry and save", async () => {
     fetchAvailabilityNearby.mockResolvedValueOnce(resp([]));
-    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await renderDetail(BOY.isbn13);
     expect(await screen.findByText(EMPTY_NEARBY)).toBeTruthy();
     expect(screen.getByText("도시 전체 도서관에서 다시 찾기")).toBeTruthy();
     expect(screen.getByText("나중에 빌릴 책으로 저장")).toBeTruthy();
@@ -242,7 +249,7 @@ describe("빈 결과", () => {
         item(8, "종로도서관", { holding: "unknown", loanable: "unknown" }),
       ])
     );
-    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await renderDetail(BOY.isbn13);
     expect(await screen.findByText(EMPTY_NEARBY)).toBeTruthy();
     expect(screen.getByText("정독도서관")).toBeTruthy();
     expect(screen.getByText("종로도서관")).toBeTruthy();
@@ -251,7 +258,7 @@ describe("빈 결과", () => {
 
   test("empty city offers region pick again", async () => {
     fetchAvailabilityInCity.mockResolvedValueOnce(resp([], "city"));
-    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await renderDetail(BOY.isbn13);
     await screen.findByText("정독도서관");
     await fireEvent.press(screen.getByText(CITY_BTN));
     expect(await screen.findByText(EMPTY_CITY)).toBeTruthy();
@@ -263,7 +270,7 @@ describe("빈 결과", () => {
 describe("위치 없이 지역 고르기", () => {
   test("location denied asks region", async () => {
     locate.mockResolvedValueOnce({ ok: false, reason: "denied" });
-    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await renderDetail(BOY.isbn13);
     expect(await screen.findByText(REGION_INTRO)).toBeTruthy();
     expect(fetchAvailabilityNearby).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByTestId("sido-서울특별시")); // 글자 없이 열면 시·도부터 (2026-11-20 문제 ④)
@@ -274,7 +281,7 @@ describe("위치 없이 지역 고르기", () => {
 
   test("empty picker lists all 17 sido and a sido press lists its sigungu", async () => {
     locate.mockResolvedValueOnce({ ok: false, reason: "denied" });
-    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await renderDetail(BOY.isbn13);
     await screen.findByText(REGION_INTRO);
     expect(screen.getByTestId("sido-제주특별자치도")).toBeTruthy();
     expect(screen.getByTestId("sido-경기도")).toBeTruthy();
@@ -285,7 +292,7 @@ describe("위치 없이 지역 고르기", () => {
 
   test("region picker filters regions and retries location", async () => {
     locate.mockResolvedValueOnce({ ok: false, reason: "timeout" });
-    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await renderDetail(BOY.isbn13);
     await screen.findByText(REGION_INTRO);
     await fireEvent.changeText(screen.getByTestId("region-input"), "종로");
     const expected = searchRegions("종로", 20).map((r) => r.label);
@@ -306,7 +313,7 @@ describe("위치 없이 지역 고르기", () => {
 
   test("region picker tells the user when location is denied again (②-4)", async () => {
     locate.mockResolvedValueOnce({ ok: false, reason: "timeout" });
-    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await renderDetail(BOY.isbn13);
     await screen.findByText(REGION_INTRO);
     expect(screen.queryByText(REGION_LOCATION_DENIED)).toBeNull();
     requestLocationPermission.mockResolvedValueOnce("denied");
@@ -317,7 +324,7 @@ describe("위치 없이 지역 고르기", () => {
 
   test("region picker choose sends city request with code", async () => {
     locate.mockResolvedValueOnce({ ok: false, reason: "denied" });
-    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await renderDetail(BOY.isbn13);
     await screen.findByText(REGION_INTRO);
     await fireEvent.changeText(screen.getByTestId("region-input"), "종로");
     await fireEvent.press(screen.getByText("서울특별시 종로구"));
@@ -327,7 +334,7 @@ describe("위치 없이 지역 고르기", () => {
 
   test("no location stored", async () => {
     const setItem = jest.mocked(AsyncStorage.setItem);
-    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await renderDetail(BOY.isbn13);
     await screen.findByText("정독도서관");
     await fireEvent.press(screen.getByText(CITY_BTN));
     await screen.findByText("가 도서관");
