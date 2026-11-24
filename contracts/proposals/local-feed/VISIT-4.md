@@ -1187,6 +1187,7 @@ async function submit() {
 
 - `fetchTodayStamp(libraryId: number, signal?: AbortSignal): Promise<TodayStamp>`
 - `putTodayStamp(libraryId: number, visibility: "private" | "public"): Promise<TodayStamp>`
+  - D 결정 보완(2026-11-24): 공개 여부 변경 호출은 선택 인자 `expectedStampId?: string`을 함께 받는다 — `putTodayStamp(libraryId: number, visibility: "private" | "public", expectedStampId?: string): Promise<TodayStamp>`.
 - `setStampBookmark(stampId: string, bookmarked: boolean): Promise<{ bookmarked: boolean }>`
 
 부품·함수:
@@ -1194,6 +1195,7 @@ async function submit() {
 - `mobile/src/features/local-feed/StampButton.tsx`: `export function StampButton(props: { libraryId: number }): JSX.Element`
 - `mobile/src/features/local-feed/StampCard.tsx`: `export function StampCard(props: { stamp: StampItem; width: number; onToggleBookmark?(stampId: string, next: boolean): void }): JSX.Element`
 - `mobile/src/features/local-feed/useLibraryLook.ts`: `export function useLibraryLook(libraryId: number): Theme` — `#11` `look` → `getTheme(look)`. 방문 페이지가 연 상세에는 **방문 중인 도서관 id**를 넘긴다(V4-8)
+  - D 결정 보완(2026-11-24): 같은 파일에 `LibraryLookProvider`·`useCurrentTheme()`(기본값 `theme`)를 두고 방문 페이지·상세 하위 조각이 소비한다. 방문 페이지·상세 밖(홈·MY-1·글쓰기)은 Provider 밖이므로 기본 `theme`을 그대로 쓴다.
 
 #### C3. 요청·응답 필드와 화면 문구
 
@@ -1205,6 +1207,7 @@ async function submit() {
 | `MyStamp` | `stamped_on` | `str` | Y | N | 서울 날짜 |
 | `MyStamp` | `visibility` | `"private" \| "public"` | Y | N | |
 | 요청(#36) | `visibility` | `"private" \| "public"` | Y | N | 다른 값이면 `422`, `detail="visibility"` |
+| 요청(#36, D 결정) | `expected_stamp_id` | `str (UUID)` | N | Y | 공개 여부 변경(안내 `"피드에도 남기기"`·⋯ 메뉴) 때 현재 `stamp.id` 전송. 서버 `today_kst()` 본인 행과 불일치하면 새 행을 만들지 않고 `409 STAMP_DATE_CHANGED`(`detail=null`). 처음 찍기에서는 생략·`null` |
 | `FeedItem` (`kind="stamp"`) | `stamp` | `StampItem` | Y | N | 공개 스탬프만 |
 | `StampItem` | `id` | `str (UUID)` | Y | N | |
 | `StampItem` | `library_id` | `int` | Y | N | |
@@ -1221,6 +1224,7 @@ async function submit() {
 | 화면 문구 | 비로그인 안내 (`V4-O4`) | — | — | — | `"로그인하면 다녀왔어요를 남길 수 있어요"` / `"피드와 책장은 로그인 없이도 볼 수 있어요."`, `"로그인하기"`·`"닫기"`. 북마크: `"로그인하면 저장할 수 있어요"` |
 | 화면 문구 | 이미 남긴 뒤 표시·메뉴 (`V4-O2`) | — | — | — | `"오늘 다녀감 · 나만 보기"` / `"오늘 다녀감 · 피드에 남김"`, ⋯ 메뉴 `"피드에 남기기로 바꾸기"` / `"나만 보기로 바꾸기"`, `"닫기"`, 바꾼 뒤 `"피드에 남겼어요"` / `"나만 보기로 바꿨어요"` |
 | 화면 문구 | 찍기 실패 | — | — | — | 한 줄 안내 `"남기지 못했어요. 다시 눌러 주세요"`(버튼 그대로). 공개 바꾸기 실패 `"바꾸지 못했어요. 다시 해 주세요"`(표시 그대로). 북마크 실패 `"저장하지 못했어요. 다시 해 주세요"`(아이콘 원래대로) |
+| 화면 문구 | 날짜 바뀜 (`V4-O1·V4-O2`, D 결정) | — | — | — | `"날짜가 바뀌었어요. 다시 확인해 주세요"` (`409 STAMP_DATE_CHANGED` 수신 시 `#35` 재조회 후 새 날짜 버튼 복구) |
 
 #### C4. 플랫폼 분기 표
 
@@ -1274,6 +1278,7 @@ ALTER TABLE stamp_bookmarks ENABLE ROW LEVEL SECURITY;
 | 끊김(공개 바꾸기·북마크, 세부 명세 예외 #1) | 안내의 `"피드에도 남기기"`·⋯ 메뉴 바꾸기·카드 북마크 중 네트워크·서버 오류 | `ApiCallError` | 한 줄 안내(C3 찍기 실패 행) | 표시·카드·북마크 아이콘은 실패 전 그대로 | 행 그대로 |
 | 연타(세부 명세 예외 #3) | 버튼·`"피드에도 남기기"`·메뉴 항목 빠르게 두 번 | `200` | 진행 중 누름 무시 | — | 행 하나, 공개 상태의 피드에 같은 ID 카드 최대 하나 |
 | 남의 것(세부 명세 예외 #4) | 남의 공개 스탬프 카드 | N/A: 앱이 바꾸기 메뉴를 그리지 않음(바꾸기는 내 V4-O2 표시에서만) | — | 카드 | 남의 행 무변경 |
+| 날짜 경계 공개 변경(D 결정) | 자정 경과 뒤 이전 안내·⋯ 메뉴에서 `expected_stamp_id`로 `#36` 호출(또는 타인·다른 도서관·미존재 `expected_stamp_id`) | `409 STAMP_DATE_CHANGED` / `null` | `#35` 재조회 후 새 날짜 버튼 복구 + `"날짜가 바뀌었어요. 다시 확인해 주세요"` | 어제 스탬프·피드 | 새 날짜 행 0건, 기존 행 무변경 |
 
 #### C7. 다른 기능과 닿는 곳과 `TODO(연결)` 가짜 값
 
@@ -1302,6 +1307,15 @@ ALTER TABLE stamp_bookmarks ENABLE ROW LEVEL SECURITY;
 | `VISIT-4-P1` 스탬프 서버 | `feat/local-feed-VISIT-4` | `server/migrations/versions/NNNN_visit_stamps.py`, `server/app/routers/stamps.py`, `server/app/routers/feed.py`(`#32`에 `stamp` 더하기만), `server/app/main.py`(`[local-feed-B]`), `server/tests/test_stamps.py` | V4-2~V4-7·V4-11, C6 |
 | `VISIT-4-P2` 스탬프 버튼·카드 | 같은 브랜치 | `mobile/src/features/local-feed/StampButton.tsx`, `StampCard.tsx`, `FeedItemCard.tsx`, `VisitScreen.tsx`, `api.ts`, `__tests__/stamp.test.tsx` | V4-1·V4-3·V4-4·V4-11, V4-O1~V4-O4 |
 | `VISIT-4-P3` 도서관 룩 | 같은 브랜치 | `mobile/src/features/local-feed/useLibraryLook.ts`, `VisitScreen.tsx`, `PostDetail.tsx`, `Bookshelf.tsx`, `__tests__/library-look.test.tsx` | V4-8~V4-10, V4-O5 |
+
+##### D 결정 승인 추가 허용 파일 (2026-11-24 — team 발행 시 위 P2 표에 병합)
+
+| 파트 | 추가 허용 파일(전수) | 사유·경계 |
+| :--- | :--- | :--- |
+| `VISIT-4-P2` | `mobile/src/features/local-feed/LibraryFeed.tsx` | 현재 `LibraryFeed.tsx:46-51,139-152`가 `post`·`guestbook`·`club` 외 항목을 버리므로 `stamp` 필터·높이 분기·비공개 즉시 제거 연동 허용 |
+| `VISIT-4-P3` | `mobile/src/features/local-feed/LibraryFeed.tsx`, `PostCard.tsx`, `GuestbookCard.tsx`, `StampCard.tsx`, `StampButton.tsx`, `VisitHeader.tsx`, `VisitMenu.tsx`, `GuestbookComposer.tsx`, `PostMenu.tsx`, `ReactionButton.tsx`, `SameBookPosts.tsx` | V4-O5("룩 토큰 전부") 적용을 위해 모듈 수준 `theme`을 `useCurrentTheme()`(기본값 `theme`)로 전환. `mobile/src/features/book-club/ClubCard.tsx`는 C 담당이므로 VISIT-4-P3 수정 범위에서 제외(기본 룩 유지) |
+
+- D 확인(2026-11-24): `V4-1`(그날 처음 들어오면 무거운 필 버튼 하나)과 결정 2(B: 남긴 뒤 작은 글자 표시 + ⋯ 메뉴)는 충돌 아님으로 확정한다.
 
 ##### 파트 머리말 — VISIT-4-P1 · P2 · P3 (공통)
 
@@ -1350,6 +1364,20 @@ async def put_stamp_bookmark(stamp_id: UUID, user: CurrentUser = Depends(get_cur
     return {"bookmarked": True}
 ```
 
+```python
+# stamps.py — #36 D 결정 보완(2026-11-24): expected_stamp_id 자정 경계 가드
+# body.expected_stamp_id가 있으면 같은 트랜잭션에서 오늘(today_kst)의 본인·해당 도서관 행과 일치할 때만 UPDATE한다.
+# 일치 행이 없으면(자정 경과·타인·다른 도서관·없는 ID 모두 동일) 새 행을 만들지 않고 409 STAMP_DATE_CHANGED를 돌려준다.
+#   if body.expected_stamp_id is not None:
+#       row = c.execute(UPDATE_TODAY_STAMP_BY_ID, {
+#           "sid": body.expected_stamp_id, "uid": user.id, "lib": library_id, "day": day, "vis": body.visibility,
+#       }).one_or_none()
+#       if row is None:
+#           raise ApiError(409, "STAMP_DATE_CHANGED", "날짜가 바뀌었어요. 다시 확인해 주세요")
+#       return row
+#   # expected_stamp_id가 없으면 기존 UPSERT_STAMP 그대로 실행
+```
+
 ```ts
 // useLibraryLook.ts
 export function useLibraryLook(libraryId: number): Theme {
@@ -1364,24 +1392,31 @@ export function useLibraryLook(libraryId: number): Theme {
 // StampButton.tsx — V4-O1·V4-O2 (누르면 바로 private, 안내에서 public, 남긴 뒤 글자 표시 + ⋯)
 // scope는 도서관·로그인 사용자·화면 세대를 묶는다. 변경 시 오늘 상태·안내·메뉴를 지운다.
 // #35는 로그인 상태에서만 부르고, 취소·최신 응답 가드를 적용한다. 조회 완료 전에는 누름을 받지 않는다.
-async function put(scope, visibility, action) {
+async function put(scope, visibility, action, expectedStampId?: string) {
   if (!isCurrentSignedIn(scope) || scope.pending) return;        // 이전 화면 안내·메뉴와 연타 차단
   scope.pending = true;
   invalidateTodayRead(scope);                                    // 앞서 시작한 #35의 응답 무효화
   try {
-    const result = await putTodayStamp(scope.libraryId, visibility);
+    const result = await putTodayStamp(scope.libraryId, visibility, expectedStampId);
     if (!isCurrentSignedIn(scope)) return;
     setToday(result);
     closeStampControls();
     emitStampChanged(scope, result.stamp.id, visibility);          // api.ts → VisitScreen
     if (action === "first") {
-      showPrivateNotice(5000, () => put(scope, "public", "change"));
+      const stampId = result.stamp.id;
+      showPrivateNotice(5000, () => put(scope, "public", "change", stampId));
     } else {
       notice(visibility === "public" ? STAMP_TEXT.savedPublic : STAMP_TEXT.changedPrivate);
     }
-  } catch {
+  } catch (e) {
     if (isCurrentSignedIn(scope)) {
-      notice(action === "first" ? STAMP_TEXT.failed : STAMP_TEXT.changeFailed);
+      if (e instanceof ApiCallError && e.status === 409 && e.code === "STAMP_DATE_CHANGED") {
+        closeStampControls();
+        notice(STAMP_TEXT.dateChanged);
+        void reloadTodayStamp(scope);                            // #35 재조회로 새 날짜 버튼 복구
+      } else {
+        notice(action === "first" ? STAMP_TEXT.failed : STAMP_TEXT.changeFailed);
+      }
     }
   } finally {
     scope.pending = false;
@@ -1393,12 +1428,12 @@ function onPress() {
 }
 function onMenuFlip() {
   if (!today?.stamp) return;
-  void put(scope, today.stamp.visibility === "public" ? "private" : "public", "change");
+  void put(scope, today.stamp.visibility === "public" ? "private" : "public", "change", today.stamp.id);
 }
 ```
 
 - `VisitScreen.tsx`에서 현재 방문·계정 범위의 이벤트만 받고, 이미 진행 중인 `#32` 조회·페이지 추가를 무효화한다. `private` 성공 시 표시 중인 해당 ID의 카드를 즉시 뺀다. `public` 성공 시 `#36`의 `MyStamp`에 없는 카드 필드는 `#32`에서 읽는다. 두 경우 모두 기존 `refreshFeed`로 조용히 갱신하고 `#32` 정렬·커서를 따른다. 갱신 실패 시 보이던 피드를 유지하며 이미 제거한 카드는 복원하지 않는다.
-- 서울 날짜가 바뀐 뒤 이전 날짜 표시에서 공개 여부를 바꾸면 `#36`은 새 날짜에 기록할 수 있다. 날짜 전환 경합의 처리 계약은 발행 전 D 결정 항목이다.
+- 자정 경계 처리(D 결정 2026-11-24): 공개 여부 변경(안내 `"피드에도 남기기"`·⋯ 메뉴)은 `expected_stamp_id`를 보내고, 서버가 같은 트랜잭션에서 오늘(`today_kst`) 본인 행과 일치할 때만 갱신한다. 불일치 시 새 행을 만들지 않고 `409 STAMP_DATE_CHANGED`를 반환하며 앱은 `#35` 재조회로 새 날짜 버튼을 복구한다.
 
 #### P5. 필수 테스트
 
@@ -1425,6 +1460,9 @@ function onMenuFlip() {
 | VISIT-4-P2 | `visibility change refreshes sorted feed and hides private stamp immediately` | 더 최신인 게시물과 진행 중인 페이지 응답 | 공개→비공개, 이전 응답 지연, 최신 조회 실패 | 공개는 `#32` 순서 유지, 비공개 성공 직후 대상 카드 제거, 이전 응답이나 조회 실패로 카드가 다시 나타나지 않음 | V4-O1·V4-O2 / 재조회·이전 응답 무효화·즉시 제거 가드 누락 시 실패 |
 | VISIT-4-P3 | `visit page uses look tokens for cards radii and shelf` | `look:"modern"` | 방문 페이지 렌더 | 게시물·방명록·스탬프 카드·책장 선반·버튼이 modern 색, 카드 곡률 6 | V4-O5(일부만 바꾸면 실패) |
 | VISIT-4-P3 | `home and compose keep default look` | 방문 페이지 `look:"oxford"` 뒤 | 홈·글쓰기 렌더 | 기본 theme 값 | V4-8 |
+| VISIT-4-P1 | `delayed visibility change after midnight returns 409 without creating row` | 23:59 KST에 A가 `private` 스탬프 생성(`stamp_id`) 후 시계 00:01 KST로 이동 | `#36`에 `visibility="public"`, `expected_stamp_id=stamp_id` 호출 | `409 STAMP_DATE_CHANGED`(`detail=null`), 새 날짜(`00:01`) 행 0건, 어제 행 `private` 유지 | 자정 경계 새 행 생성(`expected_stamp_id` 가드 제거 시 실패) |
+| VISIT-4-P1 | `expected stamp id of another user returns 409 without creating row` | A의 오늘 스탬프(`stamp_a_id`) 존재, B 로그인 | B가 `#36`에 `expected_stamp_id=stamp_a_id` 호출 | `409 STAMP_DATE_CHANGED`(`detail=null`), B의 오늘 행 0건, A의 행 무변경 | 타인 ID 존재 유추·무단 생성 |
+| VISIT-4-P2 | `stale visibility change 409 reloads today stamp and shows date notice` | 오늘 찍은 상태(`stamped:true`), `#36`이 `409 STAMP_DATE_CHANGED` 반환, 뒤이은 `#35`는 `stamped:false` | 안내 `"피드에도 남기기"` 또는 ⋯ 메뉴 변경 | `putTodayStamp`에 `expectedStampId` 전달, `#35` 재조회 후 `"다녀왔어요"` 버튼 복구, `"날짜가 바뀌었어요. 다시 확인해 주세요"` 안내 | 자정 경과 뒤 이전 표시 잔존 |
 
 ## LOCAL-3 독서 기록 템플릿 게시
 
