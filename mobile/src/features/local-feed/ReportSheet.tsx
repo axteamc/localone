@@ -2,7 +2,8 @@ import { useNavigation, useRouter } from "expo-router";
 import React, { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { registerSignOutCleanup, useAuth } from "../../auth/AuthProvider";
-import { actionColors, theme, type as T } from "../../theme";
+import { actionColors, type Theme } from "../../theme";
+import { lookKit, useLook } from "./useLibraryLook";
 import { ApiCallError, reportTarget, type ReportKind, type ReportReason } from "./api";
 
 export type ReportTarget = { kind: ReportKind; id: string };
@@ -58,6 +59,7 @@ export function useReportedTargets(): ReadonlySet<string> {
 export function ReportedTarget({
   kind, id, children, width,
 }: ReportTarget & { children: React.ReactNode; width?: number }) {
+  const { styles } = useLook(makeStyles);
   const reportedTargets = useReportedTargets();
   return reportedTargets.has(targetKey({ kind, id })) ? (
     <View style={[styles.collapsed, { width }]}>
@@ -77,6 +79,7 @@ export function ReportSheet(props: ReportSheetProps) {
 function ReportForm({
   target, onClose, onDone, owner, loadingAuth,
 }: ReportSheetProps & { owner: string | null; loadingAuth: boolean }) {
+  const { T, styles } = useLook(makeStyles);
   const router = useRouter();
   const navigation = useNavigation();
   const [reason, setReason] = useState<ReportReason | null>(null);
@@ -194,20 +197,21 @@ function ReportForm({
   );
 }
 
-const C = theme.colors;
-const ACT = actionColors(C);
-const styles = StyleSheet.create({
-  backdrop: { flex: 1, justifyContent: "flex-end", alignItems: "center", backgroundColor: C.shadowDeep },
-  sheet: { flexGrow: 0, maxHeight: "90%", width: "100%", maxWidth: 480, backgroundColor: C.paper, borderRadius: theme.radii.card },
-  content: { padding: 20, gap: 8 },
-  row: { ...ACT.secondary, minHeight: 44, paddingHorizontal: 12, justifyContent: "center", borderRadius: theme.radii.control },
-  selected: { borderColor: C.inkStrong, backgroundColor: C.panelLit },
-  label: { color: C.text, fontSize: 14 },
-  input: { minHeight: 76, borderWidth: 1, borderColor: C.seamHairline, padding: 10, color: C.text },
-  muted: { color: C.inkMuted, fontSize: 13 },
-  error: { color: C.loanOut },
-  primary: { ...ACT.primary, minHeight: 44, justifyContent: "center", alignItems: "center", borderRadius: theme.radii.control },
-  primaryText: { ...ACT.primaryText, fontSize: 14 },
-  disabled: { opacity: 0.5 },
-  collapsed: { backgroundColor: C.paper, minHeight: 48, borderRadius: theme.radii.card, padding: 12, justifyContent: "center" },
-});
+const makeStyles = (theme: Theme) => {
+  const { C, T, ACT } = lookKit(theme);
+  return StyleSheet.create({
+    backdrop: { flex: 1, justifyContent: "flex-end", alignItems: "center", backgroundColor: C.shadowDeep },
+    sheet: { flexGrow: 0, maxHeight: "90%", width: "100%", maxWidth: 480, backgroundColor: C.paper, borderRadius: theme.radii.card },
+    content: { padding: 20, gap: 8 },
+    row: { ...ACT.secondary, minHeight: 44, paddingHorizontal: 12, justifyContent: "center", borderRadius: theme.radii.control },
+    selected: { borderColor: C.inkStrong, backgroundColor: C.panelLit },
+    label: { color: C.text, fontSize: 14 },
+    input: { minHeight: 76, borderWidth: 1, borderColor: C.seamHairline, padding: 10, color: C.text },
+    muted: { color: C.inkMuted, fontSize: 13 },
+    error: { color: C.loanOut },
+    primary: { ...ACT.primary, minHeight: 44, justifyContent: "center", alignItems: "center", borderRadius: theme.radii.control },
+    primaryText: { ...ACT.primaryText, fontSize: 14 },
+    disabled: { opacity: 0.5 },
+    collapsed: { backgroundColor: C.paper, minHeight: 48, borderRadius: theme.radii.card, padding: 12, justifyContent: "center" },
+  });
+};

@@ -9,7 +9,8 @@ import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
 import { openExternalUrl } from "../../lib/platform";
 import { fetchAvailabilityAt, type AvailabilityItem } from "../../lib/publicApi";
-import { actionColors, cardSurface, onFill, panel, resolvePostColor, theme, type as T } from "../../theme";
+import { actionColors, cardSurface, onFill, resolvePostColor, theme as baseTheme, type Theme } from "../../theme";
+import { LibraryLookProvider, lookKit, useLibraryLook, useLook } from "./useLibraryLook";
 import { ON_FILL_LIGHT } from "../../theme/tokens";
 import { ApiCallError, emitPostReaction, emitPostWithdrawn, fetchPost, type Post } from "./api";
 import { PostImage, PostMoreMenu } from "./ComposeScreen";
@@ -20,7 +21,6 @@ import { ReactionButton, SaveButton } from "./ReactionButton";
 import { LibraryOtherPosts, SameBookPosts } from "./SameBookPosts";
 import { shareNotice, sharePost } from "./share";
 
-const C = theme.colors;
 const WIDE_AT = 768; // H14
 const NOTICE_MS = 2000;
 
@@ -64,19 +64,22 @@ export function basisLabel(dataDate: string | null, now = new Date()): string | 
   return m ? `${Number(m[1])}월 ${Number(m[2])}일 기준` : null;
 }
 
+/** 소장 점 색은 의미 색이라 룩과 무관(SEMANTIC_COLORS) */
+const LOAN = baseTheme.colors;
+
 function loanParts(
   libraryName: string | null,
   item: AvailabilityItem | null | "failed",
   now = new Date()
 ): { library: string | null; status: string; dot: string } {
-  if (item === null) return { library: libraryName, status: DETAIL_TEXT.checking, dot: C.loanUnknown };
-  if (item === "failed") return { library: libraryName, status: DETAIL_TEXT.unknown, dot: C.loanUnknown };
+  if (item === null) return { library: libraryName, status: DETAIL_TEXT.checking, dot: LOAN.loanUnknown };
+  if (item === "failed") return { library: libraryName, status: DETAIL_TEXT.unknown, dot: LOAN.loanUnknown };
   const name = item.library.name || libraryName;
-  if (item.holding === "no") return { library: name, status: DETAIL_TEXT.notHeld, dot: C.loanOut };
+  if (item.holding === "no") return { library: name, status: DETAIL_TEXT.notHeld, dot: LOAN.loanOut };
   const basis = basisLabel(item.data_date, now);
-  if (item.loanable === "yes" && basis) return { library: name, status: `${basis} 대출 가능`, dot: C.loanAvailable };
-  if (item.loanable === "no" && basis) return { library: name, status: `${basis} · 대출 중`, dot: C.loanOut };
-  return { library: name, status: DETAIL_TEXT.unknown, dot: C.loanUnknown };
+  if (item.loanable === "yes" && basis) return { library: name, status: `${basis} 대출 가능`, dot: LOAN.loanAvailable };
+  if (item.loanable === "no" && basis) return { library: name, status: `${basis} · 대출 중`, dot: LOAN.loanOut };
+  return { library: name, status: DETAIL_TEXT.unknown, dot: LOAN.loanUnknown };
 }
 
 /**
@@ -94,7 +97,18 @@ export type PostDetailProps = {
   visitLibraryId: number | null;
 };
 
-export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
+/** VISIT-4-P3: 방문 중인 도서관 룩(V4-8)을 이 화면 아래 조각 전부에 내려 준다 */
+export function PostDetail(props: PostDetailProps) {
+  const look = useLibraryLook(props.visitLibraryId ?? 0);
+  return (
+    <LibraryLookProvider value={look}>
+      <PostDetailInner {...props} />
+    </LibraryLookProvider>
+  );
+}
+
+function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
+  const { C, T, ACT, styles } = useLook(makeStyles);
   const router = useRouter();
   const alreadyPublished = useLocalSearchParams?.<{ notice?: string }>()?.notice === "already-published";
   const insets = useSafeAreaInsets();
@@ -400,7 +414,7 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
   );
 
   return (
-    <View style={styles.screen} onLayout={onScreenLayout}>
+    <View style={styles.screen} onLayout={onScreenLayout} testID="post-detail">
       <ScrollView contentContainerStyle={[styles.content, { paddingTop: insets.top }]} testID="detail-scroll">
         {alreadyPublished ? (
           <Text accessibilityLiveRegion="polite" style={[styles.byline, { paddingHorizontal: 16 }]}>이미 올린 기록이에요</Text>
@@ -438,8 +452,9 @@ export function PostDetail({ postId, visitLibraryId }: PostDetailProps) {
   );
 }
 
-const ACT = actionColors(C);
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => {
+  const { C, T, ACT, panel } = lookKit(theme);
+  return StyleSheet.create({
   // 다른 도서관 글이어도 방문 중 테마(M1 warm 하나)를 그대로 쓴다(H14)
   screen: { flex: 1, backgroundColor: panel.backgroundColor },
   center: { alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },
@@ -538,4 +553,5 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   toastText: { fontSize: 14, fontWeight: "500", color: C.inkStrong },
-});
+  });
+};
