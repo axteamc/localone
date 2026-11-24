@@ -21,7 +21,7 @@
 | **1. 키 발급·실측·계약 확정** | 선행 완료(PR #296·#297·#300 머지, main `9f05e20`). Y-1~Y-5 전부 확정(Y-4 A안 확정), `03`/`05`/`06`/`스펙_변경_이력.md`(C-81)·`../team/contracts/core.md` 개정 및 계약 발행 SHA(`cb25a44`) 기록 | [YES24_1단계_실측_및_계약개정안.md](명세/YES24_1단계_실측_및_계약개정안.md), `../team/contracts/core.md`(`cb25a44`) | Y-1~Y-5 전부 해소, 계약 발행 SHA 확정(`cb25a44e9eab502b3a7646c7e2c732390b86eef4`), 단일 head 확인(`0025_reports_constraints` → 신규 `0026_yes24_curated`) | **완료 (2026-11-24)** |
 | **2. DB·엔진·CLI 구현** | 1단계 선행. 새 Alembic 리비전(`books_source_check` `'yes24'` 추가, `curated_books_cache`·`book_purchase_links` 생성·RLS), `settings.py`·`policy.py`·`Yes24Client`·`ProviderEngine.curated_books`·`sync-yes24-curated` CLI 구현 | `server/`: `uv run alembic upgrade head && uv run alembic downgrade -1 && uv run alembic upgrade head`, `uv run pytest -W error tests/test_lib_engine.py tests/test_yes24_curated.py` | 마이그레이션 왕복·RLS(`relrowsecurity=true`, 정책 0개)·성인물/URL/ISBN일치/한도/빈 응답 보호 테스트 및 핵심 가드 변이 5곳 실패 확인 | **완료 (2026-11-24)** |
 | **3. API(`#9`/`#15`)·서가 테마 연결** | 2단계 선행. `#9 /books/recommendations` YES24 스테디셀러 연결·정보나루 폴백(양쪽 stale 시 YES24 stale 유지), `#15 /books/{isbn13}/purchase-link` 직링크(`kind="product"`)·검색 폴백 구현, `sync-yes24-curated --print-isbns` → `ops/shelf-themes` + `sync-theme-holdings` 연동 확인 | `server/`: `uv run pytest -W error tests/test_books.py tests/test_looks_shelf.py tests/test_yes24_curated.py` | `#9` 하위 호환·폴백, `#15` 직링크/폴백, 기존 도서관별 `#31` 회귀 0건(108 passed) 통과 | **완료 (2026-11-24)** |
-| **4. 모바일 타입·출처 표기·검증** | 3단계 선행. `Book.source`, `PurchaseLink.kind` 확장. 홈 하단 창(VISIT-1b)·검색 진입의 `#9` YES24 추천 섹션에 `출처: YES24`를 한 번 표기 | `mobile/`: `npx tsc --noEmit`, `npx jest --runInBand`. 구현·진행 기록을 각각 `Owner: D` 커밋으로 기록하고 [PR #301](https://github.com/axteamc/localone/pull/301)에 반영 | 타입 검사 통과, Jest 49개 스위트·870개 테스트 통과 | **완료 (2026-11-24)** |
+| **4. 모바일 타입·출처 표기·검증** | 3단계 선행. `Book.source`, `PurchaseLink.kind` 확장. 홈 하단 창(VISIT-1b)·검색 진입의 `#9` YES24 추천 섹션에 `출처: YES24`를 한 번 표기 | `mobile/`: `npx tsc --noEmit`, `npx jest --runInBand`. 구현·진행 기록을 각각 `Owner: D` 커밋으로 기록하고 [PR #302](https://github.com/axteamc/localone/pull/302)에 반영 | 타입 검사 통과, Jest 49개 스위트·870개 테스트 통과 | **완료 (2026-11-24)** |
 | **5. 도서 상세 시안·배치 개편 (Y-6, 후속)** | 4단계 선행(1단계 시안 패스 → 2026-11-24 D 결정으로 YES24 연동 완료 후 이연). `BookDetailScreen.tsx` 배치 개편 및 YES24 상품 상세 연결 버튼 위치 HTML 시안 검토·반영 | `개발산출물/시안/` HTML 시안 검토 → `BookDetailScreen.tsx` 반영 | 사용자 시안 확정 및 도서 상세 YES24 연결 반영 | **대기 (4단계 후 이연)** |
 
 ---
@@ -42,7 +42,7 @@
 
 ```text
 시니어 D로 YES24 5단계(Y-6)를 진행해줘.
-AGENTS.md 시작 규칙에 따라 문서를 읽고 브랜치·HEAD·status·diff 및 PR #301 상태를 확인해. 기존 변경은 보존해.
+AGENTS.md 시작 규칙에 따라 문서를 읽고 브랜치·HEAD·status·diff 및 PR #302 상태를 확인해. 기존 변경은 보존해.
 이 진행 파일, 설계명세 §1.3·§5.5·§6 Y-6, ../team/contracts/core.md LIB-0 K23·C3를 읽어.
 도서 상세 배치와 YES24 연결 버튼 위치를 HTML 시안으로 검토하고, 사용자 확정 후 BookDetailScreen.tsx에 반영해.
 승인 범위의 변경은 검증 후 Owner: D 로컬 커밋까지 완료해. 문서는 별도 커밋으로 남겨.
