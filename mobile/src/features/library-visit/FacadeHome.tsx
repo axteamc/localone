@@ -133,12 +133,11 @@ type CubeProps = {
 };
 
 /** C2 등각 큐브: 윗면 = 색 + 이름, 왼쪽 면 = 상태·거리·주소, 오른쪽 면 = 오늘·방위 */
-function IsoCube({ item, title, tone, place, anim, onPress, onLongPress }: CubeProps) {
+function HomeCube({ item, title, tone, place, anim, onPress, onLongPress }: CubeProps) {
   const { lib } = item;
   const { fill, ink } = cubeLidColors(tone);
   const hero = place.role === "hero";
   const label = hero ? `${lib.name} ${formatDistance(item.distanceM)}` : `${lib.name} 크게 보기`;
-  const fs = topFont(title.big, title.small);
   const quiet = hero ? null : styles.quiet;
   return (
     <Animated.View
@@ -163,8 +162,7 @@ function IsoCube({ item, title, tone, place, anim, onPress, onLongPress }: CubeP
         delayLongPress={LONG_PRESS_MS}
         style={styles.cubeHit}
       >
-        <View style={styles.ground} />
-        <View style={[styles.faceLeft, hero ? styles.faceHero : null]}>
+        <IsoCube title={title} fill={fill} ink={ink} emphasized={hero} left={<>
           <View style={styles.leftTop}>
             <View style={styles.badge}>
               <View style={[styles.dot, { backgroundColor: fill }]} />
@@ -178,8 +176,7 @@ function IsoCube({ item, title, tone, place, anim, onPress, onLongPress }: CubeP
               {lib.area_label ?? lib.address ?? ""}
             </Text>
           </View>
-        </View>
-        <View style={[styles.faceRight, hero ? styles.faceHero : null]}>
+        </>} right={<>
           <View style={quiet}>
             <Text style={styles.lbl}>TODAY</Text>
             <Text numberOfLines={2} style={[styles.hours, lib.today.is_closed === true ? styles.closed : null]}>
@@ -190,10 +187,30 @@ function IsoCube({ item, title, tone, place, anim, onPress, onLongPress }: CubeP
             <Text style={styles.lbl}>BEARING</Text>
             <Text style={styles.bear}>{item.code}</Text>
           </View>
-        </View>
-        <View style={[styles.faceTop, { backgroundColor: fill }]} />
-        {/* E3-2: 이름은 윗면 왼쪽 아래, 작은 글자는 큰 글자 왼쪽 위 */}
-        <View style={styles.topBox} pointerEvents="none" testID="facade-top-name">
+        </>} />
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+/** 큐브의 공통 면과 윗면 이름. 배치·터치와 옆면 내용은 호출부가 정한다. */
+export function IsoCube({ title, fill, ink, emphasized = false, left, right }: {
+  title: CubeName;
+  fill: string;
+  ink: string;
+  emphasized?: boolean;
+  left: React.ReactNode;
+  right: React.ReactNode;
+}) {
+  const fs = topFont(title.big, title.small);
+  return (
+    <View style={styles.cubeHit} pointerEvents="none" accessible={false}>
+      <View style={styles.ground} />
+      <View style={[styles.faceLeft, emphasized && styles.faceHero]}>{left}</View>
+      <View style={[styles.faceRight, emphasized && styles.faceHero]}>{right}</View>
+      <View testID="cube-lid" style={[styles.faceTop, { backgroundColor: fill }]} />
+      {/* E3-2: 이름은 윗면 왼쪽 아래, 작은 글자는 큰 글자 왼쪽 위 */}
+      <View style={styles.topBox} pointerEvents="none" testID="facade-top-name">
           {title.small ? (
             <Text numberOfLines={1} style={[styles.topSmall, { fontSize: fs.smallSize, lineHeight: fs.smallSize * 1.1, color: ink }]}>
               {title.small}
@@ -202,9 +219,8 @@ function IsoCube({ item, title, tone, place, anim, onPress, onLongPress }: CubeP
           <Text numberOfLines={fs.lines} style={[styles.topText, { fontSize: fs.fontSize, lineHeight: fs.lineHeight, color: ink }]}>
             {fs.text}
           </Text>
-        </View>
-      </Pressable>
-    </Animated.View>
+      </View>
+    </View>
   );
 }
 
@@ -349,7 +365,7 @@ export function FacadeHome(props: FacadeHomeProps) {
             setChosen(c.id);
           };
           return (
-            <IsoCube
+            <HomeCube
               key={c.id}
               item={it}
               title={titles.get(c.id) ?? { big: it.lib.name, small: null }}

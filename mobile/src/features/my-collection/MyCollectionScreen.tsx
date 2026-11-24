@@ -15,13 +15,15 @@ import {
   View,
 } from "react-native";
 import { actionColors, cardSurface, theme, type as typeScale } from "../../theme";
-import { COLUMN_GAP, splitColumns } from "../local-feed/LibraryFeed";
-import { PostCard } from "../local-feed/PostCard";
+import { COLUMN_GAP } from "../local-feed/LibraryFeed";
+import { cardHeightRatio, PostCard } from "../local-feed/PostCard";
 import { PostMenu } from "../local-feed/PostMenu";
-import type { MyCollectionPost } from "./api";
+import { STAMP_HEIGHT_RATIO, StampCard } from "../local-feed/StampCard";
+import type { MyCollectionItem, MyCollectionPost } from "./api";
 import { CollectionTabs } from "./CollectionTabs";
 import { ProfileHeader } from "./ProfileHeader";
-import { MY_TEXT, useMyCollection, type CollectionTab, type Dim, type TabState } from "./useMyCollection";
+import { collectionItemKey, MY_TEXT, useMyCollection, type CollectionTab, type Dim, type TabState } from "./useMyCollection";
+import { VisitedLibraries } from "./VisitedLibraries";
 
 const C = theme.colors;
 const ACT = actionColors(C);
@@ -79,13 +81,13 @@ export function MyCollectionScreen() {
     }
   };
 
-  const dimmedId = my.dim?.tab === my.activeTab ? my.dim.postId : null;
+  const dimmed = my.dim?.tab === my.activeTab ? my.dim : null;
 
   return (
     <View style={styles.screen} testID="my-collection">
       <ScrollView
         testID="my-collection-scroll"
-        stickyHeaderIndices={[1]}
+        stickyHeaderIndices={[2]}
         onScroll={onScroll}
         onScrollEndDrag={onScrollEndDrag}
         scrollEventThrottle={16}
@@ -101,13 +103,18 @@ export function MyCollectionScreen() {
           // 설정 → 설정·로그아웃(auth.md AUTH-2 G6). 이 머리는 로그인했을 때만 보인다
           onSettings={() => router.push("/settings")}
         />
+        <VisitedLibraries
+          key={my.userId}
+          onOpenLibrary={(libraryId) => router.push({ pathname: "/libraries/[libraryId]", params: { libraryId: String(libraryId) } })}
+        />
         <CollectionTabs active={my.activeTab} onSelect={my.selectTab} />
         <TabBody
           tab={my.activeTab}
           state={my.tabState}
-          dimmedId={dimmedId}
+          dimmed={dimmed}
           onPress={(postId) => router.push({ pathname: "/posts/[postId]", params: { postId } })}
           onMenu={(post) => my.openMenu(post.id)}
+          onUnbookmarkStamp={my.unbookmarkStamp}
           onRetry={my.retryTab}
           onRetryMore={my.loadMore}
           onBrowse={() => router.navigate("/")}
@@ -141,15 +148,16 @@ export function MyCollectionScreen() {
 type TabBodyProps = {
   tab: CollectionTab;
   state: TabState | undefined;
-  dimmedId: Dim["postId"] | null;
+  dimmed: Dim | null;
   onPress(postId: string): void;
   onMenu(post: MyCollectionPost): void;
+  onUnbookmarkStamp(stampId: string): void;
   onRetry(): void;
   onRetryMore(): void;
   onBrowse(): void;
 };
 
-function TabBody({ tab, state, dimmedId, onPress, onMenu, onRetry, onRetryMore, onBrowse }: TabBodyProps) {
+function TabBody({ tab, state, dimmed, onPress, onMenu, onUnbookmarkStamp, onRetry, onRetryMore, onBrowse }: TabBodyProps) {
   if (!state || state.kind === "loading") return <CardSkeleton />;
   if (state.kind === "error") {
     return (
@@ -177,7 +185,7 @@ function TabBody({ tab, state, dimmedId, onPress, onMenu, onRetry, onRetryMore, 
   }
   return (
     <View>
-      <Grid items={state.items} dimmedId={dimmedId} onPress={onPress} onMenu={onMenu} />
+      <Grid items={state.items} dimmed={dimmed} onPress={onPress} onMenu={onMenu} onUnbookmarkStamp={onUnbookmarkStamp} />
       <View style={styles.footer} testID="list-footer">
         {state.more === "loading" ? (
           <Text style={styles.footerText}>{MY_TEXT.moreLoading}</Text>
@@ -195,35 +203,55 @@ function TabBody({ tab, state, dimmedId, onPress, onMenu, onRetry, onRetryMore, 
 }
 
 function Grid(props: {
-  items: MyCollectionPost[];
-  dimmedId: string | null;
+  items: MyCollectionItem[];
+  dimmed: Dim | null;
   onPress(postId: string): void;
   onMenu(post: MyCollectionPost): void;
+  onUnbookmarkStamp(stampId: string): void;
 }) {
   const window = useWindowDimensions();
   const [width, setWidth] = useState<number | null>(null);
   const total = width ?? Math.max(0, window.width - SIDE * 2);
   const cardWidth = Math.max(0, Math.floor((total - COLUMN_GAP) / 2));
-  const [left, right] = splitColumns(props.items);
+  const columns: [MyCollectionItem[], MyCollectionItem[]] = [[], []];
+  const heights = [0, 0];
+  for (const item of props.items) {
+    const column = heights[1]! < heights[0]! ? 1 : 0;
+    columns[column].push(item);
+    heights[column]! += item.item_kind === "stamp" ? STAMP_HEIGHT_RATIO : cardHeightRatio(item);
+  }
   const onLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;
     if (w > 0 && w !== width) setWidth(w);
   };
   return (
     <View style={styles.grid} onLayout={onLayout} testID="my-grid">
-      {[left, right].map((col, i) => (
+      {columns.map((col, i) => (
         <View key={i} style={[styles.column, { width: cardWidth }]}>
-          {col.map((post) => {
-            const dimmed = post.id === props.dimmedId;
+          {col.map((item) => {
+            const dimmed = item.id === props.dimmed?.postId && item.item_kind === props.dimmed.itemKind;
             return (
-              <View key={post.id} style={dimmed ? styles.dimmed : undefined} testID={dimmed ? `dimmed-${post.id}` : undefined}>
-                <PostCard
-                  post={post}
-                  width={cardWidth}
-                  onPress={props.onPress}
-                  // 흐린 카드는 메뉴를 다시 열지 않는다(되돌리기는 아래 안내에서)
-                  onMenu={dimmed ? undefined : (p) => props.onMenu(p as MyCollectionPost)}
-                />
+              <View key={collectionItemKey(item)} style={dimmed ? styles.dimmed : undefined} testID={dimmed ? `dimmed-${item.id}` : undefined}>
+                {item.item_kind === "stamp" ? (
+                  <StampCard
+                    stamp={item}
+                    width={cardWidth}
+                    onToggleBookmark={
+                      dimmed
+                        ? undefined
+                        : (stampId, next) => {
+                            if (!next) props.onUnbookmarkStamp(stampId);
+                          }
+                    }
+                  />
+                ) : (
+                  <PostCard
+                    post={item}
+                    width={cardWidth}
+                    onPress={props.onPress}
+                    onMenu={dimmed ? undefined : () => props.onMenu(item)}
+                  />
+                )}
                 {dimmed ? (
                   <View style={styles.dimTag} pointerEvents="none">
                     <Text style={styles.dimTagText}>{MY_TEXT.dimmed}</Text>

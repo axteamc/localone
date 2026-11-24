@@ -92,6 +92,18 @@ def _delete_own_reactions_and_bookmarks(conn: Connection, user_id: UUID, now: da
     conn.execute(text("DELETE FROM post_bookmarks WHERE user_id = :uid"), {"uid": user_id})
 
 
+# ── [m2-core-D+B] M2-0-P5 2차: VISIT-4(0023) · LOCAL-3(0024) ──
+
+def _delete_own_stamp_bookmarks(conn: Connection, user_id: UUID, now: datetime) -> None:
+    # VISIT-4(0023): visit_stamps 삭제보다 먼저 내가 저장한 스탬프 북마크를 삭제한다(Z10·P5 세부).
+    conn.execute(text("DELETE FROM stamp_bookmarks WHERE user_id = :uid"), {"uid": user_id})
+
+
+def _delete_own_visit_stamps(conn: Connection, user_id: UUID, now: datetime) -> None:
+    # VISIT-4(0023): 내 방문 스탬프 삭제(남이 내 스탬프에 남긴 북마크는 FK ON DELETE CASCADE로 정리).
+    conn.execute(text("DELETE FROM visit_stamps WHERE user_id = :uid"), {"uid": user_id})
+
+
 def _delete_own_loans(conn: Connection, user_id: UUID, now: datetime) -> None:
     # loan_plans보다 먼저 — loans.plan_id가 loan_plans를 가리킨다(C5 마지막 행)
     conn.execute(text("DELETE FROM loans WHERE user_id = :uid"), {"uid": user_id})
@@ -99,6 +111,21 @@ def _delete_own_loans(conn: Connection, user_id: UUID, now: datetime) -> None:
 
 def _delete_own_loan_plans(conn: Connection, user_id: UUID, now: datetime) -> None:
     conn.execute(text("DELETE FROM loan_plans WHERE user_id = :uid"), {"uid": user_id})
+
+
+def _clear_own_post_reading_logs(conn: Connection, user_id: UUID, now: datetime) -> None:
+    # LOCAL-3(0024): reading_logs 삭제보다 먼저 내 게시물(hidden 포함)의 reading_log_id 연결을 끊는다(Z10·P5 세부).
+    conn.execute(
+        text("UPDATE posts SET reading_log_id = NULL WHERE user_id = :uid AND reading_log_id IS NOT NULL"),
+        {"uid": user_id},
+    )
+
+
+# ── [m2-core-D+A] M2-0-P5 2차: READ-1(0018) ──
+
+def _delete_own_reading_logs(conn: Connection, user_id: UUID, now: datetime) -> None:
+    # READ-1(0018): 비공개 독서 기록 본인 행만 삭제(Z10·P5 세부).
+    conn.execute(text("DELETE FROM reading_logs WHERE user_id = :uid"), {"uid": user_id})
 
 
 # ── [m2-core-D] M2-0-P5: D 표(Z10) ──
@@ -120,7 +147,6 @@ def _anonymize_profile(conn: Connection, user_id: UUID, now: datetime) -> None:
     )
 
 
-
 def _delete_own_club_reviews(conn: Connection, user_id: UUID, now: datetime) -> None:
     conn.execute(text("DELETE FROM club_reviews WHERE user_id = :uid"), {"uid": user_id})
 
@@ -128,9 +154,6 @@ def _delete_own_club_reviews(conn: Connection, user_id: UUID, now: datetime) -> 
 # C5 표 순서: ① 공개 철회 → ② 개인 삭제 → ③ 프로필 익명화. ⓪(users 상태)은 withdraw_user_account가 맨 앞에서 한다.
 # 남기는 표(운영 기록, Z10): reports(B LOCAL-4), club_comment_requests·participation_restrictions(C CLUB-2),
 #   moderation_actions·operators(D)
-# 대기(아직 main에 없음 — 그 Step 머지 뒤 P5 후속으로 더한다, core.md M2-0 P5 세부):
-#   posts.reading_log_id NULL(B LOCAL-3) → reading_logs 삭제(A READ-1)
-#   stamp_bookmarks → visit_stamps 삭제(B VISIT-4)
 WITHDRAWAL_STEPS: list[WithdrawalStep] = [
     _withdraw_published_posts,  # LOCAL-1 (B)
     _withdraw_published_guestbook,  # VISIT-3 (B, 0012)
@@ -138,8 +161,12 @@ WITHDRAWAL_STEPS: list[WithdrawalStep] = [
     _delete_published_club_comments,  # CLUB-1 (C, 0012)
     _cancel_unstarted_hosted_clubs,  # CLUB-1 (C, 0012)
     _delete_own_reactions_and_bookmarks,  # LOCAL-2 (B)
-    _delete_own_loans,  # LOAN-1 (C)
+    _delete_own_stamp_bookmarks,  # VISIT-4 (B, 0023) — visit_stamps보다 먼저
+    _delete_own_visit_stamps,  # VISIT-4 (B, 0023)
+    _delete_own_loans,  # LOAN-1 (C) — loan_plans보다 먼저
     _delete_own_loan_plans,  # LIB-3 (C)
+    _clear_own_post_reading_logs,  # LOCAL-3 (B, 0024) — reading_logs보다 먼저
+    _delete_own_reading_logs,  # READ-1 (A, 0018)
     _delete_own_inbox_items,  # M2-0-P1 (D)
     _delete_own_user_settings,  # M2-0-P4 (D)
     _delete_own_club_reviews,  # CLUB-2 (C)
