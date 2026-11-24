@@ -9,7 +9,7 @@
 - 도서관 룩 재배정·서가 테마(`/ops/libraries/*`·`/ops/shelf-themes*`)는 M2-0-P3(아래 마지막 두 절).
 """
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Annotated, Any, Literal
 from uuid import UUID
 
@@ -66,11 +66,16 @@ class DecideBody(BaseModel):
     decision: Literal["delete_only", "delete_and_restrict", "rejected"]
     reason: Reason
     restriction_ends_at: datetime | None = None
+    restriction_days: Literal[1, 3, 7] | None = None
 
     @model_validator(mode="after")
     def _ends_at(self) -> "DecideBody":
-        if (self.decision == "delete_and_restrict") != (self.restriction_ends_at is not None):
-            raise ValueError("restriction_ends_at은 delete_and_restrict일 때만, 그때는 꼭")
+        fields = self.model_fields_set & {"restriction_days", "restriction_ends_at"}
+        if self.decision == "delete_and_restrict":
+            if len(fields) != 1 or ("restriction_ends_at" in fields and self.restriction_ends_at is None):
+                raise ValueError("제한 기간을 하나 선택해 주세요.")
+        elif fields:
+            raise ValueError("참가 제한을 할 때만 기간을 선택해 주세요.")
         return self
 
 
@@ -267,8 +272,15 @@ async def decide_comment_request(request: Request, request_id: UUID, body: Decid
     check_future(body.restriction_ends_at, "restriction_ends_at")
 
     def tx(c: Connection) -> dict[str, str | None]:
+        author_status = None
+        if body.decision == "delete_and_restrict":
+            # 참가·댓글 작성과 탈퇴가 같은 사용자 행을 잠근다.
+            author_status = c.execute(text(
+                "SELECT u.status FROM users u JOIN club_comments cc ON cc.user_id = u.id "
+                "JOIN club_comment_requests q ON q.comment_id = cc.id WHERE q.id = :id FOR NO KEY UPDATE OF u"
+            ), {"id": request_id}).scalar_one_or_none()
         q = c.execute(text(
-            "SELECT q.id, q.status, cc.id AS comment_id, cc.user_id AS author_id "
+            "SELECT q.id, q.status, cc.id AS comment_id, cc.club_id, cc.user_id AS author_id "
             "FROM club_comment_requests q JOIN club_comments cc ON cc.id = q.comment_id "
             "WHERE q.id = :id FOR UPDATE OF q, cc"), {"id": request_id}).one_or_none()
         if q is None:
@@ -283,8 +295,20 @@ async def decide_comment_request(request: Request, request_id: UUID, body: Decid
                       {"id": q.comment_id})
             record(c, op.id, "comment_delete", "club_comment", q.comment_id, body.reason)
             if body.decision == "delete_and_restrict":
-                restriction_id = insert_restriction(c, op.id, q.author_id, "comment", request_id,
-                                                    body.reason, body.restriction_ends_at)
+                now = now_kst()
+                ends_at = body.restriction_ends_at
+                if body.restriction_days is not None:
+                    ends_at = now + timedelta(days=body.restriction_days)
+                restriction_id = insert_restriction(c, op.id, q.author_id, "comment", request_id, body.reason, ends_at)
+                c.execute(text(
+                    "UPDATE club_participations p SET state = 'removed', updated_at = :now "
+                    "FROM clubs c WHERE c.id = p.club_id AND p.user_id = :uid AND p.state = 'joined' "
+                    "AND c.host_id <> :uid AND c.status IN ('open', 'closed') AND (c.ends_at IS NULL OR c.ends_at > :now)"
+                ), {"uid": q.author_id, "now": now})
+                if author_status == "active":
+                    add_inbox_items(c, [q.author_id], "moderation",
+                                    {"club_id": str(q.club_id), "restriction": str(restriction_id)},
+                                    title="모임 참가와 댓글이 제한됐어요")
         c.execute(text("UPDATE club_comment_requests SET status = :s, decided_by = :op, decided_at = now() "
                        "WHERE id = :id"), {"s": body.decision, "op": op.id, "id": request_id})
         return {"id": str(request_id), "status": body.decision,
@@ -296,7 +320,7 @@ async def decide_comment_request(request: Request, request_id: UUID, body: Decid
 # ─────────── 참가 제한 ───────────
 
 RESTRICTION_COLUMNS = ("id, user_id, reason_kind, source_id, reason_text, starts_at, ends_at, "
-                       "review_requested_at, lifted_at")
+                       "review_requested_at, review_text, lifted_at")
 
 
 def restriction_out(r: Any) -> dict[str, Any]:
@@ -333,7 +357,10 @@ async def list_restrictions(request: Request, state: Literal["review", "active"]
         return c.execute(text(f"SELECT {RESTRICTION_COLUMNS} FROM participation_restrictions WHERE {where} "
                               f"ORDER BY {order}, id LIMIT :n"), {"n": LIST_MAX}).all()
 
-    return {"items": [restriction_out(r) for r in await run_db(request.app.state.engine, tx)]}
+    rows = await run_db(request.app.state.engine, tx)
+    if state == "review":
+        return {"items": [{**restriction_out(r), "review_text": r.review_text} for r in rows]}
+    return {"items": [restriction_out(r) for r in rows]}
 
 
 @router.post("/restrictions")

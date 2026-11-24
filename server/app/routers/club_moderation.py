@@ -182,7 +182,8 @@ class ReviewRequestIn(BaseModel):
 async def request_restriction_review(
     request: Request, restriction_id: UUID, body: ReviewRequestIn, user: CurrentUser = Depends(get_current_user)
 ) -> JSONResponse:
-    if body.text is not None and len(body.text.strip()) > REVIEW_TEXT_MAX:
+    review_text = (body.text or "").strip() or None
+    if review_text is not None and len(review_text) > REVIEW_TEXT_MAX:
         raise validation_error("text")
 
     def tx(c: Connection) -> tuple[dict[str, Any], bool]:
@@ -196,9 +197,9 @@ async def request_restriction_review(
         if row.review_requested_at is not None or row.lifted_at is not None:
             return restriction_view(row), False  # 이미 요청·이미 해제: 무변경
         updated = c.execute(text(
-            f"UPDATE participation_restrictions SET review_requested_at = now() WHERE id = :id "
-            f"RETURNING {RESTRICTION_COLUMNS}"
-        ), {"id": restriction_id}).one()
+            f"UPDATE participation_restrictions SET review_requested_at = now(), review_text = :review_text "
+            f"WHERE id = :id RETURNING {RESTRICTION_COLUMNS}"
+        ), {"id": restriction_id, "review_text": review_text}).one()
         return restriction_view(updated), True
 
     view, created = await run_db(request.app.state.engine, tx)

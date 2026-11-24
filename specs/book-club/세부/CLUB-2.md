@@ -115,7 +115,7 @@
 
 - [계약 보완 필요] 알림함 한 줄에 모임 이름을 보이려면 core `InboxItem`에 이름 칸이 필요(지금은 `title`·`target.club_id`뿐). 이번엔 제목 + 언제만 — 시안의 "모임 이름 · 언제"와 다름 — `../team/contracts/core.md:1033-1038`
 - [계약 보완 필요] 알림함 "보관 90일"은 서버에서 지우는 규칙이 core에 없음. 앱이 90일 지난 줄을 그리지 않는 것으로 두고, 서버 삭제는 core 판단 — `../team/contracts/core.md` M2-0-P1
-- [Claude가 정함] 출석 확인 요청 `AttendanceMark`는 `user_id`를 앱에 내보내지 않으려고 `Club.participants` 순서 번호(`participant_index`)로 보냄. 모임이 시작하면 참가·취소가 막혀 명단 순서가 바뀌지 않음 — 계약 수정본 C3 행 추가
+- [D 확정] 출석 확인은 #60에서 받은 명단 버전과 불참자의 인덱스를 #65로 보낸다. 불일치하면 출석·제한·알림을 바꾸지 않고 최신 명단을 다시 보여 준다. BOOK-CLUB 계약 CLUB-2 C3·C6.
 - [Claude가 정함] 출석 칸은 `club_participations.attendance_status`(기본 `attended`) — 계약 C5 "출석 표 모양"의 앞 선택지
 
 - [Claude가 정함] CLUB-3 분할 메모 다시 확인(PR #262 리뷰) — C-77로 K2-O1~O5가 정해져 이 세부에서 새로 정할 중심은 기록 화면·알림함 2개만 남음. 범위는 계약 CLUB-2 4파트 그대로라 분할 필요 없다고 봄(판단은 D) — `../team/contracts/book-club.md:15`
@@ -124,10 +124,10 @@
 - [Claude가 정함] (구현) #60·#61은 만든 사람 또는 참가 기록(joined/left/removed)이 있는 사람만, 취소된 모임 `409 CLUB_CLOSED`, 종료 전 `409 CLUB_NOT_ENDED`. #64 응답 `{items: ClubItem[]}` — `server/app/routers/club_records.py:76-89,272-283`
 - [Claude가 정함] (구현) 종료 안내는 끝난 지 90일 안의 모임만 만든다(K2-O8 보관 90일과 맞춤) — `server/app/routers/club_records.py:36,51-58`
 - [계약 보완 필요] K2-5 `club_next` 수신자는 계약대로 이전 회차 참가자만 — 참가자가 다음 모임을 만들면 이전 회차 만든 사람은 안내를 받지 않음(기록 화면 "이미 만든 다음 모임"에서는 보임) — `../team/contracts/book-club.md` K2-5
-- [계약 보완 필요] 탈퇴 시 `club_reviews` 삭제는 D M2-0-P5(`server/app/routers/me.py:129` 대기 목록) — C 허용 파일 밖이라 손대지 않음
+- [D 반영] 탈퇴 트랜잭션에서 본인의 비공개 모임 후기를 삭제한다. 공유 게시물은 공개 게시물 철회 규칙을 따른다.
 - [구현 중 변경] P2 라우터 등록을 위해 `server/app/main.py` `[book-club-C]` 블록에 한 줄 더함(파트 표상 `main.py`는 P1 허용 파일) — `server/app/main.py:154-160`
-- [계약 보완 필요] #67 재검토 요청 글(`requestRestrictionReview(restrictionId, text)`)을 저장할 칸이 C5 `participation_restrictions`에 없음 — 서버는 `text`(500자까지)를 받기만 하고 `review_requested_at`만 기록. 운영자가 글을 보려면 칸 추가 필요 — `server/app/routers/club_moderation.py:181-205`
-- [계약 보완 필요] K2-9 "제한 대상이 참가 중이면 명단에서 빼기(`removed`)"가 D 운영 경로(`ops.py` decide)에 없음. 불참 제한(#65)도 계약 골격대로 다른 모임 참가는 그대로 둠(새 참가·댓글만 막힘) — `server/app/routers/ops.py:264-296`
+- [D 반영] #67 최초 요청 시 선택 입력한 글을 저장하고 운영자 재검토 목록에서 보여 준다.
+- [D 반영] 댓글 운영 승인에서 1일·3일·7일·영구 선택, 참가 중인 명단에서 제외, 제한 안내를 연결했다.
 - [계약 보완 필요] 만든 사람이 출석 확인 화면을 다시 열 때 누가 이미 불참인지 알 칸이 `ClubRecord`·`Club.participants`에 없음(보낸 직후에는 앱이 기억해 보여 줌) — C3
 - [Claude가 정함] (구현) #66 응답 `{id, comment_id, status}`, 만든 사람 본인 댓글은 `422 comment_id`(직접 지움), 사라진 댓글 `404`. #68은 해제 전 제한 중 지금 걸린 것 + 최근 180일 불참(셈)만, 최근순. 4번째 판정은 `created_at` 기준 180일 — `server/app/routers/club_moderation.py`
 - [구현 중 변경] CLUB-1 시험 `mobile/src/features/book-club/__tests__/club.test.tsx:254-263`의 제한 문구 단언을 CLUB-2 C3(댓글 칸 "지금은 댓글을 쓸 수 없어요")에 맞춰 바꿈(같은 강도로 두 문구 모두 단언) — 파트 표 P3 허용 파일 밖
@@ -135,7 +135,7 @@
 - [Claude가 정함] (구현) 다음 모임 창은 장소(이전 값)·날짜·시작·끝 글자 칸(CLUB-1 `toKstIso` 재사용), 모두 비우면 미정. 만든 뒤 새 모임 화면으로 감 — `NextClubSheet.tsx`
 - [Claude가 정함] (구현) "내 참가 제한"은 따로 경로가 없어(P4 파일 목록에 경로 없음) 알림함 맨 위에 보임. 불참 n번째는 #68 목록(해제·180일 지난 것 제외)에서 오래된 순으로 셈, 기간이 지난 것은 "제한 기간은 끝났어요", 재검토 글은 선택(500자) — `RestrictionNotice.tsx`
 - [계약 보완 필요] 댓글 운영 제한 문구 "모임 댓글과 참가가 n일 제한돼요"의 n일을 알 칸이 `Restriction`에 없음(`starts_at` 없음) — 앱은 "모임 댓글과 참가가 제한돼요. (M.D HH:mm까지)"로 보임 — C3
-- [계약 보완 필요] 내 정보 알림 아이콘(`mobile/src/features/my-collection/InboxBell.tsx:18-19` `TODO(연결): C CLUB-2-P4`)은 A 파일이라 손대지 않음 — 이 PR 머지 뒤 켜야 함
+- [D 반영] 홈·내 정보의 알림 아이콘이 같은 공유 읽지 않음 상태를 사용하고 /inbox로 연결된다.
 - [처리 못 함] 앱 전체 시험 중 `library-visit/__tests__/home-list.test.tsx` "no hardcoded colors" 1개가 main에서도 실패(`home-facade.test.tsx:362-364` 색 코드, `033e415`) — CI는 jest를 돌리지 않아 막히지 않음, 내 파일 아님
 - [처리 못 함] `[D→C]` #180·#233·#240·#255·#258 이슈 닫기 — auto mode 권한 분류기가 `gh issue close` 거부(내용은 처리)
 
@@ -186,6 +186,6 @@
 | CLUB-2-P1 기록·후기·다음 모임 서버 | `feat/book-club-CLUB-2` | #284 (Draft) | 완료 | 종료 안내 `server/app/routers/club_records.py:51-58`, #60 `:76-113`, #61 `:131-150`, #62 `:158-195`, #63 `:232-269`, #64 `:272-283`, 마이그레이션 `server/migrations/versions/0021_club_records.py` · `tests/test_club_records.py` 13 passed, 서버 전체 711 passed · 가드 제거 6건 확인 | — (CI ok 45137081622) |
 | CLUB-2-P2 출석·제한·운영 요청 서버 | 같은 브랜치 | #284 | 완료 | `is_restricted` `server/app/routers/clubs.py:51-67`, #65 `server/app/routers/club_moderation.py:67-112`, #66 `:121-155`, #67 `:181-205`, #68 `:208-220` · `tests/test_club_restrictions.py` 13 passed, 서버 전체 724 passed · 가드 제거 9건 확인 | — |
 | CLUB-2-P3 기록 화면·다음 모임 | 같은 브랜치 | #284 | 완료 | 기록 화면 `mobile/src/features/book-club/ClubRecordScreen.tsx:83-390`(순서 `:268,280,342,380`), 출석 `AttendanceSheet.tsx:51-110`, 다음 모임 `NextClubSheet.tsx:44-78`, 모임 화면 연결 `ClubScreen.tsx:148,240,349,537`, `api.ts:184-253`, 경로 `mobile/app/clubs/[clubId]/record.tsx` · `__tests__/club-record.test.tsx` 23 passed, 앱 전체 761 passed(남의 1개 실패는 main에서도 같음) · tsc·web export 통과 · 가드 제거 8건 확인 | — |
-| CLUB-2-P4 알림함·제한 안내 화면 | 같은 브랜치 | #284 | 완료 | 알림함 `mobile/src/features/book-club/InboxScreen.tsx:48-200`(열면 모두 읽음 `:87`, 90일 `:84`, 로그아웃 비움 `:72`, 누르면 모임 화면 `:119`), 제한 안내 `RestrictionNotice.tsx:42-120`, `api.ts:255-279`, 경로 `mobile/app/inbox.tsx` · `__tests__/inbox.test.tsx` 14 passed, 앱 전체 775 passed(남의 1개 실패는 main에서도 같음) · tsc·web export 통과 · 가드 제거 7건 확인 | `InboxBell.tsx` `/inbox` 연결 스위치는 A(MY-2) 파일 — 머지 뒤 켬 |
+| CLUB-2-P4 알림함·제한 안내 화면 | 같은 브랜치 | #284 | 완료 | 알림함 `mobile/src/features/book-club/InboxScreen.tsx:48-200`(열면 모두 읽음 `:87`, 90일 `:84`, 로그아웃 비움 `:72`, 누르면 모임 화면 `:119`), 제한 안내 `RestrictionNotice.tsx:42-120`, `api.ts:255-279`, 경로 `mobile/app/inbox.tsx` · `__tests__/inbox.test.tsx` 14 passed, 앱 전체 775 passed(남의 1개 실패는 main에서도 같음) · tsc·web export 통과 · 가드 제거 7건 확인 | 홈·내 정보 `InboxBell` 연결 반영 |
 
 - **다음 세션 이어하기 메모**: 구현(3) 진행 중. 계약 발행 본문 SHA `68a6c60`. P1~P4 완료 → verify.md·Ready.

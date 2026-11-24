@@ -423,8 +423,6 @@ async def join_club(request: Request, club_id: UUID, user: CurrentUser = Depends
         mine = c.execute(SELECT_MINE, {"id": club_id, "uid": user.id}).scalar_one_or_none()
         if mine == "joined":
             return club_view(c, club_id, user)  # 멱등
-        if mine == "removed":
-            raise ApiError(403, "PARTICIPATION_RESTRICTED", MSG_RESTRICTED, "")
         if club.capacity is not None and c.execute(COUNT_JOINED, {"id": club_id}).scalar_one() >= club.capacity:
             raise ApiError(409, "CLUB_FULL", MSG_FULL)
         c.execute(UPSERT_PARTICIPATION, {"id": club_id, "uid": user.id, "state": "joined"})

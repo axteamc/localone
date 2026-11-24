@@ -166,9 +166,9 @@
 | 62 | `POST /api/v1/clubs/{club_id}/review/share` | 필수(참가자·만든 사람) | 내 후기를 공개 게시물 한 건으로 올리기(`client_request_id` 멱등, 이후 원본·게시물 각각 수정, B `CLUB-2`) | C-46 C1·C6 | `확정` (2026-11-19 D) |
 | 63 | `POST /api/v1/clubs/{club_id}/next` | 필수(참가자·만든 사람) | 다음 회차 모임 만들기(이름·소개·책·도서관 복사, 이전 참가자 중 취소·제한 제외하고 `club_next` 알림, 자동 참가 없음, B `CLUB-2`) | CLUB-02, C-40, C-46 C2~C4 | `확정` (2026-11-19 D) |
 | 64 | `GET /api/v1/clubs/{club_id}/next` | 선택 | 이미 만들어진 다음 회차 모임 목록(`created_at ASC`, B `CLUB-2`) | C-46 C3 | `확정` (2026-11-19 D) |
-| 65 | `PUT /api/v1/clubs/{club_id}/attendance` | 필수(만든 사람만) | 만든 사람의 출석 확인(출석 체크만으로 패널티 자동 부과 금지, B `CLUB-2`) | C-46 A7, R17 | 골격 `확정` · 출석·판정 세부 `미확인(임시)`(C-46 §8-1·3) |
+| 65 | `PUT /api/v1/clubs/{club_id}/attendance` | 필수(만든 사람만) | 만든 사람의 출석 확인(출석 체크만으로 패널티 자동 부과 금지, B `CLUB-2`) · #60의 명단 버전 불일치 시 `409 CLUB_ATTENDANCE_ROSTER_CHANGED`, 출석·제한 무변경(CLUB-2 계약 C6) | C-46 A7, R17 | 골격 `확정` · 출석·판정 세부 `미확인(임시)`(C-46 §8-1·3) |
 | 66 | `POST /api/v1/club-comments/{comment_id}/moderation-request` | 필수(만든 사람만) | 모임 댓글 운영 처리 요청(댓글당 1회 멱등, 승인 전 댓글 그대로 표시, B `CLUB-2`) | C-46 B1·B6 | `확정` (2026-11-19 D) |
-| 67 | `POST /api/v1/me/restrictions/{restriction_id}/review-request` | 필수(본인) | 내 참가 제한에 대한 운영자 재검토 요청(멱등, B `CLUB-2`) | C-46 B5 | `확정` (2026-11-19 D) |
+| 67 | `POST /api/v1/me/restrictions/{restriction_id}/review-request` | 필수(본인) | 내 참가 제한에 대한 운영자 재검토 요청(선택 글 500자, 운영자만 열람, 멱등, B `CLUB-2`) | C-46 B5 | `확정` (2026-11-19 D) |
 | 68 | `GET /api/v1/me/restrictions` | 필수(본인) | 내 참가·댓글 제한 내역 조회(사유·만료 시각 포함, B `CLUB-2`) | C-46 B2·B5, R18 | `확정` (2026-11-19 D) |
 
 ## 3. 공통 오류 코드

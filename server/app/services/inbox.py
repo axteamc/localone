@@ -65,14 +65,16 @@ def register_inbox_source(kind: InboxKind, fn: InboxSource) -> None:
     _SOURCES[kind] = fn
 
 
-def add_inbox_items(conn: Connection, recipients: list[UUID], kind: InboxKind, target: dict[str, str]) -> int:
+def add_inbox_items(
+    conn: Connection, recipients: list[UUID], kind: InboxKind, target: dict[str, str], *, title: str | None = None
+) -> int:
     """수신자마다 안내 한 건을 넣는다. 반환: 새로 넣은 행 수(이미 있던 안내는 0으로 센다)."""
     _check_kind(kind)
     if not any(target.get(k) for k in TARGET_KEYS):
         raise ValueError("inbox target needs club_id, post_id or guestbook_id")
     key = dedupe_key(kind, target)
     stored = json.dumps({k: str(target[k]) for k in TARGET_KEYS if target.get(k)}, ensure_ascii=False)
-    title = TITLES[kind]
+    title = TITLES[kind] if title is None else title
     return sum(
         conn.execute(_INSERT, {"uid": uid, "kind": kind, "target": stored, "key": key, "title": title}).rowcount
         for uid in set(recipients)

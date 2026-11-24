@@ -1,4 +1,5 @@
 import { Tabs } from "expo-router";
+import { InboxBell } from "../../src/features/my-collection/InboxBell";
 import { StyleSheet, Text, View } from "react-native";
 import { panel, theme } from "../../src/theme";
 import { headerOptions } from "../../src/theme/HeaderLabel";
@@ -33,7 +34,7 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="index"
-        options={{ title: "홈", ...headerOptions("HOME"), tabBarLabel: ({ focused }) => <TabLabel focused={focused}>홈</TabLabel> }}
+        options={{ title: "홈", ...headerOptions("HOME"), headerRight: () => <View style={styles.bell}><InboxBell /></View>, tabBarLabel: ({ focused }) => <TabLabel focused={focused}>홈</TabLabel> }}
       />
       <Tabs.Screen
         name="reading"
@@ -52,6 +53,7 @@ export default function TabsLayout() {
 }
 
 const styles = StyleSheet.create({
+  bell: { marginEnd: 12 },
   label: { alignItems: "center", justifyContent: "center", alignSelf: "stretch", flex: 1 },
   tick: { position: "absolute", top: 0, width: 28, height: 2, backgroundColor: "transparent" },
   tickOn: { backgroundColor: theme.colors.inkStrong },
