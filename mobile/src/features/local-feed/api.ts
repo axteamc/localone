@@ -233,10 +233,28 @@ export type GuestbookItem = {
   mine: boolean;
 };
 
+// ─────────── VISIT-4 방문 스탬프(contracts/local-feed.md VISIT-4 C2·C3) ───────────
+
+export type StampVisibility = "private" | "public";
+export type MyStamp = { id: string; stamped_on: string; visibility: StampVisibility };
+export type TodayStamp = { stamped: boolean; stamp: MyStamp | null };
+
+/** 피드의 공개 스탬프 카드(C3). user_id는 없다 */
+export type StampItem = {
+  id: string;
+  library_id: number;
+  stamped_on: string;
+  author_nickname: string;
+  published_at: string;
+  mine: boolean;
+  my_bookmark: boolean;
+};
+
 /** #32 항목. VISIT-4 `stamp`, CLUB-1 `club`이 종류를 더한다 — 모르는 종류는 그리지 않는다 */
 export type FeedItem =
   | { kind: "post"; post: FeedPost }
   | { kind: "guestbook"; guestbook: GuestbookItem }
+  | { kind: "stamp"; stamp: StampItem }
   | { kind: string; [key: string]: unknown };
 
 export type FeedItemPage = { items: FeedItem[]; next_cursor: string | null };
@@ -249,10 +267,16 @@ export function isGuestbookItem(item: FeedItem): item is { kind: "guestbook"; gu
   return item.kind === "guestbook" && typeof item.guestbook === "object" && item.guestbook !== null;
 }
 
+export function isStampItem(item: FeedItem): item is { kind: "stamp"; stamp: StampItem } {
+  const stamp = (item as { stamp?: unknown }).stamp as Partial<StampItem> | null | undefined;
+  return item.kind === "stamp" && typeof stamp === "object" && stamp !== null && typeof stamp.id === "string";
+}
+
 /** 같은 항목 판별용 열쇠(종류 + id). 모르는 종류는 null */
 export function feedItemKey(item: FeedItem): string | null {
   if (isPostItem(item)) return `post:${item.post.id}`;
   if (isGuestbookItem(item)) return `guestbook:${item.guestbook.id}`;
+  if (isStampItem(item)) return `stamp:${item.stamp.id}`;
   if (item.kind === "club" && typeof item.club === "object" && item.club !== null) {
     const id = (item.club as { id?: unknown }).id;
     if (typeof id === "string" && id.length > 0) return `club:${id}`;
@@ -281,4 +305,62 @@ export function postGuestbook(libraryId: number, body: string, clientRequestId: 
 /** #34 `POST /api/v1/guestbook/{entry_id}/withdraw` — 이미 지운 글도 200 */
 export async function withdrawGuestbook(entryId: string): Promise<void> {
   await send<{ ok: boolean }>(`guestbook/${encodeURIComponent(entryId)}/withdraw`, { method: "POST" });
+}
+
+/** #35 `GET /api/v1/libraries/{library_id}/stamps/today` — 로그인 필수 */
+export function fetchTodayStamp(libraryId: number, signal?: AbortSignal): Promise<TodayStamp> {
+  return send<TodayStamp>(`libraries/${libraryId}/stamps/today`, { method: "GET" }, signal);
+}
+
+/** #36 `PUT /api/v1/libraries/{library_id}/stamps/today` — 멱등. 공개 바꾸기는 expectedStampId(어긋나면 409 STAMP_DATE_CHANGED) */
+export function putTodayStamp(
+  libraryId: number,
+  visibility: StampVisibility,
+  expectedStampId?: string
+): Promise<TodayStamp> {
+  const body: { visibility: StampVisibility; expected_stamp_id?: string } = { visibility };
+  if (expectedStampId) body.expected_stamp_id = expectedStampId;
+  return send<TodayStamp>(`libraries/${libraryId}/stamps/today`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+/** #69 `PUT|DELETE /api/v1/stamps/{stamp_id}/bookmark` — 멱등(V4-11) */
+export function setStampBookmark(stampId: string, bookmarked: boolean): Promise<{ bookmarked: boolean }> {
+  return send<{ bookmarked: boolean }>(`stamps/${encodeURIComponent(stampId)}/bookmark`, {
+    method: bookmarked ? "PUT" : "DELETE",
+  });
+}
+
+// 스탬프 버튼(StampButton) → 방문 페이지(VisitScreen)·피드(LibraryFeed). 범위(도서관·사용자)를 같이 보내
+// 받는 쪽이 지금 보고 있는 범위의 것만 쓴다(P4 emitStampChanged).
+export type StampChange = { libraryId: number; userId: string; stampId: string; visibility: StampVisibility };
+/** 한 줄 안내. action이 있으면 글자 버튼을 붙인다(V4-O1 "피드에도 남기기"). ms 동안 보인다 */
+export type StampNotice = { libraryId: number; text: string; ms?: number; action?: { label: string; run(): void } };
+
+const stampChangeListeners = new Set<(change: StampChange) => void>();
+const stampNoticeListeners = new Set<(notice: StampNotice) => void>();
+
+export function onStampChanged(listener: (change: StampChange) => void): () => void {
+  stampChangeListeners.add(listener);
+  return () => {
+    stampChangeListeners.delete(listener);
+  };
+}
+
+export function emitStampChanged(change: StampChange): void {
+  stampChangeListeners.forEach((l) => l(change));
+}
+
+export function onStampNotice(listener: (notice: StampNotice) => void): () => void {
+  stampNoticeListeners.add(listener);
+  return () => {
+    stampNoticeListeners.delete(listener);
+  };
+}
+
+export function emitStampNotice(notice: StampNotice): void {
+  stampNoticeListeners.forEach((l) => l(notice));
 }

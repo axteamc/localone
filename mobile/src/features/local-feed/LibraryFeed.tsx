@@ -1,6 +1,6 @@
 // 방문 페이지 2열 메이슨리 피드(contracts/local-feed.md LOCAL-2 H1·H4·H10·H13).
-// #32 혼합 피드(게시물·방명록·모임)를 그린다. 불러오기·다음 쪽은 VisitScreen이 하고
-// 여기서는 받은 목록 그리기·카드 메뉴(게시물 메뉴 / 내 방명록 지우기)만 한다.
+// #32 혼합 피드(게시물·방명록·모임·스탬프)를 그린다. 불러오기·다음 쪽은 VisitScreen이 하고
+// 여기서는 받은 목록 그리기·카드 메뉴(게시물 메뉴 / 내 방명록 지우기)·스탬프 카드 북마크(VISIT-4 V4-11)만 한다.
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { LayoutChangeEvent, StyleSheet, useWindowDimensions, View } from "react-native";
@@ -10,8 +10,11 @@ import {
   feedItemKey,
   isGuestbookItem,
   isPostItem,
+  isStampItem,
   onPostReaction,
   onPostWithdrawn,
+  onStampChanged,
+  setStampBookmark,
   withdrawGuestbook,
   type FeedItem,
   type FeedPost,
@@ -22,6 +25,8 @@ import { FeedItemCard, isClubItem } from "./FeedItemCard";
 import { GUESTBOOK_CARD_TEXT, GuestbookMenu, guestbookHeightRatio } from "./GuestbookCard";
 import { cardHeightRatio, PostCard } from "./PostCard";
 import { LoginPrompt, PostMenu } from "./PostMenu";
+import { StampLoginSheet } from "./StampButton";
+import { STAMP_CARD_TEXT, STAMP_HEIGHT_RATIO } from "./StampCard";
 
 export const COLUMN_GAP = 12; // H13
 const WITHDRAWN_TEXT = "내렸어요"; // LOCAL-1 ComposeScreen TEXT.withdrawn과 같은 문구
@@ -47,6 +52,7 @@ export function feedItemHeightRatio(item: FeedItem): number {
   if (isPostItem(item)) return cardHeightRatio(item.post);
   if (isGuestbookItem(item)) return guestbookHeightRatio(item.guestbook);
   if (isClubItem(item)) return 1.15;
+  if (isStampItem(item)) return STAMP_HEIGHT_RATIO;
   return 0;
 }
 
@@ -91,10 +97,12 @@ function FeedItemGrid({
   items,
   onOpenPost,
   onMenu,
+  onToggleStampBookmark,
 }: {
   items: FeedItem[];
   onOpenPost(postId: string): void;
   onMenu(item: FeedItem): void;
+  onToggleStampBookmark(stampId: string, next: boolean): void;
 }) {
   const { cardWidth, onLayout } = useCardWidth();
   const [left, right] = useMemo(() => splitColumnsBy(items, feedItemHeightRatio), [items]);
@@ -109,6 +117,7 @@ function FeedItemGrid({
               width={cardWidth}
               onOpenPost={onOpenPost}
               onMenu={onMenu}
+              onToggleStampBookmark={onToggleStampBookmark}
             />
           ))}
         </View>
@@ -126,7 +135,7 @@ export type LibraryFeedProps = {
 
 export function LibraryFeed({ items, onNotice, onReload }: LibraryFeedProps) {
   const router = useRouter();
-  const { status } = useAuth();
+  const { status, userId } = useAuth();
   // 메뉴·상세에서 바꾼 좋아요·북마크. 필드 단위로 최신 상태에 합친다(①-1: 늦은 응답이 다른 필드를 덮지 않게)
   const [changed, setChanged] = useState<Record<string, PostReactionPatch>>({});
   const [menuFor, setMenuFor] = useState<string | null>(null);
@@ -136,6 +145,10 @@ export function LibraryFeed({ items, onNotice, onReload }: LibraryFeedProps) {
   const [gbMenu, setGbMenu] = useState<GuestbookItem | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
   const withdrawingRef = useRef(false);
+  const [stampMarks, setStampMarks] = useState<Record<string, boolean>>({}); // 스탬프 id → 바꾼 my_bookmark
+  const [privateStamps, setPrivateStamps] = useState<Set<string>>(() => new Set()); // 나만 보기로 바꾼 내 스탬프 "도서관:id"
+  const [stampLogin, setStampLogin] = useState(false);
+  const stampBusy = useRef(new Set<string>());
   const shown = useMemo(
     () =>
       items.flatMap((item): FeedItem[] => {
@@ -146,9 +159,14 @@ export function LibraryFeed({ items, onNotice, onReload }: LibraryFeedProps) {
         }
         if (isGuestbookItem(item)) return gone.has(item.guestbook.id) ? [] : [item];
         if (isClubItem(item)) return [item];
+        if (isStampItem(item)) {
+          const st = item.stamp;
+          if (privateStamps.has(`${st.library_id}:${st.id}`)) return []; // 비공개로 바꾸면 바로 뺀다(V4-O2)
+          return [st.id in stampMarks ? { kind: "stamp", stamp: { ...st, my_bookmark: stampMarks[st.id]! } } : item];
+        }
         return []; // 모르는 종류는 그리지 않는다
       }),
-    [items, changed, hidden, gone]
+    [items, changed, hidden, gone, stampMarks, privateStamps]
   );
   const posts = useMemo(() => shown.flatMap((i) => (isPostItem(i) ? [i.post] : [])), [shown]);
   const patch = useCallback(
@@ -159,7 +177,46 @@ export function LibraryFeed({ items, onNotice, onReload }: LibraryFeedProps) {
   // 상세에서 바꾼 공감·북마크를 돌아왔을 때 메뉴에 그대로 보인다(①-2)
   useEffect(() => onPostReaction(patch), [patch]);
   // 로그인 상태가 바뀌면 앞 사용자의 변경을 남기지 않는다
-  useEffect(() => setChanged({}), [status]);
+  useEffect(() => {
+    setChanged({});
+    setStampMarks({});
+    setPrivateStamps(new Set());
+  }, [status]);
+
+  // 내 스탬프 공개 여부를 바꾸면 카드를 바로 넣고 뺀다(V4-O1·V4-O2). 넣기는 VisitScreen의 #32 갱신이 한다
+  useEffect(
+    () =>
+      onStampChanged((change) => {
+        if (status !== "signedIn" || change.userId !== userId) return; // 지금 로그인한 사람의 것만
+        const key = `${change.libraryId}:${change.stampId}`;
+        setPrivateStamps((s) => {
+          const next = new Set(s);
+          if (change.visibility === "private") next.add(key);
+          else next.delete(key);
+          return next;
+        });
+      }),
+    [status, userId]
+  );
+
+  // 스탬프 카드 북마크(V4-11): 비로그인이면 안내만, 연타는 한 번만. 성공한 뒤에만 아이콘을 바꾼다
+  const toggleStampBookmark = async (stampId: string, next: boolean) => {
+    if (status === "signedOut") {
+      setStampLogin(true); // 서버를 부르지 않는다(V4-O4)
+      return;
+    }
+    if (status !== "signedIn" || stampBusy.current.has(stampId)) return;
+    stampBusy.current.add(stampId);
+    try {
+      const res = await setStampBookmark(stampId, next);
+      setStampMarks((m) => ({ ...m, [stampId]: res.bookmarked }));
+      onNotice(res.bookmarked ? STAMP_CARD_TEXT.saved : STAMP_CARD_TEXT.unsaved);
+    } catch {
+      onNotice(STAMP_CARD_TEXT.saveFailed);
+    } finally {
+      stampBusy.current.delete(stampId);
+    }
+  };
 
   // 상세에서 내린 글은 돌아왔을 때 바로 감추고 "내렸어요"(LOCAL-1 F16)
   useEffect(
@@ -206,6 +263,7 @@ export function LibraryFeed({ items, onNotice, onReload }: LibraryFeedProps) {
           if (isPostItem(item)) setMenuFor(item.post.id);
           else if (isGuestbookItem(item) && item.guestbook.mine) setGbMenu(item.guestbook);
         }}
+        onToggleStampBookmark={(id, next) => void toggleStampBookmark(id, next)}
       />
       {menuPost ? (
         <PostMenu
@@ -219,6 +277,7 @@ export function LibraryFeed({ items, onNotice, onReload }: LibraryFeedProps) {
         />
       ) : null}
       {login ? <LoginPrompt onClose={() => setLogin(false)} /> : null}
+      <StampLoginSheet visible={stampLogin} title={STAMP_CARD_TEXT.loginNeeded} onClose={() => setStampLogin(false)} />
       {gbMenu ? (
         <GuestbookMenu
           entry={gbMenu}
