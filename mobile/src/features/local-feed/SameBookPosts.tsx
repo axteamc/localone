@@ -3,11 +3,11 @@
 import React, { useEffect, useRef, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { createLatestRunner } from "../../lib/latest";
-import { theme, type as T } from "../../theme";
+import { type Theme } from "../../theme";
+import { lookKit, useLook } from "./useLibraryLook";
 import { fetchBookPosts, fetchLibraryPosts, type FeedPost } from "./api";
 import { MasonryGrid } from "./LibraryFeed";
 
-const C = theme.colors;
 
 export const RELATED_TEXT = {
   sameBook: "같은 책의 다른 글",
@@ -36,6 +36,7 @@ function useRelated(key: string | null, load: (signal: AbortSignal) => Promise<F
 type Props = { postId: string; onOpen(postId: string): void };
 
 export function SameBookPosts({ postId, isbn13, onOpen }: Props & { isbn13: string | null }) {
+  const { T, styles } = useLook(makeStyles);
   const items = useRelated(isbn13 ? `${isbn13}:${postId}` : null, async (signal) =>
     (await fetchBookPosts(isbn13!, { cursor: null, exclude: postId }, signal)).items.filter((p) => p.id !== postId)
   );
@@ -52,6 +53,7 @@ export function SameBookPosts({ postId, isbn13, onOpen }: Props & { isbn13: stri
 }
 
 export function LibraryOtherPosts({ postId, libraryId, onOpen }: Props & { libraryId: number }) {
+  const { T, styles } = useLook(makeStyles);
   const items = useRelated(`${libraryId}:${postId}`, async (signal) =>
     (await fetchLibraryPosts(libraryId, { cursor: null }, signal)).items.filter((p) => p.id !== postId)
   );
@@ -67,7 +69,9 @@ export function LibraryOtherPosts({ postId, libraryId, onOpen }: Props & { libra
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => {
+  const { C, T } = lookKit(theme);
+  return StyleSheet.create({
   section: {
     gap: 12,
     paddingHorizontal: 12,
@@ -78,4 +82,5 @@ const styles = StyleSheet.create({
   },
   head: { gap: 2 },
   title: { ...T.title },
-});
+  });
+};

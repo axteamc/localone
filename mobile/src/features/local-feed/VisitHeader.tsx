@@ -3,9 +3,9 @@ import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { Today } from "../../lib/publicApi";
-import { panel, theme, type as T } from "../../theme";
+import { type Theme } from "../../theme";
+import { lookKit, useLook } from "./useLibraryLook";
 
-const C = theme.colors;
 export const HEADER_TWO_LINES = 115; // 앱 값(시안 86 ÷ 0.75)
 export const HEADER_ONE_LINE = 52; // 앱 값(시안 40 ÷ 0.75)
 export const FOLD_AT = HEADER_TWO_LINES - HEADER_ONE_LINE;
@@ -30,6 +30,7 @@ export function parseLibraryId(raw: unknown): number | null {
 }
 
 function BackButton({ onBack, size }: { onBack: () => void; size: number }) {
+  const { styles } = useLook(makeStyles);
   return (
     <Pressable
       accessibilityRole="button"
@@ -54,6 +55,7 @@ export type VisitHeaderProps = {
 
 /** 두 줄 머리: ‹ / 이름 / "거리 · 오늘 운영시간" + ⋯ */
 export function VisitHeader({ name, distanceM, today, onBack, more, folded = false }: VisitHeaderProps) {
+  const { styles } = useLook(makeStyles);
   const insets = useSafeAreaInsets();
   const closed = today?.is_closed === true;
   const hours = today?.hours_text ?? "정보 없음";
@@ -79,6 +81,7 @@ export function VisitHeader({ name, distanceM, today, onBack, more, folded = fal
 
 /** 접힌 한 줄 머리: ‹ 이름 ⋯ (G12) */
 export function VisitHeaderFolded({ name, onBack, more }: Pick<VisitHeaderProps, "name" | "onBack" | "more">) {
+  const { styles } = useLook(makeStyles);
   const insets = useSafeAreaInsets();
   return (
     <View
@@ -94,7 +97,9 @@ export function VisitHeaderFolded({ name, onBack, more }: Pick<VisitHeaderProps,
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => {
+  const { C, T, panel } = lookKit(theme);
+  return StyleSheet.create({
   two: { minHeight: HEADER_TWO_LINES, paddingHorizontal: 16, paddingTop: 4, justifyContent: "flex-end" },
   back: { alignSelf: "flex-start", minWidth: 44, minHeight: 36, justifyContent: "center" },
   backText: {
@@ -125,4 +130,5 @@ const styles = StyleSheet.create({
     zIndex: 5,
   },
   nameSmall: { flex: 1, ...T.name },
-});
+  });
+};

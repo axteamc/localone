@@ -2,11 +2,11 @@
 // 이미지와 이미지 위 글자만 보인다. 제목·작성자·공감 수 줄은 넣지 않는다(H4).
 import React, { useState } from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import { onFill, resolvePostColor, theme } from "../../theme";
+import { onFill, resolvePostColor, type Theme } from "../../theme";
+import { lookKit, useLook } from "./useLibraryLook";
 import { ON_FILL_LIGHT } from "../../theme/tokens";
 import type { FeedPost } from "./api";
 
-const C = theme.colors;
 
 /** 너비 대비 높이. 응답에 사진 크기가 없어 고정 비율로 엇갈리게 쌓는다(세부 명세 0절 기본값) */
 export function cardHeightRatio(post: Pick<FeedPost, "image_kind" | "overlay_text">): number {
@@ -23,6 +23,7 @@ export type PostCardProps = {
 };
 
 export function PostCard({ post, onPress, onMenu, width, showLibraryName }: PostCardProps) {
+  const { C, styles } = useLook(makeStyles);
   const [hover, setHover] = useState(false);
   const isColor = post.image_kind === "color";
   const bg = isColor ? resolvePostColor(post.image_color, C) : C.surface3;
@@ -86,7 +87,9 @@ export function PostCard({ post, onPress, onMenu, width, showLibraryName }: Post
   );
 }
 
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => {
+  const { C } = lookKit(theme);
+  return StyleSheet.create({
   card: { borderRadius: theme.radii.card, overflow: "hidden" },
   overlay: { position: "absolute", left: 10, right: 10, textAlign: "center", fontSize: 15, fontWeight: "500" },
   mid: { top: "35%" },
@@ -114,4 +117,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   dotsText: { fontSize: 18, fontWeight: "500", color: C.text },
-});
+  });
+};

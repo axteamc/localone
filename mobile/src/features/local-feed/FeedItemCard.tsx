@@ -1,18 +1,22 @@
 // VISIT-3-P3 혼합 피드 카드 한 장 — contracts/local-feed.md VISIT-3 C2 `FeedItemCard`, V3-8
-// `kind`로 나눠 post는 기존 PostCard 그대로, guestbook은 GuestbookCard, club은 ClubCard(CLUB-1). 모르는 kind는 그리지 않는다(뒤 Step 호환).
+// `kind`로 나눠 post는 기존 PostCard 그대로, guestbook은 GuestbookCard, club은 ClubCard(CLUB-1), stamp는 StampCard(VISIT-4).
+// 모르는 kind는 그리지 않는다(뒤 Step 호환).
 import { useRouter } from "expo-router";
 import React from "react";
 import { ClubCard } from "../book-club/ClubCard";
 import type { ClubItem } from "../book-club/api";
-import { isGuestbookItem, isPostItem, type FeedItem } from "./api";
+import { isGuestbookItem, isPostItem, isStampItem, type FeedItem } from "./api";
 import { GuestbookCard } from "./GuestbookCard";
 import { PostCard } from "./PostCard";
+import { StampCard } from "./StampCard";
 
 export type FeedItemCardProps = {
   item: FeedItem;
   width: number;
   onOpenPost(postId: string): void;
   onMenu?(item: FeedItem): void;
+  /** VISIT-4 V4-11 스탬프 카드 북마크 */
+  onToggleStampBookmark?(stampId: string, next: boolean): void;
 };
 
 export function isClubItem(item: FeedItem): item is { kind: "club"; club: ClubItem } {
@@ -22,7 +26,7 @@ export function isClubItem(item: FeedItem): item is { kind: "club"; club: ClubIt
     && typeof club.id === "string" && typeof club.name === "string" && typeof club.status === "string";
 }
 
-export function FeedItemCard({ item, width, onOpenPost, onMenu }: FeedItemCardProps) {
+export function FeedItemCard({ item, width, onOpenPost, onMenu, onToggleStampBookmark }: FeedItemCardProps) {
   if (isPostItem(item)) {
     return (
       <PostCard
@@ -43,6 +47,7 @@ export function FeedItemCard({ item, width, onOpenPost, onMenu }: FeedItemCardPr
     );
   }
   if (isClubItem(item)) return <ClubFeedCard club={item.club} width={width} />; // CLUB-1-P3
+  if (isStampItem(item)) return <StampCard stamp={item.stamp} width={width} onToggleBookmark={onToggleStampBookmark} />;
 
   return null;
 }

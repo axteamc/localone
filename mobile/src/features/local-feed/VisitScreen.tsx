@@ -14,17 +14,26 @@ import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
 import { ApiCallError, fetchLibrary, type LibraryDetail } from "../../lib/publicApi";
 import { getDefaultLibrary, recordVisit } from "../../lib/visits";
-import { actionColors, cardSurface, panel, theme, type as T } from "../../theme";
+import { actionColors, cardSurface, type Theme } from "../../theme";
+import { LibraryLookProvider, lookKit, useLibraryLook, useLook } from "./useLibraryLook";
 import { FOLD_AT, VisitHeader, VisitHeaderFolded } from "./VisitHeader";
 import { AskDefaultCard } from "./AskDefaultCard";
-import { feedItemKey, fetchLibraryFeedItems, type FeedItem, type GuestbookItem, type ShelfResponse } from "./api";
+import {
+  feedItemKey,
+  fetchLibraryFeedItems,
+  onStampChanged,
+  onStampNotice,
+  type FeedItem,
+  type GuestbookItem,
+  type ShelfResponse,
+} from "./api";
 import { Bookshelf, SHELF_FADE_HEIGHT, SHELF_HEIGHT } from "./Bookshelf";
 import { ComposeChooser, GUESTBOOK_TEXT, GuestbookComposer, GuestbookLoginSheet } from "./GuestbookComposer";
 import { LibraryFeed } from "./LibraryFeed";
+import { StampButton } from "./StampButton";
 import { VisitMenu } from "./VisitMenu";
 import { pickVisitMent } from "./visitMent";
 
-const C = theme.colors;
 const MENT_DELAY_MS = 300; // 전환 끝나고 0.3초 (G3)
 const MENT_SHOW_MS = 2500; // 2.5초 뒤 사라짐 (G3)
 const NOTICE_MS = 2000; // ⋯ 메뉴 한 줄 안내 2초 (G4)
@@ -44,6 +53,7 @@ export const VISIT_TEXT = {
   loginNeeded: "로그인하면 글을 올릴 수 있어요",
   login: "로그인하기",
   close: "닫기",
+  feedTitle: "이 도서관 이야기", // VISIT-4 시안 피드 머리(왼쪽 제목, 오른쪽 "다녀왔어요")
 } as const;
 
 /** 피드 불러오기(VISIT-3부터 #32 혼합 피드). cursor가 있으면 다음 묶음(LOCAL-2 H2·H13) */
@@ -87,7 +97,17 @@ export type VisitScreenProps = {
   loadShelf?: (libraryId: number, signal: AbortSignal) => Promise<ShelfResponse>; // 기본: fetchShelf(#31, VISIT-3)
 };
 
-export function VisitScreen({
+/** VISIT-4-P3: 방문 중인 도서관 룩(V4-8)을 이 화면 아래 조각 전부에 내려 준다 */
+export function VisitScreen(props: VisitScreenProps) {
+  const look = useLibraryLook(props.libraryId ?? 0);
+  return (
+    <LibraryLookProvider value={look}>
+      <VisitScreenInner {...props} />
+    </LibraryLookProvider>
+  );
+}
+
+function VisitScreenInner({
   libraryId,
   distanceM,
   loadFeed = defaultLoadFeed,
@@ -96,9 +116,10 @@ export function VisitScreen({
   askCard,
   loadShelf,
 }: VisitScreenProps) {
+  const { ACT, styles } = useLook(makeStyles);
   const router = useRouter();
   const navigation = useNavigation();
-  const { status } = useAuth();
+  const { status, userId } = useAuth();
   const [lib, setLib] = useState<LibState>(libraryId === null ? { kind: "notFound" } : { kind: "loading" });
   const [feed, setFeed] = useState<FeedState>({ kind: "loading" });
   const feedRef = useRef<FeedState>(feed);
@@ -111,7 +132,8 @@ export function VisitScreen({
   const [chooser, setChooser] = useState(false); // VISIT-3 V3-O3: "+" → 게시물/방명록 고르기
   const [composer, setComposer] = useState(false);
   const [gbLogin, setGbLogin] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  // 한 줄 안내. action이 있으면 오른쪽에 글자 버튼(VISIT-4 V4-O1 "피드에도 남기기")
+  const [notice, setNotice] = useState<{ text: string; action?: { label: string; run(): void } } | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const libRunner = useRef(createLatestRunner()).current;
   const feedRunner = useRef(createLatestRunner()).current;
@@ -131,11 +153,12 @@ export function VisitScreen({
     };
   }, [libRunner, feedRunner]);
 
-  const showNotice = useCallback((text: string) => {
+  const showNotice = useCallback((text: string, ms: number = NOTICE_MS, action?: { label: string; run(): void }) => {
     if (noticeTimer.current) clearTimeout(noticeTimer.current);
-    setNotice(text);
-    noticeTimer.current = setTimeout(() => alive.current && setNotice(null), NOTICE_MS);
+    setNotice({ text, action });
+    noticeTimer.current = setTimeout(() => alive.current && setNotice(null), ms);
   }, []);
+  const showText = useCallback((text: string) => showNotice(text), [showNotice]);
 
   // 화면 왼쪽 끝 밀기(Stack 제스처)로 나가는 중이면 ‹를 더 받지 않는다(V-#3)
   useEffect(() => {
@@ -247,6 +270,43 @@ export function VisitScreen({
       return { kind: "items", items: [...prev.items, ...added], nextCursor: res.value.next_cursor ?? null };
     });
   }, [feedRunner, libraryId, loadFeed, showNotice]);
+
+  // VISIT-4: 지금 보는 도서관의 스탬프 안내만 받는다
+  useEffect(
+    () =>
+      onStampNotice((n) => {
+        if (n.libraryId === libraryId) showNotice(n.text, n.ms, n.action);
+      }),
+    [libraryId, showNotice]
+  );
+
+  // 계정이 바뀌면 앞 사용자의 안내(“피드에도 남기기”)를 남기지 않는다
+  useEffect(() => {
+    if (noticeTimer.current) clearTimeout(noticeTimer.current);
+    setNotice(null);
+  }, [userId, status]);
+
+  // VISIT-4 V4-O1·V4-O2: 내 스탬프 공개 여부가 바뀌면 진행 중인 #32 조회·다음 쪽을 무효화하고,
+  // 비공개면 그 카드를 바로 뺀 뒤 #32로 조용히 다시 받아 정렬·커서를 따른다(실패하면 보이던 피드 유지, 뺀 카드는 복원 안 함)
+  useEffect(
+    () =>
+      onStampChanged((change) => {
+        if (libraryId === null || change.libraryId !== libraryId) return;
+        if (status !== "signedIn" || change.userId !== userId) return;
+        feedRunner.cancel();
+        moreCursor.current = null;
+        if (change.visibility === "private") {
+          const key = `stamp:${change.stampId}`;
+          setFeed((prev) => {
+            if (prev.kind !== "items") return prev;
+            const items = prev.items.filter((p) => itemKey(p) !== key);
+            return items.length ? { ...prev, items } : { kind: "empty" };
+          });
+        }
+        void refreshFeed(libraryId);
+      }),
+    [libraryId, status, userId, feedRunner, refreshFeed]
+  );
 
   // 들어올 때: #11 → (404가 아니면) 방문 한 번 기록 → 멘트. 피드는 따로.
   useEffect(() => {
@@ -365,7 +425,7 @@ export function VisitScreen({
   const name = lib.kind === "ok" ? lib.lib.name : "";
   const moreNode =
     lib.kind === "ok" ? (
-      more ? more(lib.lib) : <VisitMenu library={lib.lib} onNotice={showNotice} />
+      more ? more(lib.lib) : <VisitMenu library={lib.lib} onNotice={showText} />
     ) : (
       <View style={styles.moreSpace} />
     );
@@ -409,6 +469,14 @@ export function VisitScreen({
             folded={folded && lib.kind === "ok"}
           />
         )}
+        {libraryId !== null && lib.kind !== "error" ? (
+          <View style={styles.feedHead} testID="visit-feed-head">
+            <Text style={styles.feedTitle} numberOfLines={1}>
+              {VISIT_TEXT.feedTitle}
+            </Text>
+            <StampButton libraryId={libraryId} />
+          </View>
+        ) : null}
         <View style={[styles.feed, feed.kind === "items" && styles.feedItems]} testID="visit-feed">
           {feed.kind === "loading" ? (
             <View style={styles.pill}>
@@ -437,7 +505,7 @@ export function VisitScreen({
             renderFeed?.(feed.items) ?? (
               <LibraryFeed
                 items={feed.items as FeedItem[]}
-                onNotice={showNotice}
+                onNotice={showText}
                 onReload={() => libraryId !== null && void refreshFeed(libraryId)}
               />
             )
@@ -474,8 +542,27 @@ export function VisitScreen({
       {asking && lib.kind === "ok" ? renderAsk(lib.lib, () => setAsking(false)) : null}
 
       {notice ? (
-        <View style={styles.ment} pointerEvents="none" testID="visit-notice" accessibilityLiveRegion="polite">
-          <Text style={styles.mentText}>{notice}</Text>
+        <View
+          style={[styles.ment, notice.action && styles.noticeRow]}
+          pointerEvents={notice.action ? "box-none" : "none"}
+          testID="visit-notice"
+          accessibilityLiveRegion="polite"
+        >
+          <Text style={styles.mentText}>{notice.text}</Text>
+          {notice.action ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                const run = notice.action!.run;
+                if (noticeTimer.current) clearTimeout(noticeTimer.current);
+                setNotice(null);
+                run();
+              }}
+              style={styles.noticeAction}
+            >
+              <Text style={styles.noticeActionText}>{notice.action.label}</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
 
@@ -528,8 +615,9 @@ export function VisitScreen({
   );
 }
 
-const ACT = actionColors(theme.colors);
-const styles = StyleSheet.create({
+const makeStyles = (theme: Theme) => {
+  const { C, T, ACT, panel } = lookKit(theme);
+  return StyleSheet.create({
   screen: { flex: 1, backgroundColor: panel.backgroundColor },
   content: { paddingBottom: SHELF_HEIGHT + SHELF_FADE_HEIGHT + 24, minHeight: "100%" },
   center: { alignItems: "center", justifyContent: "center", padding: 24, gap: 6 },
@@ -545,6 +633,16 @@ const styles = StyleSheet.create({
   moreSpace: { width: 44 },
   feed: { flexGrow: 1, minHeight: 360, justifyContent: "center", paddingHorizontal: 12, paddingTop: 12 },
   feedItems: { justifyContent: "flex-start" },
+  feedHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    minHeight: 52,
+  },
+  feedTitle: { fontSize: 13, color: C.textSub, flexShrink: 0 },
   pill: {
     alignSelf: "center",
     backgroundColor: C.panelLit,
@@ -582,6 +680,9 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   mentText: { fontSize: 16, fontWeight: "500", color: C.text },
+  noticeRow: { flexDirection: "row", alignItems: "center", gap: 12, paddingVertical: 2 },
+  noticeAction: { minHeight: 44, justifyContent: "center" },
+  noticeActionText: { fontSize: 15, fontWeight: "500", color: C.inkStrong, textDecorationLine: "underline" },
   sheetBackdrop: {
     position: "absolute",
     top: 0,
@@ -618,4 +719,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   secondaryText: { ...ACT.secondaryText, fontSize: 15, fontWeight: "500" },
-});
+  });
+};
