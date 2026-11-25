@@ -1,12 +1,12 @@
 // 피드 카드 한 장(contracts/local-feed.md LOCAL-2 H4·H10·H12·C2·C4). A의 홈 하단 창도 onMenu 없이 쓴다.
 // 이미지와 이미지 위 글자만 보인다. 제목·작성자·공감 수 줄은 넣지 않는다(H4).
 import React, { useState } from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
-import { onFill, resolvePostColor, type Theme } from "../../theme";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+import { resolvePostColor, type Theme } from "../../theme";
 import { lookKit, useLook } from "./useLibraryLook";
-import { ON_FILL_LIGHT } from "../../theme/tokens";
 import type { FeedPost } from "./api";
 import { TemplateCard } from "./templates";
+import { overlayColorOf, overlayPosOf, PostImageFill } from "./postLook";
 
 
 /** 너비 대비 높이. 응답에 사진 크기가 없어 고정 비율로 엇갈리게 쌓는다(세부 명세 0절 기본값) */
@@ -30,7 +30,9 @@ export function PostCard({ post, onPress, onMenu, width, showLibraryName }: Post
   const template = post.image_kind === "template" ? post.image_value : null;
   const isColor = post.image_kind === "color";
   const bg = isColor ? resolvePostColor(post.image_color, C) : C.surface3;
-  const textColor = isColor && post.image_color ? onFill(bg) : ON_FILL_LIGHT;
+  // LOCAL-1b P1b-3·P1b-4·P1b-6: 저장된 자리·색(null = 옛 모양: 사진·표지 아래, 자동)
+  const ink = overlayColorOf(post.image_kind, post.image_color, post.overlay_tone, C);
+  const place = overlayPosOf(post.image_kind, post.overlay_pos);
   const label = post.overlay_text ?? "게시물";
 
   const height = Math.round(width * cardHeightRatio(post));
@@ -56,12 +58,13 @@ export function PostCard({ post, onPress, onMenu, width, showLibraryName }: Post
           <TemplateCard template={template} overlayText={post.overlay_text} book={post.book} width={width} />
         ) : null}
         {!template && !isColor && post.image_url ? (
-          <Image source={{ uri: post.image_url }} style={StyleSheet.absoluteFill} resizeMode="cover" />
+          <PostImageFill uri={post.image_url} kind={post.image_kind} fit={post.image_fit} testID={`post-image-${post.id}`} />
         ) : null}
         {!template && post.overlay_text ? (
           <Text
             numberOfLines={6}
-            style={[styles.overlay, { color: textColor }, isColor ? styles.mid : [styles.bottom, styles.shadow]]}
+            testID={`post-text-${post.id}-${place}`}
+            style={[styles.overlay, { color: ink.color }, ink.shadow && styles.shadow, isColor || place === "mid" ? (isColor ? styles.mid : styles.photoMid) : styles[place]]}
           >
             {post.overlay_text}
           </Text>
@@ -98,8 +101,10 @@ const makeStyles = (theme: Theme) => {
   return StyleSheet.create({
   card: { borderRadius: theme.radii.card, overflow: "hidden" },
   overlay: { position: "absolute", left: 10, right: 10, textAlign: "center", fontSize: 15, fontWeight: "500" },
-  mid: { top: "35%" },
-  bottom: { bottom: 10 },
+  mid: { top: "35%" }, // 단색 가운데(그대로)
+  top: { top: "10%" },
+  photoMid: { top: "40%" },
+  bot: { bottom: 10 },
   shadow: { textShadowColor: C.shadowSoft, textShadowRadius: 6, textShadowOffset: { width: 0, height: 1 } },
   source: {
     position: "absolute",

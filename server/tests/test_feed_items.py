@@ -135,7 +135,8 @@ def test_feed_items_post_shape_is_feed_post(client, auth, db_engine):
     item = feed(client).json()["items"][0]
     assert item["kind"] == "post"
     assert set(item["post"]) == {"id", "library_id", "library_name", "image_kind", "image_url", "image_color",
-                                 "overlay_text", "book", "published_at", "my_reaction", "my_bookmark", "image_value"}
+                                 "overlay_text", "book", "published_at", "my_reaction", "my_bookmark", "image_value",
+                                 "overlay_pos", "overlay_tone", "image_fit"}
 
 
 @pytest.mark.parametrize("params,field", [

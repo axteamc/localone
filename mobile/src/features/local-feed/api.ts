@@ -19,10 +19,18 @@ export const COLOR_TOKENS = [
   "indigoDrift",
   "crimsonWhisper",
 ] as const;
+/** 글쓰기 단색 선택지 8색(C-94 LOCAL-1b P1b-7: "고추장색" crimsonWhisper 제외 — 서버·렌더는 계속 허용) */
+export const COMPOSE_COLOR_TOKENS = COLOR_TOKENS.filter((t) => t !== "crimsonWhisper");
 /** 옛 6개 토큰 호환(기존 게시물·표지 없는 책 fallback "fill3" 등). */
 export const LEGACY_COLOR_TOKENS = ["fill1", "fill2", "fill3", "cream", "paper", "inkStrong"] as const;
 export type LegacyColorToken = (typeof LEGACY_COLOR_TOKENS)[number];
 export type ColorToken = (typeof COLOR_TOKENS)[number] | LegacyColorToken;
+
+/** LOCAL-1b P1b-2: 이미지 위 글자 자리·색, 표지 맞춤(서버 저장, null = 옛 게시물) */
+export type OverlayPos = "top" | "mid" | "bot";
+export type OverlayTone = "light" | "dark" | "auto";
+export type ImageFit = "contain" | "blur" | "cover";
+type PostStyle = { overlay_pos?: OverlayPos | null; overlay_tone?: OverlayTone | null; image_fit?: ImageFit | null };
 
 export const OVERLAY_MAX = 80;
 export const BODY_MAX = 2000;
@@ -46,9 +54,9 @@ export type PostCreateInput = {
   image_color: ColorToken | null;
   overlay_text: string | null;
   body: string | null;
-};
+} & PostStyle;
 
-export type Post = {
+export type Post = PostStyle & {
   id: string;
   library: { id: number; name: string };
   book: { isbn13: string; title: string; author: string | null; cover_url: string | null } | null;
@@ -143,7 +151,7 @@ export function editPost(postId: string, patch: PostEditInput): Promise<Post> {
 // ─────────── LOCAL-2 (contracts/local-feed.md LOCAL-2 C2·C3) ───────────
 
 /** 피드 카드 한 장(#26·#28). 작성자·공감 수·본문은 없다(H4) */
-export type FeedPost = {
+export type FeedPost = PostStyle & {
   image_value?: TemplateKey | null;
   id: string;
   library_id: number;

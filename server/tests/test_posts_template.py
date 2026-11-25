@@ -248,3 +248,12 @@ def test_publish_and_delete_order_on_the_same_log(client, auth, db_engine, monke
         assert deletion.result(timeout=5).status_code == 204
     assert publication_response.status_code == (201 if publish_first else 404)
     assert [row.reading_log_id for row in rows(db_engine)] == ([None] if publish_first else [])
+
+
+def test_template_post_rejects_overlay_style(client, auth, db_engine):  # LOCAL-1b C3
+    log = new_log(client, auth["A"])
+    for field, value in (("overlay_tone", "dark"), ("overlay_pos", "top")):
+        response = client.post("/api/v1/posts", headers=auth["A"], json=template_body(log, **{field: value}))
+        assert response.status_code == 422
+        assert response.json()["error"]["detail"] == field
+    assert rows(db_engine) == []

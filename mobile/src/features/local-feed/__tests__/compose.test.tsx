@@ -249,26 +249,77 @@ describe("책 표지", () => {
   });
 });
 
-describe("글자 자리", () => {
-  test("photo and cover allow top mid bottom overlay position while color stays mid", async () => {
+describe("글자 자리·「표지 설정」 칩 (LOCAL-1b)", () => {
+  test("style chip changes position and color for photo; color has tone only", async () => {
     pickPostImage.mockResolvedValue({ uri: "file:///p.jpg" });
+    uploadPostImage.mockResolvedValue({ image_path: "u/p.jpg", image_url: "https://img.test/p.jpg", width: 10, height: 10, bytes: 1 });
     await openCompose();
     await openAttachMenu();
     await fireEvent.press(screen.getByText("앨범에서 고르기"));
     await fireEvent.changeText(screen.getByLabelText("이미지 위 글자"), "그 밤은 길었다");
     expect(screen.getByTestId("compose-preview-text-mid")).toBeTruthy();
-    const radios = screen.getAllByRole("radio");
-    expect(radios.map((r) => r.props.accessibilityState.checked)).toEqual([false, true, false]);
-    expect(StyleSheet.flatten(radios[1]?.props.style)?.backgroundColor).not.toBe(theme.colors.fill1);
+    // 이전 입력 칸 아래 위치 3칸 줄은 없다 — 칩을 눌러야 보인다
+    expect(screen.queryAllByRole("radio")).toHaveLength(0);
+    await fireEvent.press(screen.getByLabelText("표지 설정"));
+    expect(screen.getByText("글자 위치")).toBeTruthy();
+    expect(screen.queryByText("표지 맞춤")).toBeNull(); // 사진에는 표지 맞춤 없음
+    expect(screen.getAllByRole("radio").filter((r) => r.props.accessibilityState?.checked)).toHaveLength(2); // 가운데·자동
     await fireEvent.press(screen.getByText("위"));
     expect(screen.getByTestId("compose-preview-text-top")).toBeTruthy();
     await fireEvent.press(screen.getByText("아래"));
     expect(screen.getByTestId("compose-preview-text-bot")).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText("검정 글자"));
+    expect(StyleSheet.flatten(screen.getByTestId("compose-preview-text-bot").props.style).color).toBe("#1D1D1F");
+    await fireEvent.press(screen.getByText(TEXT.close));
+    expect(screen.queryByTestId("style-menu")).toBeNull();
+    await fireEvent.press(submitButton());
+    await waitFor(() => expect(createPost).toHaveBeenCalledTimes(1));
+    expect(createPost.mock.calls[0]![0]).toEqual(
+      expect.objectContaining({ image_kind: "photo", overlay_pos: "bot", overlay_tone: "dark", image_fit: null })
+    );
+  });
 
-    await fireEvent.press(screen.getByText("이미지 바꾸기"));
+  test("color post: chip shows tone only and sends no position", async () => {
+    await openCompose();
     await chooseColor();
-    expect(screen.queryAllByRole("radio")).toHaveLength(0);
+    await fireEvent.changeText(screen.getByLabelText("이미지 위 글자"), "문장");
+    await fireEvent.press(screen.getByLabelText("표지 설정"));
+    expect(screen.queryByText("글자 위치")).toBeNull();
+    expect(screen.getByText("글자 색")).toBeTruthy();
     expect(screen.getByTestId("compose-preview-text-mid")).toBeTruthy();
+    await fireEvent.press(submitButton());
+    await waitFor(() => expect(createPost).toHaveBeenCalledTimes(1));
+    expect(createPost.mock.calls[0]![0]).toEqual(
+      expect.objectContaining({ image_kind: "color", overlay_pos: null, overlay_tone: "auto", image_fit: null })
+    );
+  });
+
+  test("cover post: 표지 맞춤 여백 by default, 흐림·확대 change preview and are sent", async () => {
+    await openCompose();
+    await chooseBookCover(book());
+    expect(screen.getByTestId("compose-preview-fit-contain")).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText("표지 설정"));
+    await fireEvent.press(screen.getByText("흐림"));
+    expect(screen.getByTestId("compose-preview-fit-blur")).toBeTruthy();
+    await fireEvent.press(screen.getByText("확대"));
+    expect(screen.getByTestId("compose-preview-fit-cover")).toBeTruthy();
+    await fireEvent.press(submitButton());
+    await waitFor(() => expect(createPost).toHaveBeenCalledTimes(1));
+    expect(createPost.mock.calls[0]![0]).toEqual(
+      expect.objectContaining({ image_kind: "cover", overlay_pos: "mid", overlay_tone: "auto", image_fit: "cover" })
+    );
+  });
+
+  test("posted screen shows UPLOADED with 게시물 보기 first and 피드 보기 below", async () => {
+    await openCompose();
+    await chooseColor();
+    await fireEvent.press(submitButton());
+    expect(await screen.findByText("UPLOADED")).toBeTruthy();
+    expect(screen.getByText("피드 보기")).toBeTruthy();
+    await fireEvent.press(screen.getByText("게시물 보기"));
+    expect(mockReplace).toHaveBeenCalledWith({
+      pathname: "/posts/[postId]", params: { postId: "aaaaaaaa-0000-4000-8000-000000000001" },
+    });
   });
 });
 
@@ -495,13 +546,16 @@ describe("내리기", () => {
     }
   });
 
-  test("H6 color picker offers 9 colors and resolvePostColor supports legacy 6 tokens", async () => {
+  test("color picker offers 8 colors without crimsonWhisper; renderer still supports 9 + legacy 6", async () => {
     await openCompose();
     await chooseColor();
-    for (const token of api.COLOR_TOKENS) {
+    for (const token of api.COMPOSE_COLOR_TOKENS) {
       expect(screen.getByRole("button", { name: `색 ${token}` })).toBeTruthy();
     }
+    expect(api.COMPOSE_COLOR_TOKENS).toHaveLength(8);
+    expect(screen.queryByRole("button", { name: "색 crimsonWhisper" })).toBeNull(); // LOCAL-1b P1b-7
     expect(api.COLOR_TOKENS).toHaveLength(9);
+    expect(resolvePostColor("crimsonWhisper")).toBe("#6B0A00");
     expect(resolvePostColor("bold")).toBe("#EB5324");
     expect(resolvePostColor("fill1")).toBe(theme.colors.fill1);
     expect(resolvePostColor("inkStrong")).toBe(theme.colors.inkStrong);

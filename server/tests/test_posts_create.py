@@ -207,7 +207,8 @@ def test_production_requires_storage_key_and_rejects_memory_fallback(test_db_url
 # ─────────── #24 ───────────
 
 POST_FIELDS = {"id", "library", "book", "image_kind", "image_url", "image_color", "image_value", "from_reading_log", "overlay_text", "body",
-               "author", "is_mine", "reaction_count", "my_reaction", "my_bookmark", "published_at"}
+               "author", "is_mine", "reaction_count", "my_reaction", "my_bookmark", "published_at",
+               "overlay_pos", "overlay_tone", "image_fit"}
 
 
 def test_create_photo_post_then_read_fields(client, auth, db_engine):
@@ -511,3 +512,65 @@ def test_create_accepts_h6_9_and_legacy_6_color_tokens(client, auth):
         assert response.status_code == 201, f"{token}: {response.text}"
         assert response.json()["image_color"] == token
 
+
+
+# ─────────── LOCAL-1b 꾸미기 저장(C-94) ───────────
+
+
+def test_create_post_stores_overlay_style_and_returns_it(client, auth, db_engine):
+    response = client.post("/api/v1/posts", headers=auth["A"], json=post_body(
+        image_kind="cover", image_color=None, isbn13=isbn(0), overlay_text="문장",
+        overlay_pos="top", overlay_tone="dark", image_fit="blur"))
+    assert response.status_code == 201
+    post = response.json()
+    assert (post["overlay_pos"], post["overlay_tone"], post["image_fit"]) == ("top", "dark", "blur")
+    detail = client.get(f"/api/v1/posts/{post['id']}").json()
+    assert (detail["overlay_pos"], detail["overlay_tone"], detail["image_fit"]) == ("top", "dark", "blur")
+    item = client.get(f"/api/v1/libraries/{LIBRARY_ID}/posts").json()["items"][0]
+    assert (item["overlay_pos"], item["overlay_tone"], item["image_fit"]) == ("top", "dark", "blur")
+
+
+def test_color_post_accepts_tone_only(client, auth):
+    response = client.post("/api/v1/posts", headers=auth["A"], json=post_body(overlay_tone="light"))
+    assert response.status_code == 201
+    assert (response.json()["overlay_pos"], response.json()["overlay_tone"], response.json()["image_fit"]) == (
+        None, "light", None)
+
+
+@pytest.mark.parametrize("overrides, field", [
+    ({"overlay_pos": "mid"}, "overlay_pos"),  # 단색은 위치 없음
+    ({"image_fit": "contain"}, "image_fit"),  # 단색은 표지 맞춤 없음
+    ({"overlay_pos": "left"}, "overlay_pos"),
+    ({"overlay_tone": "red"}, "overlay_tone"),
+    ({"image_kind": "cover", "image_color": None, "isbn13": None, "image_fit": "zoom"}, "image_fit"),
+])
+def test_overlay_style_rejects_wrong_kind_or_value(client, auth, db_engine, overrides, field):
+    if overrides.get("image_kind") == "cover":
+        overrides["isbn13"] = isbn(0)
+    response = client.post("/api/v1/posts", headers=auth["A"], json=post_body(**overrides))
+    assert response.status_code == 422
+    error = response.json()["error"]
+    assert error["code"] == "VALIDATION_ERROR"
+    assert field in str(error.get("detail"))
+    assert count_posts(db_engine) == 0
+
+
+def test_photo_post_rejects_image_fit(client, auth, db_engine):
+    path = upload(client, auth["A"], png_bytes(), "image/png").json()["image_path"]
+    response = client.post("/api/v1/posts", headers=auth["A"], json=post_body(
+        image_kind="photo", image_color=None, image_path=path, overlay_pos="bot", image_fit="cover"))
+    assert response.status_code == 422
+    assert response.json()["error"]["detail"] == "image_fit"
+    assert count_posts(db_engine) == 0
+
+
+def test_old_style_posts_return_null_style(client, auth):
+    post = client.post("/api/v1/posts", headers=auth["A"], json=post_body()).json()
+    assert (post["overlay_pos"], post["overlay_tone"], post["image_fit"]) == (None, None, None)
+
+
+def test_image_fit_check_requires_cover_in_db(db_engine, auth):  # auth = 사용자 행(FK)이 있어야 CHECK만 시험한다
+    with pytest.raises(IntegrityError, match="posts_image_fit_check"), db_engine.begin() as conn:
+        conn.execute(text(
+            "INSERT INTO posts (user_id, library_id, image_kind, image_value, client_request_id, image_fit) "
+            "VALUES (:u, :l, 'color', 'fill2', :r, 'blur')"), {"u": USER_A_ID, "l": LIBRARY_ID, "r": uuid4()})

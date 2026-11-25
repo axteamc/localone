@@ -276,7 +276,9 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
           imageUrl={post.image_url}
           color={post.image_color}
           text={post.overlay_text}
-          pos="bot"
+          pos={post.overlay_pos}
+          tone={post.overlay_tone}
+          fit={post.image_fit}
         />
       )}
       {/* 이미지 위에는 ‹만 둔다. 사이트 방문·이미지 검색·확대 버튼은 두지 않는다(H9) */}
