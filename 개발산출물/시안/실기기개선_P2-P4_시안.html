@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 짝 문서: 세부/<STEP>.md 이면 이 줄을 지워도 된다(같은 이름으로 찾는다). 다른 곳이면 상대 경로를 적는다. -->
+<meta name="명세" content="../진행_실기기_개선.md">
+<title>실기기 개선 P2·P3·P4 시안</title>
+<!--
+  시안 템플릿 (코드 레포 CLAUDE.md "시안 규칙"). 복사해서 specs/<기능>/세부/<STEP>_시안.html 로 쓴다.
+  아래 내용은 "검색창을 누르면 보이는 화면"의 예시다. 내용은 전부 바꿔 쓰되 **부품(아래 목록)은 그대로 가져다 쓴다.**
+
+  검사: sh ../team/tools/check_mockup.sh <이 파일>   (직접 실행한다)
+
+  지킬 것 (검사기 번호)
+  - 정할 중심 요소 하나 = <section class="element" id="el-…"> 하나(M10·M11). 후보 화면 3개, 연속값이면 data-kind="continuous" + 기준·3단계 4개(M12).
+  - 후보 = <article class="cand" data-id="…">. 안에: 휴대폰 틀 .phone(M17), 눌러 볼 수 있는 것 하나 이상(M18),
+    "누르면 이렇게 이어져요"·"화면을 열어야 보이는 것"·"얻는 것 / 포기하는 것"·"표준 근거: P-번호"(M15·M16).
+  - 표준 근거는 ../team/docs/앱_표준_패턴.md 의 번호. 후보 3개는 서로 다른 패턴. 목록 밖은 "새 패턴 — 이유", 한 요소에 하나까지.
+  - 추천은 후보 하나에만 class="cand recommended" + "추천 이유"(M13).
+  - 채택 후: data-chosen="<후보 id>", 상태 "확인", 명세 패널 이유 칸에 사용자 말 그대로(M20·M32). 후보는 지우지 않는다 — 선택 상자로 다시 본다(M21).
+  - 명세 패널 #spec: 요소마다 <tr data-el="el-…">(M31), 머리 칸 채택안·차선·탈락안·이유·값·유저 플로우·상태(M30).
+  - 세부 시안은 #except(예외 4장면, M40)·#fullflow(M41). 명세서 확인 목록의 '확인' 행은 "시안 #el-…"를 적는다(X10).
+  - 색·곡률은 :root 토큰(var(--이름))만(M03). 외부 연결 없음(M02).
+
+  부품 목록 (class) — 휴대폰 화면은 이것만 조립해도 된다
+  - .phone 휴대폰 틀 240×430 · .scr 화면 한 장(data-screen="이름", 첫 장 말고는 class="scr hide")
+  - .search 맨 위 검색창 / .field 검색 화면의 입력 칸 / .tabbar 하단 탭 바 / .vhead + .back 머리와 "‹"
+  - .map·.pin·.me 지도·핀·내 위치 / .chip 떠 있는 작은 버튼 / .btn·.btn.ghost 버튼 / .switch 스위치 / .seg 세그먼트
+  - .sheet 아래에서 올라오는 카드 / .menu ⋯ 메뉴 / .toast 아래 한 줄 안내 / .note-card 버튼 없는 작은 카드
+  - .covers 책 표지 줄 / .li 목록 한 줄 / .two-col 두 칸 / .vbody 아직 안 그린 자리(점선)
+  동작 (data-…) — 스크립트를 새로 쓰지 않아도 된다
+  - data-open="화면이름"   같은 .phone 안의 그 화면만 보이기
+  - data-toast="id"        그 안내를 2초 보이기 / data-menu="id" 메뉴 열고 닫기 / data-close="id" 닫기 / data-show="id" 다시 띄우기
+  - data-swap="켜기 글자|끄기 글자"  누를 때마다 글자 바꾸기 / .switch 는 누르면 켜짐·꺼짐
+  - <select data-for="el-…"> 채택안·탈락안 다시 보기 (옵션 값 = 후보 data-id)
+-->
+<style>
+  :root {
+    /* 개발산출물/디자인_기준.md 토큰 (warm, M1 기본). 새 색이 필요하면 여기에 이름을 붙여 더한다 */
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+    --cream:#EFEFE7; --paper:#EFF1F1; --ink-strong:#2E333F; --text:#1D1D1F; --sub:#71716F;
+    --me-dot:#3B7BDB; --on-dark-sub:#CFD2D8;
+    --r-card:18px; --r-pill:18px;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; line-height:1.5; }
+  header.page, main { max-width:1280px; margin:0 auto; padding:0 16px; }
+  header.page { padding-top:20px; }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:17px; margin:0 0 4px; } h3 { font-size:15px; margin:0 0 8px; }
+  .how, .flow, .decided { background:var(--cream); border-radius:var(--r-card); padding:12px 16px; margin:10px 0 0; }
+  .decided { border-left:5px solid var(--ink-strong); }
+  section.element { margin-top:32px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:var(--r-pill); background:var(--surface2); margin-left:6px; font-weight:400; }
+  .pick { margin:8px 0 0; font-size:14px; }
+  .pick select { font:inherit; padding:4px 8px; border-radius:10px; border:1px solid var(--surface3); background:var(--paper); }
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-card); padding:14px; border:3px solid transparent; }
+  .cand.recommended { border-color:var(--fill1); } .cand.chosen { border-color:var(--ink-strong); }
+  .badge { display:inline-block; font-size:12px; font-weight:700; padding:1px 9px; border-radius:var(--r-pill); background:var(--fill1); margin-left:6px; }
+  .badge.adopted { background:var(--ink-strong); color:var(--paper); }
+  .cand p, .cand li { font-size:13.5px; margin:6px 0; } .cand ul { padding-left:18px; margin:4px 0; }
+  .lbl { font-weight:700; font-size:12.5px; color:var(--sub); margin-top:10px; display:block; }
+  /* ---- 휴대폰 부품 ---- */
+  .phone { width:240px; height:430px; margin:0 auto 10px; background:var(--bg); border-radius:26px; border:5px solid var(--ink-strong); position:relative; overflow:hidden; font-size:11px; }
+  .scr { position:absolute; inset:0; padding:12px 10px; background:var(--paper); overflow:hidden; }
+  .scr.dark { background:var(--ink-strong); color:var(--paper); }
+  .map { position:absolute; inset:0; background:
+      linear-gradient(115deg, transparent 47%, var(--cream) 47%, var(--cream) 51%, transparent 51%),
+      linear-gradient(20deg, transparent 60%, var(--cream) 60%, var(--cream) 63%, transparent 63%), var(--bg); }
+  .pin { position:absolute; display:flex; flex-direction:column; align-items:center; transform:translateX(-50%); cursor:pointer; background:none; border:0; padding:0; font:inherit; color:inherit; }
+  .pin i { width:16px; height:16px; border-radius:50% 50% 50% 0; background:var(--fill1); transform:rotate(-45deg); border:2px solid var(--ink-strong); display:block; }
+  .pin b { margin-top:5px; font-size:10px; } .pin span { font-size:9px; color:var(--sub); }
+  .me { position:absolute; width:12px; height:12px; border-radius:50%; background:var(--me-dot); border:2px solid var(--paper); }
+  .search { position:absolute; left:10px; right:10px; top:12px; height:34px; border-radius:var(--r-pill); background:var(--paper); display:flex; align-items:center; padding:0 12px; gap:6px; box-shadow:0 1px 4px rgba(0,0,0,.15); cursor:pointer; }
+  .search .ph { flex:1; color:var(--sub); }
+  .field { height:34px; border-radius:var(--r-pill); display:flex; align-items:center; padding:0 12px; gap:6px; background:var(--cream); color:var(--sub); }
+  .scr.dark .field { background:var(--paper); color:var(--text); }
+  .tabbar { position:absolute; left:0; right:0; bottom:0; height:38px; background:var(--paper); display:flex; justify-content:space-around; align-items:center; font-size:9px; color:var(--sub); }
+  .tabbar b { color:var(--text); }
+  .btn { border:0; font:inherit; cursor:pointer; border-radius:var(--r-pill); padding:4px 10px; background:var(--ink-strong); color:var(--paper); }
+  .btn.ghost { background:var(--surface2); color:var(--text); }
+  .chip { position:absolute; border:0; cursor:pointer; font:inherit; border-radius:var(--r-pill); padding:5px 10px; background:var(--paper); box-shadow:0 1px 4px rgba(0,0,0,.18); font-size:10px; }
+  .vhead { padding:4px 2px 8px; } .row { display:flex; align-items:center; gap:6px; }
+  .back { font-size:24px; font-weight:800; line-height:1; background:none; border:0; cursor:pointer; text-shadow:0 1px 3px rgba(0,0,0,.2); padding:0 6px 0 0; color:inherit; }
+  .vname { font-size:14px; font-weight:700; } .vsub { color:var(--sub); font-size:10px; }
+  .vbody { margin:8px 2px; height:200px; border-radius:var(--r-card); border:2px dashed var(--surface3); display:flex; align-items:center; justify-content:center; text-align:center; color:var(--sub); padding:10px; }
+  .sheet { position:absolute; left:8px; right:8px; bottom:46px; background:var(--paper); border-radius:16px; padding:10px 12px; box-shadow:0 2px 10px rgba(0,0,0,.2); }
+  .menu { position:absolute; right:10px; top:40px; background:var(--paper); border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.2); padding:4px 0; width:150px; display:none; z-index:2; }
+  .menu.on { display:block; } .menu div { padding:7px 12px; cursor:pointer; }
+  .toast { position:absolute; left:14px; right:14px; bottom:48px; background:var(--ink-strong); color:var(--paper); border-radius:12px; padding:7px 10px; font-size:10px; display:none; }
+  .toast.on { display:block; }
+  .note-card { position:absolute; left:50%; bottom:46px; transform:translate(-50%,6px); background:var(--paper); border-radius:14px; padding:6px 12px; box-shadow:0 2px 10px rgba(0,0,0,.2); font-size:10px; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .3s, transform .3s; }
+  .note-card.on { opacity:1; transform:translate(-50%,0); }
+  .switch { width:30px; height:17px; border-radius:9px; background:var(--surface3); position:relative; border:0; cursor:pointer; flex:none; }
+  .switch::after { content:""; position:absolute; left:2px; top:2px; width:13px; height:13px; border-radius:50%; background:var(--paper); transition:left .15s; }
+  .switch.on { background:var(--ink-strong); } .switch.on::after { left:15px; }
+  .seg { display:flex; background:var(--surface2); border-radius:var(--r-pill); padding:2px; width:max-content; }
+  .seg button { border:0; font:inherit; border-radius:var(--r-pill); padding:3px 9px; background:none; cursor:pointer; color:inherit; }
+  .seg button.on { background:var(--ink-strong); color:var(--paper); }
+  .covers { display:flex; gap:6px; margin-top:6px; overflow:hidden; }
+  .covers i { width:40px; height:56px; border-radius:5px 9px 9px 5px; background:var(--fill2); display:block; flex:none; }
+  .covers i:nth-child(3n+2){ background:var(--fill3); } .covers i:nth-child(3n){ background:var(--fill1); }
+  .li { padding:7px 2px; border-bottom:1px solid var(--surface2); } .scr.dark .li { border-color:rgba(255,255,255,.18); }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .sec { font-weight:700; font-size:10.5px; margin-top:10px; }
+  .hide { display:none !important; }
+  /* ---- 표 ---- */
+  table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-card); overflow:hidden; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--surface2); }
+  th { background:var(--surface2); }
+  .st { font-size:12px; padding:1px 8px; border-radius:var(--r-pill); background:var(--surface2); white-space:nowrap; }
+  #spec, #except, #fullflow { margin-top:32px; }
+  .state button { font:inherit; border:0; border-radius:var(--r-pill); padding:4px 12px; background:var(--surface2); cursor:pointer; margin:2px; }
+  .state button[aria-pressed="true"] { background:var(--ink-strong); color:var(--paper); }
+  .wide { overflow-x:auto; }
+</style>
+<style>
+  /* 이 시안에서 더한 부품 */
+  :root { --glass:rgba(239,241,241,.58); --glass-edge:rgba(255,255,255,.75); --shadow:rgba(0,0,0,.18); --loan-ok:#5E8C61; }
+  .rowwrap { position:relative; margin-top:6px; }
+  .rowwrap .covers { margin-top:0; }
+  .covers.big i { width:52px; height:76px; }
+  .garrow { position:absolute; top:50%; transform:translateY(-50%); width:28px; height:28px; border-radius:50%; border:1px solid var(--glass-edge);
+    background:var(--glass); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); box-shadow:0 1px 6px var(--shadow); font-weight:700; font-size:14px; cursor:pointer; color:var(--ink-strong); }
+  .garrow.l { left:2px; } .garrow.r { right:2px; }
+  .garrow.edge { width:18px; height:44px; border-radius:0 12px 12px 0; } .garrow.edge.r { border-radius:12px 0 0 12px; right:0; } .garrow.edge.l { left:0; }
+  .gpair { position:absolute; right:4px; bottom:4px; display:flex; gap:2px; padding:2px; border-radius:var(--r-pill); background:var(--glass); backdrop-filter:blur(8px); border:1px solid var(--glass-edge); box-shadow:0 1px 6px var(--shadow); }
+  .gpair button { width:24px; height:22px; border:0; background:none; font-weight:700; cursor:pointer; color:var(--ink-strong); }
+  .ttl { font-size:13px; margin-top:8px; } .cap { font-size:9px; color:var(--sub); }
+  .head3 { display:flex; align-items:center; justify-content:space-between; font-size:16px; padding:2px 2px 0; }
+  .dots { font-size:16px; letter-spacing:1px; cursor:pointer; background:none; border:0; color:inherit; }
+  .stamp { display:inline-flex; align-items:center; gap:4px; font-size:10px; color:var(--sub); background:none; border:0; cursor:pointer; padding:4px 0; }
+  .stamp u { text-decoration:none; border-bottom:1px solid var(--sub); color:var(--text); }
+  .drop { position:absolute; background:var(--paper); border-radius:10px; box-shadow:0 2px 10px var(--shadow); padding:3px 0; display:none; z-index:3; min-width:110px; }
+  .drop.on { display:block; } .drop div { padding:7px 10px; cursor:pointer; } .drop .sub { color:var(--sub); font-size:9px; padding:4px 10px 2px; cursor:default; }
+  .glist { background:var(--cream); border-radius:10px; margin-top:6px; }
+  .glist .li { display:flex; justify-content:space-between; padding:7px 8px; }
+  .glist .li:last-child { border-bottom:0; }
+  .gt { font-size:9px; color:var(--sub); margin:10px 4px 0; letter-spacing:.5px; }
+  .acc { background:var(--cream); border-radius:10px; margin-top:6px; padding:7px 9px; cursor:pointer; }
+  .acc b { display:block; } .acc span { color:var(--sub); font-size:9px; } .acc .inner { display:none; margin-top:6px; }
+  .acc.open .inner { display:block; }
+  .gear { width:22px; height:22px; border-radius:50%; border:1px solid var(--surface3); display:inline-flex; align-items:center; justify-content:center; font-size:11px; background:var(--paper); cursor:pointer; }
+  .muted { color:var(--sub); }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>실기기 개선 P2·P3·P4 시안 — 가로 넘김 버튼 · 방문 화면 머리 · 설정 화면</h1>
+  <div class="how"><b>보는 법.</b> 정할 것이 3개 있고, 하나마다 화면 3개를 나란히 놓았어요. 휴대폰 안의 버튼은 눌러 볼 수 있어요. 노란 테두리가 <b>추천</b>이에요. 고르는 건 직접 해 주세요.</div>
+</header>
+<main>
+
+<!-- ===== 중심 요소 1: 가로 넘김 버튼 ===== -->
+<section class="element" id="el-arrows" data-chosen="">
+  <h2>정할 것 1. 책 줄 위 ‹ › 버튼 모양 <span class="status">결정 전</span></h2>
+  <div class="flow"><b>정해진 것(2026-11-25 사용자).</b> ‹ ›는 제목 줄에 따로 두지 않고 <b>책 위에 올린다</b>. 유리처럼 비치는 모양, 세로 가운데 정렬. 모바일에서도 보인다(지금은 웹만). 같은 모양을 홈 인기 도서·방문 화면 책장·검색 첫 화면·독서 기록 가로 줄에 쓴다. 손가락으로 밀어 넘기기는 그대로.</div>
+  <div class="pick">다시 보기: <select data-for="el-arrows">
+    <option value="A">후보 A — 양끝 둥근 유리 버튼</option>
+    <option value="B">후보 B — 가장자리에 붙은 유리 탭</option>
+    <option value="C">후보 C — 오른쪽 아래 유리 버튼 묶음</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 양끝 둥근 유리 버튼 <span class="badge">추천</span></h3>
+      <div class="phone">
+        <div class="scr" data-screen="a1"><div class="ttl">요즘 많이 읽는 책</div><div class="cap">출처: YES24</div>
+          <div class="rowwrap"><div class="covers big"><i></i><i></i><i></i><i></i></div>
+            <button class="garrow r" data-open="a2" aria-label="다음 책">›</button></div>
+          <p class="cap" style="margin-top:8px">처음에는 왼쪽 ‹가 없어요(더 갈 곳 없음).</p></div>
+        <div class="scr hide" data-screen="a2"><div class="ttl">요즘 많이 읽는 책</div><div class="cap">출처: YES24</div>
+          <div class="rowwrap"><div class="covers big"><i style="background:var(--fill3)"></i><i></i><i style="background:var(--fill1)"></i><i></i></div>
+            <button class="garrow l" data-open="a1" aria-label="이전 책">‹</button><button class="garrow r" aria-label="다음 책">›</button></div>
+          <p class="cap" style="margin-top:8px">한 번 누르면 보이는 만큼(약 3권) 넘어가요.</p></div>
+      </div>
+      <p>책 줄의 왼쪽·오른쪽 끝, 표지 높이 가운데에 지름 32(앱 값)의 둥근 유리 버튼.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>› 누름 → 보이는 폭만큼 부드럽게 넘어감 → 왼쪽 끝을 벗어나면 ‹가 나타남 → 끝에 닿으면 ›가 사라짐.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>버튼이 표지 가장자리 일부를 가림(반투명이라 표지가 비침)</li><li>누르는 자리 44×44(보이는 원보다 넓게)</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>어디를 누를지 가장 분명해요(웹 쇼핑몰·앱스토어 캐러셀과 같은 모양). / 표지 끝이 조금 가려져요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-33 가로로 넘기는 띠 (넷플릭스·앱스토어 — 양끝 버튼)</p>
+      <p><b>추천 이유:</b> 말씀하신 "책 위에, 좌우, 가운데"와 그대로 맞고, 첨부 사진의 방식과 같아요. 끝에 닿으면 사라져서 더 갈 곳이 있는지도 함께 알려 줘요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 가장자리에 붙은 유리 탭</h3>
+      <div class="phone">
+        <div class="scr" data-screen="b1"><div class="ttl">요즘 많이 읽는 책</div><div class="cap">출처: YES24</div>
+          <div class="rowwrap"><div class="covers big"><i></i><i></i><i></i><i></i></div>
+            <button class="garrow edge r" data-open="b2" aria-label="다음 책">›</button></div></div>
+        <div class="scr hide" data-screen="b2"><div class="ttl">요즘 많이 읽는 책</div><div class="cap">출처: YES24</div>
+          <div class="rowwrap"><div class="covers big"><i style="background:var(--fill3)"></i><i></i><i style="background:var(--fill1)"></i><i></i></div>
+            <button class="garrow edge l" data-open="b1" aria-label="이전 책">‹</button><button class="garrow edge r" aria-label="다음 책">›</button></div></div>
+      </div>
+      <p>화면 가장자리에 반쯤 붙은 세로로 긴 유리 탭(폭 22, 높이 52).</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>A와 같아요. 끝에 닿으면 그쪽 탭이 사라져요.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>표지를 덜 가림</li><li>탭이 작아 처음엔 버튼인지 덜 분명</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>표지가 더 잘 보여요. / 눈에 덜 띄고, 화면 끝 밀기(뒤로 가기, P-07)와 자리가 겹쳐요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-33 변형 (쇼핑 앱 배너의 가장자리 탭)</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 오른쪽 아래 유리 버튼 묶음</h3>
+      <div class="phone">
+        <div class="scr" data-screen="c1"><div class="ttl">요즘 많이 읽는 책</div><div class="cap">출처: YES24</div>
+          <div class="rowwrap"><div class="covers big"><i></i><i></i><i></i><i></i></div>
+            <div class="gpair"><button aria-label="이전 책">‹</button><button data-open="c2" aria-label="다음 책">›</button></div></div></div>
+        <div class="scr hide" data-screen="c2"><div class="ttl">요즘 많이 읽는 책</div><div class="cap">출처: YES24</div>
+          <div class="rowwrap"><div class="covers big"><i style="background:var(--fill3)"></i><i></i><i style="background:var(--fill1)"></i><i></i></div>
+            <div class="gpair"><button data-open="c1" aria-label="이전 책">‹</button><button aria-label="다음 책">›</button></div></div></div>
+      </div>
+      <p>표지 줄 오른쪽 아래 모서리에 ‹ › 두 개를 한 유리 알약에 묶음.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>A와 같아요. 끝에서는 그쪽 버튼이 흐려져요(자리는 그대로).</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>버튼이 늘 한 자리에 있음</li><li>세로 가운데가 아님(말씀하신 정렬과 다름)</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>엄지로 누르기 쉬워요. / 좌우 방향과 버튼 위치가 따로 놀아요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-33 변형 (사진 앨범 넘김 버튼 묶음)</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 중심 요소 2: 방문 화면 머리 ===== -->
+<section class="element" id="el-visithead" data-chosen="">
+  <h2>정할 것 2. 방문 화면 머리와 "나만 보기" 바꾸기 <span class="status">결정 전</span></h2>
+  <div class="flow"><b>정해진 것(2026-11-25 사용자).</b> <b>⋯은 하나만</b>, ‹와 같은 줄 오른쪽 끝(제목 길이와 상관없이). "홈을 열면 처음 크게 보일 도서관"은 ⋯에서 빼고 설정으로 옮김 → ⋯에는 <b>앱을 켜면 여기부터 열기 · 도서관 홈페이지</b>만. 정할 것은 <b>스탬프 공개 범위를 바꾸는 방법</b>이에요.</div>
+  <div class="pick">다시 보기: <select data-for="el-visithead">
+    <option value="A">후보 A — 글자를 눌러 아래 작은 메뉴</option>
+    <option value="B">후보 B — 두 칸 세그먼트로 바로 바꾸기</option>
+    <option value="C">후보 C — 머리 ⋯ 메뉴 안으로</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 글자를 눌러 아래 작은 메뉴 <span class="badge">추천</span></h3>
+      <div class="phone">
+        <div class="scr dark" data-screen="v1">
+          <div class="head3"><span>‹</span><button class="dots" data-menu="vmA">⋯</button></div>
+          <div class="menu" id="vmA" style="top:30px"><div>앱을 켜면 여기부터 열기</div><div>도서관 홈페이지</div></div>
+          <div class="vname" style="font-size:16px;margin-top:4px">북구 중흥도서관</div>
+          <div class="row" style="justify-content:space-between"><span class="vsub" style="color:var(--on-dark-sub)">1.2KM · 정보 없음</span>
+            <button class="stamp" style="color:var(--on-dark-sub)" data-menu="sdA">오늘 다녀감 · <u style="color:var(--paper)">나만 보기 ▾</u></button></div>
+          <div class="drop" id="sdA" style="right:10px;top:84px"><div data-toast="tA">피드에 공개</div></div>
+          <div class="toast" id="tA">피드에 공개로 바꿨어요</div>
+          <div class="vbody" style="border-color:rgba(255,255,255,.3)">피드</div></div>
+      </div>
+      <p>지금 상태 글자 <b>나만 보기 ▾</b>를 누르면 바로 아래 작은 메뉴 <b>피드에 공개</b>(공개 상태면 <b>나만 보기로 바꾸기</b>).</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>다녀왔어요 → "오늘 다녀감 · 나만 보기 ▾" → 글자 누름 → 아래 작은 메뉴 → 피드에 공개 → 한 줄 안내 + 글자가 "피드에 공개 ▾"로.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>스탬프 줄 ⋯이 사라져 ⋯은 머리에 하나</li><li>메뉴는 글자 바로 아래, 화면 아래 시트 아님</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>지금 상태와 바꾸는 곳이 한 자리예요. / ▾를 처음 보면 누를 수 있는지 한 번 생각해야 해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: 새 패턴 — iOS pull-down 버튼·M3 드롭다운 메뉴(상태 값을 눌러 그 아래에서 바꾸기). 목록에 없어 추가 필요</p>
+      <p><b>추천 이유:</b> 보내 주신 개선안과 같고, 상태를 보여 주면서 바꾸는 값에 쓰는 표준 방식이에요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 두 칸 세그먼트로 바로 바꾸기</h3>
+      <div class="phone">
+        <div class="scr dark" data-screen="v2">
+          <div class="head3"><span>‹</span><button class="dots" data-menu="vmB">⋯</button></div>
+          <div class="menu" id="vmB" style="top:30px"><div>앱을 켜면 여기부터 열기</div><div>도서관 홈페이지</div></div>
+          <div class="vname" style="font-size:16px;margin-top:4px">북구 중흥도서관</div>
+          <div class="vsub" style="color:var(--on-dark-sub)">1.2KM · 정보 없음</div>
+          <div class="row" style="margin-top:6px"><span class="vsub" style="color:var(--on-dark-sub)">오늘 다녀감</span>
+            <div class="seg" style="color:var(--text)"><button class="on">나만 보기</button><button data-toast="tB">피드에 공개</button></div></div>
+          <div class="toast" id="tB">피드에 공개로 바꿨어요</div>
+          <div class="vbody" style="border-color:rgba(255,255,255,.3);height:170px">피드</div></div>
+      </div>
+      <p>두 칸 세그먼트를 눌러 바로 바꿔요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>다녀왔어요 → 세그먼트 "나만 보기" 켜짐 → "피드에 공개"를 한 번 누르면 바로 바뀜.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>한 번에 바뀜(메뉴 없음)</li><li>머리 아래 줄이 하나 늘어남</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>가장 빨라요. / 자리를 많이 쓰고, 실수로 눌러도 바로 공개돼요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-22 세그먼트(범위 바꾸기)</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 머리 ⋯ 메뉴 안으로</h3>
+      <div class="phone">
+        <div class="scr dark" data-screen="v3">
+          <div class="head3"><span>‹</span><button class="dots" data-menu="vmC">⋯</button></div>
+          <div class="menu" id="vmC" style="top:30px"><div data-toast="tC">피드에 공개로 바꾸기</div><div>앱을 켜면 여기부터 열기</div><div>도서관 홈페이지</div></div>
+          <div class="vname" style="font-size:16px;margin-top:4px">북구 중흥도서관</div>
+          <div class="row" style="justify-content:space-between"><span class="vsub" style="color:var(--on-dark-sub)">1.2KM · 정보 없음</span><span class="vsub" style="color:var(--on-dark-sub)">오늘 다녀감 · 나만 보기</span></div>
+          <div class="toast" id="tC">피드에 공개로 바꿨어요</div>
+          <div class="vbody" style="border-color:rgba(255,255,255,.3)">피드</div></div>
+      </div>
+      <p>스탬프 줄은 글자만, 바꾸기는 머리 ⋯ 메뉴 맨 위 항목.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>⋯ 누름 → "피드에 공개로 바꾸기" → 한 줄 안내.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>화면이 가장 깔끔</li><li>상태 글자와 바꾸는 곳이 떨어져 있음</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>머리 줄이 단순해요. / 바꿀 수 있다는 걸 찾기 어려워요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-11 머리 오른쪽 ⋯ 메뉴 안 항목</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 중심 요소 3: 설정 화면 ===== -->
+<section class="element" id="el-settings" data-chosen="">
+  <h2>정할 것 3. 설정 화면 모양 <span class="status">결정 전</span></h2>
+  <div class="flow"><b>정해진 것(2026-11-25 사용자).</b> 내 정보의 설정(⚙)은 <b>오른쪽 위 머리</b>로(종 옆). 항목은 <b>계정 | 화면 | 알림</b>. 화면에 "홈을 열면 처음 크게 보일 도서관(가장 가까운 곳·최근 방문한 곳)"과 <b>다크 모드 자리(준비 중)</b>. 알림은 반납 알림 켜기·끄기(D-3·D-1·당일)와 모임 안내 받기. 알림함 오른쪽 위 ⚙ → 바로 아래로 내려오는 작은 창에서 같은 알림 설정.</div>
+  <div class="pick">다시 보기: <select data-for="el-settings">
+    <option value="A">후보 A — 묶음 목록(누르면 다음 화면)</option>
+    <option value="B">후보 B — 접었다 펴는 카드</option>
+    <option value="C">후보 C — 한 화면에 모두 펼침</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 묶음 목록(누르면 다음 화면) <span class="badge">추천</span></h3>
+      <div class="phone">
+        <div class="scr" data-screen="s1"><div class="row" style="justify-content:space-between"><b>MY</b><span class="row"><span class="gear">🔔</span><button class="gear" data-open="s2" aria-label="설정">⚙</button></span></div>
+          <div class="vbody" style="height:120px">프로필 · 방문 모음</div><p class="cap">⚙를 눌러 보세요</p></div>
+        <div class="scr hide" data-screen="s2"><div class="row"><button class="back" data-open="s1">‹</button><b>설정</b></div>
+          <div class="gt">계정</div><div class="glist"><div class="li"><span>로그인 계정</span><span class="muted">Google ›</span></div><div class="li"><span>로그아웃</span></div><div class="li"><span>회원 탈퇴</span><span class="muted">›</span></div></div>
+          <div class="gt">화면</div><div class="glist"><div class="li" data-open="s3" style="cursor:pointer"><span>처음 크게 보일 도서관</span><span class="muted">가장 가까운 곳 ›</span></div><div class="li"><span>다크 모드</span><span class="muted">준비 중</span></div></div>
+          <div class="gt">알림</div><div class="glist"><div class="li"><span>반납 알림</span><button class="switch on"></button></div><div class="li"><span>모임 안내</span><button class="switch on"></button></div></div></div>
+        <div class="scr hide" data-screen="s3"><div class="row"><button class="back" data-open="s2">‹</button><b>처음 크게 보일 도서관</b></div>
+          <div class="glist" style="margin-top:10px"><div class="li"><span>가장 가까운 곳</span><span>✓</span></div><div class="li"><span>최근 방문한 곳</span><span></span></div></div></div>
+      </div>
+      <p>회색 소제목(계정·화면·알림) 아래 줄 목록. 고를 것이 있는 줄은 오른쪽에 지금 값 + ›.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>내 정보 → 오른쪽 위 ⚙ → 설정 → "처음 크게 보일 도서관" → 다음 화면에서 고름 → ‹로 돌아오면 값이 바뀌어 있음.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>모든 항목이 한 화면에 보임, 켜기·끄기는 그 자리 스위치</li><li>항목이 늘어도 같은 모양으로 아래에 붙음</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>iOS 설정·카카오톡 설정과 같아 처음 봐도 바로 알아요. / 고르는 값은 한 화면 더 들어가요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-14 설정 화면 안 항목 + P-02 밀려 들어오는 다음 화면 + P-10 줄 + 스위치</p>
+      <p><b>추천 이유:</b> "일반적인 UI UX"가 목표라 하셔서, 모바일 앱 설정에서 가장 흔한 모양을 골랐어요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 접었다 펴는 카드</h3>
+      <div class="phone">
+        <div class="scr" data-screen="t1"><div class="row"><span class="back">‹</span><b>설정</b></div>
+          <div class="acc" onclick="this.classList.toggle('open')"><b>계정</b><span>Google · 로그아웃 · 탈퇴</span><div class="inner"><div class="li">로그아웃</div><div class="li">회원 탈퇴</div></div></div>
+          <div class="acc" onclick="this.classList.toggle('open')"><b>화면</b><span>처음 크게 보일 도서관 · 다크 모드</span><div class="inner"><div class="li">처음 크게 보일 도서관: 가장 가까운 곳</div><div class="li muted">다크 모드 (준비 중)</div></div></div>
+          <div class="acc" onclick="this.classList.toggle('open')"><b>알림</b><span>반납 알림 · 모임 안내</span><div class="inner"><div class="li">반납 알림</div><div class="li">모임 안내</div></div></div></div>
+      </div>
+      <p>보내 주신 첨부 사진처럼 카드 제목 + 한 줄 요약, 누르면 그 자리에서 펼침. 카드를 눌러 보세요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>설정 → 카드 누름 → 아래로 펼쳐짐 → 그 안에서 바꿈.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>처음엔 묶음 3개만 보여 짧음</li><li>바꾸려면 한 번 더 펼쳐야 함</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>한 화면 안에서 끝나요. / 펼친 카드가 여럿이면 길어지고, 스위치가 숨어 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-73 접힌 선택 칸(웹 설정 페이지에 흔함)</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 한 화면에 모두 펼침</h3>
+      <div class="phone">
+        <div class="scr" data-screen="u1"><div class="row"><span class="back">‹</span><b>설정</b></div>
+          <div class="sec">계정</div><div class="li">Google 계정</div><div class="li">로그아웃</div><div class="li">회원 탈퇴</div>
+          <div class="sec">화면</div><div class="li">처음 크게 보일 도서관</div><div class="seg" style="margin:4px 0"><button class="on">가장 가까운 곳</button><button>최근 방문한 곳</button></div><div class="li muted">다크 모드 (준비 중)</div>
+          <div class="sec">알림</div><div class="li row" style="justify-content:space-between">반납 알림<button class="switch on"></button></div><div class="li row" style="justify-content:space-between">모임 안내<button class="switch on"></button></div></div>
+      </div>
+      <p>다음 화면 없이 모든 값을 한 화면에서 바로 바꿈(고르기는 세그먼트).</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>설정 → 세그먼트·스위치를 그 자리에서 바꿈.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>들어갈 화면 없음</li><li>항목이 늘면 길어지고 묶음 구분이 약함</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>가장 빨리 바꿔요. / 항목이 늘면 복잡해져요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-22 세그먼트 + P-10 줄 + 스위치</p>
+    </article>
+  </div>
+</section>
+
+<section id="fullflow">
+  <h2>처음부터 끝까지 이렇게 써요</h2>
+  <ol>
+    <li>홈 아래 창의 "요즘 많이 읽는 책"(YES24 스테디셀러, 만화·시리즈 제외, 출처: YES24)을 손가락으로 밀거나 책 위 ‹ ›로 넘긴다.</li>
+    <li>도서관 방문 화면 아래 책장은 화면 맨 아래에 붙고, 같은 ‹ ›로 인기 도서·테마 책장을 넘긴다.</li>
+    <li>다녀왔어요를 누르면 "오늘 다녀감 · 나만 보기"가 남고, 정할 것 2의 방법으로 피드에 공개한다.</li>
+    <li>내 정보 오른쪽 위 ⚙ → 설정(정할 것 3)에서 처음 크게 보일 도서관·알림을 바꾼다. 알림함 오른쪽 위 ⚙로도 알림 설정이 아래로 내려온다.</li>
+  </ol>
+</section>
+
+<section id="spec">
+  <h2>명세</h2>
+  <div class="wide"><table>
+    <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
+    <tr data-el="el-arrows"><td>1. 책 줄 ‹ › 모양</td><td>— (추천: A 양끝 둥근 유리)</td><td>—</td><td>—</td><td>(받기 전)</td><td>원 지름 32·누르는 자리 44, 바탕 paper 58% + 흐림 8, 테두리 흰색 75%, 그림자 0 1 6 18%, 표지 높이 가운데, 끝에서 숨김, 한 번에 보이는 폭만큼</td><td>› → 넘김 → ‹ 나타남</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-visithead"><td>2. 공개 범위 바꾸기</td><td>— (추천: A 글자 → 아래 작은 메뉴)</td><td>—</td><td>—</td><td>(받기 전)</td><td>메뉴 최소 폭 140, 곡률 9, 항목 높이 44</td><td>다녀왔어요 → 나만 보기 ▾ → 피드에 공개</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-settings"><td>3. 설정 화면 모양</td><td>— (추천: A 묶음 목록)</td><td>—</td><td>—</td><td>(받기 전)</td><td>소제목 12 textSub, 줄 높이 48, 묶음 곡률 9</td><td>⚙ → 설정 → 항목</td><td><span class="st">결정 전</span></td></tr>
+    <tr><td>홈 책 줄 제목</td><td>"요즘 많이 읽는 책" + 오른쪽 "출처: YES24"</td><td>—</td><td>—</td><td>묻지 않음(Y-4 A안 확정)</td><td>지금 제목 자리 그대로</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>머리 ⋯ 자리</td><td>‹와 같은 줄 오른쪽 끝, 제목은 그 아래</td><td>—</td><td>—</td><td>사용자 결정</td><td>44×44</td><td>—</td><td><span class="st">확인</span></td></tr>
+    <tr><td>알림함 ⚙ 작은 창</td><td>머리 오른쪽 ⚙ → 바로 아래로 내려오는 창(반납 알림·모임 안내 스위치)</td><td>—</td><td>—</td><td>사용자 결정</td><td>폭 260, 곡률 9</td><td>알림함 → ⚙ → 스위치</td><td><span class="st">확인</span></td></tr>
+    <tr><td>다크 모드</td><td>설정 화면에 "준비 중" 줄만</td><td>—</td><td>—</td><td>"자리만 두고 나중에"</td><td>—</td><td>—</td><td><span class="st">확인</span></td></tr>
+  </table></div>
+</section>
+</main>
+<script>
+  // 채택안 표시: section 의 data-chosen 에 후보 id → 검은 테두리 + "채택" 표시. 선택 상자로 탈락안을 다시 볼 수 있다.
+  function mark(el, id) {
+    el.querySelectorAll('.cand').forEach(function (c) {
+      c.classList.toggle('chosen', c.dataset.id === id);
+      var old = c.querySelector('.badge.adopted'); if (old) old.remove();
+      if (id && c.dataset.id === el.dataset.chosen) { var s = document.createElement('span'); s.className = 'badge adopted'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+    });
+    var sel = el.querySelector('select[data-for]'); if (sel && id) sel.value = id;
+  }
+  document.querySelectorAll('section.element').forEach(function (el) {
+    mark(el, el.dataset.chosen || '');
+    var sel = el.querySelector('select[data-for]');
+    if (sel) { if (!el.dataset.chosen) sel.insertAdjacentHTML('afterbegin', '<option value="" selected>(아직 고르지 않음)</option>');
+      sel.addEventListener('change', function () { mark(el, sel.value || el.dataset.chosen); }); }
+  });
+  // 휴대폰 부품 동작
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-open],[data-toast],[data-menu],[data-close],[data-show],[data-swap],.switch'); if (!t) return;
+    if (t.classList.contains('switch')) t.classList.toggle('on');
+    if (t.dataset.open) { var ph = t.closest('.phone'); ph.querySelectorAll('.scr[data-screen]').forEach(function (s) { s.classList.toggle('hide', s.dataset.screen !== t.dataset.open); }); }
+    if (t.dataset.menu) { document.getElementById(t.dataset.menu).classList.toggle('on'); return; }
+    if (t.dataset.show) { document.getElementById(t.dataset.show).classList.remove('hide'); }
+    if (t.dataset.swap) { var w = t.dataset.swap.split('|'); t.textContent = t.textContent === w[0] ? w[1] : w[0]; }
+    if (t.dataset.close) { var c = document.getElementById(t.dataset.close); c.classList.remove('on'); if (c.classList.contains('sheet')) c.classList.add('hide'); }
+    if (t.dataset.toast) { var m = document.getElementById(t.dataset.toast); m.classList.add('on'); clearTimeout(m._t); m._t = setTimeout(function () { m.classList.remove('on'); }, 2000); }
+  });
+</body>
+</html>
