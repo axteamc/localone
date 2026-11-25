@@ -103,8 +103,16 @@ export function BatchAvailabilityPanel({
     <View testID="batch-panel" style={styles.panel}>
       <View style={styles.head}>
         <Text style={styles.title} numberOfLines={1}>{BATCH_TITLE}</Text>
-        <Pressable accessibilityRole="button" onPress={onClose} hitSlop={8}>
-          <Text style={styles.close}>닫기</Text>
+        {/* 단일 조회 창과 같은 X 아이콘(44×44, 시안 #sheet-close). 글자 기호 대신 선 두 개 */}
+        <Pressable
+          testID="batch-close"
+          accessibilityRole="button"
+          accessibilityLabel="일괄 검색 닫기"
+          onPress={onClose}
+          style={styles.closeBtn}
+        >
+          <View style={[styles.closeLine, styles.closeLineA]} />
+          <View style={[styles.closeLine, styles.closeLineB]} />
         </Pressable>
       </View>
 
@@ -134,31 +142,39 @@ export function BatchAvailabilityPanel({
             const selected = selectedLibraryId === cand.library.id;
             const distance = distanceLabel(cand.library.distance_m);
             return (
-              <View key={cand.library.id} testID={`batch-library-${cand.library.id}`} style={styles.foot}>
+              // 단일 조회 카드(LibraryAvailabilityCard)와 같은 모양: 이름 · 거리 [선택됨] / 상태 점 + 권수, 오른쪽 필.
+              // 선택 레이어는 카드 맨 뒤에 깔아 필을 감싸지 않는다(웹 <button> 안 <button> 방지, 필을 눌러도 선택은 그대로).
+              <View key={cand.library.id} testID={`batch-library-${cand.library.id}`} style={[styles.card, selected && styles.cardSelected]}>
                 <Pressable
                   testID={`batch-select-${cand.library.id}`}
                   accessibilityRole="button"
+                  accessibilityLabel={`${cand.library.name} 선택`}
                   accessibilityState={{ selected }}
                   onPress={() => onSelectLibrary(selected ? null : cand.library.id)}
-                  style={[styles.card, selected && styles.cardSelected]}
-                >
-                  {selected && <View style={styles.selectBar} />}
-                  <View style={styles.body}>
-                    <View style={styles.flex}>
-                      <Text style={styles.name}>{cand.library.name}</Text>
-                      {selected && <Text style={styles.selectedTag}>{SELECTED_LABEL}</Text>}
-                      <Text style={styles.count}>{countLine(cand)}</Text>
-                      {!!distance && <Text style={styles.meta}>{distance}</Text>}
-                    </View>
-                    {cand.link !== null && (
-                      <LivePill
-                        url={cand.link.url}
-                        testID={`batch-live-${cand.library.id}`}
-                        onOpenFailed={setOpenFailed}
-                      />
-                    )}
+                  style={StyleSheet.absoluteFill}
+                />
+                {selected && <View style={[styles.selectBar, styles.passThrough]} />}
+                <View style={[styles.info, styles.passThrough]}>
+                  <View style={styles.nameRow}>
+                    <Text style={styles.name} numberOfLines={1}>{cand.library.name}</Text>
+                    {!!distance && <Text style={styles.sep}>·</Text>}
+                    {!!distance && <Text style={styles.nameFixed}>{distance}</Text>}
+                    {selected && <Text style={styles.selectedTag}>{SELECTED_LABEL}</Text>}
                   </View>
-                </Pressable>
+                  <View style={styles.statusRow}>
+                    <View
+                      style={[styles.dot, { backgroundColor: cand.loanable_count > 0 ? c.loanAvailable : c.loanOut }]}
+                    />
+                    <Text style={styles.count} numberOfLines={1}>{countLine(cand)}</Text>
+                  </View>
+                </View>
+                {cand.link !== null && (
+                  <LivePill
+                    url={cand.link.url}
+                    testID={`batch-live-${cand.library.id}`}
+                    onOpenFailed={setOpenFailed}
+                  />
+                )}
               </View>
             );
           })}
@@ -188,28 +204,39 @@ const styles = StyleSheet.create({
   panel: { ...cardSurface(theme, { onPanel: true }), padding: 14, gap: 10 },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   title: { ...T.name },
-  close: { fontSize: 15, color: c.text, fontWeight: "500" },
+  closeBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center", marginRight: -10 },
+  closeLine: { position: "absolute", width: 18, height: 1.6, backgroundColor: c.inkStrong },
+  closeLineA: { transform: [{ rotate: "45deg" }] },
+  closeLineB: { transform: [{ rotate: "-45deg" }] },
   busy: { marginVertical: 12 },
   box: { gap: 10, alignItems: "flex-start" },
   partialRow: { gap: 8, alignItems: "flex-start" },
   text: { fontSize: 15, color: c.text, lineHeight: 22 },
   gauge: { ...T.gauge },
-  foot: { backgroundColor: c.reliefBottomMid, borderRadius: theme.radii.infoCard, paddingBottom: 2 },
+  // LibraryAvailabilityCard 값 그대로(Y-6 시안 조회 카드): panelFrosted·1px 줄눈·곡률 infoCard, 선택 = 크림 + 진한 테두리 + 왼쪽 3px
   card: {
-    backgroundColor: c.panelLit,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingRight: 7,
+    backgroundColor: c.panelFrosted,
     borderWidth: 1,
     borderColor: c.seamHairline,
     borderRadius: theme.radii.infoCard,
-    padding: 12,
     overflow: "hidden",
   },
-  cardSelected: { borderColor: c.inkStrong },
-  selectBar: { position: "absolute", left: 0, top: 0, bottom: 0, width: 4, backgroundColor: c.inkStrong },
-  selectedTag: { fontSize: 12, color: c.inkStrong, fontWeight: "500" },
-  body: { flexDirection: "row", alignItems: "center", gap: 10 },
-  flex: { flex: 1, minWidth: 0, gap: 2 },
-  name: { fontSize: 16, fontWeight: "500", color: c.text },
-  count: { fontSize: 14, color: c.text },
+  cardSelected: { borderColor: c.inkStrong, backgroundColor: c.cream },
+  selectBar: { position: "absolute", left: 0, top: 0, bottom: 0, width: 3, backgroundColor: c.inkStrong },
+  passThrough: { pointerEvents: "none" },
+  info: { flex: 1, minWidth: 0, minHeight: 54, paddingVertical: 6, paddingLeft: 10, gap: 2, justifyContent: "center" },
+  nameRow: { flexDirection: "row", alignItems: "center", gap: 4 },
+  name: { fontSize: 13, color: c.text, flexShrink: 1 },
+  nameFixed: { fontSize: 13, color: c.text },
+  sep: { fontSize: 13, color: c.textSub },
+  selectedTag: { fontSize: 11, color: c.inkStrong, fontWeight: "500" },
+  statusRow: { flexDirection: "row", alignItems: "center", gap: 6 },
+  dot: { width: 6, height: 6, borderRadius: "50%" }, // B9 예외: 점 모양만 50%(LibraryAvailabilityCard와 같다)
+  count: { fontSize: 12, color: c.text, flexShrink: 1 },
   meta: { fontSize: 13, color: c.textSub },
   darkBtn: {
     ...ACT.secondary,

@@ -43,6 +43,7 @@ jest.mock("../../../lib/publicApi", () => {
     fetchBook: jest.fn(),
     fetchAvailabilityNearby: jest.fn(),
     fetchAvailabilityInCity: jest.fn(),
+    fetchAvailabilityAt: jest.fn(),
     fetchLibrariesNearby: jest.fn(),
     fetchLibrary: jest.fn(),
     fetchPurchaseLink: jest.fn(async () => { throw new actual.ApiCallError(404, "NOT_FOUND", "x", ""); }),
@@ -529,5 +530,30 @@ describe("LIB-3b 도서 상세 조회 창(V2·V3·V5·V6·V7)", () => {
     expect(screen.queryByTestId("yes24-buy")).toBeNull();
     fetchPurchaseLink.mockReset();
     fetchPurchaseLink.mockRejectedValue(new lib.ApiCallError(404, "NOT_FOUND", "x", ""));
+  });
+});
+
+describe("SNS 도서 카드에서 들어온 조회 창 (C-87)", () => {
+  const fetchAvailabilityAt = jest.mocked(lib.fetchAvailabilityAt);
+
+  test("openLookup opens the sheet at once and pins the card library on top only once", async () => {
+    fetchAvailabilityAt.mockReset();
+    fetchAvailabilityAt.mockResolvedValue(resp([lib1(3, "정독도서관")]));
+    fetchAvailabilityNearby.mockResolvedValueOnce(resp([lib1(1, "가까운"), lib1(3, "정독도서관"), lib1(5, "먼")]));
+    await render(<BookDetailScreen isbn13={BOY.isbn13} openLookup pinLibraryId={3} />);
+    const list = within(await screen.findByTestId("availability-list"));
+    expect(fetchAvailabilityAt).toHaveBeenCalledWith(BOY.isbn13, 3, expect.anything());
+    await waitFor(() => {
+      const names = list.getAllByTestId(/^select-library-/).map((n) => n.props.testID);
+      expect(names).toEqual(["select-library-3", "select-library-1", "select-library-5"]);
+    });
+  });
+
+  test("without openLookup the sheet stays closed and nothing is pinned", async () => {
+    fetchAvailabilityAt.mockReset();
+    await render(<BookDetailScreen isbn13={BOY.isbn13} />);
+    await screen.findByTestId("find-libraries");
+    expect(screen.queryByTestId("library-sheet")).toBeNull();
+    expect(fetchAvailabilityAt).not.toHaveBeenCalled();
   });
 });

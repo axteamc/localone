@@ -268,6 +268,25 @@ describe("일괄 검색 #70(V8·V9)", () => {
     await fireEvent.press(screen.getByTestId("batch-select-8"));
     expect(within(screen.getByTestId("batch-library-8")).getByText("선택됨")).toBeTruthy();
   });
+
+  test("pill on a selected card keeps the selection and reopens the link; layer does not wrap the pill (C-87)", async () => {
+    fetchPlansAvailability.mockResolvedValueOnce(
+      batch([cand(7, "종로도서관", { link: { url: "https://lib.example.org", kind: "homepage" } })])
+    );
+    await openSection();
+    await fireEvent.press(screen.getByTestId("batch-search"));
+    await fireEvent.press(await screen.findByTestId("batch-select-7"));
+    await fireEvent.press(screen.getByTestId("batch-live-7"));
+    await fireEvent.press(await screen.findByTestId("batch-live-7"));
+    expect(openExternalUrl).toHaveBeenCalledTimes(2); // 확인 완료 뒤 다시 누르면 같은 링크를 다시 연다
+    expect(within(screen.getByTestId("batch-library-7")).getByText("선택됨")).toBeTruthy();
+    // 선택 레이어는 필의 조상이 아니다(웹 <button> 안 <button> 방지)
+    const layer = screen.getByTestId("batch-select-7");
+    expect(within(layer).queryByTestId("batch-live-7")).toBeNull();
+    // 단일 조회 창과 같은 X 닫기
+    await fireEvent.press(screen.getByLabelText("일괄 검색 닫기"));
+    expect(screen.queryByTestId("batch-panel")).toBeNull();
+  });
 });
 
 describe("일괄 빌림(B1~B6)", () => {
