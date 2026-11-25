@@ -51,11 +51,15 @@ def test_filtered_fields_order_and_limit(client, upstream):
     docs = [dict(id=str(i), place_name="우체국", address_name="광주 동구 금남로 12",
                  x="126.9", y="35.1", phone="private") for i in range(6)]
     docs[1]["address_name"] = "세종 조치원읍"
+    docs[2]["address_name"] = "전남광주통합특별시 동구 충장로2가 16"
+    docs[3]["address_name"] = "전남광주통합특별시 순천시 덕암동 188-100"
     upstream.return_value = {"documents": docs}
     items = post(client, "우체국").json()["items"]
     assert [p["id"] for p in items] == list("01234")
     assert items[0] == dict(id="0", name="우체국", area_label="광주광역시 동구", lat=35.1, lng=126.9)
     assert items[1]["area_label"] == "세종특별자치시"
+    assert items[2]["area_label"] == "전남광주통합특별시 동구"
+    assert items[3]["area_label"] == "전남광주통합특별시 순천시"
 
 
 @pytest.mark.parametrize("body", [{}, {"documents": {}}, {"documents": [None]},
