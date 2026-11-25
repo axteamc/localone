@@ -22,6 +22,10 @@ jest.mock("expo-notifications", () => ({
   requestPermissionsAsync: () => mockRequestPermissions(),
 }));
 jest.mock("../../../auth/AuthProvider", () => ({ useAuth: jest.fn(), registerSignOutCleanup: jest.fn() }));
+jest.mock("../../my-collection/api", () => ({
+  fetchMySettings: jest.fn(async () => ({ club_notices: true })),
+  updateMySettings: jest.fn(),
+}));
 jest.mock("../api", () => ({
   ...jest.requireActual<object>("../api"),
   fetchInbox: jest.fn(),
@@ -112,6 +116,20 @@ describe("알림함", () => {
     expect(m.fetchInbox).toHaveBeenCalledWith(null, expect.anything());
     expect(screen.getByText("1시간 전")).toBeTruthy();
     expect(screen.getByText("어제")).toBeTruthy();
+  });
+
+  test("header: drawn back chevron and settings dropdown under the header (C-90)", async () => {
+    m.fetchInbox.mockResolvedValue({ items: [item("n1", { read: true })], next_cursor: null });
+    await render(<InboxScreen />);
+    await screen.findByTestId("inbox-item-n1");
+    expect(screen.queryByText("‹")).toBeNull(); // 글자 꺾쇠가 아니라 그린 꺾쇠(기준선 어긋남 방지)
+    expect(screen.getByLabelText("뒤로")).toBeTruthy();
+    expect(screen.queryByTestId("inbox-settings-panel")).toBeNull();
+    await fireEvent.press(screen.getByLabelText("알림 설정"));
+    expect(screen.getByTestId("inbox-settings-panel")).toBeTruthy();
+    expect(screen.getByTestId("notification-settings")).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText("알림 설정"));
+    expect(screen.queryByTestId("inbox-settings-panel")).toBeNull();
   });
 
   test("opening again after read shows no dots", async () => {

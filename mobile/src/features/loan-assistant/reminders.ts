@@ -3,6 +3,7 @@
 // 플랫폼 일은 notifications.platform.ts가 맡는다(여기서는 플랫폼 분기·알림 모듈을 직접 쓰지 않는다, C4).
 import { registerSignOutCleanup } from "../../auth/AuthProvider";
 import { addDays } from "./DueDateSheet";
+import { getLoanRemindersEnabled } from "./reminderPref";
 import { listLoans, type Loan, type LoanPage } from "./api";
 import {
   NOTIFICATIONS_SUPPORTED,
@@ -61,7 +62,7 @@ export function reminderPlan(loan: Loan, today: string, now: Date = new Date()):
   });
 }
 
-type SyncResult = { scheduled: number; skipped: number; status: "scheduled" | "denied" | "web" };
+type SyncResult = { scheduled: number; skipped: number; status: "scheduled" | "denied" | "web" | "off" };
 
 // 맞추기가 겹치면(포커스·목록 읽기·앱 복귀가 동시에) 지우고-걸기가 섞여 알림이 두 번 걸릴 수 있어 차례로 돈다(T-#4)
 let queue: Promise<unknown> = Promise.resolve();
@@ -73,6 +74,10 @@ let queue: Promise<unknown> = Promise.resolve();
 export function syncLoanReminders(loans: Loan[], today: string, now?: Date): Promise<SyncResult> {
   const run = async (): Promise<SyncResult> => {
     if (!NOTIFICATIONS_SUPPORTED) return { scheduled: 0, skipped: 0, status: "web" };
+    if (!(await getLoanRemindersEnabled())) {
+      await cancelAllLoan(); // 설정에서 껐으면 권한도 묻지 않고 남은 알림만 지운다(C-90)
+      return { scheduled: 0, skipped: 0, status: "off" };
+    }
     const onLoan = loans.filter((l) => l.status === "on_loan");
     if (onLoan.length === 0) {
       await cancelAllLoan(); // 다 반납했으면 남은 알림도 없어야 한다

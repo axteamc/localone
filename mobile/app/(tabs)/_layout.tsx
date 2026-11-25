@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 import { InboxBell } from "../../src/features/my-collection/InboxBell";
+import { MeHeaderActions } from "../../src/features/my-collection/ProfileHeader";
 import { StyleSheet, Text, View } from "react-native";
 import { panel, theme } from "../../src/theme";
 import { headerOptions } from "../../src/theme/HeaderLabel";
@@ -46,7 +47,7 @@ export default function TabsLayout() {
       />
       <Tabs.Screen
         name="me"
-        options={{ title: "내 정보", ...headerOptions("MY"), tabBarLabel: ({ focused }) => <TabLabel focused={focused}>내 정보</TabLabel> }}
+        options={{ title: "내 정보", ...headerOptions("MY"), headerRight: () => <MeHeaderActions />, tabBarLabel: ({ focused }) => <TabLabel focused={focused}>내 정보</TabLabel> }}
       />
     </Tabs>
   );

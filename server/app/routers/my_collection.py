@@ -144,6 +144,36 @@ def my_profile(row: Any) -> dict[str, Any]:
     }
 
 
+class SettingsPatch(BaseModel):
+    """C-90 내 설정. 지금은 모임 안내 받기 하나(반납 알림·처음 크게 보일 도서관은 기기 설정)."""
+
+    model_config = ConfigDict(extra="forbid")
+    club_notices: bool
+
+
+def _settings_row(c: Connection, uid: UUID) -> dict[str, Any]:
+    value = c.execute(text("SELECT club_notices FROM user_profiles WHERE user_id = :uid"), {"uid": uid}).scalar_one_or_none()
+    return {"club_notices": True if value is None else bool(value)}
+
+
+@router.get("/api/v1/me/settings")
+async def get_my_settings(request: Request, user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    return await run_db(request.app.state.engine, lambda c: _settings_row(c, user.id))
+
+
+@router.patch("/api/v1/me/settings")
+async def patch_my_settings(request: Request, body: SettingsPatch,
+                            user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
+    def tx(c: Connection) -> dict[str, Any]:
+        lock_active_user(c, user.id)
+        ensure_user_profile_if_absent(c, user.id)
+        c.execute(text("UPDATE user_profiles SET club_notices = :on WHERE user_id = :uid"),
+                  {"on": body.club_notices, "uid": user.id})
+        return _settings_row(c, user.id)
+
+    return await run_db(request.app.state.engine, tx)
+
+
 @router.get("/api/v1/me/posts")
 async def list_my_posts(request: Request, cursor: str | None = None, limit: int = LimitQuery,
                         user: CurrentUser = Depends(get_current_user)) -> dict[str, Any]:
