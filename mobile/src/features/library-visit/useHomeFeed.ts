@@ -12,7 +12,7 @@ import {
 // LOCAL-2-P1 #26: B의 실제 게시물 API(contracts/local-feed.md LOCAL-2 C2)
 import { fetchLibraryPosts, type FeedPage, type FeedPost } from "../local-feed/api";
 import { formatDistance } from "./format";
-import { mixPopular } from "./popularMix";
+import { isSeriesVolume, mixPopular } from "./popularMix";
 
 type Origin = "current" | "start" | "moved";
 type SectionStatus = "loading" | "ready" | "empty" | "error";
@@ -143,7 +143,10 @@ export function useHomeFeed(
   const loadPopular = useCallback(
     async (basisLibraryId: number | null) => {
       setPopular((p) => ({ ...p, status: "loading" }));
-      const r = await popularRunner.run((s) => fetchRecommendations(basisLibraryId ?? undefined, s));
+      // 2026-11-25 실기기 개선 P2(설계명세 Y-4 A안): 도서관 대출 순위 대신 #9 전국 = YES24 스테디셀러
+      // (YES24 실패·미설정이면 서버가 정보나루 전국 인기로 폴백). 기준 도서관은 더 이상 쓰지 않는다.
+      void basisLibraryId;
+      const r = await popularRunner.run((s) => fetchRecommendations(undefined, s));
       if (r.status === "stale") return;
       if (r.status === "error") {
         setPopular({ status: "error", basisLabel: null, books: [] }); // W10: 인기 칸만
@@ -153,7 +156,7 @@ export function useHomeFeed(
         status: r.value.books.length ? "ready" : "empty",
         basisLabel: r.value.basis_label,
         // 상위 10권을 고른 뒤 순서는 섞는다(순위 번호 없음, 같은 시리즈 벌림 — popularMix.ts)
-        books: mixPopular(r.value.books.slice(0, POPULAR_MAX)),
+        books: mixPopular(r.value.books.filter((b) => !isSeriesVolume(b.title)).slice(0, POPULAR_MAX)),
       });
     },
     [popularRunner]

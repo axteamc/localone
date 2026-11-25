@@ -24,6 +24,9 @@ let mockLastStackScreenOptions: { title?: string } | undefined;
 let mockLastTabsScreenOptions: Record<string, unknown> | undefined;
 
 // LIB-3: 대출·반납 탭의 빌릴 예정 구역은 plans.test.tsx에서 본다(서버 호출 모듈을 읽지 않게)
+jest.mock("@react-native-async-storage/async-storage", () =>
+  require("@react-native-async-storage/async-storage/jest/async-storage-mock")
+);
 jest.mock("../features/book-search/LoanPlansSection", () => ({ LoanPlansSection: () => null }));
 // LOAN-1: 내 대출 구역은 loan-assistant loans.test.tsx에서 본다(같은 이유)
 jest.mock("../features/loan-assistant/LoansSection", () => ({ LoansSection: () => null }));

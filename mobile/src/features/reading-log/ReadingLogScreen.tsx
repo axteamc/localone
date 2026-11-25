@@ -19,6 +19,7 @@ import {
   type NativeSyntheticEvent,
 } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
+import { GlassArrows, useHorizontalScroll } from "../../lib/HorizontalArrows";
 import { actionColors, cardSurface, theme, type as T } from "../../theme";
 import { CUBE_PALETTE } from "../../theme/tokens";
 import { APP_MAX_WIDTH, isDesktopPointer } from "../../theme/WebFrame";
@@ -171,6 +172,7 @@ function LibraryRow({
   onFailedChange: (libraryId: number, failed: boolean) => void;
 }) {
   const [rows, setRows] = useState<{ items: ReadingLog[] | null; failed: boolean }>({ items: null, failed: false });
+  const scroll = useHorizontalScroll(!!rows.items?.length); // 도서관별 가로 책 줄에도 유리 ‹ ›(2026-11-25 P2)
   const [tick, setTick] = useState(0);
   const loadedRef = useRef<{ tick: number; stamp: ReadingStats } | null>(null);
   useEffect(() => {
@@ -226,7 +228,8 @@ function LibraryRow({
           <ActivityIndicator accessibilityLabel="불러오는 중" />
         </View>
       ) : (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hRow}>
+        <View>
+        <ScrollView {...scroll.scrollProps} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hRow}>
           {rows.items.map((log) => (
             <Pressable
               key={log.id}
@@ -240,6 +243,13 @@ function LibraryRow({
             </Pressable>
           ))}
         </ScrollView>
+        <GlassArrows
+          label={`${lib.name} 책 줄`}
+          {...scroll.edges}
+          centerY={Math.round(coverSize * 1.45) / 2}
+          onMove={scroll.onMove}
+        />
+        </View>
       )}
       <View testID={`lib-plank-${lib.library_id}`} style={[styles.plank, styles.libPlank, { backgroundColor: color.hex }]} />
     </View>

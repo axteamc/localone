@@ -122,6 +122,19 @@ export async function uploadAvatar(file: { uri: string; mime: string }): Promise
   return send<{ avatar_path: string }>("uploads/avatar", { method: "POST", body: form });
 }
 
+/** #71 내 설정(C-90). 지금은 모임 안내 받기 하나 — 끄면 새 모임 안내가 알림함에 쌓이지 않는다 */
+export type MySettings = { club_notices: boolean };
+export function fetchMySettings(signal?: AbortSignal): Promise<MySettings> {
+  return get<MySettings>("me/settings", signal);
+}
+export function updateMySettings(patch: MySettings): Promise<MySettings> {
+  return send<MySettings>("me/settings", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+}
+
 /** #47 `GET /api/v1/me/inbox/unread` (D M2-0-P1) */
 export function fetchInboxUnread(signal?: AbortSignal): Promise<{ has_unread: boolean }> {
   return get<{ has_unread: boolean }>("me/inbox/unread", signal);

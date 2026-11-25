@@ -1,7 +1,7 @@
 // VISIT-4-P2 "다녀왔어요" 버튼·스탬프 카드 — contracts/local-feed.md VISIT-4 P5 (VISIT-4-P2 행), V4-O1~V4-O4, 명세 결정 1~3·예외 #1~#4
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import React from "react";
 import { Text } from "react-native";
 import { useAuth } from "../../../auth/AuthProvider";
@@ -178,6 +178,15 @@ describe("VISIT-4-P2 다녀왔어요 버튼", () => {
     await enter();
     expect(await screen.findByText(STAMP_TEXT.labelPrivate)).toBeTruthy();
     expect(screen.queryByText(STAMP_TEXT.button)).toBeNull();
+    // C-89: 상태 글자 자체가 버튼(▾), 옆 ⋯ 없음. 누르면 아래 작은 메뉴에 항목 하나(시트·닫기 버튼 없음)
+    const control = within(screen.getByTestId("stamp-control"));
+    expect(control.getByText("▾")).toBeTruthy();
+    expect(control.queryByText("⋯")).toBeNull();
+    await fireEvent.press(screen.getByLabelText(STAMP_TEXT.menuLabel));
+    expect(within(screen.getByTestId("stamp-menu")).getAllByRole("menuitem")).toHaveLength(1);
+    expect(screen.queryByText(STAMP_TEXT.close, { exact: true })).toBeNull();
+    await fireEvent.press(screen.getByLabelText(STAMP_TEXT.close)); // 바깥 누르면 닫힘
+    expect(screen.queryByTestId("stamp-menu")).toBeNull();
 
     putToday.mockResolvedValueOnce(today("public"));
     fetchItems.mockResolvedValue(page([stampFeed(stampItem(STAMP_ID, { mine: true })), postItem(post("p1"))]));

@@ -14,18 +14,20 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { createLatestRunner } from "../../lib/latest";
-import { WebHorizontalControls } from "../../lib/WebHorizontalControls";
+import { GlassArrows } from "../../lib/HorizontalArrows";
 import { type Theme } from "../../theme";
 import { lookKit, useLook } from "./useLibraryLook";
 import { fetchShelf, type ShelfBook, type ShelfKind, type ShelfPage, type ShelfResponse } from "./api";
 
 
-export const SHELF_HEIGHT = 224; // V3-1
+export const SHELF_HEIGHT = 224; // V3-1 처음 자리 값. 실제 높이는 내용(제목·점·표지·선반)에 맞추고 onHeight로 알린다(2026-11-25 P2)
+const SHELF_MIN_HEIGHT = 120; // 불러오는 중·빈 책장·실패 안내 자리
 export const SHELF_FADE_HEIGHT = 72; // V3-1 피드-책장 사이 띠
 const COVER_W = 104;
 const COVER_H = 150;
 const PAGE_INSET = 16;
 const BOOK_GAP = 16;
+const PAGE_TOP = 8; // page paddingTop
 const OPEN_LOCK_MS = 1000; // 책 연타: 책 화면은 한 번만(예외 #3)
 
 /** V3-O1 (2026-11-19 D 변경): 요즘 사람들이 읽은 책 → 테마 추천 → 인기 도서. 서버가 뺀 장은 건너뛴다 */
@@ -48,9 +50,11 @@ export type BookshelfProps = {
   libraryId: number;
   onOpenBook(isbn13: string): void;
   load?: (libraryId: number, signal: AbortSignal) => Promise<ShelfResponse>; // 기본: fetchShelf(#31)
+  /** 아래 안전 영역을 뺀 책장 높이(글쓰기 버튼·피드 여백 맞춤용) */
+  onHeight?: (height: number) => void;
 };
 
-export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf }: BookshelfProps) {
+export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf, onHeight }: BookshelfProps) {
   const { styles } = useLook(makeStyles);
   const insets = useSafeAreaInsets();
   const runner = useRef(createLatestRunner()).current;
@@ -121,12 +125,19 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf }: Bookshel
   };
 
   const current = pages[Math.min(index, lastIndex)];
+  const coverWidthFor = (count: number) =>
+    width > 0 ? Math.max(1, Math.min(COVER_W, (width - PAGE_INSET * 2 - BOOK_GAP * (count - 1)) / count)) : COVER_W;
+  const currentCoverHeight = (coverWidthFor(current?.books.length ?? 1) * COVER_H) / COVER_W;
 
   return (
     <View
-      style={[styles.wrap, { height: SHELF_HEIGHT + insets.bottom, paddingBottom: insets.bottom }]}
+      // 높이를 고정하지 않는다: 선반이 화면 맨 아래(안전 영역 위)에 붙고, 책장은 내용만큼만 차지한다
+      style={[styles.wrap, { minHeight: SHELF_MIN_HEIGHT + insets.bottom, paddingBottom: insets.bottom }]}
       testID="bookshelf"
-      onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}
+      onLayout={(e: LayoutChangeEvent) => {
+        setWidth(e.nativeEvent.layout.width);
+        onHeight?.(Math.round(e.nativeEvent.layout.height - insets.bottom));
+      }}
     >
       <ShelfFade />
       {state.kind === "error" ? (
@@ -154,12 +165,6 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf }: Bookshel
                 {current.basis_label}
               </Text>
             ) : null}
-            <WebHorizontalControls
-              label="오늘의 서가"
-              canGoBack={width > 0 && index > 0}
-              canGoForward={width > 0 && index < lastIndex}
-              onMove={(direction) => goTo(pageIndex.current + direction)}
-            />
           </View>
           {pages.length > 1 ? (
             <View style={styles.dots} testID="shelf-dots">
@@ -178,6 +183,7 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf }: Bookshel
               ))}
             </View>
           ) : null}
+          <View>
           <ScrollView
             ref={scroller}
             horizontal
@@ -190,10 +196,7 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf }: Bookshel
             style={styles.pages}
           >
             {pages.map((p) => {
-              const gaps = BOOK_GAP * (p.books.length - 1);
-              const coverWidth = width > 0
-                ? Math.max(1, Math.min(COVER_W, (width - PAGE_INSET * 2 - gaps) / p.books.length))
-                : COVER_W;
+              const coverWidth = coverWidthFor(p.books.length);
               return (
                 <View key={p.kind} style={[styles.page, { width: width || undefined }]}>
                   {p.books.map((b) => (
@@ -203,6 +206,15 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf }: Bookshel
               );
             })}
           </ScrollView>
+          {/* 책 위 좌우 유리 버튼(표지 높이 가운데) — 장 단위로 넘긴다. 모바일에서도 보인다(P2) */}
+          <GlassArrows
+            label="오늘의 서가"
+            canGoBack={width > 0 && index > 0}
+            canGoForward={width > 0 && index < lastIndex}
+            centerY={PAGE_TOP + currentCoverHeight / 2}
+            onMove={(direction) => goTo(pageIndex.current + direction)}
+          />
+          </View>
           <View style={styles.plank} />
         </>
       )}
@@ -261,7 +273,7 @@ const makeStyles = (theme: Theme) => {
     borderBottomLeftRadius: bBL,
   };
   return StyleSheet.create({
-  wrap: { position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: C.surface2 },
+  wrap: { position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: C.surface2, justifyContent: "flex-end" },
   fade: { position: "absolute", left: 0, right: 0, top: -SHELF_FADE_HEIGHT, height: SHELF_FADE_HEIGHT },
   top: {
     flexDirection: "row",
@@ -279,7 +291,7 @@ const makeStyles = (theme: Theme) => {
   pages: { flexGrow: 0 },
   page: {
     flexDirection: "row", justifyContent: "center", alignItems: "flex-end",
-    gap: BOOK_GAP, paddingTop: 8, paddingHorizontal: PAGE_INSET,
+    gap: BOOK_GAP, paddingTop: PAGE_TOP, paddingHorizontal: PAGE_INSET,
   },
   book: { aspectRatio: COVER_W / COVER_H, ...bookRadius, boxShadow: `0 6px 12px 0 ${C.shadowSoft}` },
   bookPressed: { transform: [{ translateY: -4 }] },
@@ -289,7 +301,7 @@ const makeStyles = (theme: Theme) => {
   coverTitle: { fontSize: 14, lineHeight: 18, fontWeight: "500", color: C.text },
   compactCover: { padding: 6 },
   compactTitle: { fontSize: 12, lineHeight: 15 },
-  plank: { height: 7, marginHorizontal: 8, backgroundColor: C.inkStrong },
+  plank: { height: 7, marginHorizontal: 8, marginBottom: 6, backgroundColor: C.inkStrong },
   message: { flex: 1, justifyContent: "center", alignItems: "flex-start", gap: 4, paddingHorizontal: 20 },
   messageTitle: { fontSize: 15, fontWeight: "500", color: C.text },
   messageSub: { fontSize: 13, color: C.textSub },

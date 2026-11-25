@@ -33,6 +33,21 @@ TITLES: dict[str, str] = {
 }
 
 
+CLUB_KINDS: frozenset[str] = frozenset(k for k in INBOX_KINDS if k.startswith("club_"))
+
+_CLUB_NOTICES_OFF = text(
+    "SELECT user_id FROM user_profiles WHERE user_id = ANY(CAST(:ids AS uuid[])) AND club_notices = false"
+)
+
+
+def _club_notices_off(conn: Connection, recipients: list[UUID]) -> set[UUID]:
+    """설정에서 모임 안내 받기를 끈 수신자(C-90). 프로필 행이 없으면 켜진 것으로 본다."""
+    if not recipients:
+        return set()
+    ids = [str(u) for u in set(recipients)]
+    return {UUID(str(r)) for r in conn.execute(_CLUB_NOTICES_OFF, {"ids": ids}).scalars()}
+
+
 @dataclass(frozen=True)
 class InboxDraft:
     """읽을 때 생성 원천(`register_inbox_source`)이 돌려주는 안내 한 건. 수신자는 읽는 사람이다."""
@@ -72,6 +87,9 @@ def add_inbox_items(
     _check_kind(kind)
     if not any(target.get(k) for k in TARGET_KEYS):
         raise ValueError("inbox target needs club_id, post_id or guestbook_id")
+    if kind in CLUB_KINDS:
+        off = _club_notices_off(conn, recipients)
+        recipients = [uid for uid in recipients if uid not in off]
     key = dedupe_key(kind, target)
     stored = json.dumps({k: str(target[k]) for k in TARGET_KEYS if target.get(k)}, ensure_ascii=False)
     title = TITLES[kind] if title is None else title

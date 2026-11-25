@@ -128,13 +128,12 @@ describe("iOS SafeArea 가드 & 스큐어모픽 이모지 금지", () => {
     expect(StyleSheet.flatten(header?.props.style).paddingTop).toBeGreaterThanOrEqual(NOTCH.top);
   });
 
-  it("ProfileHeader 오류 상태에서도 설정 버튼이 errorRow 안에 나란히 배치되고 이모지가 없다", async () => {
-    const { getByTestId, getByLabelText, queryByText } = await render(
-      <ProfileHeader state={{ kind: "error" }} onEdit={jest.fn()} onRetry={jest.fn()} onSettings={jest.fn()} />
+  it("ProfileHeader 오류 상태에 설정 버튼이 없고(C-90: 탭 머리로 이동) 이모지가 없다", async () => {
+    const { getByTestId, queryByLabelText, queryByText } = await render(
+      <ProfileHeader state={{ kind: "error" }} onEdit={jest.fn()} onRetry={jest.fn()} />
     );
-    const errorRow = getByTestId("profile-error");
-    const settingsBtn = getByLabelText("설정");
-    expect(errorRow).toContainElement(settingsBtn);
+    expect(getByTestId("profile-error")).toBeTruthy();
+    expect(queryByLabelText("설정")).toBeNull();
     expect(queryByText("⚙")).toBeNull();
     expect(queryByText("👤")).toBeNull();
   });

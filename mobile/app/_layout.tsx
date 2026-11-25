@@ -20,6 +20,7 @@ export default function RootLayout() {
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="login" options={{ headerShown: false }} />
           <Stack.Screen name="settings" options={{ title: "설정", ...headerOptions("SETTINGS") }} />
+          <Stack.Screen name="settings-first-library" options={{ title: "처음 크게 보일 도서관", ...headerOptions("SETTINGS") }} />
           <Stack.Screen name="search" options={headerOptions("SEARCH")} />
           <Stack.Screen name="books/[isbn13]" options={headerOptions("BOOK")} />
           <Stack.Screen name="posts/new" options={{ ...headerOptions("POST"), headerBackVisible: false }} />

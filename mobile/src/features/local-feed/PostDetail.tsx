@@ -18,6 +18,7 @@ import { LoginPrompt, MENU_TEXT } from "./PostMenu";
 import { REPORT_TEXT, ReportedTarget, ReportSheet } from "./ReportSheet";
 import { ReactionButton, SaveButton } from "./ReactionButton";
 import { LibraryOtherPosts, SameBookPosts } from "./SameBookPosts";
+import { PostEditSheet } from "./PostEditSheet";
 import { shareNotice, sharePost } from "./share";
 
 const WIDE_AT = 768; // H14
@@ -120,6 +121,7 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
   }, []);
   const [state, setState] = useState<State>({ kind: "loading" });
   const [loan, setLoan] = useState<AvailabilityItem | null | "failed">(null);
+  const [editOpen, setEditOpen] = useState(false); // C-91 게시물 수정 창
   const [login, setLogin] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [reportFor, setReportFor] = useState<string | null>(null);
@@ -306,6 +308,7 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
           {post.is_mine ? (
             <PostMoreMenu
               post={post}
+              onEdit={() => setEditOpen(true)}
               onWithdrawn={() => {
                 emitPostWithdrawn(post.id); // 피드가 카드를 감추고 "내렸어요"(F16)
                 goBack();
@@ -440,9 +443,23 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
           onDone={() => { setReportFor(null); showNotice(REPORT_TEXT.done); }}
         />
       ) : null}
+      {post.is_mine ? (
+        <PostEditSheet
+          post={post}
+          visible={editOpen}
+          onClose={() => setEditOpen(false)}
+          onSaved={(saved) => {
+            update({ overlay_text: saved.overlay_text, body: saved.body });
+            setEditOpen(false);
+            showNotice(EDITED_NOTICE);
+          }}
+        />
+      ) : null}
     </View>
   );
 }
+
+const EDITED_NOTICE = "고쳤어요";
 
 const makeStyles = (theme: Theme) => {
   const { C, T, ACT, panel } = lookKit(theme);

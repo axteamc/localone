@@ -462,6 +462,41 @@ def test_withdraw_requires_login(client, auth, db_engine):
     assert _status(db_engine, post_id) == "published"
 
 
+# ─────────── #72 게시물 고치기 (C-91) ───────────
+
+
+def test_edit_updates_only_sent_text_fields_and_returns_detail(client, auth, db_engine):
+    created = client.post("/api/v1/posts", headers=auth["A"], json=post_body()).json()
+    post_id = created["id"]
+    r = client.patch(f"/api/v1/posts/{post_id}", headers=auth["A"], json={"body": "  고친 본문  "})
+    assert r.status_code == 200
+    got = r.json()
+    assert got["id"] == post_id and got["body"] == "고친 본문"
+    assert got["overlay_text"] == created["overlay_text"]  # 보내지 않은 칸은 그대로
+    assert got["is_mine"] is True and got["image_kind"] == created["image_kind"]
+    r = client.patch(f"/api/v1/posts/{post_id}", headers=auth["A"], json={"overlay_text": "새 글자", "body": None})
+    assert r.json()["overlay_text"] == "새 글자" and r.json()["body"] is None  # null은 비움
+    assert client.get(f"/api/v1/posts/{post_id}").json()["overlay_text"] == "새 글자"
+
+
+def test_edit_rejects_other_fields_empty_body_and_too_long(client, auth):
+    post_id = client.post("/api/v1/posts", headers=auth["A"], json=post_body()).json()["id"]
+    for body in ({}, {"image_kind": "color"}, {"isbn13": isbn(1)}, {"body": "가" * 2001}, {"overlay_text": "가" * 81}):
+        r = client.patch(f"/api/v1/posts/{post_id}", headers=auth["A"], json=body)
+        assert r.status_code == 422, body
+
+
+def test_edit_by_other_403_unknown_404_withdrawn_404_and_login(client, auth, db_engine):
+    post_id = client.post("/api/v1/posts", headers=auth["A"], json=post_body()).json()["id"]
+    r = client.patch(f"/api/v1/posts/{post_id}", headers=auth["B"], json={"body": "남의 글"})
+    assert r.status_code == 403 and r.json()["error"]["code"] == "FORBIDDEN"
+    assert client.patch(f"/api/v1/posts/{uuid4()}", headers=auth["A"], json={"body": "x"}).json()["error"]["code"] == "NOT_FOUND"
+    assert client.patch(f"/api/v1/posts/{post_id}", json={"body": "x"}).status_code == 401
+    client.post(f"/api/v1/posts/{post_id}/withdraw", headers=auth["A"])
+    r = client.patch(f"/api/v1/posts/{post_id}", headers=auth["A"], json={"body": "내린 글"})
+    assert r.status_code == 404 and r.json()["error"]["code"] == "POST_NOT_AVAILABLE"
+
+
 def test_create_accepts_h6_9_and_legacy_6_color_tokens(client, auth):
     from app.routers.posts import COLOR_TOKENS, FEED_COLOR_TOKENS, LEGACY_COLOR_TOKENS
 
