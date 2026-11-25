@@ -15,12 +15,24 @@ export const deviceStorage = {
   },
   async removeItem(key: string): Promise<void> {
     if (Platform.OS !== "web") return AsyncStorage.removeItem(key);
-    if (typeof localStorage !== "undefined") localStorage.removeItem(key);
+    if (typeof localStorage === "undefined") throw new Error("기기 저장소를 사용할 수 없어요.");
+    localStorage.removeItem(key);
   },
 };
 
 export type LocateResult = { ok: true; lat: number; lng: number }
   | { ok: false; reason: "denied" | "unavailable" | "timeout" | "aborted" };
+
+const LAST_FIX_FRESH_MS = 2 * 60_000;
+const LAST_FIX_STALE_MS = 24 * 60 * 60_000;
+const FRESH_FIX_WAIT_MS = 7_000; // LOCATE_TIMEOUT_MS(10초) 안에서 ③을 볼 여유를 남긴다
+
+async function lastFix(maxAge: number): Promise<LocateResult | null> {
+  try {
+    const p = await Location.getLastKnownPositionAsync({ maxAge });
+    return p ? { ok: true, lat: p.coords.latitude, lng: p.coords.longitude } : null;
+  } catch { return null; }
+}
 
 // Only one foreground reading; coordinates are never stored or logged.
 export function locate(signal: AbortSignal): Promise<LocateResult> {
@@ -57,8 +69,21 @@ export function locate(signal: AbortSignal): Promise<LocateResult> {
           if (permission.status !== "granted") { finish({ ok: false, reason: "denied" }); return; }
           if (!await Location.hasServicesEnabledAsync()) { finish({ ok: false, reason: "denied" }); return; }
           if (settled) return;
-          const { coords } = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-          finish({ ok: true, lat: coords.latitude, lng: coords.longitude });
+          // Android는 새 위치 갱신이 없으면 getCurrentPosition이 응답하지 않는 때가 있다(실기기 P8: 권한 허용인데 서울 기본값).
+          // ① 최근 위치(LAST_FIX_FRESH_MS 이내)를 바로 쓰고 ② 없으면 새 위치를 FRESH_FIX_WAIT_MS까지 기다린 뒤 ③ 하루 안의 마지막 위치.
+          const recent = await lastFix(LAST_FIX_FRESH_MS);
+          if (settled) return;
+          if (recent) { finish(recent); return; }
+          let wait: ReturnType<typeof setTimeout> | undefined;
+          const fresh = await Promise.race([
+            Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced })
+              .then(({ coords }): LocateResult => ({ ok: true, lat: coords.latitude, lng: coords.longitude }))
+              .catch(() => null),
+            new Promise<null>((r) => { wait = setTimeout(() => r(null), FRESH_FIX_WAIT_MS); }),
+          ]);
+          clearTimeout(wait);
+          if (settled) return;
+          finish(fresh ?? (await lastFix(LAST_FIX_STALE_MS)) ?? { ok: false, reason: "unavailable" });
         } catch { finish({ ok: false, reason: "unavailable" }); }
       })();
     }

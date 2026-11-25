@@ -378,6 +378,15 @@ describe("api 요청 모양(U4·U5·#70)", () => {
   const fetchMock = jest.mocked(apiFetch);
   const ok = (body: unknown) => ({ ok: true, status: 200, json: async () => body }) as unknown as Response;
 
+  test("P8 saves only on 200 or 201 and distinguishes an existing plan", async () => {
+    for (const status of [200, 201, 202]) {
+      fetchMock.mockResolvedValueOnce({ ok: true, status, json: async () => ({ id: "p" }) } as Response);
+      const saved = real.saveLoanPlan(ISBN_A, 42);
+      if (status === 202) await expect(saved).rejects.toMatchObject({ status });
+      else await expect(saved).resolves.toMatchObject({ id: "p", alreadySaved: status === 200 });
+    }
+  });
+
   test("list asks unassigned only when requested, save sends null library, #70 omits null plan ids", async () => {
     fetchMock.mockResolvedValue(ok({ items: [], next_cursor: null }));
     await real.listLoanPlans({ cursor: null });

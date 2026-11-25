@@ -14,6 +14,7 @@ import {
   type AvailabilityItem,
   type AvailabilityResponse,
 } from "../../lib/publicApi";
+import { readRoughStart } from "../../lib/roughStart";
 import { REGIONS } from "../../lib/regions";
 
 export const AVAILABILITY_LIMITED = "지금은 조회가 많아요. 잠시 뒤 다시 시도해 주세요."; // V-4
@@ -76,9 +77,11 @@ export function useAvailability(isbn13: string): {
   chooseRegion(code: string): void;
   selectedRegionLabel?: string | null;
   errorMessage?: string | null;
+  roughLabel?: string | null;
   reloadNearby?: () => void;
 } {
   const runner = useMemo(() => createLatestRunner(), []);
+  const [roughLabel, setRoughLabel] = useState<string | null>(null);
   const [scope, setScope] = useState<"nearby" | "city">("nearby");
   const [items, setItems] = useState<AvailabilityItem[]>([]);
   const [status, setStatus] = useState<AvailabilityStatus>("locating");
@@ -109,9 +112,17 @@ export function useAvailability(isbn13: string): {
     setStatus("locating");
     setErrorMessage(null);
     const r = await runner.run<Outcome>(async (sig) => {
-      const loc = await locate(sig);
+      const gps = await locate(sig);
       if (sig.aborted) throw new AbortError();
-      if (!loc.ok) return { kind: "need_region" };
+      const rough = gps.ok ? null : await readRoughStart();
+      if (sig.aborted) throw new AbortError();
+      setRoughLabel(rough?.area_label ?? null);
+      const loc = rough ? { ok: true as const, ...rough } : gps;
+      if (!loc.ok) {
+        lastLoc.current = null;
+        nearbyItems.current = [];
+        return { kind: "need_region" };
+      }
       lastLoc.current = loc;
       setStatus("loading");
       return {
@@ -208,6 +219,7 @@ export function useAvailability(isbn13: string): {
     chooseRegion: (code: string) => void loadCity(code),
     selectedRegionLabel,
     errorMessage,
+    roughLabel: scope === "nearby" ? roughLabel : null,
     reloadNearby: () => void loadNearby(),
   };
 }

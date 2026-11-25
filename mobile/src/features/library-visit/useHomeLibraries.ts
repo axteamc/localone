@@ -17,11 +17,14 @@ import {
   type LibrarySummary,
 } from "./deps";
 
+import { readRoughStart, subscribeRoughStart } from "../../lib/roughStart";
+
 export type HomeMode = "map" | "list";
 export type Origin = "current" | "start" | "moved";
 export type HomeStatus = "loading" | "ready" | "empty" | "error";
 
 export type HomeLibraries = {
+  roughLabel?: string | null;
   mode: HomeMode;
   center: LatLng;
   /** center를 다시 정할 때마다 바뀐다(같은 좌표여도). 지도는 이 값이 바뀌면 center로 옮긴다 */
@@ -69,6 +72,7 @@ export function useHomeLibraries(): HomeLibraries {
     setCenterState(at);
     setViewSeq((n) => n + 1);
   }, []);
+  const [roughLabel, setRoughLabel] = useState<string | null>(null);
   const [origin, setOrigin] = useState<Origin>("start");
   const [libraries, setLibraries] = useState<LibrarySummary[]>([]);
   const [status, setStatus] = useState<HomeStatus>("loading");
@@ -81,6 +85,7 @@ export function useHomeLibraries(): HomeLibraries {
   const currentRef = useRef<LatLng | null>(null); // 이번에 켠 뒤 알게 된 현재 위치(기기에 저장하지 않음, V1)
   const startingRef = useRef(true); // 첫 주변 조회가 끝나기 전에 지도가 실패하면 끝난 뒤 목록으로
   const aliveRef = useRef(true);
+  const startAbort = useRef<AbortController | null>(null);
   const searchedRef = useRef<LatLng | null>(null); // 마지막으로 결과를 받은 자리("더 넓게 찾기"가 쓴다)
 
   /** 현재 위치를 알면 옮긴 곳은 "moved", 모르면 계속 "start"(V10: "위치 허용하기"와 "현재 위치로"는 함께 뜨지 않음) */
@@ -143,24 +148,32 @@ export function useHomeLibraries(): HomeLibraries {
   const start = useCallback(
     async (signal: AbortSignal) => {
       const loc = await locate(signal);
-      if (!aliveRef.current) return;
+      if (signal.aborted) return;
+      setRoughLabel(null);
       if (loc.ok) {
         currentRef.current = { lat: loc.lat, lng: loc.lng };
         return load(currentRef.current, "current", BASE_RADIUS);
       }
+      currentRef.current = null;
+      const rough = await readRoughStart();
+      if (signal.aborted) return;
+      if (rough) {
+        setRoughLabel(rough.area_label);
+        return load(rough, "start", BASE_RADIUS);
+      }
       // V7: ① 기본 도서관 좌표 ② 마지막으로 고른 지역(좌표 평균, C-68) ③ 임시 시작 위치
       const defId = await getDefaultLibrary();
       const def = defId != null ? await fetchLibrary(defId).catch(() => null) : null;
-      if (!aliveRef.current) return;
+      if (signal.aborted) return;
       if (def?.latitude != null && def.longitude != null) {
         return load({ lat: def.latitude, lng: def.longitude }, "start", BASE_RADIUS);
       }
       const lastRegion = await getLastRegion();
-      if (!aliveRef.current) return;
+      if (signal.aborted) return;
       if (lastRegion) {
         setStatus("loading");
         const r = await runner.run((s) => fetchLibrariesInRegion(lastRegion, s));
-        if (!aliveRef.current || r.status === "stale") return;
+        if (signal.aborted || r.status === "stale") return;
         const mid = r.status === "ok" ? averageCenter(r.value.items) : null;
         if (r.status === "ok" && mid) {
           startingRef.current = false;
@@ -179,11 +192,19 @@ export function useHomeLibraries(): HomeLibraries {
 
   useEffect(() => {
     aliveRef.current = true;
-    const abort = new AbortController();
-    void start(abort.signal); // V1: 켤 때마다 현재 위치 한 번, 보는 위치는 저장하지 않음
+    const restart = () => {
+      startAbort.current?.abort();
+      runner.cancel();
+      regionRef.current = null;
+      startAbort.current = new AbortController();
+      void start(startAbort.current.signal);
+    };
+    const unsubscribe = subscribeRoughStart(restart);
+    restart(); // V1: 켤 때마다 현재 위치 한 번, 보는 위치는 저장하지 않음
     return () => {
+      unsubscribe();
       aliveRef.current = false;
-      abort.abort();
+      startAbort.current?.abort();
       runner.cancel();
     };
   }, [start, runner]);
@@ -209,6 +230,7 @@ export function useHomeLibraries(): HomeLibraries {
   // V12: 지역 결과 — 지도 모드는 그 지역 도서관 평균 자리로 옮기고 핀을 그 결과로, 목록 모드는 그 지역 목록
   const showRegion = useCallback(
     async (code: string) => {
+      setRoughLabel(null);
       setSelectedId(null);
       void setLastRegion(code); // V7(C-68): 위치를 못 쓸 때 다음 시작점. 코드만 둔다
       if (modeRef.current === "list") {
@@ -236,6 +258,7 @@ export function useHomeLibraries(): HomeLibraries {
   // V12: 도서관 결과 — 지도 모드는 그 좌표로 옮기고 그 핀에 테두리, 목록 모드는 그 도서관의 시군구 목록. 방문 페이지로 가지 않는다
   const focusLibrary = useCallback(
     (lib: LibrarySummary) => {
+      setRoughLabel(null);
       if (lib.dtl_region_code) void setLastRegion(lib.dtl_region_code); // V7(C-68)
       if (modeRef.current === "list") {
         if (lib.dtl_region_code) void loadRegion(lib.dtl_region_code);
@@ -267,16 +290,15 @@ export function useHomeLibraries(): HomeLibraries {
   const allowLocation = useCallback(async () => {
     const answer = await requestLocationPermission();
     if (answer !== "granted" || !aliveRef.current) return;
+    startAbort.current?.abort();
     const abort = new AbortController();
-    const loc = await locate(abort.signal);
-    if (!loc.ok || !aliveRef.current) return;
-    currentRef.current = { lat: loc.lat, lng: loc.lng };
-    regionRef.current = null;
-    await load(currentRef.current, "current", BASE_RADIUS);
-  }, [load]);
+    startAbort.current = abort;
+    await start(abort.signal);
+  }, [start]);
 
   return {
     mode,
+    roughLabel,
     center,
     viewSeq,
     origin,

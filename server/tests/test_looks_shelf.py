@@ -308,6 +308,8 @@ def test_shelf_filters_comics_and_series_before_slicing_and_preserves_recommenda
         pe.BookInfo(isbn(1), "1984"),
         pe.BookInfo(isbn(2), "백앤아 ３"),
         pe.BookInfo(isbn(3), "백앤아카이브"),
+        pe.BookInfo(isbn(7), "흔한남매의 흔한 호기심 5"),  # 제목 앞부분 목록(P8)
+        pe.BookInfo(isbn(8), "그림 이야기", class_name="예술 > 회화 > 만화"),  # 경로로 온 분류
         book(4),
         book(5),
         book(6),

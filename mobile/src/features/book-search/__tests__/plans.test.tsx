@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import React from "react";
-import { Alert } from "react-native";
+import { Alert, StyleSheet } from "react-native";
 import LoansTabScreen from "../../../../app/(tabs)/loans";
 import { useAuth } from "../../../auth/AuthProvider";
 import * as platform from "../../../lib/platform";
@@ -169,6 +169,65 @@ async function renderDetail(isbn13: string) {
   await render(<BookDetailScreen isbn13={isbn13} />);
   await fireEvent.press(await screen.findByTestId("find-libraries"));
 }
+
+test("P8 single action saves selected library, toggled-off and reopened sheet save null", async () => {
+  signedIn();
+  saveLoanPlan.mockResolvedValueOnce(plan("p", BOY.title)).mockResolvedValueOnce({ ...plan("p", BOY.title), alreadySaved: true });
+  await openDetail();
+  expect(screen.queryByTestId("find-libraries")).toBeNull();
+  const card = screen.getByTestId("select-library-2");
+  await fireEvent.press(card);
+  await fireEvent.press(screen.getByText("빌릴 예정에 추가"));
+  expect(saveLoanPlan).toHaveBeenLastCalledWith(BOY.isbn13, 2);
+  expect(screen.getByText("종로도서관에서 빌릴 예정으로 담았어요")).toBeTruthy();
+  await fireEvent.press(card);
+  await fireEvent.press(screen.getByText("빌릴 예정에 추가"));
+  expect(saveLoanPlan).toHaveBeenLastCalledWith(BOY.isbn13, null);
+  expect(screen.getByText("빌릴 예정에 있어요 · 도서관 바꾸기")).toBeTruthy();
+  await fireEvent.press(card);
+  await fireEvent.press(screen.getByTestId("library-sheet-close"));
+  await fireEvent.press(screen.getByText("도서관 확인"));
+  await fireEvent.press(await screen.findByText("빌릴 예정에 추가"));
+  expect(saveLoanPlan).toHaveBeenLastCalledWith(BOY.isbn13, null);
+});
+
+test("P8 lookup keeps its 48-high one-line action and clears receipt after two seconds", async () => {
+  signedIn();
+  await openDetail();
+  const button = screen.getByTestId("save-plan");
+  expect(StyleSheet.flatten(button.props.style).height).toBe(48);
+  expect(screen.getByText("빌릴 예정에 추가").props.numberOfLines).toBe(1);
+  await fireEvent.press(screen.getByTestId("select-library-1"));
+  expect(StyleSheet.flatten(button.props.style).height).toBe(48);
+  jest.useFakeTimers();
+  try {
+    await fireEvent.press(button);
+    expect(screen.getByText("정독도서관에서 빌릴 예정으로 담았어요")).toBeTruthy();
+    await act(async () => { jest.advanceTimersByTime(2000); });
+    expect(screen.queryByText("정독도서관에서 빌릴 예정으로 담았어요")).toBeNull();
+    expect(screen.getByTestId("library-sheet")).toBeTruthy();
+  } finally {
+    jest.useRealTimers();
+  }
+});
+
+test("P8 late save after account switch cannot show success or keep selection", async () => {
+  signedIn();
+  const pending = deferred<LoanPlan>();
+  saveLoanPlan.mockReturnValueOnce(pending.promise);
+  await render(<BookDetailScreen isbn13={BOY.isbn13} openLookup />);
+  await fireEvent.press(await screen.findByTestId("select-library-2"));
+  await fireEvent.press(screen.getByText("빌릴 예정에 추가"));
+  await fireEvent.press(screen.getByText("빌릴 예정에 추가"));
+  expect(saveLoanPlan).toHaveBeenCalledTimes(1);
+  jest.mocked(useAuth).mockReturnValue({ ...useAuth(), userId: "user-b" });
+  await screen.rerender(<BookDetailScreen isbn13={BOY.isbn13} openLookup />);
+  await act(async () => pending.resolve(plan("p", BOY.title)));
+  expect(screen.queryByTestId("saved-note")).toBeNull();
+  expect(screen.queryByText(/빌릴 예정으로 담았어요|빌릴 예정에 담았어요/)).toBeNull();
+  await fireEvent.press(screen.getByText("빌릴 예정에 추가"));
+  expect(saveLoanPlan).toHaveBeenLastCalledWith(BOY.isbn13, null);
+});
 
 describe("LIB-3-P2 담기 창(N7·N8)", () => {
   test("save sheet opens only when signed in", async () => {

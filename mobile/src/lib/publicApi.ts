@@ -49,10 +49,14 @@ function pathWithQuery(path: string, params: Record<string, string | number | un
   return `/api/v1/${path}${query ? `?${query}` : ""}`;
 }
 async function get<T>(path: string, params: Record<string, string | number | undefined>, signal?: AbortSignal): Promise<T> {
+  return request<T>(pathWithQuery(path, params), { signal });
+}
+
+async function request<T>(path: string, options: RequestInit): Promise<T> {
   let response: Response;
-  try { response = await apiFetch(pathWithQuery(path, params), { signal }); }
+  try { response = await apiFetch(path, options); }
   catch (error) {
-    if (signal?.aborted) throw error;
+    if (options.signal?.aborted) throw error;
     throw new ApiCallError(0, "NETWORK", "서버에 연결하지 못했어요.", "");
   }
   if (!response.ok) {
@@ -63,6 +67,15 @@ async function get<T>(path: string, params: Record<string, string | number | und
   }
   return response.json() as Promise<T>;
 }
+export type Place = { id: string; name: string; area_label: string; lat: number; lng: number };
+
+export function searchPlaces(query: string, signal: AbortSignal) {
+  return request<{ items: Place[] }>("/api/v1/places/search", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ query }), signal,
+  });
+}
+
 const bookPath = (isbn13: string) => `books/${encodeURIComponent(isbn13)}`;
 export function searchBooks(q: string, start = 1, signal?: AbortSignal): Promise<BookSearchResponse> {
   return get("books/search", { q, start }, signal);

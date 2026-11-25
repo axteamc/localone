@@ -7,6 +7,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { getHeroRule, getRecentVisitedLibraryId, setHeroRule, type LibrarySummary, type Region } from "./deps";
 import type { HeroRule } from "./direction";
 import { theme, actionColors } from "../../theme";
+import { PlacePicker } from "../../lib/PlacePicker";
 import { FacadeHome } from "./FacadeHome";
 import { FindLibrarySheet } from "./FindLibrarySheet";
 import { HomeSheet } from "./HomeSheet";
@@ -131,6 +132,7 @@ export function HomeScreen() {
     [readRecent]
   );
 
+  const [placesOpen, setPlacesOpen] = useState(false);
   const [findOpen, setFindOpen] = useState(false);
   const closeFind = useCallback(() => setFindOpen(false), []);
   // V12: 찾기 결과는 기준 위치와 목록을 바꾼다. 방문 페이지로 바로 가지 않는다
@@ -185,16 +187,21 @@ export function HomeScreen() {
   // V7·V10: 아래 가운데 — 위치를 못 쓰면 "위치 허용하기", 보는 위치가 현재 위치와 다르면 "현재 위치로"
   const bottomButton =
     home.origin === "start" ? (
-      <Pressable accessibilityRole="button" onPress={() => void home.allowLocation()} style={styles.button}>
-        <Text style={styles.buttonText}>{TEXT.allow}</Text>
-      </Pressable>
+      <View style={styles.startActions}>
+        {home.status !== "loading" && <Pressable accessibilityRole="button" onPress={() => setPlacesOpen(true)} style={styles.button}>
+          <Text style={styles.buttonText}>주소·장소로 시작</Text>
+        </Pressable>}
+        <Pressable accessibilityRole="button" onPress={() => void home.allowLocation()} style={styles.button}>
+          <Text style={styles.buttonText}>{TEXT.allow}</Text>
+        </Pressable>
+      </View>
     ) : showBack ? (
       <Pressable accessibilityRole="button" onPress={home.backToCurrent} style={styles.button}>
         <Text style={styles.buttonText}>{TEXT.backToCurrent}</Text>
       </Pressable>
     ) : null;
 
-  const originTitle = home.origin === "start" ? TEXT.start : home.origin === "moved" ? TEXT.moved : TEXT.here;
+  const originTitle = home.origin === "start" ? home.roughLabel ?? TEXT.start : home.origin === "moved" ? TEXT.moved : TEXT.here;
 
   return (
     <View style={styles.screen}>
@@ -260,6 +267,10 @@ export function HomeScreen() {
       </View>
 
       {/* V11: 위에서 반쯤 내려오는 찾기 창. 열려 있는 동안은 맨 위가 "‹ 지역이나 도서관 이름" 칸이 된다 */}
+      {placesOpen && <PlacePicker onClose={() => setPlacesOpen(false)} onRegion={() => {
+        setPlacesOpen(false);
+        setFindOpen(true);
+      }} />}
       {findOpen ? <FindLibrarySheet onClose={closeFind} onPickRegion={pickRegion} onPickLibrary={pickLibrary} /> : null}
     </View>
   );
@@ -321,6 +332,7 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.paper,
     color: theme.colors.text,
   },
+  startActions: { flexDirection: "row", flexWrap: "wrap", justifyContent: "center", gap: 8 },
   aboveSheet: { alignItems: "center", gap: 8 },
   // 파사드 위에 뜨는 안내 카드는 바탕이 있어야 읽힌다(색·곡률 토큰)
   messageCard: { backgroundColor: theme.colors.paper, borderRadius: theme.radii.card, marginHorizontal: 16 },

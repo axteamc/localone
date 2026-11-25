@@ -1,6 +1,6 @@
 // 홈 파사드 — 등각 큐브(C2) + 주인공 포커스·모서리 이웃 (VISIT-1 V3·V18, 2026-11-18 "홈 큐브 배치" · 2026-11-19 홈 큐브 개편 E1-A·E2-2·E3-2).
 // 기준 시안: 개발산출물/시안/홈_큐브_개편_시안.html(배열·주인공 크기·이름), 큐브 모양은 홈_파사드_큐브_시안.html. 지도는 쓰지 않는다. 색·곡률은 theme 토큰만.
-// 세 플랫폼 같은 코드: 큐브 면은 View + transform(rotate·skewY·scale), 끌기는 PanResponder, 움직임은 Animated(useNativeDriver: false — 웹과 같게).
+// 세 플랫폼 같은 코드: 큐브 면은 View 세 겹(회전·축 확대·회전, AffineBox — Android는 skew를 못 그림), 끌기는 PanResponder, 움직임은 Animated(useNativeDriver: false — 웹과 같게).
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
@@ -12,6 +12,7 @@ import {
   View,
   type LayoutChangeEvent,
 } from "react-native";
+import { affineLayers, composeMat, rotateMat, scaleMat, skewXMat, skewYMat } from "../../lib/affine";
 import { mix, onFill, theme, type as T } from "../../theme";
 import { CLOSED_CUBE_LID_INK, CUBE_PALETTE } from "../../theme/tokens";
 import type { LatLng, LibrarySummary } from "./deps";
@@ -205,12 +206,12 @@ export function IsoCube({ title, fill, ink, emphasized = false, left, right }: {
   const fs = topFont(title.big, title.small);
   return (
     <View style={styles.cubeHit} pointerEvents="none" accessible={false}>
-      <View style={styles.ground} />
-      <View style={[styles.faceLeft, emphasized && styles.faceHero]}>{left}</View>
-      <View style={[styles.faceRight, emphasized && styles.faceHero]}>{right}</View>
-      <View testID="cube-lid" style={[styles.faceTop, { backgroundColor: fill }]} />
+      <AffineBox box={styles.ground} layers={GROUND_LAYERS} style={styles.groundFill} />
+      <AffineBox box={styles.faceLeft} layers={LEFT_LAYERS} style={[styles.faceLeftFill, emphasized && styles.faceHero]}>{left}</AffineBox>
+      <AffineBox box={styles.faceRight} layers={RIGHT_LAYERS} style={[styles.faceRightFill, emphasized && styles.faceHero]}>{right}</AffineBox>
+      <AffineBox box={styles.faceTop} layers={TOP_LAYERS} testID="cube-lid" style={[styles.faceTopFill, { backgroundColor: fill }]} />
       {/* E3-2: 이름은 윗면 왼쪽 아래, 작은 글자는 큰 글자 왼쪽 위 */}
-      <View style={styles.topBox} pointerEvents="none" testID="facade-top-name">
+      <AffineBox box={styles.topBox} layers={TOP_BOX_LAYERS} testID="facade-top-name" style={styles.topBoxFill}>
           {title.small ? (
             <Text numberOfLines={1} style={[styles.topSmall, { fontSize: fs.smallSize, lineHeight: fs.smallSize * 1.1, color: ink }]}>
               {title.small}
@@ -219,6 +220,30 @@ export function IsoCube({ title, fill, ink, emphasized = false, left, right }: {
           <Text numberOfLines={fs.lines} style={[styles.topText, { fontSize: fs.fontSize, lineHeight: fs.lineHeight, color: ink }]}>
             {fs.text}
           </Text>
+      </AffineBox>
+    </View>
+  );
+}
+
+type Layers = ReturnType<typeof affineLayers>;
+
+/**
+ * 기울인 면: `box`(변환 전 위치·크기) 안에 같은 크기 View 세 겹(회전 · 축 확대 · 회전)을 두고,
+ * 채움·테두리·내용(`style`, children)은 맨 안쪽에 그린다. Android에서도 기울이기가 그대로 보인다(src/lib/affine.ts).
+ */
+function AffineBox({ box, layers, style, testID, children }: {
+  box: object;
+  layers: Layers;
+  style?: React.ComponentProps<typeof View>["style"];
+  testID?: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <View style={[box, { transform: layers.outer }]} pointerEvents="none">
+      <View style={[StyleSheet.absoluteFill, { transform: layers.middle }]}>
+        <View testID={testID} style={[StyleSheet.absoluteFill, { transform: layers.inner }, style]}>
+          {children}
+        </View>
       </View>
     </View>
   );
@@ -434,6 +459,16 @@ export function FacadeHome(props: FacadeHomeProps) {
 
 const TOP_SIDE = 192 / Math.SQRT2; // 윗면 마름모(192×110.8)를 만드는 정사각형 한 변
 const LEFT_FACE = mix(C.paper, C.surface3, 0.8);
+const FACE_W = 96;
+const FACE_H = 78;
+// 면 변환(시안 CSS 그대로, 왼쪽부터): 윗면·바닥 scaleY(110.8/192) rotate(45°) · 이름 상자 rotate(-30°) skewX(30°) scaleY(.866)
+// · 왼쪽 면 skewY(30°)·오른쪽 면 skewY(-30°)(왼쪽 위 고정). 세 겹으로 나눠 Android에서도 같게(AffineBox).
+const LID_MAT = composeMat(scaleMat(1, 110.8 / 192), rotateMat(45));
+const GROUND_LAYERS = affineLayers(LID_MAT, TOP_SIDE, TOP_SIDE);
+const TOP_LAYERS = GROUND_LAYERS;
+const TOP_BOX_LAYERS = affineLayers(composeMat(rotateMat(-30), skewXMat(30), scaleMat(1, 0.866)), 110.85, 110.85);
+const LEFT_LAYERS = affineLayers(skewYMat(30), FACE_W, FACE_H, 0, 0);
+const RIGHT_LAYERS = affineLayers(skewYMat(-30), FACE_W, FACE_H, 0, 0);
 
 const styles = StyleSheet.create({
   // 웹에서 꾹 누르기·끌기 때 글자가 선택되지 않게
@@ -450,9 +485,8 @@ const styles = StyleSheet.create({
     top: 150 - TOP_SIDE / 2,
     width: TOP_SIDE,
     height: TOP_SIDE,
-    backgroundColor: C.shadowAmbient,
-    transform: [{ scaleY: 110.8 / 192 }, { rotate: "45deg" }],
   },
+  groundFill: { backgroundColor: C.shadowAmbient },
   // 윗면: (110,12)·(206,67.4)·(110,122.8)·(14,67.4)
   faceTop: {
     position: "absolute",
@@ -460,16 +494,16 @@ const styles = StyleSheet.create({
     top: 67.4 - TOP_SIDE / 2,
     width: TOP_SIDE,
     height: TOP_SIDE,
-    borderWidth: 1,
-    borderColor: C.seamHairline,
-    transform: [{ scaleY: 110.8 / 192 }, { rotate: "45deg" }],
   },
+  faceTopFill: { borderWidth: 1, borderColor: C.seamHairline },
   topBox: {
     position: "absolute",
     left: 110 - TOP_BOX / 2,
     top: 67.4 - TOP_BOX / 2,
     width: TOP_BOX,
     height: TOP_BOX,
+  },
+  topBoxFill: {
     paddingTop: 8,
     paddingRight: 8,
     paddingBottom: 8,
@@ -477,19 +511,12 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     justifyContent: "flex-end",
     overflow: "hidden",
-    transform: [{ rotate: "-30deg" }, { skewX: "30deg" }, { scaleY: 0.866 }],
   },
   topText: { fontWeight: "500", letterSpacing: TOP_LS, textAlign: "left" },
   topSmall: { fontWeight: "500", textAlign: "left", opacity: 0.86, marginBottom: 1, maxWidth: TOP_BOX - 17 },
   // 왼쪽 면: (14,67.4) 기준 96×78, skewY(30°)
-  faceLeft: {
-    position: "absolute",
-    left: 14,
-    top: 67.4,
-    width: 96,
-    height: 78,
-    transformOrigin: "left top",
-    transform: [{ skewY: "30deg" }],
+  faceLeft: { position: "absolute", left: 14, top: 67.4, width: FACE_W, height: FACE_H },
+  faceLeftFill: {
     backgroundColor: LEFT_FACE,
     borderWidth: 1,
     borderRightWidth: 0,
@@ -500,14 +527,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   // 오른쪽 면: (110,122.8) 기준 96×78, skewY(-30°)
-  faceRight: {
-    position: "absolute",
-    left: 110,
-    top: 122.8,
-    width: 96,
-    height: 78,
-    transformOrigin: "left top",
-    transform: [{ skewY: "-30deg" }],
+  faceRight: { position: "absolute", left: 110, top: 122.8, width: FACE_W, height: FACE_H },
+  faceRightFill: {
     backgroundColor: C.paper,
     borderWidth: 1,
     borderColor: C.seamHairline,

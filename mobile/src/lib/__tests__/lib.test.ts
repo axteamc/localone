@@ -16,12 +16,13 @@ jest.mock("@react-native-async-storage/async-storage", () => ({
 }));
 jest.mock("expo-location", () => ({
   requestForegroundPermissionsAsync: jest.fn(), hasServicesEnabledAsync: jest.fn(),
-  getCurrentPositionAsync: jest.fn(), Accuracy: { Balanced: 3 },
+  getCurrentPositionAsync: jest.fn(), getLastKnownPositionAsync: jest.fn(), Accuracy: { Balanced: 3 },
 }));
 const mockApiFetch = jest.mocked(apiFetch);
 const mockPermission = jest.mocked(Location.requestForegroundPermissionsAsync);
 const mockServices = jest.mocked(Location.hasServicesEnabledAsync);
 const mockPosition = jest.mocked(Location.getCurrentPositionAsync);
+const mockLastKnown = jest.mocked(Location.getLastKnownPositionAsync);
 const originalOS = Platform.OS;
 const originalNavigator = Object.getOwnPropertyDescriptor(globalThis, "navigator");
 const originalStorage = Object.getOwnPropertyDescriptor(globalThis, "localStorage");
@@ -46,6 +47,7 @@ beforeEach(() => {
   mockPermission.mockResolvedValue({ status: "granted" } as never);
   mockServices.mockResolvedValue(true);
   mockPosition.mockResolvedValue({ coords: { latitude: 37.5, longitude: 127 } } as never);
+  mockLastKnown.mockResolvedValue(null);
 });
 afterEach(() => {
   jest.useRealTimers(); jest.restoreAllMocks();
@@ -219,6 +221,26 @@ describe("foreground location and external URLs", () => {
     expect(await locate(new AbortController().signal)).toEqual({ ok: false, reason: "unavailable" });
     expect(AsyncStorage.setItem).not.toHaveBeenCalled();
   });
+  test("native: recent last-known first, then fresh, then a stale fix within a day (P8 emulator/Android)", async () => {
+    mockLastKnown.mockResolvedValueOnce({ coords: { latitude: 35.17, longitude: 126.92 } } as never);
+    expect(await locate(new AbortController().signal)).toEqual({ ok: true, lat: 35.17, lng: 126.92 });
+    expect(mockLastKnown).toHaveBeenLastCalledWith({ maxAge: 2 * 60_000 });
+    expect(mockPosition).not.toHaveBeenCalled();
+    // 새 위치가 오지 않으면 7초 뒤 하루 안의 마지막 위치
+    jest.useFakeTimers();
+    mockPosition.mockReturnValue(new Promise(() => undefined) as never);
+    mockLastKnown.mockResolvedValueOnce(null).mockResolvedValueOnce({ coords: { latitude: 1, longitude: 2 } } as never);
+    const result = locate(new AbortController().signal);
+    await jest.advanceTimersByTimeAsync(7_000);
+    expect(await result).toEqual({ ok: true, lat: 1, lng: 2 });
+    expect(mockLastKnown).toHaveBeenLastCalledWith({ maxAge: 24 * 60 * 60_000 });
+    expect(jest.getTimerCount()).toBe(0);
+    // 마지막 위치도 없으면 unavailable
+    mockLastKnown.mockResolvedValue(null);
+    const none = locate(new AbortController().signal);
+    await jest.advanceTimersByTimeAsync(7_000);
+    expect(await none).toEqual({ ok: false, reason: "unavailable" });
+  });
   test("native timeout and abort while permission is pending suppress late GPS", async () => {
     jest.useFakeTimers(); const pending = deferred<Location.LocationPermissionResponse>();
     mockPermission.mockReturnValue(pending.promise);
@@ -260,6 +282,15 @@ describe("foreground location and external URLs", () => {
 });
 
 describe("public API contracts", () => {
+  test("P8 place query stays in POST body and forwards cancellation", async () => {
+    const signal = new AbortController().signal;
+    mockApiFetch.mockResolvedValue(json(200, { items: [] }));
+    await expect(api.searchPlaces("충장로 우체국", signal)).resolves.toEqual({ items: [] });
+    expect(mockApiFetch).toHaveBeenCalledWith("/api/v1/places/search", {
+      method: "POST", body: JSON.stringify({ query: "충장로 우체국" }),
+      headers: { "Content-Type": "application/json" }, signal,
+    });
+  });
   test("publicApi maps server error to ApiCallError", async () => {
     mockApiFetch.mockResolvedValue(json(422, { error: { code: "VALIDATION_ERROR", message: "요청 형식이 올바르지 않아요.", detail: "lat,lng" } }));
     await expect(api.fetchLibrariesNearby(100, 200)).rejects.toMatchObject({ name: "ApiCallError", status: 422,

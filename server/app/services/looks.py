@@ -153,14 +153,21 @@ def _is_series_title(title: str, series: str) -> bool:
     return not suffix or suffix[0].isspace() or suffix[0].isdecimal() or unicodedata.category(suffix[0]).startswith("P")
 
 
+def _is_comic_class(class_name: str) -> bool:
+    # 정보나루 class_nm은 "예술 > 회화 > 만화"처럼 경로로 온다 → 마디 하나라도 만화류면 만화
+    return any(part.strip() in policy.SHELF_POPULAR_COMIC_CLASSES for part in class_name.split(">"))
+
+
 def shelf_popular_books(result: PopularResult) -> list[dict[str, Any]]:
     series_names = [_normalized_title(name) for name in policy.SHELF_POPULAR_EXCLUDED_SERIES]
+    prefixes = [_normalized_title(name) for name in policy.SHELF_POPULAR_EXCLUDED_TITLE_PREFIXES]
     books = []
     for book in result.books:
         class_name = _normalized_title(result.class_names.get(book.isbn13, ""))
-        if class_name in policy.SHELF_POPULAR_COMIC_CLASSES or book.isbn13 in policy.SHELF_POPULAR_EXCLUDED_ISBNS:
+        if _is_comic_class(class_name) or book.isbn13 in policy.SHELF_POPULAR_EXCLUDED_ISBNS:
             continue
-        if any(_is_series_title(_normalized_title(book.title), series) for series in series_names):
+        title = _normalized_title(book.title)
+        if any(_is_series_title(title, series) for series in series_names) or title.startswith(tuple(prefixes)):
             continue
         books.append(shelf_book(book))
         if len(books) == policy.SHELF_BOOKS_PER_PAGE:

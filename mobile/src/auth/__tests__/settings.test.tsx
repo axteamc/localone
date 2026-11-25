@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { act, fireEvent, render } from "@testing-library/react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import React from "react";
 import SettingsScreen from "../../../app/settings";
 import { actionColors, theme } from "../../theme";
@@ -48,6 +49,23 @@ describe("SettingsScreen (AUTH-2-P2)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockedUseActions.mockReturnValue({ signOut: signOutMock, withdrawAccount: withdrawMock });
+  });
+
+  test("guest can clear only the rough start and retry after storage failure", async () => {
+    authAs("signedOut");
+    const key = "localone:rough_start:v1";
+    await AsyncStorage.setItem(key, "old");
+    await AsyncStorage.setItem("other", "keep");
+    const screen = await render(<SettingsScreen />);
+    jest.spyOn(AsyncStorage, "removeItem").mockRejectedValueOnce(new Error("storage"));
+    const clear = screen.getByText("대략적인 위치 지우기");
+    await fireEvent.press(clear);
+    expect(await screen.findByText("위치를 지우지 못했어요. 다시 시도해 주세요.")).toBeTruthy();
+    expect(await AsyncStorage.getItem(key)).toBe("old");
+    await fireEvent.press(clear);
+    expect(await screen.findByText("대략적인 위치를 지웠어요.")).toBeTruthy();
+    expect(await AsyncStorage.getItem(key)).toBeNull();
+    expect(await AsyncStorage.getItem("other")).toBe("keep");
   });
 
   test("settings_logout_flow", async () => {

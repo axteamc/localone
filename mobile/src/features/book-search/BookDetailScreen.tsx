@@ -4,7 +4,7 @@
 // 본문 맨 아래: loan-assistant.md LOAN-1 M10 ① "빌렸어요" 사각 버튼 → YES24 링크(V2)
 // (사용자 결정 2026-11-24, 개발산출물/시안/Y-6_빌렸어요_위치_시안.html 후보 C — 계약 반영 대기).
 import { Stack, useRouter } from "expo-router";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
@@ -75,11 +75,29 @@ export function BookDetailScreen({
     ISBN13.test(isbn13) ? { kind: "loading" } : { kind: "notFound" }
   );
   const [saveNote, setSaveNote] = useState<"login" | "saved" | "failed" | null>(null);
+  const [lookupReceipt, setLookupReceipt] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false); // 연타해도 한 번만 보낸다(L3-#3)
   const [sheetOpen, setSheetOpen] = useState(false); // 도서관 고르는 담기 창(N3·N7, 빈 결과에서)
   const [findOpen, setFindOpen] = useState(openLookup); // 도서관 확인 창(V3)
   const [candidates, setCandidates] = useState<AvailabilityItem[]>([]); // 담기 창 후보 = 지금 찾아본 도서관(N3)
+  const [selected, setSelected] = useState<number | null>(null);
+  const saveRevision = useRef(0);
+  useLayoutEffect(() => {
+    setSelected(null);
+    setSheetOpen(false);
+    setLookupReceipt(null);
+    setSaveNote(null);
+    savingRef.current = false;
+    setSaving(false);
+    return () => { saveRevision.current++; };
+  }, [isbn13, userId, authStatus]);
+  useLayoutEffect(() => { setSelected(null); }, [findOpen]);
+  useEffect(() => {
+    if (saveNote !== "saved" || !lookupReceipt) return;
+    const timer = setTimeout(() => setSaveNote(null), 2000);
+    return () => clearTimeout(timer);
+  }, [saveNote, lookupReceipt]);
   const [link, setLink] = useState<PurchaseLink | null>(null);
   const [linkFailed, setLinkFailed] = useState(false);
   const [descOpen, setDescOpen] = useState(false);
@@ -135,22 +153,31 @@ export function BookDetailScreen({
 
   /** V3 "대출 예정" — 도서관 없이 바로 담는다(U6). 로그인 복원 중에는 아무것도 하지 않는다(②-3). */
   const onPlan = async () => {
-    if (authStatus === "loading" || savingRef.current || !readyBook) return;
+    if (authStatus === "loading" || savingRef.current || !readyBook || readyBook.isbn13 !== isbn13) return;
     if (authStatus !== "signedIn") {
       setSaveNote("login");
       return;
     }
+    const revision = saveRevision.current;
     savingRef.current = true;
     setSaving(true);
     setSaveNote(null);
     try {
-      await saveLoanPlan(readyBook.isbn13, null); // 201 새로 / 200 이미 있음 — 둘 다 저장된 것(U4)
+      const plan = await saveLoanPlan(readyBook.isbn13, findOpen ? selected : null);
+      if (revision !== saveRevision.current) return;
+      const library = candidates.find(item => item.library.id === selected)?.library;
+      let receipt = library ? library.name + "에서 빌릴 예정으로 담았어요" : "빌릴 예정에 담았어요 · 도서관 미정";
+      if (plan?.alreadySaved) receipt = "빌릴 예정에 있어요 · 도서관 바꾸기";
+      setLookupReceipt(findOpen ? receipt : null);
       setSaveNote("saved");
     } catch (e) {
+      if (revision !== saveRevision.current) return;
       setSaveNote(e instanceof ApiCallError && e.status === 401 ? "login" : "failed");
     } finally {
-      savingRef.current = false;
-      setSaving(false);
+      if (revision === saveRevision.current) {
+        savingRef.current = false;
+        setSaving(false);
+      }
     }
   };
 
@@ -203,6 +230,33 @@ export function BookDetailScreen({
     );
   }
 
+  const feedback = <>
+    {saveNote === "login" && (
+      <View style={styles.note}>
+        <Text style={styles.noteText}>{LOGIN_TO_SAVE}</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push("/login")}
+          style={({ pressed }) => [styles.darkBtn, pressed && ACT.secondaryPressed]}
+        >
+          <Text style={styles.darkBtnText} numberOfLines={1}>로그인</Text>
+        </Pressable>
+      </View>
+    )}
+    {saveNote === "saved" && !(lookupReceipt && findOpen) && (
+      <View testID="saved-note" style={styles.note}>
+        <Text style={styles.noteText}>{SAVED_NOTE}</Text>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push("/loans")}
+          style={({ pressed }) => [styles.darkBtn, pressed && ACT.secondaryPressed]}
+        >
+          <Text style={styles.darkBtnText} numberOfLines={1}>대출·반납 보기</Text>
+        </Pressable>
+      </View>
+    )}
+    {saveNote === "failed" && <Text style={styles.error}>{SAVE_FAILED}</Text>}
+  </>;
   const b = state.book;
   const topFacts: [string, string][] = [];
   if (b.publisher) topFacts.push(["출판사", b.publisher]);
@@ -240,31 +294,7 @@ export function BookDetailScreen({
           {b.source === "yes24" && <Text style={styles.kicker}>{SOURCE_YES24}</Text>}
         </View>
 
-        {saveNote === "login" && (
-          <View style={styles.note}>
-            <Text style={styles.noteText}>{LOGIN_TO_SAVE}</Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push("/login")}
-              style={({ pressed }) => [styles.darkBtn, pressed && ACT.secondaryPressed]}
-            >
-              <Text style={styles.darkBtnText} numberOfLines={1}>로그인</Text>
-            </Pressable>
-          </View>
-        )}
-        {saveNote === "saved" && (
-          <View testID="saved-note" style={styles.note}>
-            <Text style={styles.noteText}>{SAVED_NOTE}</Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => router.push("/loans")}
-              style={({ pressed }) => [styles.darkBtn, pressed && ACT.secondaryPressed]}
-            >
-              <Text style={styles.darkBtnText} numberOfLines={1}>대출·반납 보기</Text>
-            </Pressable>
-          </View>
-        )}
-        {saveNote === "failed" && <Text style={styles.error}>{SAVE_FAILED}</Text>}
+        {!findOpen && feedback}
 
         {b.description !== null && (
           <View testID="description" style={styles.block}>
@@ -341,12 +371,16 @@ export function BookDetailScreen({
               <AvailabilitySection
                 isbn13={b.isbn13}
                 pinLibraryId={pinLibraryId}
+                selected={selected}
+                setSelected={setSelected}
                 onItems={setCandidates}
                 onSaveForLater={onSaveWithLibrary}
                 purchase={link}
                 onOpenPurchase={() => void openLink()}
               />
             </ScrollView>
+            {feedback}
+            {saveNote === "saved" && lookupReceipt && <Text accessibilityLiveRegion="polite" style={styles.receipt}>{lookupReceipt}</Text>}
           </View>
         </>
       )}
@@ -358,11 +392,11 @@ export function BookDetailScreen({
           accessibilityState={{ disabled: saving }}
           disabled={saving}
           onPress={() => void onPlan()}
-          style={({ pressed }) => [styles.actionBtn, ACT.secondary, pressed && ACT.secondaryPressed, saving && styles.dim]}
+          style={({ pressed }) => [styles.actionBtn, findOpen ? ACT.primary : ACT.secondary, pressed && (findOpen ? ACT.primaryPressed : ACT.secondaryPressed), saving && styles.dim]}
         >
-          <Text style={[styles.actionText, ACT.secondaryText]} numberOfLines={1}>{PLAN_LABEL}</Text>
+          <Text style={[styles.actionText, findOpen ? ACT.primaryText : ACT.secondaryText]} numberOfLines={1}>{findOpen ? "빌릴 예정에 추가" : PLAN_LABEL}</Text>
         </Pressable>
-        <Pressable
+        {!findOpen && <Pressable
           testID="find-libraries"
           accessibilityRole="button"
           accessibilityState={{ expanded: findOpen }}
@@ -370,7 +404,7 @@ export function BookDetailScreen({
           style={({ pressed }) => [styles.actionBtn, ACT.primary, pressed && ACT.primaryPressed]}
         >
           <Text style={[styles.actionText, ACT.primaryText]} numberOfLines={1}>{FIND_LABEL}</Text>
-        </Pressable>
+        </Pressable>}
       </View>
 
       <SavePlanSheet
@@ -380,6 +414,7 @@ export function BookDetailScreen({
         onClose={() => setSheetOpen(false)}
         onSaved={() => {
           setSheetOpen(false);
+          setLookupReceipt(null);
           setSaveNote("saved");
         }}
         onLoginRequired={() => {
@@ -424,6 +459,8 @@ export function allConfirmedNotHeld(items: AvailabilityItem[]): boolean {
 function AvailabilitySection({
   isbn13,
   pinLibraryId,
+  selected,
+  setSelected,
   onItems,
   onSaveForLater,
   purchase,
@@ -431,6 +468,8 @@ function AvailabilitySection({
 }: {
   isbn13: string;
   pinLibraryId: number | null;
+  selected: number | null;
+  setSelected(id: number | null): void;
   onItems(items: AvailabilityItem[]): void;
   onSaveForLater(): void;
   purchase: PurchaseLink | null;
@@ -447,9 +486,8 @@ function AvailabilitySection({
   }, [pinned, a.items]);
   useEffect(() => onItems(items), [items, onItems]);
   const [picking, setPicking] = useState(false); // "지역 다시 고르기"(A12)
-  const [selected, setSelected] = useState<number | null>(null); // V5 한 곳 선택(기본값(Claude): 표시만)
   useEffect(() => setPicking(false), [isbn13]);
-  useEffect(() => setSelected(null), [items]); // 조회 범위가 바뀌면 선택을 푼다
+  useLayoutEffect(() => setSelected(null), [items, a.status, a.scope, picking, setSelected]); // 조회 범위가 바뀌면 선택을 푼다
   const today = a.checkedAt?.slice(0, 10) ?? "";
   const footer = a.checkedAt ? checkedAtLabel(a.checkedAt) : null;
   const busy = a.status === "locating" || a.status === "loading";
@@ -469,6 +507,7 @@ function AvailabilitySection({
 
   return (
     <View testID="availability" style={styles.availability}>
+      {!!a.roughLabel && <Text style={styles.summary}>{a.roughLabel}</Text>}
       {city && !!a.selectedRegionLabel && (
         <Text style={styles.summary} numberOfLines={1}>{`도시 전체 도서관 · ${a.selectedRegionLabel}`}</Text>
       )}
@@ -538,7 +577,7 @@ function AvailabilitySection({
               today={today}
               onRetry={a.retry}
               selected={selected === item.library.id}
-              onToggleSelect={() => setSelected((s) => (s === item.library.id ? null : item.library.id))}
+              onToggleSelect={() => setSelected(selected === item.library.id ? null : item.library.id)}
             />
           ))}
           {!!footer && <Text style={styles.caption}>{footer}</Text>}
@@ -659,6 +698,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: theme.radii.infoCard,
     borderTopRightRadius: theme.radii.infoCard,
   },
+  receipt: { padding: 10, textAlign: "center", color: c.text },
   sheetHead: {
     flexDirection: "row",
     alignItems: "center",
