@@ -10,18 +10,23 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request
+from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
-from app.auth import CurrentUser, get_optional_user
+from app.auth import CurrentUser, get_current_user, get_optional_user, lock_active_user
 from app.common import ApiError, now_kst
 from app.db import run_db
 from app.routers.clubs import FEED_CLUB_COLUMNS, club_item
 from app.routers.guestbook import GUESTBOOK_COLUMNS, GUESTBOOK_JOINS, guestbook_item
 from app.routers.posts import (
+    BODY_MAX,
+    MSG_FORBIDDEN,
     MSG_NOT_FOUND,
+    OVERLAY_MAX,
     POST_COLUMNS,
     POST_JOINS,
+    _clean_text,
     post_public,
     validation_error,
     with_image_url,
@@ -241,6 +246,60 @@ async def post_detail(
     return post_public(
         with_image_url(request, row),
         viewer=viewer,
+        nickname=row.nickname,
+        reaction_count=count,
+        my_reaction=row.id in reacted,
+        my_bookmark=row.id in saved,
+    )
+
+
+# ─────────── #72 게시물 고치기 (2026-11-25 실기기 개선 P5, C-91) ───────────
+# 본문과 이미지 위 글자만 고친다(사용자 결정 — 책·이미지는 그대로). 보낸 칸만, 빈 글자·null은 비움.
+# 본인 글만(403), 없는 글 404 NOT_FOUND, 철회·숨김은 404 POST_NOT_AVAILABLE. 응답은 #27 상세와 같은 모양.
+
+
+class PostEdit(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    overlay_text: str | None = None
+    body: str | None = None
+
+    @field_validator("overlay_text", mode="before")
+    @classmethod
+    def _overlay(cls, v: Any) -> str | None:
+        return _clean_text(v, OVERLAY_MAX)
+
+    @field_validator("body", mode="before")
+    @classmethod
+    def _body(cls, v: Any) -> str | None:
+        return _clean_text(v, BODY_MAX)
+
+
+@router.patch("/posts/{post_id}")
+async def edit_post(
+    request: Request, post_id: UUID, body: PostEdit, user: CurrentUser = Depends(get_current_user)
+) -> dict[str, Any]:
+    fields = {k: getattr(body, k) for k in ("overlay_text", "body") if k in body.model_fields_set}
+    if not fields:
+        raise validation_error("body")
+
+    def tx(c: Connection) -> tuple[Any, int, tuple[set[Any], set[Any]]]:
+        lock_active_user(c, user.id)
+        cur = c.execute(text("SELECT user_id, status FROM posts WHERE id = :id FOR UPDATE"), {"id": post_id}).one_or_none()
+        if cur is None:
+            raise ApiError(404, "NOT_FOUND", MSG_NOT_FOUND, "post_id")
+        if cur.user_id != user.id:
+            raise ApiError(403, "FORBIDDEN", MSG_FORBIDDEN)
+        ensure_published(cur.status)
+        sets = ", ".join(f"{k} = :{k}" for k in fields)
+        c.execute(text(f"UPDATE posts SET {sets}, updated_at = now() WHERE id = :id"), {**fields, "id": post_id})
+        row = c.execute(text(f"SELECT {POST_COLUMNS} {POST_JOINS} WHERE p.id = :id"), {"id": post_id}).one()
+        return row, reaction_count(c, row.id), my_flags(c, user, [row.id])
+
+    row, count, (reacted, saved) = await run_db(request.app.state.engine, tx)
+    return post_public(
+        with_image_url(request, row),
+        viewer=user,
         nickname=row.nickname,
         reaction_count=count,
         my_reaction=row.id in reacted,

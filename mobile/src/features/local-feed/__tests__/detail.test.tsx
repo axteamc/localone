@@ -41,6 +41,7 @@ jest.mock("../api", () => ({
   setReaction: jest.fn(),
   setBookmark: jest.fn(),
   withdrawPost: jest.fn(),
+  editPost: jest.fn(),
 }));
 
 const fetchPost = jest.mocked(api.fetchPost);
@@ -49,6 +50,7 @@ const fetchLibraryPosts = jest.mocked(api.fetchLibraryPosts);
 const setReaction = jest.mocked(api.setReaction);
 const setBookmark = jest.mocked(api.setBookmark);
 const withdrawPost = jest.mocked(api.withdrawPost);
+const editPost = jest.mocked(api.editPost);
 const fetchAvailabilityAt = jest.mocked(publicApi.fetchAvailabilityAt);
 const openExternalUrl = jest.mocked(platform.openExternalUrl);
 const mockedUseAuth = jest.mocked(useAuth);
@@ -223,6 +225,27 @@ describe("상세 구조와 대여/구매 (H9·H14)", () => {
     await fireEvent.press(screen.getByLabelText("더 보기"));
     expect(screen.getByText(MENU_TEXT.share)).toBeTruthy();
     expect(screen.queryByText("게시물 내리기")).toBeNull();
+  });
+
+  test("my post can be edited: only body and overlay text, only changed fields are sent (C-91)", async () => {
+    await enter(post({ is_mine: true }));
+    await fireEvent.press(screen.getByLabelText("더 보기"));
+    await fireEvent.press(screen.getByText("게시물 수정"));
+    expect(screen.getByText("책과 이미지는 바꿀 수 없어요. 바꾸려면 새로 올려 주세요.")).toBeTruthy();
+    // 바꾼 게 없으면 저장 비활성
+    expect(screen.getByTestId("post-edit-save").props.accessibilityState).toMatchObject({ disabled: true });
+    await fireEvent.changeText(screen.getByTestId("post-edit-body"), "  다시 읽고 고친 감상  ");
+    editPost.mockResolvedValueOnce(post({ is_mine: true, body: "다시 읽고 고친 감상" }));
+    await fireEvent.press(screen.getByTestId("post-edit-save"));
+    expect(editPost).toHaveBeenCalledWith("p1", { body: "다시 읽고 고친 감상" }); // 이미지 위 글자는 안 보냄
+    expect(await screen.findByText("다시 읽고 고친 감상")).toBeTruthy();
+    expect(screen.queryByTestId("post-edit-save")).toBeNull();
+  });
+
+  test("others' posts have no edit menu", async () => {
+    await enter();
+    await fireEvent.press(screen.getByLabelText("더 보기"));
+    expect(screen.queryByText("게시물 수정")).toBeNull();
   });
 
   test("withdrawing my post goes back and tells the feed to hide it", async () => {

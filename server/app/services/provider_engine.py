@@ -18,7 +18,7 @@ from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import date, datetime, timedelta
 from typing import Any, Literal, Protocol, TypeVar
-from urllib.parse import urlencode
+from urllib.parse import parse_qs, urlencode, urlsplit, urlunsplit
 
 from sqlalchemy import text
 from sqlalchemy.engine import Connection, Engine
@@ -1183,6 +1183,34 @@ def normalize_isbn(raw: str | None) -> str | None:
     return None
 
 
+_KAKAO_THUMB_HOST = re.compile(r"^search\d*\.kakaocdn\.net$")
+_DAUM_IMAGE_HOST = re.compile(r"^t\d*\.daumcdn\.net$")
+
+
+def kakao_original_cover(url: Any) -> Any:
+    """카카오 책 검색 `thumbnail`(120×174 축소본)을 원본 표지(`fname`, 약 4배) 주소로 바꾼다(2026-11-25 P5, C-91).
+
+    `https://search1.kakaocdn.net/thumb/R120x174.q85/?fname=http%3A%2F%2Ft1.daumcdn.net%2Flbook%2Fimage%2F...`
+    → `https://t1.daumcdn.net/lbook/image/...`. 원본이 다음(daumcdn) 이미지가 아니거나 모양이 다르면 그대로 둔다.
+    """
+    if not isinstance(url, str):
+        return url
+    try:
+        parts = urlsplit(url.strip())
+    except ValueError:
+        return url
+    if not (parts.hostname and _KAKAO_THUMB_HOST.match(parts.hostname) and parts.path.startswith("/thumb/")):
+        return url
+    fname = parse_qs(parts.query).get("fname", [""])[0]
+    try:
+        inner = urlsplit(fname)
+    except ValueError:
+        return url
+    if inner.scheme not in ("http", "https") or not (inner.hostname and _DAUM_IMAGE_HOST.match(inner.hostname)):
+        return url
+    return urlunsplit(("https", inner.netloc, inner.path, inner.query, ""))
+
+
 def https_cover(url: Any) -> str | None:
     """표지 주소만 저장하고 이미지는 복사하지 않는다. http는 https로 바꾼다(05 §3.1 books.cover_url)."""
     if not isinstance(url, str) or not url.strip():
@@ -1232,7 +1260,8 @@ def _kakao_item(item: Any) -> BookInfo | None:
         title=title,
         author=", ".join(names) or None,
         publisher=_clean_book_text(item.get("publisher")),
-        cover_url=https_cover(item.get("thumbnail")),  # 표지가 없으면 빈 문자열로 온다
+        # 표지가 없으면 빈 문자열로 온다. 축소본 대신 원본(C-91, 실기기에서 표지가 깨져 보임)
+        cover_url=https_cover(kakao_original_cover(item.get("thumbnail"))),
         description=_description(item.get("contents")),
         pub_year=_pub_year(published[:4]) if isinstance(published, str) else None,  # ISO 8601 앞 4자리
     )
