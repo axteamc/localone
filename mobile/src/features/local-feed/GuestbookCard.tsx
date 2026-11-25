@@ -67,7 +67,7 @@ export function GuestbookCard({ entry, width, onMenu }: GuestbookCardProps) {
     <View style={[styles.card, { width }]} testID={`guestbook-card-${entry.id}`}>
       <View style={styles.tagRow}>
         <View style={styles.tag}>
-          <View style={styles.tagDot} />
+          <Text style={styles.quoteMark} aria-hidden>“</Text>
           <Text style={styles.tagText}>{GUESTBOOK_CARD_TEXT.tag}</Text>
         </View>
         {onMenu ? (
@@ -162,17 +162,19 @@ const makeStyles = (theme: Theme) => {
   const { C, T, ACT } = lookKit(theme);
   return StyleSheet.create({
   card: {
-    backgroundColor: GUESTBOOK_CARD_COLOR,
+    backgroundColor: C.cream,
     borderRadius: theme.radii.infoCard,
-    borderWidth: 1,
-    borderColor: C.seamHairline,
+    borderTopLeftRadius: theme.radii.block,
+    borderBottomLeftRadius: theme.radii.block,
+    borderLeftWidth: 3,
+    borderLeftColor: C.surface3,
     padding: 14,
     gap: 8,
   },
   tagRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 20 },
-  tag: { flexDirection: "row", alignItems: "center", gap: 6, opacity: 0.7 },
-  tagDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.inkStrong },
-  tagText: { fontSize: 11, fontWeight: "500", color: C.text },
+  tag: { flexDirection: "row", alignItems: "center", gap: 5 },
+  quoteMark: { fontSize: 18, lineHeight: 18, fontWeight: "700", color: C.surface3, marginTop: 2 },
+  tagText: { fontSize: 11, fontWeight: "500", color: C.inkMuted },
   more: { minWidth: 32, alignItems: "flex-end" },
   moreText: { fontSize: 18, lineHeight: 20, color: C.inkMuted },
   body: { fontSize: 15, lineHeight: 22, color: C.text },

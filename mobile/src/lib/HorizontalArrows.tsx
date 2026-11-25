@@ -9,12 +9,12 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import { theme } from "../theme";
 
 type Direction = -1 | 1;
@@ -83,8 +83,8 @@ type ArrowsProps = ArrowEdges & {
 export function GlassArrows({ label, canGoBack, canGoForward, centerY, onMove }: ArrowsProps) {
   return (
     <>
-      {canGoBack && <Arrow side="left" label={`${label} 이전`} glyph="‹" top={centerY - HIT / 2} onPress={() => onMove(-1)} />}
-      {canGoForward && <Arrow side="right" label={`${label} 다음`} glyph="›" top={centerY - HIT / 2} onPress={() => onMove(1)} />}
+      {canGoBack && <Arrow side="left" label={`${label} 이전`} top={centerY - HIT / 2} onPress={() => onMove(-1)} />}
+      {canGoForward && <Arrow side="right" label={`${label} 다음`} top={centerY - HIT / 2} onPress={() => onMove(1)} />}
     </>
   );
 }
@@ -92,13 +92,13 @@ export function GlassArrows({ label, canGoBack, canGoForward, centerY, onMove }:
 const HIT = 44;
 const SIZE = 32;
 
-function Arrow({ side, label, glyph, top, onPress }: {
+function Arrow({ side, label, top, onPress }: {
   side: "left" | "right";
   label: string;
-  glyph: string;
   top: number;
   onPress(): void;
 }) {
+  const d = side === "left" ? "M11 4.5 L6 9 L11 13.5" : "M7 4.5 L12 9 L7 13.5";
   return (
     <Pressable
       accessibilityRole="button"
@@ -108,7 +108,9 @@ function Arrow({ side, label, glyph, top, onPress }: {
     >
       {({ pressed }) => (
         <View style={[styles.glass, pressed && styles.pressed]}>
-          <Text style={styles.glyph}>{glyph}</Text>
+          <Svg width={18} height={18} viewBox="0 0 18 18" fill="none">
+            <Path d={d} stroke={c.inkStrong} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
+          </Svg>
         </View>
       )}
     </Pressable>
@@ -145,5 +147,4 @@ const styles = StyleSheet.create({
     ...(Platform.OS === "web" ? ({ backdropFilter: "blur(8px)" } as object) : null),
   },
   pressed: { backgroundColor: `${c.paper}D9` },
-  glyph: { color: c.inkStrong, fontSize: 22, lineHeight: 24, fontWeight: "500", marginTop: -2 },
 });

@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>웹 배포본 UI 개선 시안 (SNS 카드 · 독서 기록 책장 · 대출 버튼)</title>
+<style>
+  :root {
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+    --cream:#EFEFE7; --paper:#EFF1F1; --ink-strong:#2E333F;
+    --text:#1D1D1F; --sub:#71716F; --ink-muted:#6B6B66; --ink-soft:#4D4D4B;
+    --panel-frosted:#E9EAE9; --panel-lit:#EFF1EF; --seam:#C7C8C8;
+    --relief-mid:#B7B7B3; --relief-dark:#999896;
+    --guestbook-bg:#F2F0EB; --loan-ok:#5B8A5B; --loan-out:#B27A3D;
+    --r-card:18px; --r-info:9px; --r-pill:9999px; --r-block:3px;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; line-height:1.5; padding-bottom:60px; }
+  header.page, main { max-width:1280px; margin:0 auto; padding:0 16px; }
+  header.page { padding-top:20px; }
+  h1 { font-size:20px; margin:0 0 6px; }
+  h2 { font-size:17px; margin:0 0 4px; }
+  h3 { font-size:15px; margin:0 0 10px; }
+  .how, .flow { background:var(--cream); border-radius:var(--r-card); padding:12px 16px; margin:10px 0 0; font-size:13.5px; }
+  section.element { margin-top:36px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:var(--r-pill); background:var(--surface2); margin-left:6px; font-weight:400; }
+  .pick { margin:8px 0 0; font-size:13.5px; }
+  .pick select { font:inherit; padding:4px 10px; border-radius:10px; border:1px solid var(--surface3); background:var(--paper); }
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-card); padding:16px; border:3px solid transparent; display:flex; flex-direction:column; }
+  .cand.recommended { border-color:var(--fill1); }
+  .cand.chosen { border-color:var(--ink-strong); }
+  .badge { display:inline-block; font-size:11.5px; font-weight:700; padding:1px 9px; border-radius:var(--r-pill); background:var(--fill1); margin-left:6px; vertical-align:middle; }
+  .badge.adopted { background:var(--ink-strong); color:var(--paper); }
+  .cand p, .cand li { font-size:13px; margin:5px 0; }
+  .cand ul { padding-left:18px; margin:4px 0; }
+  .lbl { font-weight:700; font-size:12px; color:var(--sub); margin-top:10px; display:block; }
+
+  /* 휴대폰 틀 */
+  .phone { width:268px; height:430px; margin:0 auto 12px; background:var(--panel-frosted); border-radius:26px; border:5px solid var(--ink-strong); position:relative; overflow:hidden; font-size:11px; flex:none; }
+  .scr { position:absolute; inset:0; padding:12px; background:var(--panel-frosted); overflow-y:auto; }
+  .hide { display:none !important; }
+  .p-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+  .p-gauge { font-size:9px; letter-spacing:1px; color:var(--ink-muted); font-weight:600; }
+  .p-title { font-size:15px; font-weight:600; color:var(--ink-strong); }
+  .p-sub { font-size:10.5px; color:var(--ink-muted); }
+
+  /* ===== 요소 1: SNS 방명록 vs 모임 카드 ===== */
+  .feed-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; align-items:start; }
+  .f-card { border-radius:var(--r-info); padding:10px; font-size:10.5px; cursor:pointer; transition:transform .12s; }
+  .f-card:active { transform:scale(.98); }
+  .f-tag { display:inline-flex; align-items:center; gap:4px; font-size:9.5px; font-weight:600; }
+  .f-dot { width:5px; height:5px; border-radius:50%; background:var(--ink-strong); }
+  .f-day { font-size:16px; font-weight:600; letter-spacing:-0.4px; margin-top:4px; line-height:1.2; }
+  .f-time { font-size:9.5px; color:var(--sub); margin-top:2px; }
+  .f-name { font-size:11.5px; font-weight:600; margin-top:6px; line-height:1.3; }
+  .f-meta { font-size:9.5px; color:var(--ink-muted); margin-top:4px; }
+  .f-go { font-size:10.5px; font-weight:600; color:var(--ink-strong); margin-top:6px; }
+
+  /* 후보 A 변형: 그레이톤 모임 헤더 + 방명록 메모지 분리 비교 */
+  .club-a { background:var(--paper); border:1px solid var(--seam); padding:0; overflow:hidden; box-shadow:0 2px 0 0 var(--relief-mid); }
+  .club-a-top { background:var(--surface2); color:var(--ink-strong); border-bottom:1px solid var(--seam); padding:6px 10px; display:flex; align-items:center; justify-content:space-between; }
+  .club-a-top .f-tag { color:var(--ink-strong); }
+  .club-a-top .f-dot { background:var(--ink-strong); }
+  .club-a-body { padding:10px; }
+  .club-orig { background:var(--paper); border:1px solid var(--seam); padding:10px; }
+  .gb-orig { background:var(--guestbook-bg); border:1px solid var(--seam); padding:10px; }
+  .gb-a { background:var(--cream); border:0; border-left:3px solid var(--surface3); border-radius:4px var(--r-info) var(--r-info) 4px; padding:10px; }
+  .gb-a-quote { font-size:20px; line-height:14px; color:var(--surface3); font-family:Georgia,serif; margin-bottom:2px; }
+
+  /* 후보 B: 모임 좌측 컬러바(fill1) + 날짜 알약 vs 방명록 점선 포스트잇 */
+  .club-b { background:var(--paper); border:1px solid var(--seam); border-left:4px solid var(--fill1); padding:10px; }
+  .club-b-badge { display:inline-block; background:var(--fill1); color:var(--text); font-size:9px; font-weight:700; padding:1px 6px; border-radius:var(--r-pill); }
+  .gb-b { background:var(--guestbook-bg); border:1px dashed var(--surface3); border-radius:var(--r-info); padding:10px; }
+
+  /* 후보 C: 모임 다크 반전 카드 vs 방명록 밝은 종이 카드 */
+  .club-c { background:var(--ink-strong); color:var(--paper); border:1px solid var(--ink-strong); padding:10px; }
+  .club-c .f-dot { background:var(--fill1); }
+  .club-c .f-time, .club-c .f-meta { color:#C8CBD2; }
+  .club-c .f-go { color:var(--fill1); }
+  .gb-c { background:var(--paper); border:1px solid var(--seam); padding:10px; }
+
+  /* ===== 요소 2: 독서 기록 책 입체감 + 선반 밀착 + 4권 ===== */
+  .shelf-month { margin-top:12px; }
+  .shelf-books { display:flex; gap:6px; align-items:flex-end; padding:0 4px; width:100%; }
+  .bk { flex:1; min-width:0; aspect-ratio:1/1.45; position:relative; cursor:pointer; transition:transform .12s; }
+  .bk:hover { transform:translateY(-2px); }
+  .bk-face { width:100%; height:100%; border-radius:2px 5px 5px 2px; display:flex; flex-direction:column; justify-content:space-between; padding:6px 5px; font-size:8px; font-weight:600; color:#fff; position:relative; overflow:hidden; }
+  .bk-c1 { background:linear-gradient(135deg,#27324A,#3F5170); }
+  .bk-c2 { background:linear-gradient(135deg,#2E6F64,#479486); }
+  .bk-c3 { background:linear-gradient(135deg,#8E4A36,#B5684F); }
+  .bk-c4 { background:linear-gradient(135deg,#5C4F72,#7B6C94); }
+  .bk-t { line-height:1.25; }
+  .bk-a { font-size:7px; opacity:.8; font-weight:400; }
+
+  /* 후보 A: 책등 접힘선 + 우측 페이지 두께 + 선반 밀착 그림자 */
+  .bk-a .bk-face { box-shadow:2px 0 0 #E8E6DF, 3px 0 0 #D0CEC8, 3px 3px 6px rgba(28,30,36,.26); }
+  .bk-a .bk-face::before { content:""; position:absolute; left:0; top:0; bottom:0; width:7px; background:linear-gradient(90deg, rgba(0,0,0,.28), rgba(255,255,255,.18) 55%, rgba(0,0,0,.12) 85%, transparent); }
+  .bk-a .bk-face::after { content:""; position:absolute; inset:0; border-radius:inherit; box-shadow:inset 0 1px 0 rgba(255,255,255,.25); pointer-events:none; }
+  .plank-a { height:8px; background:linear-gradient(180deg, var(--surface2) 0%, var(--surface3) 45%, var(--relief-dark) 100%); border-radius:2px; box-shadow:0 3px 6px rgba(28,30,36,.18); }
+
+  /* 후보 B: 두꺼운 하드커버 입체 + 2단 선반 */
+  .bk-b .bk-face { border-radius:3px 6px 6px 3px; box-shadow:3px 0 0 #F4F2EC, 4px 0 0 #BFBCAE, 6px 4px 10px rgba(20,22,28,.32); }
+  .bk-b .bk-face::before { content:""; position:absolute; left:0; top:0; bottom:0; width:9px; background:linear-gradient(90deg, rgba(0,0,0,.35) 0%, rgba(255,255,255,.22) 45%, rgba(0,0,0,.18) 80%, transparent 100%); }
+  .plank-b { height:12px; background:var(--surface3); border-top:3px solid var(--cream); border-bottom:3px solid var(--relief-dark); border-radius:3px; box-shadow:0 4px 8px rgba(28,30,36,.2); }
+
+  /* 후보 C: 미니멀 북카드(얇은 홈 1줄 + 바닥 밀착) */
+  .bk-c .bk-face { border-radius:2px 5px 5px 2px; border:1px solid rgba(0,0,0,.12); box-shadow:0 2px 5px rgba(28,30,36,.18); }
+  .bk-c .bk-face::before { content:""; position:absolute; left:5px; top:0; bottom:0; width:1px; background:rgba(255,255,255,.32); box-shadow:-1px 0 0 rgba(0,0,0,.18); }
+  .plank-c { height:6px; background:var(--surface3); border-radius:2px; box-shadow:0 2px 0 0 var(--relief-dark); }
+
+  /* ===== 요소 3: 대출 화면 수정·반납 버튼 (+ 세그먼트 & 원형 체크박스) ===== */
+  .seg-fix { display:inline-flex; background:var(--surface2); border-radius:var(--r-pill); padding:2px; gap:2px; }
+  .seg-fix span { font-size:10px; padding:3px 9px; border-radius:var(--r-pill); color:var(--ink-muted); cursor:pointer; }
+  .seg-fix span.on { background:var(--paper); color:var(--ink-strong); font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,.08); }
+  .loan-card { background:var(--paper); border:1px solid var(--seam); border-radius:var(--r-info); padding:10px; box-shadow:0 2px 0 0 var(--relief-mid); }
+  .loan-top { display:flex; align-items:center; gap:8px; }
+  .loan-cov { width:34px; height:48px; border-radius:2px 4px 4px 2px; background:linear-gradient(135deg,#8E4A36,#D49A6A); flex:none; }
+  .loan-info { flex:1; min-width:0; }
+  .loan-title { font-size:12px; font-weight:600; }
+  .loan-meta { font-size:9.5px; color:var(--sub); }
+  .loan-date { font-size:8.5px; color:var(--ink-muted); letter-spacing:.3px; margin-top:2px; }
+  .dday-col { border-left:1px solid var(--seam); padding-left:8px; text-align:right; flex:none; min-width:52px; }
+  .dday-num { font-size:12px; font-weight:600; color:var(--ink-strong); }
+  .dday-st { font-size:9.5px; color:var(--ink-muted); display:flex; align-items:center; justify-content:flex-end; gap:3px; }
+  .dday-st i { width:5px; height:5px; border-radius:50%; background:var(--loan-ok); display:inline-block; }
+
+  .act-bar { display:flex; align-items:center; justify-content:space-between; gap:6px; border-top:1px solid var(--seam); margin-top:8px; padding-top:7px; }
+  .pill-btn { border:1px solid var(--seam); background:var(--panel-frosted); color:var(--text); border-radius:var(--r-pill); padding:4px 10px; font-size:10.5px; font-weight:500; cursor:pointer; }
+  .pill-btn.pri { background:var(--panel-lit); border-color:var(--seam); color:var(--ink-strong); font-weight:600; box-shadow:0 1px 0 0 var(--relief-mid); }
+  .split-bar { display:grid; grid-template-columns:1fr 1fr; border-top:1px solid var(--seam); margin:8px -10px -10px; }
+  .split-bar button { border:0; background:transparent; padding:8px 0; font-size:11px; font-weight:500; color:var(--text); cursor:pointer; }
+  .split-bar button:first-child { border-right:1px solid var(--seam); color:var(--ink-soft); }
+  .split-bar button:last-child { color:var(--ink-strong); font-weight:600; }
+  .quiet-link { border:0; background:none; font-size:10px; color:var(--ink-muted); text-decoration:underline; cursor:pointer; padding:2px 0; margin-top:2px; }
+
+  /* 개선된 원형 체크박스 미리보기 */
+  .plan-mini { margin-top:12px; }
+  .chk-row { display:flex; align-items:center; gap:6px; font-size:11px; margin:6px 0; cursor:pointer; }
+  .chk-circle { width:18px; height:18px; border-radius:50%; border:1.5px solid var(--seam); background:var(--paper); display:inline-flex; align-items:center; justify-content:center; flex:none; transition:all .12s; }
+  .chk-circle.on { background:var(--ink-strong); border-color:var(--ink-strong); color:#fff; }
+
+  .toast { position:absolute; left:12px; right:12px; bottom:12px; background:var(--ink-strong); color:var(--paper); border-radius:10px; padding:6px 10px; font-size:10px; text-align:center; display:none; }
+  .toast.on { display:block; }
+
+  /* 명세 표 */
+  #spec { margin-top:36px; }
+  table { border-collapse:collapse; width:100%; font-size:12.5px; background:var(--paper); border-radius:var(--r-card); overflow:hidden; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--surface2); }
+  th { background:var(--surface2); }
+  .st { font-size:11.5px; padding:1px 8px; border-radius:var(--r-pill); background:var(--surface2); white-space:nowrap; }
+  .wide { overflow-x:auto; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>웹 배포본 UI 개선 시안 — 결정이 필요한 3가지</h1>
+  <div class="how">
+    <b>보는 법.</b> 디자인 방향 선택이 필요한 3개 항목을 각각 후보 3개씩 나란히 놓았습니다. 노란 테두리가 <b>추천</b>이에요.
+    휴대폰 안의 카드·책·버튼을 눌러 볼 수 있어요. 마음에 드는 후보(A/B/C)를 골라 주시면 바로 앱에 반영합니다.
+  </div>
+</header>
+
+<main>
+<!-- ===== 요소 1: SNS 방명록 vs 모임 카드 (1-A 분리 비교) ===== -->
+<section class="element" id="el-sns-card" data-chosen="A2">
+  <h2>정할 것 1. SNS 피드 — 1-A 분리 비교 (그레이 헤더만 vs 방명록 메모지만 vs 둘 다) <span class="status">확인 (A-2)</span></h2>
+  <div class="flow"><b>피드백 반영.</b> 모임 헤더를 튀지 않는 그레이톤(<code>surface2</code>)으로 낮추고, 둘 중 하나만 바꿨을 때(A-1 · A-2)와 둘 다 바꿨을 때(A-3)를 나란히 비교할 수 있게 분리했어요.</div>
+  <div class="pick">다시 보기: <select data-for="el-sns-card">
+    <option value="A1">후보 A-1 — 모임 그레이 헤더만 변경 (방명록 기존 유지)</option>
+    <option value="A2">후보 A-2 — 방명록 메모지만 변경 (모임 기존 유지)</option>
+    <option value="A3">후보 A-3 — 둘 다 적용 (모임 그레이 헤더 + 방명록 메모지)</option>
+  </select></div>
+
+  <div class="cands">
+    <article class="cand" data-id="A1">
+      <h3>후보 A-1 — 모임 그레이 헤더만 변경</h3>
+      <div class="phone">
+        <div class="scr">
+          <div class="p-head"><span class="p-title">중앙도서관 피드</span><span class="p-sub">2열</span></div>
+          <div class="feed-grid">
+            <div class="f-card club-a" data-toast="t1a">
+              <div class="club-a-top"><span class="f-tag"><i class="f-dot"></i>모임</span><span style="font-size:9px;color:var(--ink-muted)">0명 참가</span></div>
+              <div class="club-a-body">
+                <div class="f-day">11.27 금</div>
+                <div class="f-time">오후 2:00 · 세미나실</div>
+                <div class="f-name">톨스토이 같이 읽기</div>
+                <div class="f-go">들어가기 →</div>
+              </div>
+            </div>
+            <div class="f-card gb-orig" data-toast="t1a2">
+              <div class="f-tag"><i class="f-dot"></i>방명록</div>
+              <div style="font-size:11px;line-height:1.45;margin-top:6px;color:var(--text)">오늘도 도서관에서 좋은 책을 만났어요.</div>
+              <div class="f-meta">책읽는이웃 · 5시간 전</div>
+            </div>
+            <div class="f-card club-a" data-toast="t1a">
+              <div class="club-a-top"><span class="f-tag"><i class="f-dot"></i>모임</span><span style="font-size:9px;color:var(--ink-muted)">3/6명</span></div>
+              <div class="club-a-body">
+                <div class="f-day">날짜 미정</div>
+                <div class="f-time">댓글로 정해요</div>
+                <div class="f-name">동네 책 이야기</div>
+                <div class="f-go">들어가기 →</div>
+              </div>
+            </div>
+            <div class="f-card" style="background:var(--fill1);height:110px;display:flex;align-items:center;justify-content:center;font-weight:600">게시물 카드</div>
+          </div>
+          <div class="toast" id="t1a">모임 상세 화면으로 이동해요</div>
+          <div class="toast" id="t1a2">방명록은 눌러도 이동하지 않는 짧은 글이에요</div>
+        </div>
+      </div>
+      <p><b>모임 카드만</b> 상단에 차분한 그레이톤(<code>surface2</code>) 헤더 띠를 추가하고, 방명록은 기존 카드를 그대로 유지해요.</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>모임이 티켓/초대장처럼 깔끔하게 구분되면서도 과하게 튀지 않아요. / 방명록은 기존 사각 틀이 그대로 남아요.</p>
+    </article>
+
+    <article class="cand recommended" data-id="A2">
+      <h3>후보 A-2 — 방명록 메모지만 변경 <span class="badge">추천</span></h3>
+      <div class="phone">
+        <div class="scr">
+          <div class="p-head"><span class="p-title">중앙도서관 피드</span><span class="p-sub">2열</span></div>
+          <div class="feed-grid">
+            <div class="f-card club-orig" data-toast="t1b">
+              <div class="f-tag"><i class="f-dot"></i>모임</div>
+              <div class="f-day">11.27 금</div>
+              <div class="f-time">오후 2:00 · 세미나실</div>
+              <div class="f-name">톨스토이 같이 읽기</div>
+              <div class="f-meta">0명 참가</div>
+              <div class="f-go">들어가기 →</div>
+            </div>
+            <div class="f-card gb-a" data-toast="t1b2">
+              <div class="gb-a-quote">“</div>
+              <div style="font-size:11px;line-height:1.45;color:var(--text)">오늘도 도서관에서 좋은 책을 만났어요.</div>
+              <div class="f-meta">방명록 · 책읽는이웃 · 5시간 전</div>
+            </div>
+            <div class="f-card club-orig" data-toast="t1b">
+              <div class="f-tag"><i class="f-dot"></i>모임</div>
+              <div class="f-day">날짜 미정</div>
+              <div class="f-time">댓글로 정해요</div>
+              <div class="f-name">동네 책 이야기</div>
+              <div class="f-meta">3/6명 참가</div>
+              <div class="f-go">들어가기 →</div>
+            </div>
+            <div class="f-card" style="background:var(--fill1);height:110px;display:flex;align-items:center;justify-content:center;font-weight:600">게시물 카드</div>
+          </div>
+          <div class="toast" id="t1b">모임 상세 화면으로 이동해요</div>
+          <div class="toast" id="t1b2">방명록은 눌러도 이동하지 않아요</div>
+        </div>
+      </div>
+      <p><b>방명록 카드만</b> 외곽선 없는 <code>cream</code> 바탕 + 좌측 3px 세로선 + 따옴표(<code>“</code>) 메모지로 바꾸고, 모임 카드는 기존 그대로 유지해요.</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>테두리가 있는 모임(행동 카드)과 테두리 없는 방명록(읽는 메모)의 물성 차이가 확연하고, 변경 범위도 가장 작아요.</p>
+      <p><b>추천 이유:</b> 모임 카드는 이미 정보가 잘 정리되어 있으므로, 가벼운 방명록만 메모지 톤으로 빼주면 둘이 한눈에 갈려요.</p>
+    </article>
+
+    <article class="cand" data-id="A3">
+      <h3>후보 A-3 — 둘 다 적용 (비교용)</h3>
+      <div class="phone">
+        <div class="scr">
+          <div class="p-head"><span class="p-title">중앙도서관 피드</span><span class="p-sub">2열</span></div>
+          <div class="feed-grid">
+            <div class="f-card club-a" data-toast="t1c">
+              <div class="club-a-top"><span class="f-tag"><i class="f-dot"></i>모임</span><span style="font-size:9px;color:var(--ink-muted)">0명 참가</span></div>
+              <div class="club-a-body">
+                <div class="f-day">11.27 금</div>
+                <div class="f-time">오후 2:00 · 세미나실</div>
+                <div class="f-name">톨스토이 같이 읽기</div>
+                <div class="f-go">들어가기 →</div>
+              </div>
+            </div>
+            <div class="f-card gb-a" data-toast="t1c2">
+              <div class="gb-a-quote">“</div>
+              <div style="font-size:11px;line-height:1.45;color:var(--text)">오늘도 도서관에서 좋은 책을 만났어요.</div>
+              <div class="f-meta">방명록 · 책읽는이웃 · 5시간 전</div>
+            </div>
+            <div class="f-card club-a" data-toast="t1c">
+              <div class="club-a-top"><span class="f-tag"><i class="f-dot"></i>모임</span><span style="font-size:9px;color:var(--ink-muted)">3/6명</span></div>
+              <div class="club-a-body">
+                <div class="f-day">날짜 미정</div>
+                <div class="f-time">댓글로 정해요</div>
+                <div class="f-name">동네 책 이야기</div>
+                <div class="f-go">들어가기 →</div>
+              </div>
+            </div>
+            <div class="f-card" style="background:var(--fill1);height:110px;display:flex;align-items:center;justify-content:center;font-weight:600">게시물 카드</div>
+          </div>
+          <div class="toast" id="t1c">모임 상세 화면으로 이동해요</div>
+          <div class="toast" id="t1c2">방명록은 눌러도 이동하지 않아요</div>
+        </div>
+      </div>
+      <p>그레이톤 모임 헤더바와 방명록 메모지를 둘 다 적용한 비교용 화면이에요.</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>구분력은 가장 뚜렷해요. / 두 카드 모두 수정해야 해요.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 요소 2: 독서 기록 책 입체감 + 선반 밀착 + 4권 ===== -->
+<section class="element" id="el-reading-book" data-chosen="A">
+  <h2>정할 것 2. 독서 기록 — 책 입체감과 선반 밀착(한 줄 4권 확대) <span class="status">확인 (2-A 책 + B/C 선반)</span></h2>
+  <div class="flow"><b>공통 개선.</b> 한 줄 4권으로 폭을 꽉 채워 표지를 키우고, 책 하단과 선반 사이 빈틈(<code>gap: 8</code>)을 0으로 붙여 책장 위에 꽂힌 느낌을 줘요. 정할 것은 <b>책 입체감 표현 강도</b>예요.</div>
+  <div class="pick">다시 보기: <select data-for="el-reading-book">
+    <option value="A">후보 A — 책등 음영 + 우측 종이 두께 + 선반 입체 그라데이션</option>
+    <option value="B">후보 B — 두꺼운 하드커버 스탠딩 + 2단 선반</option>
+    <option value="C">후보 C — 미니멀 책등 홈 1줄 + 깔끔한 바닥 밀착</option>
+  </select></div>
+
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 책등 음영 + 종이 두께 + 입체 선반 <span class="badge">추천</span></h3>
+      <div class="phone">
+        <div class="scr">
+          <div class="p-head"><span class="p-title">독서 기록</span><span class="pill-btn">전체 ⇄</span></div>
+          <div class="p-sub">전체 4 · 올해 4 · 이번 달 4</div>
+          <div class="shelf-month">
+            <div class="p-gauge" style="margin-bottom:6px">NOV</div>
+            <div class="shelf-books">
+              <div class="bk bk-a" data-toast="t2a"><div class="bk-face bk-c1"><span class="bk-t">카라마조프가의 형제들</span><span class="bk-a">도스토옙스키</span></div></div>
+              <div class="bk bk-a" data-toast="t2a"><div class="bk-face bk-c2"><span class="bk-t">노인과 바다</span><span class="bk-a">헤밍웨이</span></div></div>
+              <div class="bk bk-a" data-toast="t2a"><div class="bk-face bk-c3"><span class="bk-t">싯다르타</span><span class="bk-a">헤르만 헤세</span></div></div>
+              <div class="bk bk-a" data-toast="t2a"><div class="bk-face bk-c4"><span class="bk-t">서늘한 대화</span><span class="bk-a">정재승</span></div></div>
+            </div>
+            <div class="plank-a"></div>
+          </div>
+          <div class="toast" id="t2a">책 카드 열림 → [기록 자세히 보기] [게시물로 올리기]</div>
+        </div>
+      </div>
+      <p>표지 왼쪽에 제본 접힘 음영, 오른쪽에 2~3px 종이 단면, 선반에 은은한 상하 음영을 넣어 실제 책장 위에 세워 둔 입체감을 살려요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>책 표지 누름 → 책장 위 요약 카드 열림 → "기록 자세히 보기" 또는 바로 "게시물로 올리기".</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>한 줄 4권 반응형 폭(480px 웹 기준 1권 약 102×148px)</li><li>책 하단 0px 밀착 + 우측 종이 페이지 단면 + 좌측 책등 접힘선</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>표지 이미지를 가리지 않으면서도 종이책 특유의 물성과 서재 감성이 확 살아나요. / 미세한 오버레이 뷰 1~2개가 추가돼요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-40 스큐어모픽 경량 북스파인(Apple Books·밀리의서재 서재)</p>
+      <p><b>추천 이유:</b> 현재 앱의 무광·파사드 릴리프(<code>reliefSideDark</code>) 톤과 가장 자연스럽게 어울리면서 2D 허름함을 확실히 없애줘요.</p>
+    </article>
+
+    <article class="cand" data-id="B">
+      <h3>후보 B — 강한 하드커버 입체 + 2단 선반</h3>
+      <div class="phone">
+        <div class="scr">
+          <div class="p-head"><span class="p-title">독서 기록</span><span class="pill-btn">전체 ⇄</span></div>
+          <div class="p-sub">전체 4 · 올해 4 · 이번 달 4</div>
+          <div class="shelf-month">
+            <div class="p-gauge" style="margin-bottom:6px">NOV</div>
+            <div class="shelf-books">
+              <div class="bk bk-b" data-toast="t2b"><div class="bk-face bk-c1"><span class="bk-t">카라마조프가의 형제들</span><span class="bk-a">도스토옙스키</span></div></div>
+              <div class="bk bk-b" data-toast="t2b"><div class="bk-face bk-c2"><span class="bk-t">노인과 바다</span><span class="bk-a">헤밍웨이</span></div></div>
+              <div class="bk bk-b" data-toast="t2b"><div class="bk-face bk-c3"><span class="bk-t">싯다르타</span><span class="bk-a">헤르만 헤세</span></div></div>
+              <div class="bk bk-b" data-toast="t2b"><div class="bk-face bk-c4"><span class="bk-t">서늘한 대화</span><span class="bk-a">정재승</span></div></div>
+            </div>
+            <div class="plank-b"></div>
+          </div>
+          <div class="toast" id="t2b">책 카드 열림 → [기록 자세히 보기] [게시물로 올리기]</div>
+        </div>
+      </div>
+      <p>더 굵은 책등 음영과 짙은 드롭 섀도우, 12px 두께의 2단 입체 선반으로 실물 책장 느낌을 극대화해요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>책 표지 누름 → 요약 카드 → 자세히 보기 / 게시물로 올리기.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>4px 종이 단면 + 깊은 그림자 + 12px 2단 선반</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>입체감이 가장 뚜렷해요. / 선반과 그림자가 강해 책이 많아지면 화면이 조금 무거울 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-41 3D 릴리프 선반(교보·리디 책장)</p>
+    </article>
+
+    <article class="cand" data-id="C">
+      <h3>후보 C — 미니멀 책등 홈 1줄 + 밀착</h3>
+      <div class="phone">
+        <div class="scr">
+          <div class="p-head"><span class="p-title">독서 기록</span><span class="pill-btn">전체 ⇄</span></div>
+          <div class="p-sub">전체 4 · 올해 4 · 이번 달 4</div>
+          <div class="shelf-month">
+            <div class="p-gauge" style="margin-bottom:6px">NOV</div>
+            <div class="shelf-books">
+              <div class="bk bk-c" data-toast="t2c"><div class="bk-face bk-c1"><span class="bk-t">카라마조프가의 형제들</span><span class="bk-a">도스토옙스키</span></div></div>
+              <div class="bk bk-c" data-toast="t2c"><div class="bk-face bk-c2"><span class="bk-t">노인과 바다</span><span class="bk-a">헤밍웨이</span></div></div>
+              <div class="bk bk-c" data-toast="t2c"><div class="bk-face bk-c3"><span class="bk-t">싯다르타</span><span class="bk-a">헤르만 헤세</span></div></div>
+              <div class="bk bk-c" data-toast="t2c"><div class="bk-face bk-c4"><span class="bk-t">서늘한 대화</span><span class="bk-a">정재승</span></div></div>
+            </div>
+            <div class="plank-c"></div>
+          </div>
+          <div class="toast" id="t2c">책 카드 열림 → [기록 자세히 보기] [게시물로 올리기]</div>
+        </div>
+      </div>
+      <p>표지 왼쪽 5px 위치에 얇은 제본 홈선 1줄만 넣고, 선반에 딱 붙여 깔끔하게 정돈해요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>책 표지 누름 → 요약 카드 → 자세히 보기 / 게시물로 올리기.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>1px 양각/음각 책등 선 + 6px 선반 밀착</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>아주 깔끔하고 표지 본연의 색을 방해하지 않아요. / 입체감은 후보 A·B보다 약해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-42 플랫 미니멀 북카드</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 요소 3: 대출 화면 수정·반납 버튼 (+ 세그먼트 & 체크박스) ===== -->
+<section class="element" id="el-loan-actions" data-chosen="B">
+  <h2>정할 것 3. 대출 화면 — 수정·반납 버튼 정리 (<code>-&gt;</code> 제거) <span class="status">확인 (3-B)</span></h2>
+  <div class="flow"><b>공통 개선.</b> 우상단 <code>빌린 책 | 지난 대출</code> 세그먼트 겹침을 수정하고, <code>반납-&gt;</code>의 화살표를 제거하며, 아래 체크박스를 원형 디자인으로 통일해요. 정할 것은 <b>수정·반납 버튼의 자리와 모양</b>이에요.</div>
+  <div class="pick">다시 보기: <select data-for="el-loan-actions">
+    <option value="A">후보 A — 하단 바 우측에 미니 필 버튼 [기한 수정] [반납] 나란히</option>
+    <option value="B">후보 B — 카드 하단 2분할 균등 버튼 바 (기한 수정 | 반납)</option>
+    <option value="C">후보 C — 수정은 D-day 아래 톤다운 링크, 반납은 하단 아웃라인 버튼</option>
+  </select></div>
+
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 하단 우측 미니 필 버튼 통합 <span class="badge">추천</span></h3>
+      <div class="phone">
+        <div class="scr">
+          <div class="p-head">
+            <div><div class="p-gauge">ACTIVE LOANS · 01</div><div class="p-title">내 대출</div></div>
+            <div class="seg-fix"><span class="on">빌린 책</span><span>지난 대출</span></div>
+          </div>
+          <div class="loan-card">
+            <div class="loan-top">
+              <div class="loan-cov"></div>
+              <div class="loan-info">
+                <div class="loan-title">싯다르타</div>
+                <div class="loan-meta">헤르만 헤세</div>
+                <div class="loan-date">2026.11.25 — 12.09 · 추정</div>
+              </div>
+              <div class="dday-col">
+                <div class="dday-num">D-14</div>
+                <div class="dday-st"><i></i>여유</div>
+              </div>
+            </div>
+            <div class="act-bar">
+              <span class="p-gauge">ASSUMED +14D</span>
+              <div style="display:flex;gap:6px">
+                <button class="pill-btn" data-toast="t3a1">수정</button>
+                <button class="pill-btn pri" data-toast="t3a2">반납</button>
+              </div>
+            </div>
+          </div>
+          <div class="plan-mini">
+            <div class="p-gauge">PLANNED · 01 (원형 체크박스)</div>
+            <div class="chk-row" onclick="this.querySelector('.chk-circle').classList.toggle('on')">
+              <span class="chk-circle on">✓</span><span>전체 선택</span>
+            </div>
+          </div>
+          <div class="toast" id="t3a1">반납 예정일 수정 시트가 열려요</div>
+          <div class="toast" id="t3a2">반납 확인 창이 열려요</div>
+        </div>
+      </div>
+      <p>오른쪽 D-day 칸은 상태 표시만 깔끔하게 남기고, 행동 버튼 <code>수정</code>과 <code>반납</code>을 하단 바 우측에 앱 공통 필 버튼 톤으로 나란히 모았어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>수정 → 반납 예정일 수정 시트 / 반납 → 반납 확인 모달.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>D-day 칸에서 수정 텍스트 제거(상태 정보와 행동 분리)</li><li>하단 바 우측에 보조 필(<code>수정</code>) + 주 필(<code>반납</code>) 나란히 배치</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>두 버튼이 하나의 디자인 시스템 안에서 안정적으로 묶이고, 앱 전체의 무광 필 버튼 기조와 100% 일치해요. / 하단 바가 좁은 화면에서 왼쪽 라벨이 짧아질 수 있어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-18 카드 하단 액션 그룹(보조+주 버튼 쌍)</p>
+      <p><b>추천 이유:</b> "수정과 반납이 따로 논다"는 문제를 가장 깔끔하게 해결하고, 버튼임이 한눈에 보이면서도 튀지 않아요.</p>
+    </article>
+
+    <article class="cand" data-id="B">
+      <h3>후보 B — 하단 2분할 균등 버튼 바</h3>
+      <div class="phone">
+        <div class="scr">
+          <div class="p-head">
+            <div><div class="p-gauge">ACTIVE LOANS · 01</div><div class="p-title">내 대출</div></div>
+            <div class="seg-fix"><span class="on">빌린 책</span><span>지난 대출</span></div>
+          </div>
+          <div class="loan-card">
+            <div class="loan-top">
+              <div class="loan-cov"></div>
+              <div class="loan-info">
+                <div class="loan-title">싯다르타</div>
+                <div class="loan-meta">헤르만 헤세</div>
+                <div class="loan-date">2026.11.25 — 12.09 · 추정</div>
+              </div>
+              <div class="dday-col">
+                <div class="dday-num">D-14</div>
+                <div class="dday-st"><i></i>여유</div>
+              </div>
+            </div>
+            <div class="split-bar">
+              <button data-toast="t3b1">기한 수정</button>
+              <button data-toast="t3b2">반납</button>
+            </div>
+          </div>
+          <div class="plan-mini">
+            <div class="p-gauge">PLANNED · 01 (원형 체크박스)</div>
+            <div class="chk-row" onclick="this.querySelector('.chk-circle').classList.toggle('on')">
+              <span class="chk-circle on">✓</span><span>전체 선택</span>
+            </div>
+          </div>
+          <div class="toast" id="t3b1">반납 예정일 수정 시트가 열려요</div>
+          <div class="toast" id="t3b2">반납 확인 창이 열려요</div>
+        </div>
+      </div>
+      <p>카드 하단을 50:50으로 나눠 <code>기한 수정</code>과 <code>반납</code>을 넉넉한 터치 영역으로 배치해요. 중복되던 영문 <code>ASSUMED +14D</code>는 날짜 줄의 <code>· 추정</code>으로 갈음해요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>기한 수정 → 수정 시트 / 반납 → 반납 확인 모달.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>카드 하단 구분선 아래 2분할 버튼 영역</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>터치하기 가장 편하고 카드가 정돈돼요. / 하단 좌측의 영문 게이지 라벨(<code>ASSUMED +14D</code>)이 빠져요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-19 카드 풀폭 2분할 액션 바</p>
+    </article>
+
+    <article class="cand" data-id="C">
+      <h3>후보 C — 기존 위치 유지 + 톤다운/아웃라인</h3>
+      <div class="phone">
+        <div class="scr">
+          <div class="p-head">
+            <div><div class="p-gauge">ACTIVE LOANS · 01</div><div class="p-title">내 대출</div></div>
+            <div class="seg-fix"><span class="on">빌린 책</span><span>지난 대출</span></div>
+          </div>
+          <div class="loan-card">
+            <div class="loan-top">
+              <div class="loan-cov"></div>
+              <div class="loan-info">
+                <div class="loan-title">싯다르타</div>
+                <div class="loan-meta">헤르만 헤세</div>
+                <div class="loan-date">2026.11.25 — 12.09 · 추정</div>
+              </div>
+              <div class="dday-col">
+                <div class="dday-num">D-14</div>
+                <div class="dday-st"><i></i>여유</div>
+                <button class="quiet-link" data-toast="t3c1">기한 수정</button>
+              </div>
+            </div>
+            <div class="act-bar">
+              <span class="p-gauge">ASSUMED +14D</span>
+              <button class="pill-btn pri" data-toast="t3c2">반납</button>
+            </div>
+          </div>
+          <div class="plan-mini">
+            <div class="p-gauge">PLANNED · 01 (원형 체크박스)</div>
+            <div class="chk-row" onclick="this.querySelector('.chk-circle').classList.toggle('on')">
+              <span class="chk-circle on">✓</span><span>전체 선택</span>
+            </div>
+          </div>
+          <div class="toast" id="t3c1">반납 예정일 수정 시트가 열려요</div>
+          <div class="toast" id="t3c2">반납 확인 창이 열려요</div>
+        </div>
+      </div>
+      <p>현재 위치를 유지하되 <code>수정</code>은 <code>inkMuted</code> 보조 밑줄 링크로 톤을 낮추고, <code>반납</code>은 화살표를 뺀 깔끔한 필 버튼으로 정리해요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>기한 수정 → 수정 시트 / 반납 → 반납 확인 모달.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>수정 링크 색 <code>inkMuted</code>로 완화 + 반납 필 버튼</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>기존 구조 변화가 가장 적어요. / 두 버튼이 위아래로 떨어져 있는 점은 그대로 남아요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-20 보조 텍스트 링크 + 주 칩 버튼 위계</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 명세 패널 ===== -->
+<section id="spec">
+  <h2>명세</h2>
+  <div class="wide"><table>
+    <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
+    <tr data-el="el-sns-card"><td>1. SNS 방명록 vs 모임 카드</td><td>— (추천: 후보 A 헤더바 + 메모지)</td><td>—</td><td>—</td><td>(받기 전)</td><td>모임 상단 <code>inkStrong</code> 띠 + <code>fill1</code> 점 / 방명록 <code>cream</code> + 좌측 3px 선</td><td>모임→상세, 방명록→읽기 전용</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-reading-book"><td>2. 독서 기록 책 입체감</td><td>— (추천: 후보 A 책등 음영 + 종이 두께)</td><td>—</td><td>—</td><td>(받기 전)</td><td>한 줄 4권 반응형, <code>gap: 0</code> 선반 밀착, 우측 2~3px 종이 단면</td><td>표지→요약 카드→상세/바로 게시</td><td><span class="st">결정 전</span></td></tr>
+    <tr data-el="el-loan-actions"><td>3. 대출 수정·반납 버튼</td><td>— (추천: 후보 A 하단 우측 필 버튼 쌍)</td><td>—</td><td>—</td><td>(받기 전)</td><td><code>-&gt;</code> 제거, 하단 우측 보조/주 필 버튼 나란히</td><td>수정→기한 시트, 반납→확인 모달</td><td><span class="st">결정 전</span></td></tr>
+    <tr><td>세그먼트 · 체크박스</td><td>둥근 필 세그먼트 · 20px 원형 체크</td><td>—</td><td>—</td><td>바로 반영 대상</td><td>트랙 <code>surface2</code>, 활성 <code>paper</code>, 체크 원형 20px</td><td>빌린 책↔지난 대출, 선택 토글</td><td><span class="st">기본값(Claude)</span></td></tr>
+  </table></div>
+</section>
+</main>
+
+<script>
+  function mark(el, id) {
+    el.querySelectorAll('.cand').forEach(function (c) {
+      c.classList.toggle('chosen', c.dataset.id === id);
+      var old = c.querySelector('.badge.adopted'); if (old) old.remove();
+      if (id && c.dataset.id === el.dataset.chosen) {
+        var s = document.createElement('span'); s.className = 'badge adopted'; s.textContent = '채택';
+        c.querySelector('h3').appendChild(s);
+      }
+    });
+    var sel = el.querySelector('select[data-for]'); if (sel && id) sel.value = id;
+  }
+  document.querySelectorAll('section.element').forEach(function (el) {
+    mark(el, el.dataset.chosen || '');
+    var sel = el.querySelector('select[data-for]');
+    if (sel) {
+      if (!el.dataset.chosen) sel.insertAdjacentHTML('afterbegin', '<option value="" selected>(아직 고르지 않음)</option>');
+      sel.addEventListener('change', function () { mark(el, sel.value || el.dataset.chosen); });
+    }
+  });
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-toast]'); if (!t) return;
+    var m = document.getElementById(t.dataset.toast); if (!m) return;
+    m.classList.add('on'); clearTimeout(m._t);
+    m._t = setTimeout(function () { m.classList.remove('on'); }, 2000);
+  });
+</script>
+</body>
+</html>

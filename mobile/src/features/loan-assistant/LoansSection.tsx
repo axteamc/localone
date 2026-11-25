@@ -5,7 +5,7 @@ import { useFocusEffect } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, AppState, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { createLatestRunner } from "../../lib/latest";
-import { actionColors, cardSurface, ledge, theme, type as T } from "../../theme";
+import { actionColors, cardSurface, theme, type as T } from "../../theme";
 import { BookCover } from "../book-search/SearchScreen";
 import { ApiCallError, listLoans, returnLoan, type Loan, type LoanPage, type LoanStatus } from "./api";
 import { ddayColors, ddayFormat, ddayGauge } from "./dday";
@@ -357,8 +357,6 @@ function LoanCard({ loan, onEdit, onReturn }: { loan: Loan; onEdit(): void; onRe
   const { label, tone } = ddayFormat(loan.d_day, loan.is_overdue);
   const gauge = ddayGauge(loan.d_day, loan.is_overdue);
   const dday = ddayColors(tone, theme.colors);
-  const barGauge =
-    tone === "overdue" ? "OVERDUE · 기한 지남" : loan.due_on_assumed ? "ASSUMED +14D" : "DUE DATE";
   return (
     <View testID={`loan-${loan.id}`} style={styles.card}>
       <View style={styles.row}>
@@ -377,15 +375,22 @@ function LoanCard({ loan, onEdit, onReturn }: { loan: Loan; onEdit(): void; onRe
             <View style={[styles.ddayDot, { backgroundColor: dday.bg }]} />
             <Text style={styles.ddayLabel} numberOfLines={1}>{label}</Text>
           </View>
-          <Pressable accessibilityRole="button" onPress={onEdit} hitSlop={6} style={styles.ddayEditBtn}>
-            <Text style={styles.ddayEditText} numberOfLines={1}>수정</Text>
-          </Pressable>
         </View>
       </View>
-      <View style={styles.actBar}>
-        <Text style={styles.gauge} numberOfLines={1}>{barGauge}</Text>
-        <Pressable accessibilityRole="button" onPress={onReturn} hitSlop={6} style={styles.linkBtn}>
-          <Text style={styles.linkText} numberOfLines={1}>반납-&gt;</Text>
+      <View style={styles.splitBar}>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onEdit}
+          style={({ pressed }) => [styles.splitBtn, styles.splitBtnLeft, pressed && styles.splitBtnPressed]}
+        >
+          <Text style={styles.splitEditText} numberOfLines={1}>기한 수정</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          onPress={onReturn}
+          style={({ pressed }) => [styles.splitBtn, pressed && styles.splitBtnPressed]}
+        >
+          <Text style={styles.splitReturnText} numberOfLines={1}>반납</Text>
         </Pressable>
       </View>
     </View>
@@ -513,26 +518,21 @@ const styles = StyleSheet.create({
   title: { ...T.title },
   tabs: {
     flexDirection: "row",
-    backgroundColor: c.panelFrosted,
-    borderWidth: 1,
-    borderColor: c.seamHairline,
-    borderRadius: theme.radii.infoCard,
-    padding: 2,
+    backgroundColor: c.surface2,
+    borderRadius: theme.radii.control,
+    padding: 3,
     gap: 2,
     flexShrink: 0,
   },
   tab: {
-    borderWidth: 1,
-    borderColor: "transparent",
-    borderRadius: theme.radii.block,
-    paddingVertical: 4,
-    paddingHorizontal: 10,
+    borderRadius: theme.radii.control,
+    paddingVertical: 5,
+    paddingHorizontal: 11,
     flexShrink: 0,
   },
   tabOn: {
     backgroundColor: c.panelLit,
-    borderColor: c.seamHairline,
-    boxShadow: ledge(c.reliefBottomMid, 1),
+    boxShadow: `0 1px 2px 0 ${c.shadowAmbient}`,
   },
   tabText: { fontSize: 12, color: c.inkMuted, fontWeight: "400" },
   tabTextOn: { color: c.inkStrong, fontWeight: "500" },
@@ -562,19 +562,33 @@ const styles = StyleSheet.create({
   ddayStatusRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   ddayDot: { width: 6, height: 6, borderRadius: theme.radii.control },
   ddayLabel: { fontSize: 12, fontWeight: "500", color: c.inkMuted },
-  ddayEditBtn: { paddingTop: 2 },
-  ddayEditText: { fontSize: 12, fontWeight: "500", color: c.inkStrong },
-  actBar: {
+  splitBar: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: 8,
-    paddingTop: 8,
+    marginHorizontal: -12,
+    marginBottom: -12,
+    marginTop: 4,
     borderTopWidth: 1,
     borderTopColor: c.seamHairline,
+    overflow: "hidden",
+    borderBottomLeftRadius: theme.radii.infoCard,
+    borderBottomRightRadius: theme.radii.infoCard,
   },
-  linkBtn: { paddingVertical: 2, paddingHorizontal: 2, flexShrink: 0 },
-  linkText: { fontSize: 13, fontWeight: "500", color: c.inkStrong },
+  splitBtn: {
+    flex: 1,
+    minHeight: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 10,
+  },
+  splitBtnLeft: {
+    borderRightWidth: 1,
+    borderRightColor: c.seamHairline,
+  },
+  splitBtnPressed: {
+    backgroundColor: c.panelFrosted,
+  },
+  splitEditText: { fontSize: 13, fontWeight: "500", color: c.inkSoft },
+  splitReturnText: { fontSize: 13, fontWeight: "600", color: c.inkStrong },
   dim: { opacity: 0.5 },
   more: {
     alignSelf: "center",
