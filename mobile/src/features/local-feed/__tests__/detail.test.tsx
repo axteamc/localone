@@ -139,31 +139,35 @@ describe("상세 구조와 대여/구매 (H9·H14)", () => {
     expect(box.getByText("어제 기준 대출 가능")).toBeTruthy();
     expect(fetchAvailabilityAt).toHaveBeenCalledWith("9788936434120", 101, expect.anything());
     const buttons = box.getAllByRole("button").map((b) => b.props.testID);
-    expect(buttons).toEqual(["loan-button", "buy-button"]); // 대여(1순위)가 구매(2순위)보다 위
-    expect(box.getByText(DETAIL_TEXT.buy)).toBeTruthy();
-    await fireEvent.press(box.getByText(DETAIL_TEXT.buy));
-    expect(await screen.findByText(DETAIL_TEXT.preparing)).toBeTruthy();
+    expect(buttons).toEqual(["loan-book", "loan-find"]); // 왼쪽 책 정보, 오른쪽 도서관 확인 필(C-87)
+    expect(box.getByText(DETAIL_TEXT.findLibrary)).toBeTruthy();
+    expect(screen.queryByText(/구매/)).toBeNull(); // 구매 버튼은 카드에서 뺐다(사용자 2026-11-25)
     expect(openExternalUrl).not.toHaveBeenCalled();
     expect(mockPush).not.toHaveBeenCalled();
     expect(screen.getByText("책읽는이웃 · 정독도서관")).toBeTruthy();
     expect(screen.getByText("마지막 장이 오래 남아요.")).toBeTruthy();
   });
 
-  test("loan button opens live check when present, else book detail", async () => {
+  test("book info opens book detail and never the library site, even with live check (C-87)", async () => {
     fetchAvailabilityAt.mockResolvedValueOnce(
       availability({ live_check: { url: "https://lib.test/search?isbn=1", kind: "isbn_search" } })
     );
     await enter();
-    expect(await screen.findByText(DETAIL_TEXT.liveCheck)).toBeTruthy();
-    await fireEvent.press(screen.getByTestId("loan-button"));
-    expect(openExternalUrl).toHaveBeenCalledWith("https://lib.test/search?isbn=1");
+    await within(screen.getByTestId("loan-box")).findByText("어제 기준 대출 가능");
+    expect(screen.queryByText(/실시간/)).toBeNull(); // 외부 확인은 조회 창에서만
+    await fireEvent.press(screen.getByTestId("loan-book"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/books/[isbn13]", params: { isbn13: "9788936434120" } });
+    expect(openExternalUrl).not.toHaveBeenCalled();
   });
 
-  test("loan button without live check goes to book detail", async () => {
-    await enter();
-    await within(screen.getByTestId("loan-box")).findByText("어제 기준 대출 가능");
-    await fireEvent.press(screen.getByTestId("loan-button"));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/books/[isbn13]", params: { isbn13: "9788936434120" } });
+  test("find pill opens the same book's lookup with the card library pinned (C-87)", async () => {
+    await enter(post(), 102); // 방문 중인 도서관 102 → 카드 상태 줄도, 창 맨 위도 102
+    await fireEvent.press(await screen.findByTestId("loan-find"));
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/books/[isbn13]",
+      params: { isbn13: "9788936434120", lookup: "1", library: "102" },
+    });
+    expect(openExternalUrl).not.toHaveBeenCalled();
   });
 
   test("availability failure shows unknown and keeps the rest", async () => {

@@ -7,7 +7,6 @@ import { LayoutChangeEvent, Pressable, ScrollView, StyleSheet, Text, View } from
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
-import { openExternalUrl } from "../../lib/platform";
 import { fetchAvailabilityAt, type AvailabilityItem } from "../../lib/publicApi";
 import { actionColors, cardSurface, onFill, resolvePostColor, theme as baseTheme, type Theme } from "../../theme";
 import { LibraryLookProvider, lookKit, useLibraryLook, useLook } from "./useLibraryLook";
@@ -32,10 +31,7 @@ export const DETAIL_TEXT = {
   home: "홈으로",
   failed: "지금은 게시물을 불러올 수 없어요.",
   retry: "새로고침",
-  liveCheck: "실시간 확인 ↗",
-  bookDetail: "책 정보 보기",
-  buy: "구매 ↗",
-  preparing: MENU_TEXT.preparing,
+  findLibrary: "도서관 확인", // Y-6 시안 #sns-review(C-87) — 구매 ↗는 카드에서 뺐다(사용자 2026-11-25)
   checking: "확인 중…",
   unknown: "알 수 없음",
   notHeld: "소장 없음",
@@ -250,6 +246,7 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
   const post = state.post;
   const update = (patch: Partial<Post>) =>
     setState((s) => (s.kind === "ok" && s.post.id === post.id ? { kind: "ok", post: { ...s.post, ...patch } } : s));
+  const loanLibraryId = visitLibraryId ?? post.library.id; // 카드 상태 줄과 조회 창 맨 위 도서관이 같다
   const loanInfo = loanParts(
     visitLibraryId === null || visitLibraryId === post.library.id ? post.library.name : null,
     loan
@@ -371,43 +368,38 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
       {post.body ? <Text style={styles.body}>{post.body}</Text> : null}
 
       {post.book ? (
+        // Y-6 시안 #sns-review(C-87): 왼쪽 책 정보 → 책 상세, 오른쪽 한 줄 `도서관 확인` 필 → 같은 책 조회 창.
+        // 외부 사이트(`실시간 ↗`)와 구매는 카드에서 열지 않고 조회 창에서만 연다.
         <View style={styles.loanBox} testID="loan-box">
           <Pressable
             accessibilityRole="button"
-            testID="loan-button"
-            onPress={() => {
-              const live = loan !== null && loan !== "failed" ? loan.live_check : null;
-              if (live) void openExternalUrl(live.url);
-              else router.push({ pathname: "/books/[isbn13]", params: { isbn13: post.book!.isbn13 } });
-            }}
-            style={styles.loanHead}
+            testID="loan-book"
+            accessibilityLabel={`${post.book.title} 책 정보 보기`}
+            onPress={() => router.push({ pathname: "/books/[isbn13]", params: { isbn13: post.book!.isbn13 } })}
+            style={styles.loanHeadMain}
           >
-            <View style={styles.loanHeadMain}>
-              <Text style={styles.loanTitle} numberOfLines={2}>
-                {post.book.author ? `${post.book.title} · ${post.book.author}` : post.book.title}
-              </Text>
-              <View style={styles.loanStatusRow}>
-                <View style={[styles.loanDot, { backgroundColor: loanInfo.dot }]} />
-                {loanInfo.library ? <Text style={styles.loanLibName}>{loanInfo.library}</Text> : null}
-                <Text style={T.gauge}>{loanInfo.status}</Text>
-              </View>
-            </View>
-            <Text style={styles.loanCta}>
-              {loan !== null && loan !== "failed" && loan.live_check ? DETAIL_TEXT.liveCheck : DETAIL_TEXT.bookDetail}
+            <Text style={styles.loanTitle} numberOfLines={2}>
+              {post.book.author ? `${post.book.title} · ${post.book.author}` : post.book.title}
             </Text>
+            <View style={styles.loanStatusRow}>
+              <View style={[styles.loanDot, { backgroundColor: loanInfo.dot }]} />
+              {loanInfo.library ? <Text style={styles.loanLibName}>{loanInfo.library}</Text> : null}
+              <Text style={T.gauge}>{loanInfo.status}</Text>
+            </View>
           </Pressable>
-          {/* TODO(연결): M2 예스24 구매 연결 — M1은 버튼만, 누르면 안내(#15 호출·외부 이동 없음) */}
-          <View style={styles.loanFoot}>
-            <Text style={T.gauge}>ONLINE STORE · M2</Text>
-            <Pressable
-              accessibilityRole="button"
-              testID="buy-button"
-              onPress={() => showNotice(DETAIL_TEXT.preparing)}
-              style={({ pressed }) => [styles.buyButton, pressed && ACT.secondaryPressed]}
-            >
-              <Text style={styles.buyText}>{DETAIL_TEXT.buy}</Text>
-            </Pressable>
-          </View>
+          <Pressable
+            accessibilityRole="button"
+            testID="loan-find"
+            onPress={() =>
+              router.push({
+                pathname: "/books/[isbn13]",
+                params: { isbn13: post.book!.isbn13, lookup: "1", library: String(loanLibraryId) },
+              })
+            }
+            style={({ pressed }) => [styles.findPill, pressed && ACT.secondaryPressed]}
+          >
+            <Text style={styles.findPillText} numberOfLines={1}>{DETAIL_TEXT.findLibrary}</Text>
+          </Pressable>
         </View>
       ) : null}
     </View>
@@ -504,36 +496,31 @@ const makeStyles = (theme: Theme) => {
   bylineGroup: { gap: 2 },
   byline: { ...T.name, color: C.text },
   body: { fontSize: 14, lineHeight: 22, color: C.text },
+  // 시안 .sns-card: 가로 2칸(책 정보 1fr | 필 auto), 세로 가운데, 간격 8, 안쪽 6/8
   loanBox: {
     ...cardSurface(theme, { onPanel: true }),
-    padding: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 8,
   },
-  loanHead: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 12 },
-  loanHeadMain: { flex: 1, minWidth: 0, gap: 4 },
+  loanHeadMain: { flex: 1, minWidth: 0, gap: 3, minHeight: 44, justifyContent: "center" },
   loanTitle: { ...T.name },
   loanStatusRow: { flexDirection: "row", alignItems: "center", flexWrap: "wrap", gap: 6 },
   loanDot: { width: 6, height: 6, borderRadius: 3 },
   loanLibName: { fontSize: 12, fontWeight: "500", color: C.text },
-  loanCta: { fontSize: 13, fontWeight: "500", color: C.inkStrong },
-  loanFoot: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-    marginTop: 10,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: C.seamHairline,
-  },
-  buyButton: {
+  // 시안 .btn.compact: 높이 44, 알약 곡률, 한 줄
+  findPill: {
     ...ACT.secondary,
-    borderRadius: theme.radii.control,
-    paddingHorizontal: 14,
-    minHeight: 36,
+    minHeight: 44,
+    paddingHorizontal: 12,
+    borderRadius: theme.radii.control, // 알약(9999)
     justifyContent: "center",
     alignItems: "center",
+    flexShrink: 0,
   },
-  buyText: { ...ACT.secondaryText, fontSize: 13, fontWeight: "500" },
+  findPillText: { ...ACT.secondaryText, fontSize: 14, fontWeight: "500" },
   message: { ...T.title, textAlign: "center" },
   sub: { fontSize: 14, color: C.inkMuted },
   stateButton: {

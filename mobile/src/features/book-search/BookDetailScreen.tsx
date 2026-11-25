@@ -11,6 +11,7 @@ import { createLatestRunner } from "../../lib/latest";
 import { openExternalUrl } from "../../lib/platform";
 import {
   ApiCallError,
+  fetchAvailabilityAt,
   fetchBook,
   fetchPurchaseLink,
   type AvailabilityItem,
@@ -53,7 +54,19 @@ type State =
   | { kind: "notFound" }
   | { kind: "error" };
 
-export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
+/**
+ * `openLookup`: 들어오자마자 도서관 확인 창을 연다(SNS 도서 카드의 `도서관 확인` 필, C-87).
+ * `pinLibraryId`: 그 창 맨 위에 둘 도서관(게시물 카드에 보이던 곳). 주변 결과에 같은 곳이 있으면 한 번만 보인다.
+ */
+export function BookDetailScreen({
+  isbn13,
+  openLookup = false,
+  pinLibraryId = null,
+}: {
+  isbn13: string;
+  openLookup?: boolean;
+  pinLibraryId?: number | null;
+}) {
   const router = useRouter();
   const { userId, status: authStatus } = useAuth();
   const runner = useMemo(() => createLatestRunner(), []);
@@ -65,7 +78,7 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
   const [saving, setSaving] = useState(false);
   const savingRef = useRef(false); // 연타해도 한 번만 보낸다(L3-#3)
   const [sheetOpen, setSheetOpen] = useState(false); // 도서관 고르는 담기 창(N3·N7, 빈 결과에서)
-  const [findOpen, setFindOpen] = useState(false); // 도서관 확인 창(V3)
+  const [findOpen, setFindOpen] = useState(openLookup); // 도서관 확인 창(V3)
   const [candidates, setCandidates] = useState<AvailabilityItem[]>([]); // 담기 창 후보 = 지금 찾아본 도서관(N3)
   const [link, setLink] = useState<PurchaseLink | null>(null);
   const [linkFailed, setLinkFailed] = useState(false);
@@ -89,7 +102,7 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
   }, [isbn13, runner]);
 
   useEffect(() => {
-    setFindOpen(false);
+    setFindOpen(openLookup);
     setLink(null);
     setDescOpen(false);
     void load();
@@ -327,6 +340,7 @@ export function BookDetailScreen({ isbn13 }: { isbn13: string }) {
             <ScrollView contentContainerStyle={styles.sheetPad}>
               <AvailabilitySection
                 isbn13={b.isbn13}
+                pinLibraryId={pinLibraryId}
                 onItems={setCandidates}
                 onSaveForLater={onSaveWithLibrary}
                 purchase={link}
@@ -387,6 +401,21 @@ function ListIcon() {
   );
 }
 
+/** 게시물에서 들어온 경우 그 도서관 한 곳(#14). 실패하면 고정 없이 주변 결과만 보인다. */
+function usePinnedLibrary(isbn13: string, libraryId: number | null): AvailabilityItem | null {
+  const [item, setItem] = useState<AvailabilityItem | null>(null);
+  const runner = useMemo(() => createLatestRunner(), []);
+  useEffect(() => {
+    setItem(null);
+    if (libraryId === null) return;
+    void runner.run((signal) => fetchAvailabilityAt(isbn13, libraryId, signal)).then((r) => {
+      if (r.status === "ok") setItem(r.value.items[0] ?? null);
+    });
+    return () => runner.cancel();
+  }, [isbn13, libraryId, runner]);
+  return item;
+}
+
 /** V7: 단일 조회 결과가 하나 이상이고 **모두** `holding = "no"`로 확정된 때만. `unknown`이 섞이면 숨긴다. */
 export function allConfirmedNotHeld(items: AvailabilityItem[]): boolean {
   return items.length > 0 && items.every((i) => i.holding === "no");
@@ -394,30 +423,40 @@ export function allConfirmedNotHeld(items: AvailabilityItem[]): boolean {
 
 function AvailabilitySection({
   isbn13,
+  pinLibraryId,
   onItems,
   onSaveForLater,
   purchase,
   onOpenPurchase,
 }: {
   isbn13: string;
+  pinLibraryId: number | null;
   onItems(items: AvailabilityItem[]): void;
   onSaveForLater(): void;
   purchase: PurchaseLink | null;
   onOpenPurchase(): void;
 }) {
   const a = useAvailability(isbn13);
-  useEffect(() => onItems(a.items), [a.items, onItems]);
+  const pinned = usePinnedLibrary(isbn13, pinLibraryId);
+  // 게시물 도서관을 맨 위에, 주변 결과의 같은 도서관은 빼서 한 번만(C-87, 설계명세 §5.5)
+  // 주변 결과에 같은 곳이 있으면 그 항목(거리 포함)을 맨 위로 올린다
+  const items = useMemo(() => {
+    if (!pinned) return a.items;
+    const same = a.items.find((i) => i.library.id === pinned.library.id);
+    return [same ?? pinned, ...a.items.filter((i) => i.library.id !== pinned.library.id)];
+  }, [pinned, a.items]);
+  useEffect(() => onItems(items), [items, onItems]);
   const [picking, setPicking] = useState(false); // "지역 다시 고르기"(A12)
   const [selected, setSelected] = useState<number | null>(null); // V5 한 곳 선택(기본값(Claude): 표시만)
   useEffect(() => setPicking(false), [isbn13]);
-  useEffect(() => setSelected(null), [a.items]); // 조회 범위가 바뀌면 선택을 푼다
+  useEffect(() => setSelected(null), [items]); // 조회 범위가 바뀌면 선택을 푼다
   const today = a.checkedAt?.slice(0, 10) ?? "";
   const footer = a.checkedAt ? checkedAtLabel(a.checkedAt) : null;
   const busy = a.status === "locating" || a.status === "loading";
   const city = a.scope === "city";
-  const summary = availabilitySummary(a.items);
+  const summary = availabilitySummary(items);
   const showPicker = a.status === "need_region" || picking;
-  const showBuy = !busy && !showPicker && a.status !== "error" && purchase !== null && allConfirmedNotHeld(a.items);
+  const showBuy = !busy && !showPicker && a.status !== "error" && purchase !== null && allConfirmedNotHeld(items);
 
   const chooseRegion = (code: string) => {
     setPicking(false);
@@ -490,9 +529,9 @@ function AvailabilitySection({
       )}
 
       {/* V-3: 빈 결과 안내가 있어도 카드 목록은 그 아래 그대로 */}
-      {!busy && !showPicker && a.status !== "error" && a.items.length > 0 && (
+      {!busy && !showPicker && a.status !== "error" && items.length > 0 && (
         <View testID="availability-list" style={styles.cards}>
-          {a.items.map((item) => (
+          {items.map((item) => (
             <LibraryAvailabilityCard
               key={item.library.id}
               item={item}
