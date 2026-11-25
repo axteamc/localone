@@ -26,7 +26,7 @@ jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")
 );
 jest.mock("expo-crypto", () => ({ randomUUID: () => "00000000-0000-4000-8000-000000000001" }));
-jest.mock("../../../auth/AuthProvider", () => ({ useAuth: jest.fn() }));
+jest.mock("../../../auth/AuthProvider", () => ({ useAuth: jest.fn(), registerSignOutCleanup: jest.fn() }));
 jest.mock("../../../lib/publicApi", () => ({
   ...jest.requireActual<object>("../../../lib/publicApi"),
   fetchLibrary: jest.fn(),
@@ -38,6 +38,7 @@ jest.mock("../api", () => ({
   fetchTodayStamp: jest.fn(),
   putTodayStamp: jest.fn(),
   setStampBookmark: jest.fn(),
+  reportTarget: jest.fn(),
 }));
 jest.mock("../../../lib/visits", () => ({ recordVisit: jest.fn(), getDefaultLibrary: jest.fn() }));
 
@@ -77,8 +78,8 @@ const stampFeed = (s: StampItem): FeedItem => ({ kind: "stamp", stamp: s });
 const page = (items: FeedItem[]): FeedItemPage => ({ items, next_cursor: null });
 
 const none: TodayStamp = { stamped: false, stamp: null };
-const today = (visibility: "private" | "public", id = STAMP_ID): TodayStamp => ({
-  stamped: true, stamp: { id, stamped_on: "2026-11-24", visibility },
+const today = (visibility: "private" | "public", id = STAMP_ID, body: string | null = null): TodayStamp => ({
+  stamped: true, stamp: { id, stamped_on: "2026-11-24", visibility, body },
 });
 
 function deferred<T>() {
@@ -127,7 +128,7 @@ describe("VISIT-4-P2 다녀왔어요 버튼", () => {
     await enter();
     expect(fetchToday).toHaveBeenCalledWith(101, expect.anything());
     await fireEvent.press(await screen.findByText(STAMP_TEXT.button));
-    expect(putToday).toHaveBeenNthCalledWith(1, 101, "private", undefined);
+    expect(putToday).toHaveBeenNthCalledWith(1, 101, "private", undefined, undefined);
     expect(screen.queryByTestId("stamp-menu")).toBeNull(); // 고르는 창 없음
     expect(await screen.findByText(STAMP_TEXT.privateNotice)).toBeTruthy();
     expect(screen.getByText(STAMP_TEXT.labelPrivate)).toBeTruthy();
@@ -135,7 +136,7 @@ describe("VISIT-4-P2 다녀왔어요 버튼", () => {
 
     fetchItems.mockResolvedValue(page([stampFeed(stampItem(STAMP_ID, { mine: true, published_at: "2026-11-24T10:00:00+09:00" })), postItem(post("p1"))]));
     await fireEvent.press(screen.getByText(STAMP_TEXT.toPublic));
-    expect(putToday).toHaveBeenNthCalledWith(2, 101, "public", STAMP_ID);
+    expect(putToday).toHaveBeenNthCalledWith(2, 101, "public", STAMP_ID, undefined);
     expect(await screen.findByText(STAMP_TEXT.savedPublic)).toBeTruthy();
     await waitFor(() => expect(shownStampIds()).toEqual([STAMP_ID]));
     expect(screen.getByText(STAMP_TEXT.labelPublic)).toBeTruthy();
@@ -183,7 +184,8 @@ describe("VISIT-4-P2 다녀왔어요 버튼", () => {
     expect(control.getByText("▾")).toBeTruthy();
     expect(control.queryByText("⋯")).toBeNull();
     await fireEvent.press(screen.getByLabelText(STAMP_TEXT.menuLabel));
-    expect(within(screen.getByTestId("stamp-menu")).getAllByRole("menuitem")).toHaveLength(1);
+    // C-92 V4-O6: 공개 범위 + 한마디 두 항목
+    expect(within(screen.getByTestId("stamp-menu")).getAllByRole("menuitem")).toHaveLength(2);
     expect(screen.queryByText(STAMP_TEXT.close, { exact: true })).toBeNull();
     await fireEvent.press(screen.getByLabelText(STAMP_TEXT.close)); // 바깥 누르면 닫힘
     expect(screen.queryByTestId("stamp-menu")).toBeNull();
@@ -192,7 +194,7 @@ describe("VISIT-4-P2 다녀왔어요 버튼", () => {
     fetchItems.mockResolvedValue(page([stampFeed(stampItem(STAMP_ID, { mine: true })), postItem(post("p1"))]));
     await fireEvent.press(screen.getByLabelText(STAMP_TEXT.menuLabel));
     await fireEvent.press(screen.getByText(STAMP_TEXT.menuToPublic));
-    expect(putToday).toHaveBeenLastCalledWith(101, "public", STAMP_ID);
+    expect(putToday).toHaveBeenLastCalledWith(101, "public", STAMP_ID, undefined);
     expect(await screen.findByText(STAMP_TEXT.labelPublic)).toBeTruthy();
     await waitFor(() => expect(shownStampIds()).toEqual([STAMP_ID]));
 
@@ -201,7 +203,7 @@ describe("VISIT-4-P2 다녀왔어요 버튼", () => {
     fetchItems.mockReturnValueOnce(slow.promise);
     await fireEvent.press(screen.getByLabelText(STAMP_TEXT.menuLabel));
     await fireEvent.press(screen.getByText(STAMP_TEXT.menuToPrivate));
-    expect(putToday).toHaveBeenLastCalledWith(101, "private", STAMP_ID);
+    expect(putToday).toHaveBeenLastCalledWith(101, "private", STAMP_ID, undefined);
     expect(await screen.findByText(STAMP_TEXT.labelPrivate)).toBeTruthy();
     expect(shownStampIds()).toEqual([]); // 다시 받기 전에 바로 빠진다
     expect(screen.getByText(STAMP_TEXT.changedPrivate)).toBeTruthy();
@@ -283,7 +285,7 @@ describe("VISIT-4-P2 다녀왔어요 버튼", () => {
     await fireEvent.press(await screen.findByText(STAMP_TEXT.button));
     fetchToday.mockResolvedValue(none); // 자정이 지나 새 날짜
     await fireEvent.press(await screen.findByText(STAMP_TEXT.toPublic));
-    expect(putToday).toHaveBeenLastCalledWith(101, "public", STAMP_ID);
+    expect(putToday).toHaveBeenLastCalledWith(101, "public", STAMP_ID, undefined);
     expect(await screen.findByText(STAMP_TEXT.dateChanged)).toBeTruthy();
     expect(await screen.findByText(STAMP_TEXT.button)).toBeTruthy();
     expect(fetchToday).toHaveBeenCalledTimes(2);
@@ -297,7 +299,7 @@ describe("VISIT-4-P2 다녀왔어요 버튼", () => {
     fetchToday.mockResolvedValue(none);
     await fireEvent.press(await screen.findByLabelText(STAMP_TEXT.menuLabel));
     await fireEvent.press(screen.getByText(STAMP_TEXT.menuToPrivate));
-    expect(putToday).toHaveBeenLastCalledWith(101, "private", STAMP_ID);
+    expect(putToday).toHaveBeenLastCalledWith(101, "private", STAMP_ID, undefined);
     expect(await screen.findByText(STAMP_TEXT.dateChanged)).toBeTruthy();
     expect(await screen.findByText(STAMP_TEXT.button)).toBeTruthy();
   });
@@ -416,17 +418,102 @@ describe("VISIT-4-P2 다녀왔어요 버튼", () => {
   });
 });
 
+describe("C-92 스탬프 한마디(V4-12·V4-O6·V4-O7)", () => {
+  test("stamp sits on the distance row and feed head title is gone", async () => {
+    await enter();
+    const row = within(screen.getByTestId("visit-header-info-row"));
+    expect(row.getByTestId("stamp-control")).toBeTruthy();
+    expect(screen.queryByText("이 도서관 이야기")).toBeNull();
+    expect(screen.queryByTestId("visit-feed-head")).toBeNull();
+  });
+
+  test("menu adds a note with current visibility and expected id", async () => {
+    fetchToday.mockResolvedValue(today("private"));
+    putToday.mockResolvedValueOnce(today("private", STAMP_ID, "창가 햇살 좋아요"));
+    await enter();
+    await fireEvent.press(await screen.findByLabelText(STAMP_TEXT.menuLabel));
+    expect(screen.getByText(STAMP_TEXT.noteSub)).toBeTruthy();
+    await fireEvent.press(screen.getByText(STAMP_TEXT.noteAdd));
+    expect(screen.queryByTestId("stamp-menu")).toBeNull();
+    const sheet = within(screen.getByTestId("stamp-note-sheet"));
+    expect(sheet.getByText(STAMP_TEXT.noteGuide)).toBeTruthy();
+    expect(screen.getByTestId("stamp-note-input").props.maxLength).toBe(140);
+    expect(screen.getByTestId("stamp-note-save").props.accessibilityState).toMatchObject({ disabled: true }); // 바뀐 것 없음
+    await fireEvent.changeText(screen.getByTestId("stamp-note-input"), "  창가 햇살 좋아요  ");
+    expect(screen.getByText("9/140")).toBeTruthy();
+    await fireEvent.press(screen.getByTestId("stamp-note-save"));
+    expect(putToday).toHaveBeenLastCalledWith(101, "private", STAMP_ID, { body: "창가 햇살 좋아요" });
+    expect(await screen.findByText(STAMP_TEXT.noteAdded)).toBeTruthy();
+    expect(screen.queryByTestId("stamp-note-sheet")).toBeNull();
+    await fireEvent.press(screen.getByLabelText(STAMP_TEXT.menuLabel));
+    expect(screen.getByText(STAMP_TEXT.noteEdit)).toBeTruthy(); // 본문 있음 → "수정"
+  });
+
+  test("edit prefills, clearing deletes, and failure keeps the sheet and text", async () => {
+    fetchToday.mockResolvedValue(today("public", STAMP_ID, "원래 한마디"));
+    await enter();
+    await fireEvent.press(await screen.findByLabelText(STAMP_TEXT.menuLabel));
+    await fireEvent.press(screen.getByText(STAMP_TEXT.noteEdit));
+    expect(screen.getByTestId("stamp-note-input").props.value).toBe("원래 한마디");
+    putToday.mockRejectedValueOnce(network());
+    await fireEvent.changeText(screen.getByTestId("stamp-note-input"), "고친 한마디");
+    await fireEvent.press(screen.getByTestId("stamp-note-save"));
+    expect(await screen.findByTestId("stamp-note-failed")).toBeTruthy();
+    expect(screen.getByTestId("stamp-note-input").props.value).toBe("고친 한마디");
+    putToday.mockResolvedValueOnce(today("public", STAMP_ID, null));
+    await fireEvent.changeText(screen.getByTestId("stamp-note-input"), "   ");
+    await fireEvent.press(screen.getByTestId("stamp-note-save"));
+    expect(putToday).toHaveBeenLastCalledWith(101, "public", STAMP_ID, { body: null });
+    expect(await screen.findByText(STAMP_TEXT.noteCleared)).toBeTruthy();
+    expect(screen.queryByTestId("stamp-note-sheet")).toBeNull();
+  });
+
+  test("note save after midnight closes the sheet and reloads today", async () => {
+    fetchToday.mockResolvedValueOnce(today("private")).mockResolvedValue(none);
+    await enter();
+    await fireEvent.press(await screen.findByLabelText(STAMP_TEXT.menuLabel));
+    await fireEvent.press(screen.getByText(STAMP_TEXT.noteAdd));
+    putToday.mockRejectedValueOnce(new publicApi.ApiCallError(409, "STAMP_DATE_CHANGED", "x", ""));
+    await fireEvent.changeText(screen.getByTestId("stamp-note-input"), "늦은 한마디");
+    await fireEvent.press(screen.getByTestId("stamp-note-save"));
+    expect(await screen.findByText(STAMP_TEXT.dateChanged)).toBeTruthy();
+    expect(screen.queryByTestId("stamp-note-sheet")).toBeNull();
+    expect(await screen.findByText(STAMP_TEXT.button)).toBeTruthy();
+  });
+
+  test("others' public stamp can be reported like a post, mine has no menu", async () => {
+    jest.mocked(api.reportTarget).mockResolvedValueOnce(undefined);
+    await enter([stampFeed(stampItem("s-other", { body: "광고 글" })), stampFeed(stampItem("s-mine", { mine: true }))]);
+    expect(screen.queryByTestId("stamp-menu-s-mine")).toBeNull(); // 내 것은 ▾ 메뉴에서 바꾼다
+    await fireEvent.press(await screen.findByTestId("stamp-menu-s-other"));
+    await fireEvent.press(screen.getByText("스팸 또는 광고"));
+    await fireEvent.press(screen.getByText("신고 보내기"));
+    await waitFor(() => expect(api.reportTarget).toHaveBeenCalledWith({ kind: "stamp", id: "s-other" }, "spam", null));
+    expect(await screen.findByText("신고한 글")).toBeTruthy(); // 신고한 카드는 접힌다(게시물과 같음)
+    expect(screen.queryByTestId("stamp-card-s-other")).toBeNull();
+    expect(screen.getByTestId("stamp-card-s-mine")).toBeTruthy();
+  });
+
+  test("public stamp card shows its note", async () => {
+    await enter([stampFeed(stampItem("s-note", { body: "오늘 서가 좋았어요" })), stampFeed(stampItem("s-empty"))]);
+    expect(await screen.findByTestId("stamp-body-s-note")).toBeTruthy();
+    expect(screen.getByText("오늘 서가 좋았어요")).toBeTruthy();
+    expect(screen.queryByTestId("stamp-body-s-empty")).toBeNull();
+  });
+});
+
 describe("VISIT-4-P2 스탬프 카드", () => {
-  test("stamp card is one cell with seal nickname time and no menu", async () => {
+  test("stamp card is one cell with seal nickname time; only others' card has the report menu (C-92)", async () => {
     for (const mine of [true, false]) {
       const view = await render(
         <FeedItemCard item={stampFeed(stampItem(`s-${mine}`, { mine }))} width={160} onOpenPost={jest.fn()} onMenu={jest.fn()} />
       );
       expect(screen.getByText("11.24")).toBeTruthy();
       expect(screen.getByText(`책벌레 · ${STAMP_CARD_TEXT.visited}`)).toBeTruthy();
-      expect(screen.getAllByRole("button")).toHaveLength(1); // 북마크 하나, 메뉴 없음
+      // 내 카드: 북마크 하나(바꾸기는 ▾). 남의 카드: 북마크 + 신고 ⋯(게시물과 같음)
+      expect(screen.getAllByRole("button")).toHaveLength(mine ? 1 : 2);
       expect(screen.getByLabelText(STAMP_CARD_TEXT.bookmark)).toBeTruthy();
-      expect(screen.queryByText("⋯")).toBeNull();
+      expect(screen.queryByText("⋯") === null).toBe(mine);
       expect(screen.queryByText(/인증|확인됨/)).toBeNull();
       expect(screen.getByTestId(`stamp-card-s-${mine}`).props.style).toEqual(
         expect.arrayContaining([expect.objectContaining({ width: 160 })])

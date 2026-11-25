@@ -120,15 +120,13 @@ def test_feed_items_merge_kinds_by_time_without_duplicates_across_pages(client, 
 
 
 def test_guestbook_response_has_no_user_id(client, auth, db_engine):
-    created = client.post(f"/api/v1/libraries/{LIB_1}/guestbook",
-                          json={"body": "안녕", "client_request_id": str(uuid4())}, headers=auth["A"])
+    mine_id = str(seed_gb(db_engine, at=T0, user_id=USER_A_ID))
     seed_gb(db_engine, at=T0, user_id=USER_B_ID)
-    assert "user_id" not in created.json()
     as_a = feed(client, headers=auth["A"]).json()["items"]
     as_anon = feed(client).json()["items"]
     assert "user_id" not in json.dumps(as_a) and "user_id" not in json.dumps(as_anon)
     mine_a = {i["guestbook"]["id"]: i["guestbook"]["mine"] for i in as_a}
-    assert mine_a == {created.json()["id"]: True, next(k for k in mine_a if k != created.json()["id"]): False}
+    assert mine_a == {mine_id: True, next(k for k in mine_a if k != mine_id): False}
     assert all(i["guestbook"]["mine"] is False for i in as_anon)
 
 

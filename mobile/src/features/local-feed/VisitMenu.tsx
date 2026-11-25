@@ -7,6 +7,7 @@ import type { LibraryDetail } from "../../lib/publicApi";
 import { getDefaultLibrary, setDefaultLibrary } from "../../lib/visits";
 import { cardSurface, type Theme } from "../../theme";
 import { lookKit, useLook } from "./useLibraryLook";
+import { ModalFrame } from "../../theme/WebFrame";
 
 
 export const MENU_TEXT = {
@@ -69,7 +70,7 @@ export function VisitMenu({
       >
         <Text style={styles.moreText}>⋯</Text>
       </Pressable>
-      <Modal transparent visible={open} animationType="fade" onRequestClose={() => setOpen(false)}>
+      <Modal transparent visible={open} animationType="fade" onRequestClose={() => setOpen(false)}><ModalFrame>
         <Pressable accessibilityLabel="메뉴 닫기" style={styles.scrim} onPress={() => setOpen(false)}>
           <View style={styles.menu} testID="visit-menu-card">
             <Pressable
@@ -87,7 +88,7 @@ export function VisitMenu({
             ) : null}
           </View>
         </Pressable>
-      </Modal>
+      </ModalFrame></Modal>
     </>
   );
 }

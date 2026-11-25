@@ -22,6 +22,8 @@ import {
 import { AttendanceSheet } from "./AttendanceSheet";
 import { formatClubWhen } from "./ClubCard";
 import { NextClubSheet } from "./NextClubSheet";
+import { ModalFrame } from "../../theme/WebFrame";
+import { ScreenHeader } from "../../theme/ScreenHeader";
 
 const C = theme.colors;
 const ACT = actionColors(theme.colors);
@@ -29,6 +31,7 @@ const ACT = actionColors(theme.colors);
 /** C3 화면 문구(테스트도 이 상수로 단언) */
 export const RECORD_TEXT = {
   header: "모임 기록",
+  headerLabel: "CLUB RECORD", // C-92 core K27
   ended: "끝난 모임",
   undecidedPlace: "장소 미정",
   count: (n: number) => `참가 ${n}명`,
@@ -189,15 +192,7 @@ function RecordView({ clubId }: { clubId: string }) {
   }
 
   const head = (
-    <View style={[styles.head, { paddingTop: 10 + insets.top }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={goBack} hitSlop={10}>
-        <Text style={styles.back}>‹</Text>
-      </Pressable>
-      <Text style={styles.headTitle} numberOfLines={1}>
-        {RECORD_TEXT.header}
-      </Text>
-      <View style={styles.headSide} />
-    </View>
+    <ScreenHeader label={RECORD_TEXT.headerLabel} title={RECORD_TEXT.header} onBack={goBack} topInset={insets.top} testID="record-head" />
   );
 
   if (!signedIn) {
@@ -217,7 +212,7 @@ function RecordView({ clubId }: { clubId: string }) {
           )}
         </View>
         {status === "signedOut" && askLogin ? (
-          <Modal transparent animationType="fade" onRequestClose={() => setAskLogin(false)}>
+          <Modal transparent animationType="fade" onRequestClose={() => setAskLogin(false)}><ModalFrame>
             <View style={styles.backdrop}>
               <View style={styles.sheet} testID="record-login-dialog">
                 <Text style={styles.sheetTitle}>{RECORD_TEXT.loginTitle}</Text>
@@ -239,7 +234,7 @@ function RecordView({ clubId }: { clubId: string }) {
                 </View>
               </View>
             </View>
-          </Modal>
+          </ModalFrame></Modal>
         ) : null}
       </View>
     );

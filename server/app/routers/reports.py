@@ -16,7 +16,7 @@ from app.routers.ops import TARGETS, lock_target
 
 router = APIRouter(prefix="/api/v1")
 
-ReportKind = Literal["post", "guestbook", "club", "club_comment"]
+ReportKind = Literal["post", "guestbook", "club", "club_comment", "stamp"]  # stamp: C-92 공개 스탬프(한마디)
 
 
 class ReportIn(BaseModel):

@@ -20,7 +20,7 @@ from sqlalchemy.engine import Connection
 
 InboxKind = Literal["club_confirmed", "club_changed", "club_canceled", "club_ended", "club_next", "moderation"]
 INBOX_KINDS: frozenset[str] = frozenset(get_args(InboxKind))
-TARGET_KEYS = ("club_id", "post_id", "guestbook_id")  # C3 InboxItem.target — 누르면 갈 곳
+TARGET_KEYS = ("club_id", "post_id", "guestbook_id", "stamp_id")  # C3 InboxItem.target — 누르면 갈 곳(stamp_id: C-92)
 
 # 서버가 만드는 한 줄(C3 title). 기본값(Claude) — CLUB-2·LOCAL-4 열린 칸 문구가 정해지면 이 상수만 바꾼다
 TITLES: dict[str, str] = {
@@ -86,7 +86,7 @@ def add_inbox_items(
     """수신자마다 안내 한 건을 넣는다. 반환: 새로 넣은 행 수(이미 있던 안내는 0으로 센다)."""
     _check_kind(kind)
     if not any(target.get(k) for k in TARGET_KEYS):
-        raise ValueError("inbox target needs club_id, post_id or guestbook_id")
+        raise ValueError("inbox target needs club_id, post_id, guestbook_id or stamp_id")
     if kind in CLUB_KINDS:
         off = _club_notices_off(conn, recipients)
         recipients = [uid for uid in recipients if uid not in off]

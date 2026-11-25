@@ -1,10 +1,10 @@
-// VISIT-3 책장 시험용 가짜 값(contracts/local-feed.md VISIT-3 C7 `#31` 가짜 값 + 세 장 묶음)
+// VISIT-3 책장 시험용 가짜 값(contracts/local-feed.md VISIT-3 C7 `#31` 가짜 값 + 세 장 묶음, 2026-11-25 C-92 3장 체제)
 import type { ShelfPage, ShelfResponse } from "../api";
 
 export const POPULAR_PAGE: ShelfPage = {
   kind: "popular",
   title: "인기 도서",
-  basis_label: "최근 한 달 · 정독도서관",
+  basis_label: "YES24 베스트셀러",
   books: [
     { isbn13: "9788936434120", title: "소년이 온다", author: "한강", cover_url: null },
     { isbn13: "9788954682152", title: "작별하지 않는다", author: "한강", cover_url: null },
@@ -14,8 +14,8 @@ export const POPULAR_PAGE: ShelfPage = {
 
 export const RECENT_PAGE: ShelfPage = {
   kind: "recent_reads",
-  title: "요즘 사람들이 읽은 책",
-  basis_label: "최근 30일 · 이 도서관",
+  title: "최근 대출 도서",
+  basis_label: "정독도서관 · 최근 30일 대출",
   books: [
     { isbn13: "9788937460449", title: "데미안", author: "헤르만 헤세", cover_url: "https://img.test/demian.jpg" },
     { isbn13: "9788954651134", title: "채식주의자", author: "한강", cover_url: null },

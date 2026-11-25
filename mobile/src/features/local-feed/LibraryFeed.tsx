@@ -27,7 +27,7 @@ import { cardHeightRatio, PostCard } from "./PostCard";
 import { LoginPrompt, PostMenu } from "./PostMenu";
 import { REPORT_TEXT, ReportedTarget, ReportSheet } from "./ReportSheet";
 import { StampLoginSheet } from "./StampButton";
-import { STAMP_CARD_TEXT, STAMP_HEIGHT_RATIO } from "./StampCard";
+import { STAMP_CARD_TEXT, stampHeightRatio } from "./StampCard";
 
 export const COLUMN_GAP = 12; // H13
 const WITHDRAWN_TEXT = "내렸어요"; // LOCAL-1 ComposeScreen TEXT.withdrawn과 같은 문구
@@ -52,8 +52,8 @@ function splitColumnsBy<T>(items: T[], ratio: (item: T) => number): [T[], T[]] {
 export function feedItemHeightRatio(item: FeedItem): number {
   if (isPostItem(item)) return cardHeightRatio(item.post);
   if (isGuestbookItem(item)) return guestbookHeightRatio(item.guestbook);
-  if (isClubItem(item)) return 1.15;
-  if (isStampItem(item)) return STAMP_HEIGHT_RATIO;
+  if (isClubItem(item)) return 1.0; // C-92 K1-O5a: 아치 없는 정보 카드
+  if (isStampItem(item)) return stampHeightRatio(item.stamp);
   return 0;
 }
 
@@ -126,7 +126,8 @@ function FeedItemGrid({
             );
             const target = isPostItem(item) ? { kind: "post" as const, id: item.post.id }
               : isGuestbookItem(item) ? { kind: "guestbook" as const, id: item.guestbook.id }
-              : isClubItem(item) ? { kind: "club" as const, id: item.club.id } : null;
+              : isClubItem(item) ? { kind: "club" as const, id: item.club.id }
+              : isStampItem(item) ? { kind: "stamp" as const, id: item.stamp.id } : null;
             return target ? (
               <ReportedTarget key={feedItemKey(item)} {...target} width={cardWidth}>
                 {card}
@@ -156,7 +157,7 @@ export function LibraryFeed({ items, onNotice, onReload }: LibraryFeedProps) {
   const [login, setLogin] = useState(false);
   const [hidden, setHidden] = useState<Set<string>>(() => new Set()); // 게시물 id(상세에서 내림)
   const [gone, setGone] = useState<Set<string>>(() => new Set()); // 지운 방명록 id
-  const [report, setReport] = useState<{ id: string; owner: string } | null>(null);
+  const [report, setReport] = useState<{ kind: "guestbook" | "stamp"; id: string; owner: string } | null>(null);
   const [gbMenu, setGbMenu] = useState<GuestbookItem | null>(null);
   const [withdrawing, setWithdrawing] = useState(false);
   const withdrawingRef = useRef(false);
@@ -295,6 +296,8 @@ export function LibraryFeed({ items, onNotice, onReload }: LibraryFeedProps) {
         onMenu={(item) => {
           if (isPostItem(item)) setMenuFor(item.post.id);
           else if (isGuestbookItem(item)) setGbMenu(item.guestbook);
+          // C-92: 남의 공개 스탬프(한마디)는 ⋯ → 바로 신고 창(로그인 확인은 신고 창이 한다)
+          else if (isStampItem(item)) setReport({ kind: "stamp", id: item.stamp.id, owner: reportOwner });
         }}
         onToggleStampBookmark={(id, next) => void toggleStampBookmark(id, next)}
       />
@@ -318,14 +321,14 @@ export function LibraryFeed({ items, onNotice, onReload }: LibraryFeedProps) {
           onClose={() => setGbMenu(null)}
           onWithdraw={(entry) => void withdraw(entry)}
           onReport={() => {
-            setReport({ id: gbMenu.id, owner: reportOwner });
+            setReport({ kind: "guestbook", id: gbMenu.id, owner: reportOwner });
             setGbMenu(null);
           }}
         />
       ) : null}
       {report?.owner === reportOwner ? (
         <ReportSheet
-          target={{ kind: "guestbook", id: report.id }}
+          target={{ kind: report.kind, id: report.id }}
           onClose={() => setReport(null)}
           onDone={() => { setReport(null); onNotice(REPORT_TEXT.done); }}
         />

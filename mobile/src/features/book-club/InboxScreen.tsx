@@ -12,6 +12,7 @@ import { fetchInbox, fetchMyRestrictions, markAllRead, type InboxItem, type Rest
 import { RestrictionNotice } from "./RestrictionNotice";
 import { SettingsIcon } from "../../theme/Icons";
 import { NotificationSettings } from "../settings/NotificationSettings";
+import { HeaderTitle } from "../../theme/ScreenHeader";
 
 const C = theme.colors;
 const KEEP_DAYS = 90; // K2-O8 보관 90일
@@ -148,9 +149,9 @@ function InboxView() {
         <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={goBack} style={styles.iconBtn}>
           <View style={styles.chevron} />
         </Pressable>
-        <Text style={styles.headTitle} numberOfLines={1}>
-          {INBOX_TEXT.header}
-        </Text>
+        <View style={styles.headTitle}>
+          <HeaderTitle label="INBOX" title={INBOX_TEXT.header} />
+        </View>
         {signedIn ? (
           <Pressable
             accessibilityRole="button"

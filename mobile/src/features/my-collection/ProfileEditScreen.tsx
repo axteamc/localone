@@ -10,6 +10,7 @@ import { UserIcon } from "../../theme/Icons";
 import { canUseCamera, pickPostImage, type PickSource } from "../local-feed/imagePicker";
 import { ApiCallError, fetchMyProfile, updateMyProfile, uploadAvatar, type MyProfile, type ProfilePatch } from "./api";
 import { emitProfileSaved, MY_TEXT } from "./useMyCollection";
+import { BackChevron, HeaderTitle } from "../../theme/ScreenHeader";
 
 const C = theme.colors;
 const ACT = actionColors(C);
@@ -70,11 +71,11 @@ function Header({ onBack }: { onBack: () => void }) {
         style={styles.back}
         testID="profile-edit-back"
       >
-        <Text style={styles.backText}>‹</Text>
+        <BackChevron color={C.inkStrong} />
       </Pressable>
-      <Text accessibilityRole="header" style={styles.title} numberOfLines={1}>
-        {EDIT_TEXT.title}
-      </Text>
+      <View style={styles.title}>
+        <HeaderTitle label="PROFILE" title={EDIT_TEXT.title} />
+      </View>
     </View>
   );
 }
@@ -466,7 +467,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderColor: C.seamHairline,
   },
-  back: { width: 32, height: 32, alignItems: "center", justifyContent: "center" },
+  back: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   backText: { fontSize: 26, lineHeight: 28, color: C.inkStrong },
   title: { ...typeScale.title, flex: 1 },
   center: { flex: 1, alignItems: "center", justifyContent: "center", padding: 24, gap: 12 },

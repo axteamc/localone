@@ -378,7 +378,8 @@ def select_stamps_page(c: Connection, library_id: int, after: tuple[datetime, st
     """VISIT-4: 공개 스탬프 카드만. 정렬 시각은 `visit_stamps.created_at`(local-feed VISIT-4 C2 #32)."""
     cond, args = after_clause("s", "stamp", after)
     cond = cond.replace("s.published_at", "s.created_at")
-    sql = (f"SELECT {STAMP_FEED_COLUMNS} {STAMP_FEED_JOINS} WHERE s.visibility = 'public' AND s.library_id = :lib"
+    sql = (f"SELECT {STAMP_FEED_COLUMNS} {STAMP_FEED_JOINS} WHERE s.visibility = 'public' AND s.status = 'published'"
+           " AND s.library_id = :lib"
            f"{cond} ORDER BY s.created_at DESC, s.id DESC LIMIT :n")
     return c.execute(text(sql), dict(args, lib=library_id, n=n)).all()
 

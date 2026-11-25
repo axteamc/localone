@@ -266,7 +266,7 @@ export type InboxItem = {
   id: string;
   kind: InboxKind;
   title: string;
-  target: { club_id?: string; post_id?: string; guestbook_id?: string };
+  target: { club_id?: string; post_id?: string; guestbook_id?: string; stamp_id?: string }; // stamp_id: C-92 운영 숨김 안내
   created_at: string;
   read: boolean;
 };

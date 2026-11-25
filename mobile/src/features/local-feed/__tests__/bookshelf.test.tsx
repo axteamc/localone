@@ -100,35 +100,46 @@ describe("VISIT-3-P2 책장", () => {
   test("shelf hides missing pages and never says loanable", async () => {
     await render(<Bookshelf libraryId={101} onOpenBook={jest.fn()} load={async () => SHELF_C7} />);
     expect(await screen.findByText("인기 도서")).toBeTruthy();
-    expect(screen.getByText("최근 한 달 · 정독도서관")).toBeTruthy();
+    expect(screen.getByText("YES24 베스트셀러")).toBeTruthy();
     expect(screen.getAllByLabelText(/책 화면 열기$/)).toHaveLength(3);
     expect(screen.queryByTestId("shelf-dots")).toBeNull(); // 장이 1개면 점을 그리지 않음
     expect(screen.queryByText(/대출 가능/)).toBeNull();
     expect(screen.queryByText(/실시간/)).toBeNull();
   });
 
-  test("shelf shows recent reads then theme then popular", async () => {
+  test("shelf shows popular then theme then recent loans (C-92)", async () => {
     // 서버 순서를 섞어 준다: 서버 순서 그대로 그리면 실패
-    const load = async () => ({ pages: [POPULAR_PAGE, THEME_PAGE, RECENT_PAGE] });
+    const load = async () => ({ pages: [RECENT_PAGE, THEME_PAGE, POPULAR_PAGE] });
     await render(<Bookshelf libraryId={101} onOpenBook={jest.fn()} load={load} />);
-    await waitFor(() => expect(shelfTitle()).toBe("요즘 사람들이 읽은 책"));
+    await waitFor(() => expect(shelfTitle()).toBe("인기 도서"));
+    expect(screen.getByText("YES24 베스트셀러")).toBeTruthy();
     expect(screen.getAllByTestId(/^shelf-dot-/)).toHaveLength(3);
     expect(screen.getByTestId("shelf-dot-0").props.accessibilityState).toEqual({ selected: true });
     await fireEvent.press(screen.getByTestId("shelf-dot-1"));
     expect(shelfTitle()).toBe("비 오는 날 읽기 좋은 책");
     expect(screen.getByTestId("shelf-dot-1").props.accessibilityState).toEqual({ selected: true });
     await fireEvent.press(screen.getByTestId("shelf-dot-2"));
-    expect(shelfTitle()).toBe("인기 도서");
+    expect(shelfTitle()).toBe("최근 대출 도서");
+    expect(screen.getByText("정독도서관 · 최근 30일 대출")).toBeTruthy();
   });
 
-  test("shelf without recent reads starts at theme", async () => {
-    const load = async () => ({ pages: [POPULAR_PAGE, THEME_PAGE] });
+  test("shelf without popular starts at theme", async () => {
+    const load = async () => ({ pages: [RECENT_PAGE, THEME_PAGE] });
     await render(<Bookshelf libraryId={101} onOpenBook={jest.fn()} load={load} />);
     await waitFor(() => expect(shelfTitle()).toBe("비 오는 날 읽기 좋은 책"));
     expect(screen.getAllByTestId(/^shelf-dot-/)).toHaveLength(2);
-    expect(screen.queryByText("최근 한 달 · 정독도서관")).toBeNull(); // 테마는 basis_label이 없어 비움
+    expect(screen.queryByText("YES24 베스트셀러")).toBeNull(); // 테마는 basis_label이 없어 비움
     await fireEvent.press(screen.getByTestId("shelf-dot-1"));
-    expect(shelfTitle()).toBe("인기 도서");
+    expect(shelfTitle()).toBe("최근 대출 도서");
+  });
+
+  test("empty shelf points to the reading log (C-92)", async () => {
+    const onWriteRecord = jest.fn();
+    await render(<Bookshelf libraryId={101} onOpenBook={jest.fn()} load={async () => ({ pages: [] })} onWriteRecord={onWriteRecord} />);
+    expect(await screen.findByText("읽은 책은 독서 기록에 남겨 보세요")).toBeTruthy();
+    expect(screen.queryByText("빌린 책을 반납하면 여기에 쌓여요")).toBeNull();
+    await fireEvent.press(screen.getByTestId("shelf-empty-record"));
+    expect(onWriteRecord).toHaveBeenCalledTimes(1);
   });
 
   test("book without cover shows author and title text cover", async () => {
@@ -181,23 +192,23 @@ describe("VISIT-3-P2 책장", () => {
 
   test("library switch drops late shelf response and starts at first page", async () => {
     const late = deferred<ShelfResponse>();
-    const load = jest.fn(async (id: number) => (id === 101 ? late.promise : { pages: [THEME_PAGE, RECENT_PAGE] }));
+    const load = jest.fn(async (id: number) => (id === 101 ? late.promise : { pages: [RECENT_PAGE, THEME_PAGE] }));
     const view = await render(<Bookshelf libraryId={101} onOpenBook={jest.fn()} load={load} />);
     await view.rerender(<Bookshelf libraryId={102} onOpenBook={jest.fn()} load={load} />);
-    await waitFor(() => expect(shelfTitle()).toBe("요즘 사람들이 읽은 책"));
+    await waitFor(() => expect(shelfTitle()).toBe("비 오는 날 읽기 좋은 책"));
     await act(async () => late.resolve({ pages: [POPULAR_PAGE] }));
-    expect(shelfTitle()).toBe("요즘 사람들이 읽은 책"); // 늦게 온 101 응답이 덮지 않음
+    expect(shelfTitle()).toBe("비 오는 날 읽기 좋은 책"); // 늦게 온 101 응답이 덮지 않음
     expect(screen.getAllByTestId(/^shelf-dot-/)).toHaveLength(2);
   });
 
   test("switching library goes back to the first page", async () => {
     const load = async () => ({ pages: [RECENT_PAGE, THEME_PAGE, POPULAR_PAGE] });
     const view = await render(<Bookshelf libraryId={101} onOpenBook={jest.fn()} load={load} />);
-    await waitFor(() => expect(shelfTitle()).toBe("요즘 사람들이 읽은 책"));
+    await waitFor(() => expect(shelfTitle()).toBe("인기 도서"));
     await fireEvent.press(screen.getByTestId("shelf-dot-2"));
-    expect(shelfTitle()).toBe("인기 도서");
+    expect(shelfTitle()).toBe("최근 대출 도서");
     await view.rerender(<Bookshelf libraryId={102} onOpenBook={jest.fn()} load={load} />);
-    await waitFor(() => expect(shelfTitle()).toBe("요즘 사람들이 읽은 책")); // 처음 열 때 늘 첫 장(V3-O1)
+    await waitFor(() => expect(shelfTitle()).toBe("인기 도서")); // 처음 열 때 늘 첫 장(V3-O1)
     expect(screen.getByTestId("shelf-dot-0").props.accessibilityState).toEqual({ selected: true });
   });
 });

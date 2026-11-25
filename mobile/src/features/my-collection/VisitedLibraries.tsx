@@ -11,6 +11,7 @@ import { IsoCube } from "../library-visit/FacadeHome";
 import { cubeNames, type CubeName } from "../library-visit/shortName";
 import { fetchVisitedLibraries, type VisitedLibrariesPage, type VisitedLibrary } from "./api";
 import { collectionTone, VISIT_PALETTE } from "./visitPalette";
+import { ModalFrame } from "../../theme/WebFrame";
 
 const C = theme.colors;
 const COLUMNS = 3;
@@ -111,7 +112,7 @@ export function VisitedLibraries({ onOpenLibrary }: { onOpenLibrary(libraryId: n
         ? <Text style={styles.message}>{TEXT.empty}</Text>
         : <View style={styles.row}>{items.slice(0, COLUMNS).map(renderCube)}</View>)}
       {expanded && state.kind === "ready" && (
-        <Modal visible onRequestClose={close} animationType="slide">
+        <Modal visible onRequestClose={close} animationType="slide"><ModalFrame>
           <SafeAreaView style={styles.full}>
             <View style={styles.panel} accessibilityViewIsModal>
               <View style={styles.header}>
@@ -134,7 +135,7 @@ export function VisitedLibraries({ onOpenLibrary }: { onOpenLibrary(libraryId: n
               />
             </View>
           </SafeAreaView>
-        </Modal>
+        </ModalFrame></Modal>
       )}
     </View>
   );

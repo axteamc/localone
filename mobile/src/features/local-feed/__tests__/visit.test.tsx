@@ -15,7 +15,7 @@ import type { VisitRecord, VisitResult } from "../../../lib/visits";
 import { formatDistance, parseDistanceM } from "../VisitHeader";
 import { VISIT_TEXT, VisitScreen } from "../VisitScreen";
 import { SHELF_HEIGHT } from "../Bookshelf";
-import { GUESTBOOK_TEXT } from "../GuestbookComposer";
+import { COMPOSE_TEXT } from "../ComposeChooser";
 import { pickVisitMent } from "../visitMent";
 
 const realVisits = jest.requireActual<typeof import("../../../lib/visits")>("../../../lib/visits");
@@ -187,7 +187,7 @@ describe("들어올 때", () => {
     });
     expect(screen.getAllByTestId("visit-ment")).toHaveLength(1);
     const style = Object.assign({}, ...[screen.getByTestId("visit-ment").props.style].flat());
-    expect(style).toEqual(expect.objectContaining({ position: "absolute", bottom: SHELF_HEIGHT + 12 + 64 + 24, alignSelf: "center" }));
+    expect(style).toEqual(expect.objectContaining({ position: "absolute", bottom: SHELF_HEIGHT + 12 + 52 + 24, alignSelf: "center" }));
     expect(screen.getByTestId("visit-ment").props.pointerEvents).toBe("none");
     await act(async () => {
       jest.advanceTimersByTime(2500);
@@ -409,7 +409,7 @@ describe("피드 자리", () => {
     expect(mockPush).toHaveBeenCalledTimes(1);
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/posts/new", params: { libraryId: "101" } });
     await fireEvent.press(screen.getByLabelText("글쓰기"));
-    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.choosePost)); // VISIT-3 V3-O3: "+" → 고르기 창
+    await fireEvent.press(screen.getByText(COMPOSE_TEXT.choosePost)); // VISIT-3 V3-O3: "+" → 고르기 창
     expect(mockPush).toHaveBeenCalledTimes(2);
   });
 
@@ -422,7 +422,7 @@ describe("피드 자리", () => {
     await fireEvent.press(screen.getByText(VISIT_TEXT.close));
     expect(screen.queryByText(VISIT_TEXT.loginNeeded)).toBeNull();
     await fireEvent.press(screen.getByLabelText("글쓰기"));
-    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.choosePost)); // VISIT-3 V3-O3: 로그인 확인은 고른 뒤
+    await fireEvent.press(screen.getByText(COMPOSE_TEXT.choosePost)); // VISIT-3 V3-O3: 로그인 확인은 고른 뒤
     expect(screen.getByText(VISIT_TEXT.loginNeeded)).toBeTruthy();
     expect(mockPush).not.toHaveBeenCalled();
     await fireEvent.press(screen.getByText(VISIT_TEXT.login));
@@ -598,17 +598,17 @@ describe("L4 디자인 반영", () => {
     const emptyTitleStyle = StyleSheet.flatten(screen.getByText(VISIT_TEXT.emptyTitle).props.style);
     expect(emptyTitleStyle).toEqual(expect.objectContaining(T.title));
 
-    // + FAB: 노랑 fill1 제거 → 무광 판(panelLit + seamHairline + 2px ledge + inkStrong)
+    // + : C-92 V3-O3 유리 원(가로 넘김 버튼과 같은 paper 62% 바탕·75% 테두리, 지름 52)
     const fab = screen.getByLabelText("글쓰기");
     const fabStyle = StyleSheet.flatten(fab.props.style);
     expect(fabStyle).toEqual(
       expect.objectContaining({
-        backgroundColor: theme.colors.panelLit,
+        backgroundColor: `${theme.colors.paper}9E`,
         borderWidth: 1,
-        borderColor: theme.colors.seamHairline,
+        borderColor: `${theme.colors.paper}BF`,
         borderRadius: theme.radii.control,
-        width: 64,
-        height: 64,
+        width: 52,
+        height: 52,
         right: 16,
         bottom: SHELF_HEIGHT + 12, // VISIT-3 V3-O3: 책장 바로 위 오른쪽(이전 LOCAL-1 F13 아래 24)
       }),
@@ -643,7 +643,7 @@ describe("L4 디자인 반영", () => {
 
     // 비로그인 시트: panelLit + 위쪽만 곡률 9
     await fireEvent.press(fab);
-    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.choosePost)); // VISIT-3 V3-O3: "+" → 고르기 창 → 게시물
+    await fireEvent.press(screen.getByText(COMPOSE_TEXT.choosePost)); // VISIT-3 V3-O3: "+" → 고르기 창 → 게시물
     const sheetStyle = StyleSheet.flatten(screen.getByTestId("visit-login-sheet").props.style);
     expect(sheetStyle).toEqual(
       expect.objectContaining({

@@ -64,8 +64,26 @@ export function WebFrame({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * 아래에서 올라오는 창·가운데 확인 창의 `Modal` 안을 감싼다(core APP-0 C4 "웹 하단 창 폭", 2026-11-25 C-92).
+ * RN 웹 `Modal`은 `document.body`에 붙어 앱 칼럼 밖 화면 전체 폭으로 펼쳐졌다 → WebFrame이 칼럼을 세우는
+ * 조건(마우스로 쓰는 넓은 웹)에서만 창 안을 폭 480 가운데 칼럼으로 둔다. 앱·좁은 웹은 그대로(화면 폭).
+ * 누른 자리 바로 아래에 뜨는 작은 메뉴(창 좌표로 잰 것)는 감싸지 않는다.
+ */
+export function ModalFrame({ children }: { children: ReactNode }) {
+  const { width } = useWindowDimensions();
+  if (Platform.OS !== "web" || !(width > APP_MAX_WIDTH && isDesktopPointer())) return <>{children}</>;
+  return (
+    <View style={styles.modalOuter} testID="modal-column">
+      <View style={styles.modalColumn}>{children}</View>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   fill: { flex: 1 },
+  modalOuter: { flex: 1, alignItems: "center" },
+  modalColumn: { flex: 1, width: APP_MAX_WIDTH, maxWidth: "100%" },
   outer: { flex: 1, backgroundColor: theme.colors.bg, alignItems: "center", overflow: "hidden" },
   v: { position: "absolute", top: 0, bottom: 0, width: 1, backgroundColor: theme.colors.seamHairline, opacity: 0.55 },
   h: { position: "absolute", left: 0, right: 0, height: 1, backgroundColor: theme.colors.seamHairline, opacity: 0.55 },

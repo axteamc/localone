@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type MutableRefObject } f
 import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { actionColors, theme, type as T } from "../../theme";
 import { ApiCallError, changeDueDate, type Loan } from "./api";
+import { ModalFrame } from "../../theme/WebFrame";
 
 export const SHEET_TITLE = "반납 예정일 고치기";
 export const sheetSubtitle = (loan: Loan) => `대출일 ${loan.loaned_on}부터 고를 수 있어요.`;
@@ -115,7 +116,7 @@ export function DueDateSheet({ loan, onClose, onSaved, onChanged, onLateResult }
   };
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}><ModalFrame>
       <View style={styles.backdrop}>
         <View testID="due-sheet" style={styles.sheet}>
           <View style={styles.head}>
@@ -182,7 +183,7 @@ export function DueDateSheet({ loan, onClose, onSaved, onChanged, onLateResult }
           </Pressable>
         </View>
       </View>
-    </Modal>
+    </ModalFrame></Modal>
   );
 }
 

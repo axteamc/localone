@@ -1,4 +1,7 @@
-"""VISIT-3-P1: 방명록 올리기(#33)·철회(#34) — local-feed 계약 VISIT-3 C2·C3·C5·C6·P5."""
+"""VISIT-3-P1: 방명록 철회(#34) — local-feed 계약 VISIT-3 C2·C3·C5·C6·P5.
+
+2026-11-25 C-92: 올리기 #33은 없앴다(한마디는 스탬프 #36 `body`). 시험용 글은 DB에 바로 넣는다.
+"""
 
 from uuid import uuid4
 
@@ -44,9 +47,22 @@ def auth(client, make_token):
     return headers
 
 
-def post_gb(client, headers, body="2층 창가 자리 오늘 햇살 좋아요", rid=None, library_id=LIB_1):
-    return client.post(f"/api/v1/libraries/{library_id}/guestbook",
-                       json={"body": body, "client_request_id": str(rid or uuid4())}, headers=headers)
+class Created:
+    """옛 #33 응답 대신: DB에 바로 넣은 방명록 id."""
+
+    def __init__(self, entry_id):
+        self._id = str(entry_id)
+
+    def json(self):
+        return {"id": self._id}
+
+
+def post_gb(db_engine, user_id, body="2층 창가 자리 오늘 햇살 좋아요", library_id=LIB_1):
+    with db_engine.begin() as conn:
+        entry_id = conn.execute(text(
+            "INSERT INTO guestbook_entries (user_id, library_id, body, client_request_id) "
+            "VALUES (:u, :l, :b, :r) RETURNING id"), {"u": user_id, "l": library_id, "b": body, "r": uuid4()}).scalar_one()
+    return Created(entry_id)
 
 
 def rows(db_engine):
@@ -54,38 +70,24 @@ def rows(db_engine):
         return conn.execute(text("SELECT id, user_id, body, status FROM guestbook_entries ORDER BY published_at")).all()
 
 
-def test_guestbook_create_is_idempotent_by_client_request_id(client, auth, db_engine):
-    rid = uuid4()
-    first = post_gb(client, auth["A"], rid=rid)
-    second = post_gb(client, auth["A"], rid=rid)
-    assert first.status_code == 201
-    assert second.status_code == 200
-    assert first.json()["id"] == second.json()["id"]
-    assert len(rows(db_engine)) == 1
+@pytest.mark.parametrize("body", [{"body": "안녕", "client_request_id": str(uuid4())}, {}])
+def test_guestbook_create_33_is_gone(client, auth, db_engine, body):
+    """C-92: 방명록 올리기 경로가 없다(404/405) — 새 글은 스탬프 한마디로만."""
+    response = client.post(f"/api/v1/libraries/{LIB_1}/guestbook", json=body, headers=auth["A"])
+    assert response.status_code in (404, 405)
+    assert rows(db_engine) == []
 
 
-def test_guestbook_create_strips_and_returns_item(client, auth, db_engine):
-    response = post_gb(client, auth["A"], body="  안녕하세요  ")
-    assert response.status_code == 201
-    item = response.json()
-    assert set(item) == {"id", "library_id", "body", "author_nickname", "published_at", "mine"}
-    assert item["body"] == "안녕하세요" and item["library_id"] == LIB_1
-    assert item["mine"] is True and item["published_at"].endswith("+09:00")
-    assert rows(db_engine)[0].body == "안녕하세요"
-
-
-def test_guestbook_write_requires_auth(client, auth, db_engine):
-    mine = post_gb(client, auth["A"]).json()["id"]
-    created = post_gb(client, {})
+def test_guestbook_withdraw_requires_auth(client, auth, db_engine):
+    mine = post_gb(db_engine, USER_A_ID).json()["id"]
     withdrawn = client.post(f"/api/v1/guestbook/{mine}/withdraw")
-    for response in (created, withdrawn):
-        assert response.status_code == 401
-        assert response.json()["error"]["code"] == "AUTH_REQUIRED"
+    assert withdrawn.status_code == 401
+    assert withdrawn.json()["error"]["code"] == "AUTH_REQUIRED"
     assert [(str(r.id), r.status) for r in rows(db_engine)] == [(mine, "published")]
 
 
 def test_withdraw_of_other_or_missing_entry_is_same_404(client, auth, db_engine):
-    a_entry = post_gb(client, auth["A"]).json()["id"]
+    a_entry = post_gb(db_engine, USER_A_ID).json()["id"]
     other = client.post(f"/api/v1/guestbook/{a_entry}/withdraw", headers=auth["B"])
     missing = client.post(f"/api/v1/guestbook/{uuid4()}/withdraw", headers=auth["B"])
     assert other.status_code == missing.status_code == 404
@@ -95,41 +97,12 @@ def test_withdraw_of_other_or_missing_entry_is_same_404(client, auth, db_engine)
 
 
 def test_withdraw_of_hidden_entry_is_404_and_stays_hidden(client, auth, db_engine):
-    entry = post_gb(client, auth["A"]).json()["id"]
+    entry = post_gb(db_engine, USER_A_ID).json()["id"]
     with db_engine.begin() as conn:
         conn.execute(text("UPDATE guestbook_entries SET status = 'hidden' WHERE id = :id"), {"id": entry})
     response = client.post(f"/api/v1/guestbook/{entry}/withdraw", headers=auth["A"])
     assert response.status_code == 404
     assert [r.status for r in rows(db_engine)] == ["hidden"]
-
-
-@pytest.mark.parametrize("body", ["   ", "가" * 141])
-def test_guestbook_body_blank_or_over_140_is_422_body(client, auth, db_engine, body):
-    response = post_gb(client, auth["A"], body=body)
-    assert response.status_code == 422
-    assert response.json()["error"]["code"] == "VALIDATION_ERROR"
-    assert response.json()["error"]["detail"] == "body"
-    assert rows(db_engine) == []
-
-
-def test_guestbook_body_exactly_140_is_201(client, auth, db_engine):
-    response = post_gb(client, auth["A"], body="가" * 140)
-    assert response.status_code == 201
-    assert len(rows(db_engine)[0].body) == 140
-
-
-def test_guestbook_bad_client_request_id_is_422(client, auth, db_engine):
-    response = client.post(f"/api/v1/libraries/{LIB_1}/guestbook",
-                           json={"body": "안녕", "client_request_id": "깨진값"}, headers=auth["A"])
-    assert response.status_code == 422
-    assert response.json()["error"]["detail"] == "client_request_id"
-    assert rows(db_engine) == []
-
-
-def test_guestbook_unknown_library_is_404(client, auth, db_engine):
-    response = post_gb(client, auth["A"], library_id=999999)
-    assert response.status_code == 404 and response.json()["error"]["code"] == "NOT_FOUND"
-    assert rows(db_engine) == []
 
 
 def test_db_check_rejects_over_140_even_without_server(client, auth, db_engine):
@@ -143,7 +116,7 @@ def test_db_check_rejects_over_140_even_without_server(client, auth, db_engine):
 
 
 def test_withdraw_twice_stays_withdrawn_and_leaves_feed(client, auth, db_engine):
-    entry = post_gb(client, auth["A"]).json()["id"]
+    entry = post_gb(db_engine, USER_A_ID).json()["id"]
     first = client.post(f"/api/v1/guestbook/{entry}/withdraw", headers=auth["A"])
     second = client.post(f"/api/v1/guestbook/{entry}/withdraw", headers=auth["A"])
     assert first.status_code == second.status_code == 200

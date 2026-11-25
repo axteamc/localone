@@ -18,7 +18,7 @@ import { actionColors, cardSurface, theme, type as typeScale } from "../../theme
 import { COLUMN_GAP } from "../local-feed/LibraryFeed";
 import { cardHeightRatio, PostCard } from "../local-feed/PostCard";
 import { PostMenu } from "../local-feed/PostMenu";
-import { STAMP_HEIGHT_RATIO, StampCard } from "../local-feed/StampCard";
+import { StampCard, stampHeightRatio } from "../local-feed/StampCard";
 import type { MyCollectionItem, MyCollectionPost } from "./api";
 import { CollectionTabs } from "./CollectionTabs";
 import { ProfileHeader } from "./ProfileHeader";
@@ -217,7 +217,7 @@ function Grid(props: {
   for (const item of props.items) {
     const column = heights[1]! < heights[0]! ? 1 : 0;
     columns[column].push(item);
-    heights[column]! += item.item_kind === "stamp" ? STAMP_HEIGHT_RATIO : cardHeightRatio(item);
+    heights[column]! += item.item_kind === "stamp" ? stampHeightRatio(item) : cardHeightRatio(item);
   }
   const onLayout = (e: LayoutChangeEvent) => {
     const w = e.nativeEvent.layout.width;

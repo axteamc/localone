@@ -6,6 +6,8 @@ import { Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-nativ
 import { actionColors, theme } from "../../theme";
 import { ApiCallError, createNextClub, PLACE_MAX, type Club } from "./api";
 import { EDITOR_TEXT, toKstIso } from "./ClubEditor";
+import { ModalFrame } from "../../theme/WebFrame";
+import { WhenFields } from "./WhenFields";
 
 const C = theme.colors;
 const ACT = actionColors(theme.colors);
@@ -84,7 +86,7 @@ export function NextClubSheet({
   }
 
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
+    <Modal transparent animationType="fade" onRequestClose={onClose}><ModalFrame>
       <View style={styles.backdrop}>
         <View style={styles.sheet} testID="next-club-sheet">
           <Text style={styles.title}>{NEXT_TEXT.title}</Text>
@@ -100,35 +102,18 @@ export function NextClubSheet({
             testID="next-club-place"
           />
           <Text style={styles.label}>{NEXT_TEXT.whenLabel}</Text>
-          <View style={styles.row}>
-            <TextInput
-              value={date}
-              onChangeText={setDate}
-              placeholder={EDITOR_TEXT.datePlaceholder}
-              placeholderTextColor={C.inkMuted}
-              style={[styles.input, styles.date]}
-              accessibilityLabel="날짜"
-              testID="next-club-date"
-            />
-            <TextInput
-              value={start}
-              onChangeText={setStart}
-              placeholder={EDITOR_TEXT.startPlaceholder}
-              placeholderTextColor={C.inkMuted}
-              style={[styles.input, styles.flex]}
-              accessibilityLabel="시작 시각"
-              testID="next-club-start"
-            />
-            <TextInput
-              value={end}
-              onChangeText={setEnd}
-              placeholder={EDITOR_TEXT.endPlaceholder}
-              placeholderTextColor={C.inkMuted}
-              style={[styles.input, styles.flex]}
-              accessibilityLabel="끝나는 시각"
-              testID="next-club-end"
-            />
-          </View>
+          <WhenFields
+            date={date}
+            start={start}
+            end={end}
+            onDate={setDate}
+            onStart={setStart}
+            onEnd={setEnd}
+            placeholders={{ date: EDITOR_TEXT.datePlaceholder, start: EDITOR_TEXT.startPlaceholder, end: EDITOR_TEXT.endPlaceholder }}
+            testIDPrefix="next-club"
+            boxStyle={{ borderRadius: theme.radii.control }}
+            textStyle={{ fontSize: 14 }}
+          />
           {warn ? (
             <Text style={styles.warn} accessibilityRole="alert">
               {warn}
@@ -153,7 +138,7 @@ export function NextClubSheet({
           </View>
         </View>
       </View>
-    </Modal>
+    </ModalFrame></Modal>
   );
 }
 

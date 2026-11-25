@@ -5,6 +5,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { actionColors, type Theme } from "../../theme";
 import { lookKit, useLook } from "./useLibraryLook";
 import type { GuestbookItem } from "./api";
+import { ModalFrame } from "../../theme/WebFrame";
 
 
 /**
@@ -108,7 +109,7 @@ export function GuestbookMenu({ entry, busy, onClose, onWithdraw, onReport }: Gu
   const { ACT, styles } = useLook(makeStyles);
   const [confirming, setConfirming] = useState(false);
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
+    <Modal transparent animationType="fade" onRequestClose={onClose}><ModalFrame>
       <View style={styles.backdrop}>
         {confirming ? (
           <View style={styles.sheet} accessibilityRole="alert" testID="guestbook-confirm">
@@ -153,7 +154,7 @@ export function GuestbookMenu({ entry, busy, onClose, onWithdraw, onReport }: Gu
           </View>
         )}
       </View>
-    </Modal>
+    </ModalFrame></Modal>
   );
 }
 

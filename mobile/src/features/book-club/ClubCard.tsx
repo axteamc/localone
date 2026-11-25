@@ -1,12 +1,11 @@
 // 모임 카드(CLUB-1-P3)와 날짜 표시 함수 — contracts/book-club.md CLUB-1 C2·K1-O5, 명세 결정 1(날짜가 크게)
 // formatClubWhen은 ClubCard·ClubScreen이 같이 쓴다(K1-O4·K1-O5).
+// 2026-11-25 C-92(K1-O5a): 아치·주황 바탕·흰 알약 태그를 없애고 방명록·스탬프와 같은 정보 카드(paper·infoCard·점 + 글자 태그).
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { onFill, theme } from "../../theme";
+import { type Theme } from "../../theme";
+import { lookKit, useLook } from "../local-feed/useLibraryLook";
 import type { ClubItem, ClubStatus } from "./api";
-
-const C = theme.colors;
-const INK = onFill(C.fill2); // 채움 위 글자색은 자동(디자인_기준 §2)
 
 export const CARD_TEXT = {
   tag: "모임",
@@ -45,8 +44,9 @@ export function formatClubWhen(startsAt: string | null, endsAt: string | null): 
   return { day, time: `${clock(s, true)} ~ ${clock(e, !samePeriod)}` };
 }
 
-/** 피드 2열의 한 칸(P-30). 맨 위 "모임" 알약 → 날짜·요일 제일 크게 → 시각·장소 → 이름 → 인원 → "들어가기 →" */
+/** 피드 2열의 한 칸(P-30). 맨 위 "● 모임" → 날짜·요일 제일 크게 → 시각·장소 → 이름 → 인원 → "들어가기 →" */
 export function ClubCard({ club, width, onOpen }: { club: ClubItem; width: number; onOpen(clubId: string): void }) {
+  const { styles } = useLook(makeStyles);
   const when = formatClubWhen(club.starts_at, null);
   const place = club.place ?? CARD_TEXT.undecidedPlace;
   const label = CARD_TEXT.status[club.status];
@@ -58,7 +58,8 @@ export function ClubCard({ club, width, onOpen }: { club: ClubItem; width: numbe
       testID={`club-card-${club.id}`}
       style={[styles.card, { width }]}
     >
-      <View style={styles.tag}>
+      <View style={styles.tag} testID="club-card-tag">
+        <View style={styles.tagDot} />
         <Text style={styles.tagText}>{CARD_TEXT.tag}</Text>
       </View>
       <Text style={styles.day} numberOfLines={1} testID="club-card-day">
@@ -85,24 +86,26 @@ export function ClubCard({ club, width, onOpen }: { club: ClubItem; width: numbe
   );
 }
 
-const styles = StyleSheet.create({
-  card: {
-    backgroundColor: C.fill2,
-    borderTopLeftRadius: theme.radii.clubCardTop,
-    borderTopRightRadius: theme.radii.clubCardTop,
-    borderBottomLeftRadius: theme.radii.clubCardBottom,
-    borderBottomRightRadius: theme.radii.clubCardBottom,
-    paddingTop: 28,
-    paddingHorizontal: 14,
-    paddingBottom: 14,
-    gap: 4,
-  },
-  tag: { alignSelf: "flex-start", backgroundColor: C.seamHighlight, borderRadius: theme.radii.pill, paddingHorizontal: 10, paddingVertical: 2 },
-  tagText: { fontSize: 11, color: INK },
-  day: { fontSize: 24, fontWeight: "400", letterSpacing: -0.4, color: INK, marginTop: 4 },
-  time: { fontSize: 14, color: INK, opacity: 0.85 },
-  status: { fontSize: 12, fontWeight: "500", color: INK },
-  name: { fontSize: 15, fontWeight: "500", color: INK, marginTop: 6, lineHeight: 20 },
-  meta: { fontSize: 12, color: INK, opacity: 0.8 },
-  go: { fontSize: 14, fontWeight: "500", color: INK, marginTop: 6 },
-});
+const makeStyles = (theme: Theme) => {
+  const { C } = lookKit(theme);
+  return StyleSheet.create({
+    // 방명록 카드(V3-10·V3-O4)와 같은 틀: 곡률 infoCard, 1px seamHairline, 안쪽 14
+    card: {
+      backgroundColor: C.paper,
+      borderRadius: theme.radii.infoCard,
+      borderWidth: 1,
+      borderColor: C.seamHairline,
+      padding: 14,
+      gap: 4,
+    },
+    tag: { flexDirection: "row", alignItems: "center", gap: 6, opacity: 0.7, minHeight: 20 },
+    tagDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.inkStrong },
+    tagText: { fontSize: 11, fontWeight: "500", color: C.text },
+    day: { fontSize: 22, fontWeight: "400", letterSpacing: -0.4, color: C.inkSoft, marginTop: 4 },
+    time: { fontSize: 14, color: C.textSub },
+    status: { fontSize: 12, fontWeight: "500", color: C.text },
+    name: { fontSize: 15, fontWeight: "500", color: C.text, marginTop: 6, lineHeight: 20 },
+    meta: { fontSize: 12, color: C.inkMuted },
+    go: { fontSize: 14, fontWeight: "500", color: C.inkStrong, marginTop: 6 },
+  });
+};

@@ -4,6 +4,7 @@ import { theme } from "../theme";
 import { createLatestRunner } from "./latest";
 import { searchPlaces, type Place } from "./publicApi";
 import { writeRoughStart } from "./roughStart";
+import { ModalFrame } from "../theme/WebFrame";
 
 export function PlacePicker({ onClose, onRegion }: { onClose(): void; onRegion(): void }) {
   const runner = useMemo(createLatestRunner, []);
@@ -48,7 +49,7 @@ export function PlacePicker({ onClose, onRegion }: { onClose(): void; onRegion()
       <Text style={styles.text}>{label}</Text>
     </Pressable>
   );
-  return <Modal transparent animationType="slide" onRequestClose={() => { if (!locked.current) onClose(); }}>
+  return <Modal transparent animationType="slide" onRequestClose={() => { if (!locked.current) onClose(); }}><ModalFrame>
     <View style={styles.overlay}><View style={styles.sheet}>
       <Text style={styles.title}>대략적인 위치</Text>
       <TextInput accessibilityLabel="건물 이름 검색" placeholder="건물 이름 검색" autoFocus editable={!saving}
@@ -64,7 +65,7 @@ export function PlacePicker({ onClose, onRegion }: { onClose(): void; onRegion()
         {action("닫기", onClose)}
       </ScrollView>
     </View></View>
-  </Modal>;
+  </ModalFrame></Modal>;
 }
 const styles = StyleSheet.create({
   overlay: { flex: 1, justifyContent: "flex-end", backgroundColor: theme.colors.shadowSoft },

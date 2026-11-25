@@ -8,7 +8,7 @@ import { apiFetch } from "../../auth/apiFetch";
 import { ApiCallError } from "../../lib/publicApi";
 import { actionColors, cardSurface, panel, theme, type as T } from "../../theme";
 
-type TargetKind = "post" | "guestbook" | "club" | "club_comment";
+type TargetKind = "post" | "guestbook" | "club" | "club_comment" | "stamp";
 type Report = {
   id: string; target_kind: TargetKind; target_id: string; reason: string; text: string | null;
   status: string; created_at: string; target_status: string | null; target_preview: string | null;
@@ -29,7 +29,9 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "reviews", label: "재검토" },
   { key: "direct", label: "직접 처리" },
 ];
-const KIND_LABEL: Record<TargetKind, string> = { post: "게시물", guestbook: "방명록", club: "모임", club_comment: "모임 댓글" };
+const KIND_LABEL: Record<TargetKind, string> = {
+  post: "게시물", guestbook: "방명록", club: "모임", club_comment: "모임 댓글", stamp: "방문 기록(한마디)",
+};
 const RESTRICTION_PERIODS = [
   { label: "1일", days: 1 },
   { label: "3일", days: 3 },

@@ -33,6 +33,7 @@ def clean_looks_and_themes(db_engine, public_reference_data, reference_db):
             c.execute(text("DELETE FROM shelf_theme_books"))
             c.execute(text("DELETE FROM shelf_themes"))
             c.execute(text("DELETE FROM library_return_stats"))
+            c.execute(text("DELETE FROM curated_books_cache WHERE list_kind = 'bestseller'"))  # #31 ① (C-92)
             c.execute(text("DELETE FROM libraries WHERE id = :id"), {"id": NEW_LIB})
             c.execute(text("UPDATE libraries SET look = NULL, look_assigned_by = NULL"))
 
@@ -55,8 +56,14 @@ def seeded(reference_db):
     return [seed_book(reference_db, index=i).id for i in range(5)]
 
 
-def use_providers(client, reference_db, library=None, books=None):
-    client.app.state.provider_engine = engine(reference_db, books=books, library=library)
+def use_providers(client, reference_db, library=None, books=None, yes24=None):
+    client.app.state.provider_engine = pe.ProviderEngine(
+        reference_db, pe.Providers(books=books, library_data=library, yes24=yes24), now_fn=lambda: NOW)
+
+
+def bestseller(count=5, start=20):
+    """YES24 베스트셀러 가짜(isbn은 TEST 접두사, 책장 ①)."""
+    return FakeYes24Provider(pe.Yes24CuratedPage([make_yes24_item(start + i, sort_order=i + 1) for i in range(count)]))
 
 
 def looks(db_engine) -> dict[int, tuple[str | None, str | None]]:
@@ -191,9 +198,8 @@ def test_shelf_omits_empty_pages(client, reference_db, seeded, ops, db_engine):
     r = shelf(client)
     assert r.status_code == 200 and r.json() == {"pages": []}
 
-    add_return_stats(reference_db, 101, seeded[0], 1, 2)  # 합계 2 < 3
-    add_return_stats(reference_db, 101, seeded[1], 30, 5)  # 30일 밖
-    add_return_stats(reference_db, 102, seeded[2], 1, 9)  # 다른 도서관
+    # C-92: 앱 반납 집계(library_return_stats)는 더 이상 책장에 쓰지 않는다(Q-49 보류로 쌓이지 않던 이전 ①)
+    add_return_stats(reference_db, 101, seeded[0], 1, 9)
     # 끝난 테마·아직 시작 전 테마·다른 도서관 테마
     for body in (theme_body(start=-10, end=-1), theme_body(start=1, end=5, title="곧"), theme_body(library_id=102)):
         assert client.post("/api/v1/ops/shelf-themes", json=body, headers=ops["A"]).status_code == 201
@@ -204,31 +210,45 @@ def test_shelf_omits_empty_pages(client, reference_db, seeded, ops, db_engine):
     assert shelf(client).json() == {"pages": []}
 
 
-def test_shelf_full_pages_order_and_shape(client, reference_db, seeded, ops):
+def test_shelf_full_pages_order_and_shape(client, reference_db, seeded, ops, yes24_db):
     fake = FakeLibraryData(popular={"test-101": [book(i) for i in range(5)]})
-    use_providers(client, reference_db, library=fake)
-    for idx, (days_ago, count) in enumerate([(0, 3), (29, 7), (5, 4), (2, 1)]):
-        add_return_stats(reference_db, 101, seeded[idx], days_ago, count)
-    add_return_stats(reference_db, 101, seeded[3], 3, 1)
-    add_return_stats(reference_db, 101, seeded[3], 4, 1)  # 합계 3
-    add_return_stats(reference_db, 101, seeded[4], 1, 6)
+    yes24 = bestseller()
+    use_providers(client, reference_db, library=fake, yes24=yes24)
+    add_return_stats(reference_db, 101, seeded[4], 1, 6)  # 반납 집계는 무시(C-92)
     assert client.post("/api/v1/ops/shelf-themes", json=theme_body(isbns=(2, 0)), headers=ops["A"]).status_code == 201
     add_holdings(reference_db, 101, [seeded[2], seeded[0]])
 
     pages = shelf(client).json()["pages"]
-    assert [p["kind"] for p in pages] == ["recent_reads", "popular", "theme"]
+    assert [p["kind"] for p in pages] == ["popular", "theme", "recent_reads"]  # ① 인기 → ② 테마 → ③ 최근 대출
     assert all(set(p) == PAGE_KEYS and 1 <= len(p["books"]) <= 4 for p in pages)
     assert all(set(b) == BOOK_KEYS for p in pages for b in p["books"])
-    recent, popular, theme = pages
-    assert [b["isbn13"] for b in recent["books"]] == [isbn(1), isbn(4), isbn(2), isbn(0)]
-    assert recent["title"] == "요즘 사람들이 읽은 책" and recent["basis_label"] == "최근 30일 · 이 도서관"
-    assert [b["isbn13"] for b in popular["books"]] == [isbn(0), isbn(1), isbn(2), isbn(3)]
-    assert popular["title"] == "인기 도서" and popular["basis_label"] == "정독도서관 · 최근 30일 대출"
+    popular, theme, recent = pages
+    assert popular["title"] == "인기 도서" and popular["basis_label"] == "YES24 베스트셀러"
+    assert [b["isbn13"] for b in popular["books"]] == [item.isbn13 for item in yes24.curated_page.items[:4]]
     assert theme == {"kind": "theme", "title": "겨울에 읽는 책", "basis_label": None,
                      "books": [{"isbn13": isbn(2), "title": "이식 도서 002", "author": None, "cover_url": None},
                                {"isbn13": isbn(0), "title": "이식 도서 000", "author": None, "cover_url": None}]}
-    # 인기 캐시: 다시 읽어도 외부 조회 한 번
+    assert recent["title"] == "최근 대출 도서" and recent["basis_label"] == "정독도서관 · 최근 30일 대출"
+    assert [b["isbn13"] for b in recent["books"]] == [isbn(0), isbn(1), isbn(2), isbn(3)]
+    # 두 캐시 모두: 다시 읽어도 외부 조회 한 번(YES24 베스트셀러 목록 1회, 정보나루 도서관별 1회)
     assert shelf(client).json()["pages"] == pages and len(fake.calls) == 1
+    assert [call[0] for call in yes24.calls] == ["curated_list"]
+    assert yes24.calls[0][1][0] == "bestseller"
+
+
+def test_shelf_bestseller_failure_omits_page_and_keeps_stale_cache(client, reference_db, yes24_db, db_engine):
+    use_providers(client, reference_db, library=FakeLibraryData(), yes24=FakeYes24Provider(pe.ProviderError("down")))
+    assert shelf(client).json() == {"pages": []}  # 캐시 없음 + 실패 → ① 뺌(빈 성공으로 꾸미지 않음)
+    use_providers(client, reference_db, library=FakeLibraryData(), yes24=bestseller(count=2))
+    first, = shelf(client).json()["pages"]
+    assert first["kind"] == "popular" and len(first["books"]) == 2
+    with db_engine.begin() as c:  # 어제 받은 캐시로 만든다 → 오늘 실패하면 오래된 캐시를 쓴다
+        c.execute(text("UPDATE curated_books_cache SET fetched_at = fetched_at - interval '1 day' "
+                       "WHERE list_kind = 'bestseller'"))
+    use_providers(client, reference_db, library=FakeLibraryData(), yes24=FakeYes24Provider(pe.ProviderError("down")))
+    assert shelf(client).json()["pages"] == [first]
+    use_providers(client, reference_db, library=FakeLibraryData(), yes24=None)  # 키 없음도 오래된 캐시
+    assert shelf(client).json()["pages"] == [first]
 
 
 def test_yes24_cli_isbns_feed_shelf_theme_with_confirmed_holdings(
@@ -319,14 +339,15 @@ def test_shelf_filters_comics_and_series_before_slicing_and_preserves_recommenda
     expected = [isbn(i) for i in (1, 3, 4, 5)]
     for _ in range(2):
         page, = shelf(client).json()["pages"]
+        assert page["kind"] == "recent_reads" and page["title"] == "최근 대출 도서"
         assert [b["isbn13"] for b in page["books"]] == expected
     r = client.get("/api/v1/books/recommendations", params={"library_id": 101})
     assert [b["isbn13"] for b in r.json()["books"]] == [b.isbn13 for b in candidates]
     assert len(fake.calls) == 1
 
 
-def test_shelf_popular_is_library_only(client, reference_db, seeded):
-    # 도서관 데이터 실패 → 엔진은 전국으로 대체하지만 책장은 "이 도서관"이라 뺀다
+def test_shelf_recent_loans_is_library_only(client, reference_db, seeded):
+    # ③ 최근 대출: 도서관 데이터 실패 → 엔진은 전국으로 대체하지만 책장은 "이 도서관"이라 뺀다
     fake = FakeLibraryData(popular={"test-101": pe.ProviderError("offline"), None: [book(0)]})
     use_providers(client, reference_db, library=fake)
     assert shelf(client).json() == {"pages": []}

@@ -5,6 +5,7 @@ import React, { useLayoutEffect, useRef, useState } from "react";
 import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { actionColors, cardSurface, theme, type as T } from "../../theme";
 import { ApiCallError, putAttendance, type ClubRecord } from "./api";
+import { ModalFrame } from "../../theme/WebFrame";
 
 const C = theme.colors;
 const ACT = actionColors(theme.colors);
@@ -166,7 +167,7 @@ export function AttendanceSheet({
         </Pressable>
       ) : null}
       {asking ? (
-        <Modal transparent animationType="fade" onRequestClose={() => setAsking(false)}>
+        <Modal transparent animationType="fade" onRequestClose={() => setAsking(false)}><ModalFrame>
           <View style={styles.backdrop}>
             <View style={styles.sheet} testID="attend-confirm">
               <Text style={styles.sheetTitle}>{ATTEND_TEXT.confirm(missed.size)}</Text>
@@ -185,7 +186,7 @@ export function AttendanceSheet({
               </View>
             </View>
           </View>
-        </Modal>
+        </ModalFrame></Modal>
       ) : null}
     </View>
   );

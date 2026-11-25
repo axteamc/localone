@@ -9,6 +9,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { actionColors, cardSurface, theme } from "../../theme";
 import { ApiCallError, deleteReadingLog, fetchReadingLog, shelfStore, type ReadingLog } from "./api";
 import { ConfirmDialog, Cover, ReadingLogEditor, TEXT as EDITOR_TEXT, Toast, monthDay, styles as base } from "./ReadingLogEditor";
+import { BackChevron, HeaderTitle } from "../../theme/ScreenHeader";
 
 export const TEXT = {
   title: "내 기록",
@@ -174,9 +175,11 @@ export function ReadingLogDetail({ logId }: { logId: string }) {
     <View style={base.screen}>
       <View style={[base.header, { paddingTop: insets.top + 8 }]}>
         <Pressable accessibilityRole="button" accessibilityLabel={TEXT.back} onPress={goBack} hitSlop={8} style={base.headerSide}>
-          <Text style={base.headerX}>‹</Text>
+          <BackChevron color={C.inkStrong} />
         </Pressable>
-        <Text accessibilityRole="header" style={base.headerTitle} numberOfLines={1}>{TEXT.title}</Text>
+        <View style={base.flex}>
+          <HeaderTitle label="MY RECORD" title={TEXT.title} />
+        </View>
         {log ? (
           <Pressable accessibilityRole="button" accessibilityLabel={TEXT.more} onPress={() => setMenuOpen((v) => !v)} hitSlop={8} style={base.headerSide}>
             <Text style={base.headerX}>⋯</Text>
