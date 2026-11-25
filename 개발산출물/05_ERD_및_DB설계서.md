@@ -156,6 +156,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | `bio` | `text` | NULL 허용, CHECK(1~160자) | 한 줄 소개 (`0010_user_profiles_bio_avatar.py`) | `확정` (MY-1 C-46 F1) |
 | `avatar_url` | `text` | NULL 허용, CHECK(`https://%`) | 프로필 사진 주소 (`0010`) | `확정` (MY-1·MY-2) |
 | `updated_at` | `timestamptz` | NOT NULL, 기본 `now()` | | `확정` (`0003`) |
+| `club_notices` | `boolean` | NOT NULL, 기본 `true` | 모임 안내 받기. `false`면 새 `club_*` 알림함 안내를 넣지 않는다(`moderation`은 그대로). 설정 화면 `#71` | `확정` (`0028_user_settings`, 2026-11-25 C-90) |
 
 팔로우는 요구사항 ID가 없고 대상·효과가 미결(C-46 §8-5)이므로 M1·M2 기준선에 팔로우 테이블을 넣지 않는다(MY-1 Y5, MY-2 Y2-6).
 

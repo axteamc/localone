@@ -1,5 +1,7 @@
-// 내 정보 위쪽: 설정 아이콘 + 왼쪽 사진·옆에 이름·소개·"프로필 수정" — contracts/my-collection.md MY-1 Y5·Y-O1, 시안 정할 것 1 후보 A.
+// 내 정보 위쪽: 왼쪽 사진·옆에 이름·소개·"프로필 수정". 종·설정은 2026-11-25 C-90에 탭 머리 오른쪽(MeHeaderActions)으로 옮겼다
+// (이전: 프로필 줄 오른쪽 — "프로필 수정"과 같은 자리라 헷갈림) — contracts/my-collection.md MY-1 Y5·Y-O1, 시안 정할 것 1 후보 A.
 // 팔로워 수·팔로잉 목록·팔로우 버튼은 두지 않는다(Y5, MY-2 Y2-6). 설정 버튼 바로 왼쪽에 같은 크기 알림 종(MY-2 Y2-O5).
+import { useRouter } from "expo-router";
 import React from "react";
 import { Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { actionColors, theme, type as typeScale } from "../../theme";
@@ -15,7 +17,6 @@ export type ProfileHeaderProps = {
   state: ProfileState;
   onEdit(): void;
   onRetry(): void;
-  onSettings(): void;
 };
 
 function SettingsButton({ onPress }: { onPress: () => void }) {
@@ -31,17 +32,18 @@ function SettingsButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-/** 머리 오른쪽 위: 종 → 설정 순서(Y2-O5) */
-function HeaderActions({ onSettings }: { onSettings: () => void }) {
+/** "MY" 탭 머리 오른쪽: 종 → 설정 순서(Y2-O5). app/(tabs)/_layout.tsx의 headerRight */
+export function MeHeaderActions() {
+  const router = useRouter();
   return (
     <View style={styles.actions} testID="profile-actions">
       <InboxBell />
-      <SettingsButton onPress={onSettings} />
+      <SettingsButton onPress={() => router.push("/settings")} />
     </View>
   );
 }
 
-export function ProfileHeader({ state, onEdit, onRetry, onSettings }: ProfileHeaderProps) {
+export function ProfileHeader({ state, onEdit, onRetry }: ProfileHeaderProps) {
   return (
     <View style={styles.wrap}>
       {state.kind === "loading" ? (
@@ -53,7 +55,6 @@ export function ProfileHeader({ state, onEdit, onRetry, onSettings }: ProfileHea
               <View style={[styles.lineShort, styles.skeleton]} />
             </View>
           </View>
-          <HeaderActions onSettings={onSettings} />
         </View>
       ) : state.kind === "error" ? (
         <View style={styles.errorRow} testID="profile-error">
@@ -65,7 +66,6 @@ export function ProfileHeader({ state, onEdit, onRetry, onSettings }: ProfileHea
           >
             <Text style={styles.reloadText} numberOfLines={1}>{MY_TEXT.reload}</Text>
           </Pressable>
-          <HeaderActions onSettings={onSettings} />
         </View>
       ) : (
         <View style={styles.topRow} testID="profile-row">
@@ -96,7 +96,6 @@ export function ProfileHeader({ state, onEdit, onRetry, onSettings }: ProfileHea
               </Pressable>
             </View>
           </View>
-          <HeaderActions onSettings={onSettings} />
         </View>
       )}
     </View>
@@ -107,7 +106,7 @@ const styles = StyleSheet.create({
   wrap: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14, backgroundColor: C.panelFrosted },
   topRow: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: 10 },
   rowMain: { flex: 1, minWidth: 0, flexDirection: "row", alignItems: "center", gap: 14 },
-  actions: { flexDirection: "row", alignItems: "center", gap: 8 },
+  actions: { flexDirection: "row", alignItems: "center", gap: 8, marginEnd: 12 },
   gear: {
     width: 34,
     height: 34,

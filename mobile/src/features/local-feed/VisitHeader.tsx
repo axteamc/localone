@@ -53,7 +53,7 @@ export type VisitHeaderProps = {
   folded?: boolean;
 };
 
-/** 두 줄 머리: ‹ / 이름 / "거리 · 오늘 운영시간" + ⋯ */
+/** 두 줄 머리: ‹ … ⋯(같은 줄, 2026-11-25 C-89 — 이전: ⋯는 거리 줄 오른쪽이라 긴 이름에서 아래로 밀림) / 이름 / "거리 · 오늘 운영시간" */
 export function VisitHeader({ name, distanceM, today, onBack, more, folded = false }: VisitHeaderProps) {
   const { styles } = useLook(makeStyles);
   const insets = useSafeAreaInsets();
@@ -64,7 +64,10 @@ export function VisitHeader({ name, distanceM, today, onBack, more, folded = fal
       style={[styles.two, { paddingTop: Math.max(4, insets.top), minHeight: HEADER_TWO_LINES + insets.top }]}
       testID="visit-header-two"
     >
-      {folded ? <View style={styles.back} /> : <BackButton onBack={onBack} size={30} />}
+      <View style={styles.topRow} testID="visit-header-top-row">
+        {folded ? <View style={styles.back} /> : <BackButton onBack={onBack} size={30} />}
+        {folded ? <View style={styles.moreSpace} /> : more}
+      </View>
       <Text style={styles.name} numberOfLines={1}>
         {name}
       </Text>
@@ -73,7 +76,6 @@ export function VisitHeader({ name, distanceM, today, onBack, more, folded = fal
           {distanceM !== null ? `${formatDistance(distanceM)} · ` : ""}
           {closed ? <Text style={styles.closed}>오늘 휴관</Text> : hours}
         </Text>
-        {folded ? <View style={styles.moreSpace} /> : more}
       </View>
     </View>
   );
@@ -101,6 +103,7 @@ const makeStyles = (theme: Theme) => {
   const { C, T, panel } = lookKit(theme);
   return StyleSheet.create({
   two: { minHeight: HEADER_TWO_LINES, paddingHorizontal: 16, paddingTop: 4, justifyContent: "flex-end" },
+  topRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   back: { alignSelf: "flex-start", minWidth: 44, minHeight: 36, justifyContent: "center" },
   backText: {
     color: C.inkStrong,

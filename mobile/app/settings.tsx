@@ -1,7 +1,12 @@
-// AUTH-2 G6·G7 설정 화면: 로그아웃(AUTH-2)·회원 탈퇴(AUTH-3 W4·W5). 문구는 계약 auth.md AUTH-2·AUTH-3 C3(기본값(Claude)).
-import { useRouter } from "expo-router";
-import { useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+// 설정 화면(C-90, 시안 실기기개선_P2-P4 #el-settings 후보 A): 계정(로그아웃 AUTH-2·회원 탈퇴 AUTH-3 W4·W5) /
+// 화면(처음 크게 보일 도서관 → 다음 화면, 다크 모드 준비 중) / 알림(반납 알림·모임 안내). 문구는 auth.md C3(기본값(Claude)).
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useState } from "react";
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { getHeroRule } from "../src/features/library-visit/heroPref";
+import { HERO_MENU_TEXT } from "../src/features/library-visit/heroText";
+import type { HeroRule } from "../src/features/library-visit/direction";
+import { NotificationSettings } from "../src/features/settings/NotificationSettings";
 import { useAccountActions, useAuth } from "../src/auth/AuthProvider";
 import { actionColors, cardSurface, panel, theme, type as T } from "../src/theme";
 
@@ -14,6 +19,17 @@ export default function SettingsScreen() {
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawError, setWithdrawError] = useState<string | null>(null);
   const busy = signingOut || withdrawing;
+  const [heroRule, setHeroRule] = useState<HeroRule | null>(null);
+  // 다음 화면에서 고르고 돌아오면 값이 바뀌어 있게 화면에 올 때마다 다시 읽는다
+  useFocusEffect(
+    useCallback(() => {
+      let alive = true;
+      void getHeroRule().then((r) => alive && setHeroRule(r));
+      return () => {
+        alive = false;
+      };
+    }, [])
+  );
 
   const onSignOut = async () => {
     if (busy) return;
@@ -65,42 +81,41 @@ export default function SettingsScreen() {
     );
   }
 
-  const signOutBtnStyle = confirming ? ACT.secondary : ACT.primary;
-  const signOutPressedStyle = confirming ? ACT.secondaryPressed : ACT.primaryPressed;
-  const signOutTextStyle = confirming ? ACT.secondaryText : ACT.primaryText;
-
   return (
-    <View style={styles.container}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityState={{ disabled: busy, busy: signingOut }}
-        disabled={busy}
-        onPress={() => {
-          void onSignOut();
-        }}
-        style={({ pressed }) => [styles.button, signOutBtnStyle, pressed && !busy && signOutPressedStyle]}
-      >
-        {signingOut ? (
-          <ActivityIndicator accessibilityLabel="로그아웃하는 중" color={signOutTextStyle.color} />
-        ) : (
-          <Text style={[styles.buttonText, signOutTextStyle]}>로그아웃</Text>
-        )}
-      </Pressable>
-
-      {!confirming ? (
+    <ScrollView style={styles.screen} contentContainerStyle={styles.list}>
+      {/* 시안 실기기개선_P2-P4 #el-settings 후보 A(C-90): 회색 소제목 + 묶음 목록, 고를 값은 오른쪽 값 + › → 다음 화면 */}
+      <Text style={styles.groupTitle}>계정</Text>
+      <View style={styles.group}>
         <Pressable
           accessibilityRole="button"
-          accessibilityState={{ disabled: busy }}
+          accessibilityState={{ disabled: busy, busy: signingOut }}
+          disabled={busy}
+          onPress={() => {
+            void onSignOut();
+          }}
+          style={({ pressed }) => [styles.row, styles.rowLine, pressed && !busy && styles.rowPressed]}
+        >
+          {signingOut ? (
+            <ActivityIndicator accessibilityLabel="로그아웃하는 중" color={theme.colors.text} />
+          ) : (
+            <Text style={styles.rowText}>로그아웃</Text>
+          )}
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ disabled: busy, expanded: confirming }}
           disabled={busy}
           onPress={() => {
             setWithdrawError(null);
-            setConfirming(true);
+            setConfirming((v) => !v);
           }}
-          style={({ pressed }) => [styles.button, ACT.secondary, pressed && !busy && ACT.secondaryPressed]}
+          style={({ pressed }) => [styles.row, pressed && !busy && styles.rowPressed]}
         >
-          <Text style={[styles.buttonText, ACT.secondaryText]}>회원 탈퇴</Text>
+          <Text style={styles.rowText}>회원 탈퇴</Text>
+          <Text style={styles.rowValue}>{confirming ? "⌃" : "›"}</Text>
         </Pressable>
-      ) : (
+      </View>
+      {confirming && (
         <View style={styles.confirm} testID="withdraw-confirm">
           <Text style={styles.confirmTitle}>정말 탈퇴할까요?</Text>
           <Text style={styles.confirmBody}>
@@ -136,12 +151,48 @@ export default function SettingsScreen() {
           </Pressable>
         </View>
       )}
-    </View>
+
+      <Text style={styles.groupTitle}>화면</Text>
+      <View style={styles.group}>
+        <Pressable
+          accessibilityRole="button"
+          testID="settings-first-library"
+          onPress={() => router.push("/settings-first-library")}
+          style={({ pressed }) => [styles.row, styles.rowLine, pressed && styles.rowPressed]}
+        >
+          <Text style={styles.rowText}>{HERO_MENU_TEXT.menuTitle}</Text>
+          <Text style={styles.rowValue} numberOfLines={1}>
+            {heroRule === null ? "" : `${heroRule === "recent" ? HERO_MENU_TEXT.recent : HERO_MENU_TEXT.nearest} ›`}
+          </Text>
+        </Pressable>
+        <View style={styles.row} testID="settings-dark-mode">
+          <Text style={[styles.rowText, styles.dim]}>다크 모드</Text>
+          <Text style={styles.rowValue}>준비 중</Text>
+        </View>
+      </View>
+
+      <Text style={styles.groupTitle}>알림</Text>
+      <View style={styles.group}>
+        <NotificationSettings />
+      </View>
+    </ScrollView>
   );
 }
 
 const ACT = actionColors(theme.colors);
+const c = theme.colors;
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: panel.backgroundColor },
+  list: { padding: 16, paddingBottom: 40 },
+  // 시안 값: 소제목 12 textSub, 줄 높이 48, 묶음 곡률 9
+  groupTitle: { fontSize: 12, color: c.textSub, marginTop: 18, marginBottom: 6, marginHorizontal: 4 },
+  group: { ...cardSurface(theme, { onPanel: true }), paddingVertical: 0, overflow: "hidden" },
+  row: { minHeight: 48, flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, paddingHorizontal: 14 },
+  rowLine: { borderBottomWidth: 1, borderBottomColor: c.seamHairline },
+  rowPressed: { backgroundColor: c.surface2 },
+  rowText: { fontSize: 15, color: c.text, flexShrink: 1 },
+  rowValue: { fontSize: 14, color: c.textSub, flexShrink: 1 },
+  dim: { color: c.textSub },
   container: {
     flex: 1,
     alignItems: "stretch",
@@ -170,6 +221,7 @@ const styles = StyleSheet.create({
     ...cardSurface(theme, { onPanel: true }),
     gap: 10,
     padding: 16,
+    marginTop: 8,
   },
   confirmTitle: {
     ...T.title,

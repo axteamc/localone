@@ -9,9 +9,20 @@ import { SignInResult } from "../platform";
 const mockReplace = jest.fn();
 const mockPush = jest.fn();
 
-jest.mock("expo-router", () => ({
-  useRouter: () => ({ replace: mockReplace, push: mockPush, back: jest.fn() }),
-}));
+jest.mock("expo-router", () => {
+  const React = jest.requireActual<typeof import("react")>("react");
+  return {
+    useRouter: () => ({ replace: mockReplace, push: mockPush, back: jest.fn() }),
+    // 화면에 올 때 한 번 실행(시험에는 내비게이션이 없다)
+    useFocusEffect: (fn: () => void | (() => void)) => React.useEffect(fn, [fn]),
+  };
+});
+jest.mock("../../features/library-visit/heroPref", () => ({ getHeroRule: jest.fn(async () => "recent") }));
+// 알림 두 줄은 NotificationSettings 시험에서 따로 본다(여기서는 자리만)
+jest.mock("../../features/settings/NotificationSettings", () => {
+  const { Text } = jest.requireActual<typeof import("react-native")>("react-native");
+  return { NotificationSettings: () => <Text>알림 설정 자리</Text> };
+});
 
 jest.mock("../AuthProvider", () => ({
   useAuth: jest.fn(),
@@ -123,29 +134,27 @@ describe("SettingsScreen (AUTH-2-P2)", () => {
     expect(signOutMock).not.toHaveBeenCalled(); // 로그아웃은 withdrawAccount 안에서
   });
 
-  test("settings_design_confirm_card_and_single_primary_button", async () => {
+  test("settings_grouped_list_account_screen_notify (C-90, 시안 #el-settings A)", async () => {
     authAs("signedIn");
     const ACT = actionColors(theme.colors);
     const screen = await render(<SettingsScreen />);
+    for (const title of ["계정", "화면", "알림"]) expect(screen.getByText(title)).toBeTruthy();
+    // 화면: 처음 크게 보일 도서관 = 지금 값 + › → 다음 화면
+    expect(await screen.findByText("최근 방문한 곳 ›")).toBeTruthy();
+    await fireEvent.press(screen.getByTestId("settings-first-library"));
+    expect(mockPush).toHaveBeenCalledWith("/settings-first-library");
+    // 다크 모드는 자리만(준비 중)
+    expect(screen.getByTestId("settings-dark-mode")).toBeTruthy();
+    expect(screen.getByText("준비 중")).toBeTruthy();
+    expect(screen.getByText("알림 설정 자리")).toBeTruthy();
 
-    // 확인 칸 닫힘: 로그아웃이 주 버튼(primary)
-    const signOutBtnBefore = screen.getByRole("button", { name: "로그아웃" });
-    expect(signOutBtnBefore.props.style).toEqual(
-      expect.arrayContaining([expect.objectContaining({ backgroundColor: ACT.primary.backgroundColor })])
-    );
-
-    // 확인 칸 열림: 곡률 9(infoCard) + panelLit, 로그아웃은 보조(secondary), 탈퇴하기만 주 버튼(primary)
+    // 계정 줄은 목록 줄(채운 주 버튼 아님). 탈퇴 확인 칸: 곡률 9 + panelLit, 탈퇴하기만 주 버튼
+    const signOutRow = screen.getByRole("button", { name: "로그아웃" });
+    expect(JSON.stringify(signOutRow.props.style)).not.toContain(ACT.primary.backgroundColor);
     await fireEvent.press(screen.getByText("회원 탈퇴"));
     const confirmBox = screen.getByTestId("withdraw-confirm");
     expect(confirmBox.props.style).toEqual(
-      expect.objectContaining({
-        borderRadius: theme.radii.infoCard,
-        backgroundColor: theme.colors.panelLit,
-      })
-    );
-    const signOutBtnAfter = screen.getByRole("button", { name: "로그아웃" });
-    expect(signOutBtnAfter.props.style).toEqual(
-      expect.arrayContaining([expect.objectContaining({ backgroundColor: ACT.secondary.backgroundColor })])
+      expect.objectContaining({ borderRadius: theme.radii.infoCard, backgroundColor: theme.colors.panelLit })
     );
     const withdrawBtn = screen.getByRole("button", { name: "탈퇴하기" });
     expect(withdrawBtn.props.style).toEqual(

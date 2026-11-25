@@ -11,6 +11,7 @@ import * as api from "../api";
 import type { MyCollectionPage, MyCollectionPost, MyProfile } from "../api";
 import { FAKE_PROFILE, fakePage, fakePost } from "../__fakes__/myCollectionApi";
 import { MyCollectionScreen } from "../MyCollectionScreen";
+import { MeHeaderActions } from "../ProfileHeader";
 import { MY_TEXT, emitProfileSaved } from "../useMyCollection";
 import { INBOX_TEXT, InboxBell, inboxLink, resetInboxUnreadForTest } from "../InboxBell";
 
@@ -104,7 +105,13 @@ function cardIds(): string[] {
 }
 
 async function show() {
-  const view = await render(<MyCollectionScreen />);
+  // 탭 머리(headerRight)의 종·설정 + 화면 본문 — C-90부터 설정은 머리 오른쪽에 있다
+  const view = await render(
+    <>
+      <MeHeaderActions />
+      <MyCollectionScreen />
+    </>
+  );
   await waitFor(() => expect(fetchMyPosts).toHaveBeenCalled());
   await act(async () => undefined);
   return view;

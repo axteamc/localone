@@ -371,7 +371,7 @@ describe("VISIT-1b-P2 library news", () => {
     expect(screen.queryByText("서버에 연결하지 못했어요.")).toBeNull();
     // 인기 칸·지도는 그대로
     expect(await within(screen.getByTestId("popular-books")).findByText("소년이 온다")).toBeTruthy();
-    expect(screen.queryByText("인기 도서를 불러오지 못했어요.")).toBeNull();
+    expect(screen.queryByText("추천 도서를 불러오지 못했어요.")).toBeNull();
     await fireEvent.press(news().getByText("↻ 새로고침"));
     expect(await news().findByLabelText("글1")).toBeTruthy();
   });

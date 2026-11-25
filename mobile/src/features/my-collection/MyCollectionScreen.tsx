@@ -40,7 +40,7 @@ export function MyCollectionScreen() {
     // 로그인 복원 중: 아무것도 부르지 않고 빈 모양만
     return (
       <View style={styles.screen}>
-        <ProfileHeader state={{ kind: "loading" }} onEdit={() => undefined} onRetry={() => undefined} onSettings={() => undefined} />
+        <ProfileHeader state={{ kind: "loading" }} onEdit={() => undefined} onRetry={() => undefined} />
         <CardSkeleton />
       </View>
     );
@@ -101,7 +101,6 @@ export function MyCollectionScreen() {
           onEdit={() => router.push("/me/edit")} // Y2-1
           onRetry={my.retryProfile}
           // 설정 → 설정·로그아웃(auth.md AUTH-2 G6). 이 머리는 로그인했을 때만 보인다
-          onSettings={() => router.push("/settings")}
         />
         <VisitedLibraries
           key={my.userId}

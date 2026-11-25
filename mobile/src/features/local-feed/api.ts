@@ -130,6 +130,16 @@ export function withdrawPost(
   return send(`posts/${encodeURIComponent(postId)}/withdraw`, { method: "POST" }, signal);
 }
 
+/** #72 `PATCH /api/v1/posts/{post_id}` — 본문·이미지 위 글자만(C-91). 보낸 칸만, null은 비움. 응답은 #27 상세 */
+export type PostEditInput = { overlay_text?: string | null; body?: string | null };
+export function editPost(postId: string, patch: PostEditInput): Promise<Post> {
+  return send(`posts/${encodeURIComponent(postId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+}
+
 // ─────────── LOCAL-2 (contracts/local-feed.md LOCAL-2 C2·C3) ───────────
 
 /** 피드 카드 한 장(#26·#28). 작성자·공감 수·본문은 없다(H4) */

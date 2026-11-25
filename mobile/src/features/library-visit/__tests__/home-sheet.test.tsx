@@ -127,40 +127,24 @@ describe("VISIT-1b-P1 home sheet", () => {
     spy.mockRestore();
   });
 
-  test("popular uses first frequent library", async () => {
+  test("popular asks national (YES24) regardless of frequent or nearest library (P2, Y-4 A안)", async () => {
     await openHome();
-    expect(await popular().findByText("정독도서관 · 최근 30일 대출")).toBeTruthy();
-    expect(popular().queryByText("출처: YES24")).toBeNull();
-    expect(m.getFrequentLibraries).toHaveBeenCalledWith(3);
-    expect(m.fetchRecommendations).toHaveBeenLastCalledWith(101, expect.anything());
-    // 방문 기록을 읽기 전에 전국으로 먼저 묻지 않는다
-    expect(m.fetchRecommendations.mock.calls.every((c) => c[0] === 101)).toBe(true);
+    await popular().findByText("소년이 온다");
+    expect(m.fetchRecommendations).toHaveBeenCalled();
+    // 도서관 기준으로 묻지 않는다 — 늘 전국(서버가 YES24 → 실패 시 정보나루 전국)
+    expect(m.fetchRecommendations.mock.calls.every((c) => c[0] === undefined)).toBe(true);
+    expect(popular().getByText("요즘 많이 읽는 책")).toBeTruthy();
   });
 
-  test("popular falls back to nearest then national", async () => {
-    m.getFrequentLibraries.mockResolvedValue([]);
-    const nearest = actual.FAKE_LIBRARIES[0]!;
-    await openHome();
-    await waitFor(() => expect(m.fetchRecommendations).toHaveBeenLastCalledWith(nearest.id, expect.anything()));
-    await screen.unmount();
-
-    // 주변에도 도서관이 없으면 기준 없이(전국)
-    m.fetchRecommendations.mockClear();
-    m.fetchLibrariesNearby.mockResolvedValue({ mode: "nearby", radius_km: 3, dtl_region: null, q: null, items: [] });
+  test("series volumes are left out of the home row (P2)", async () => {
     m.fetchRecommendations.mockResolvedValue({
       ...actual.FAKE_RECOMMENDATIONS,
-      scope: "national",
-      library_id: null,
-      basis_label: "전국 · 최근 30일 대출",
-      books: [{ ...book(1), source: "yes24" }],
+      books: [{ ...book(1), title: "화산귀환 10" }, { ...book(2), title: "아몬드" }, { ...book(3), title: "토지 3권" }],
     });
     await openHome();
-    expect(await popular().findByText("전국 · 최근 30일 대출")).toBeTruthy();
-    expect(popular().queryByText("출처: YES24")).toBeNull();
-    await screen.findByText("가까운 곳에서 도서관을 찾지 못했어요.");
-    const last = m.fetchRecommendations.mock.calls.at(-1)!;
-    expect(last[0]).toBeUndefined();
-    expect(m.fetchRecommendations.mock.calls.some((c) => c[0] !== undefined)).toBe(false);
+    await popular().findByText("아몬드");
+    expect(popular().getAllByTestId("popular-book")).toHaveLength(1);
+    expect(popular().queryByText("화산귀환 10")).toBeNull();
   });
 
   test("national YES24 recommendations show one attribution for the section", async () => {
@@ -218,7 +202,7 @@ describe("VISIT-1b-P1 home sheet", () => {
       new actual.ApiCallError(503, "PROVIDER_UNAVAILABLE", "정보를 가져오지 못했어요. 다시 시도해 주세요.")
     );
     await openHome();
-    expect(await popular().findByText("인기 도서를 불러오지 못했어요.")).toBeTruthy();
+    expect(await popular().findByText("추천 도서를 불러오지 못했어요.")).toBeTruthy();
     expect(screen.queryByText("정보를 가져오지 못했어요. 다시 시도해 주세요.")).toBeNull(); // 서버 원문은 안 보임
     // 다른 칸·지도는 그대로
     expect(screen.queryByText("소식을 불러오지 못했어요.")).toBeNull();
@@ -235,7 +219,7 @@ describe("VISIT-1b-P1 home sheet", () => {
   test("popular empty message", async () => {
     m.fetchRecommendations.mockResolvedValue({ ...actual.FAKE_RECOMMENDATIONS, books: [] });
     await openHome();
-    expect(await popular().findByText("이 동네 인기 도서를 아직 모으지 못했어요.")).toBeTruthy();
+    expect(await popular().findByText("아직 추천할 책을 모으지 못했어요.")).toBeTruthy();
     expect(popular().queryAllByTestId("popular-book")).toHaveLength(0);
   });
 

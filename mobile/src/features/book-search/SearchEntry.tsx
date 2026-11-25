@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
 import { RecommendationAttribution } from "../../lib/RecommendationAttribution";
-import { WebHorizontalControls, useWebHorizontalScroll } from "../../lib/WebHorizontalControls";
+import { GlassArrows, useHorizontalScroll } from "../../lib/HorizontalArrows";
 import { createLatestRunner } from "../../lib/latest";
 import { fetchRecommendations, type RecommendationResponse } from "../../lib/publicApi";
 import { actionColors, cardSurface, theme, type } from "../../theme";
@@ -37,7 +37,7 @@ export function SearchEntry({ onOpenBook }: { onOpenBook(isbn13: string): void }
     books: [],
   });
   const recent = recentState.owner === userId ? recentState.books : [];
-  const recentScroll = useWebHorizontalScroll(recent.length > 0);
+  const recentScroll = useHorizontalScroll(recent.length > 0);
   const currentUser = useRef(userId);
   currentUser.current = userId;
   const loadSeq = useRef(0); // 가장 마지막에 시작한 읽기만 화면에 반영한다
@@ -110,9 +110,9 @@ export function SearchEntry({ onOpenBook }: { onOpenBook(isbn13: string): void }
                   전체 삭제
                 </Text>
               </Pressable>
-              <WebHorizontalControls label="최근 본 도서" {...recentScroll.edges} onMove={recentScroll.onMove} />
             </View>
           </View>
+          <View>
           <ScrollView
             {...recentScroll.scrollProps}
             horizontal
@@ -137,6 +137,8 @@ export function SearchEntry({ onOpenBook }: { onOpenBook(isbn13: string): void }
               </View>
             ))}
           </ScrollView>
+          <GlassArrows label="최근 본 도서" {...recentScroll.edges} centerY={RECENT_PILL_CENTER} onMove={recentScroll.onMove} />
+          </View>
         </View>
       )}
 
@@ -196,6 +198,8 @@ export function SearchEntry({ onOpenBook }: { onOpenBook(isbn13: string): void }
   );
 }
 
+/** 최근 본 도서 칩 높이(위아래 5 + 글자 20 + 테두리 2)의 가운데 — 유리 ‹ › 세로 자리 */
+const RECENT_PILL_CENTER = 16;
 const c = theme.colors;
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({

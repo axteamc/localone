@@ -1,15 +1,15 @@
-// "이 동네 인기 도서" 옆으로 넘기는 한 줄 (계약서 library-visit.md VISIT-1b W1·W2·W7·W10, 예외 #1·#2-d)
+// "요즘 많이 읽는 책"(2026-11-25 P2, 이전 "이 동네 인기 도서") 옆으로 넘기는 한 줄 (계약서 library-visit.md VISIT-1b W1·W2·W7·W10, 예외 #1·#2-d)
 import React, { useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { RecommendationAttribution } from "../../lib/RecommendationAttribution";
-import { WebHorizontalControls, useWebHorizontalScroll } from "../../lib/WebHorizontalControls";
+import { GlassArrows, useHorizontalScroll } from "../../lib/HorizontalArrows";
 import { theme, type as T } from "../../theme";
 import type { Book } from "./deps";
 
 const TEXT = {
-  title: "이 동네 인기 도서",
-  empty: "이 동네 인기 도서를 아직 모으지 못했어요.",
-  error: "인기 도서를 불러오지 못했어요.",
+  title: "요즘 많이 읽는 책",
+  empty: "아직 추천할 책을 모으지 못했어요.",
+  error: "추천 도서를 불러오지 못했어요.",
   reload: "↻ 새로고침",
 };
 
@@ -27,7 +27,7 @@ const LOADING_SLOTS = 5;
 
 export function PopularBooksRow(props: PopularBooksRowProps) {
   const { status, basisLabel, books, onPressBook, onReload } = props;
-  const scroll = useWebHorizontalScroll(status === "ready");
+  const scroll = useHorizontalScroll(status === "ready");
 
   return (
     <View testID="popular-books">
@@ -44,7 +44,6 @@ export function PopularBooksRow(props: PopularBooksRowProps) {
             </Text>
           ) : null}
         </View>
-        <WebHorizontalControls label={TEXT.title} {...scroll.edges} onMove={scroll.onMove} />
       </View>
 
       {status === "error" ? (
@@ -59,6 +58,7 @@ export function PopularBooksRow(props: PopularBooksRowProps) {
           <Text style={styles.messageText}>{TEXT.empty}</Text>
         </View>
       ) : (
+        <View>
         <ScrollView
           {...scroll.scrollProps}
           horizontal
@@ -90,6 +90,9 @@ export function PopularBooksRow(props: PopularBooksRowProps) {
                 </Pressable>
               ))}
         </ScrollView>
+        {/* 책 위 좌우 유리 버튼(표지 높이 가운데) */}
+        <GlassArrows label={TEXT.title} {...scroll.edges} centerY={COVER_H / 2} onMove={scroll.onMove} />
+        </View>
       )}
     </View>
   );

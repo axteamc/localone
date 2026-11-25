@@ -56,6 +56,7 @@ export const TEXT = {
   keepWriting: "계속 쓰기",
   discard: "버리기",
   openBody: "+ 감상 쓰기",
+  editMenu: "게시물 수정", // C-91
   withdrawMenu: "게시물 내리기",
   withdrawTitle: "이 게시물을 내릴까요? 내리면 피드와 링크에서 바로 사라져요.",
   cancel: "취소",
@@ -149,9 +150,12 @@ export function PostImage({ kind, imageUrl, color, text, pos, testID }: PreviewP
 export function PostMoreMenu({
   post,
   onWithdrawn,
+  onEdit,
 }: {
   post: Pick<Post, "id" | "is_mine">;
   onWithdrawn: () => void;
+  /** 주면 내 글 메뉴 맨 위에 "게시물 수정"(C-91) */
+  onEdit?: () => void;
 }) {
   const [open, setOpen] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -189,16 +193,30 @@ export function PostMoreMenu({
       {open ? (
         <View style={styles.menu}>
           {post.is_mine ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                setOpen(false);
-                setConfirming(true);
-              }}
-              style={styles.menuItem}
-            >
-              <Text style={styles.menuDanger}>{TEXT.withdrawMenu}</Text>
-            </Pressable>
+            <>
+              {onEdit ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setOpen(false);
+                    onEdit();
+                  }}
+                  style={styles.menuItem}
+                >
+                  <Text style={styles.menuPlain}>{TEXT.editMenu}</Text>
+                </Pressable>
+              ) : null}
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setOpen(false);
+                  setConfirming(true);
+                }}
+                style={styles.menuItem}
+              >
+                <Text style={styles.menuDanger}>{TEXT.withdrawMenu}</Text>
+              </Pressable>
+            </>
           ) : (
             <Text style={styles.menuEmpty}>할 수 있는 일이 없어요</Text>
           )}
@@ -1555,6 +1573,7 @@ const styles = StyleSheet.create({
   },
   menuItem: { paddingHorizontal: 14, paddingVertical: 12 },
   menuDanger: { color: C.loanOut, fontWeight: "500" },
+  menuPlain: { color: C.text, fontWeight: "500" },
   menuEmpty: { paddingHorizontal: 14, paddingVertical: 12, color: C.inkMuted },
   sheetBackdrop: { justifyContent: "flex-end", backgroundColor: C.shadowDeep },
   sheet: {

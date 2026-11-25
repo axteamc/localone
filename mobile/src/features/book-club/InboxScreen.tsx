@@ -10,6 +10,8 @@ import { createLatestRunner } from "../../lib/latest";
 import { panel, theme, type as T } from "../../theme";
 import { fetchInbox, fetchMyRestrictions, markAllRead, type InboxItem, type Restriction } from "./api";
 import { RestrictionNotice } from "./RestrictionNotice";
+import { SettingsIcon } from "../../theme/Icons";
+import { NotificationSettings } from "../settings/NotificationSettings";
 
 const C = theme.colors;
 const KEEP_DAYS = 90; // K2-O8 보관 90일
@@ -17,6 +19,7 @@ const DAY = 24 * 60 * 60 * 1000;
 
 export const INBOX_TEXT = {
   header: "알림함",
+  settings: "알림 설정",
   empty: "아직 받은 안내가 없어요. 모임에 참가하면 일정 안내가 여기에 모여요.",
   loadFailed: "알림함을 불러오지 못했어요.",
   retry: "다시 해 보기",
@@ -59,6 +62,7 @@ function InboxView() {
   const signedIn = status === "signedIn";
   const account = signedIn ? userId : null;
   const [load, setLoad] = useState<Load>({ state: "loading" });
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [items, setItems] = useState<InboxItem[]>([]);
   const [restrictions, setRestrictions] = useState<Restriction[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -136,15 +140,37 @@ function InboxView() {
   }
 
   const goBack = () => (router.canGoBack() ? router.back() : router.replace("/"));
+  // C-90: ‹는 글자(28/30)라 제목(17)과 기준선이 어긋났다 → 선 두 개로 그린 꺾쇠를 44×44 가운데에.
+  // 오른쪽 위 설정 아이콘 → 머리 바로 아래로 내려오는 알림 설정 작은 창(설정 화면 "알림"과 같은 부품)
   const head = (
-    <View style={[styles.head, { paddingTop: 10 + insets.top }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={goBack} hitSlop={10}>
-        <Text style={styles.back}>‹</Text>
-      </Pressable>
-      <Text style={styles.headTitle} numberOfLines={1}>
-        {INBOX_TEXT.header}
-      </Text>
-      <View style={styles.headSide} />
+    <View style={styles.headWrap}>
+      <View style={[styles.head, { paddingTop: 4 + insets.top }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={goBack} style={styles.iconBtn}>
+          <View style={styles.chevron} />
+        </Pressable>
+        <Text style={styles.headTitle} numberOfLines={1}>
+          {INBOX_TEXT.header}
+        </Text>
+        {signedIn ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={INBOX_TEXT.settings}
+            accessibilityState={{ expanded: settingsOpen }}
+            onPress={() => setSettingsOpen((v) => !v)}
+            style={styles.iconBtn}
+            testID="inbox-settings"
+          >
+            <SettingsIcon size={18} color={C.inkStrong} />
+          </Pressable>
+        ) : (
+          <View style={styles.iconBtn} />
+        )}
+      </View>
+      {settingsOpen && signedIn ? (
+        <View style={styles.dropdown} testID="inbox-settings-panel">
+          <NotificationSettings />
+        </View>
+      ) : null}
     </View>
   );
 
@@ -222,16 +248,39 @@ const styles = StyleSheet.create({
   head: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 10,
-    paddingHorizontal: 16,
-    paddingBottom: 10,
+    gap: 4,
+    paddingHorizontal: 6,
+    paddingBottom: 4,
     backgroundColor: panel.backgroundColor,
     borderBottomWidth: 1,
     borderColor: panel.borderColor,
   },
-  back: { fontSize: 28, lineHeight: 30, color: C.text },
+  headWrap: { zIndex: 2 },
+  iconBtn: { width: 44, height: 44, alignItems: "center", justifyContent: "center" },
+  // 꺾쇠: 위·왼쪽 테두리만 있는 사각형을 -45° 돌림(10×10, 굵기 2)
+  chevron: {
+    width: 11,
+    height: 11,
+    borderLeftWidth: 2,
+    borderTopWidth: 2,
+    borderColor: C.text,
+    transform: [{ rotate: "-45deg" }],
+    marginLeft: 4,
+  },
   headTitle: { ...T.name, flex: 1 },
-  headSide: { width: 20 },
+  // 시안 값: 폭 260, 곡률 9 — 머리 오른쪽 아래에 붙어 내려온다
+  dropdown: {
+    position: "absolute",
+    top: "100%",
+    right: 8,
+    width: 280,
+    backgroundColor: C.panelLit,
+    borderWidth: 1,
+    borderColor: C.seamHairline,
+    borderRadius: theme.radii.infoCard,
+    boxShadow: `0 4px 12px 0 ${C.shadowSoft}`,
+    overflow: "hidden",
+  },
   center: { flex: 1, alignItems: "center", justifyContent: "center", gap: 12, padding: 24 },
   body: { fontSize: 14, color: C.text, lineHeight: 20, textAlign: "center" },
   button: { borderWidth: 1, borderColor: C.seamHairline, borderRadius: theme.radii.control, minHeight: 44, justifyContent: "center", paddingHorizontal: 16 },

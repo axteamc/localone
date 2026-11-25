@@ -1,9 +1,13 @@
 // VISIT-4-P2 "다녀왔어요" — contracts/local-feed.md VISIT-4 V4-1·V4-3·V4-6·V4-7, V4-O1·V4-O2·V4-O4, P4 골격, 명세 결정 1·2
 // 누르면 바로 "나만 보기"로 남고(#36 private), 아래 한 줄 안내의 "피드에도 남기기"로 공개(#36 public + expected_stamp_id).
-// 남긴 뒤에는 버튼 대신 "오늘 다녀감 · …" + ⋯ 메뉴에서 바꾼다. 기기 방문 기록(lib/visits)은 건드리지 않는다(V4-7).
+// 남긴 뒤에는 버튼 대신 "오늘 다녀감 · 나만 보기 ▾" — 그 글자를 누르면 바로 아래 작은 메뉴에서 바꾼다
+// (2026-11-25 C-89, 시안 실기기개선_P2-P4 #el-visithead 후보 A. 이전: 옆 ⋯ → 아래에서 올라오는 시트). 기기 방문 기록(lib/visits)은 건드리지 않는다(V4-7).
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Dimensions, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+
+const windowWidth = () => Dimensions.get("window").width;
+type ViewType = React.ComponentRef<typeof Pressable>;
 import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
 import { actionColors, type Theme } from "../../theme";
@@ -27,9 +31,9 @@ export const STAMP_TEXT = {
   savedPublic: "피드에 남겼어요",
   changedPrivate: "나만 보기로 바꿨어요",
   labelPrivate: "오늘 다녀감 · 나만 보기",
-  labelPublic: "오늘 다녀감 · 피드에 남김",
-  menuLabel: "다녀왔어요 메뉴",
-  menuToPublic: "피드에 남기기로 바꾸기",
+  labelPublic: "오늘 다녀감 · 피드에 공개",
+  menuLabel: "공개 범위 바꾸기",
+  menuToPublic: "피드에 공개",
   menuToPrivate: "나만 보기로 바꾸기",
   close: "닫기",
   failed: "남기지 못했어요. 다시 눌러 주세요",
@@ -52,6 +56,8 @@ export function StampButton({ libraryId }: { libraryId: number }) {
   const [today, setToday] = useState<TodayStamp | null>(null);
   const [read, setRead] = useState<ReadState>("idle");
   const [menu, setMenu] = useState(false);
+  const [anchor, setAnchor] = useState<{ right: number; top: number } | null>(null); // 글자 바로 아래(창 기준)
+  const labelRef = useRef<ViewType>(null);
   const [loginSheet, setLoginSheet] = useState(false);
   const readRunner = useRef(createLatestRunner()).current;
   const scopeRef = useRef<Scope>({ libraryId, userId: signedInUser, alive: true, pending: false });
@@ -148,21 +154,31 @@ export function StampButton({ libraryId }: { libraryId: number }) {
     void put(scopeRef.current, stamp.visibility === "public" ? "private" : "public", "change", stamp.id);
   };
 
+  const openMenu = () => {
+    // 창 안의 글자 위치를 재서 그 바로 아래에 연다. 재지 못하면(시험·드문 기기) 오른쪽 위 기본 자리
+    setMenu(true);
+    labelRef.current?.measureInWindow?.((x, y, w, h) => {
+      if (w > 0) setAnchor({ right: Math.max(8, windowWidth() - (x + w)), top: y + h + 4 });
+    });
+  };
+
   const stamp = today?.stamped ? today.stamp : null;
   return (
     <View style={styles.wrap} testID="stamp-control">
       {stamp ? (
         <>
-          <Text style={styles.label} numberOfLines={1} testID="stamp-label">
-            {stamp.visibility === "public" ? STAMP_TEXT.labelPublic : STAMP_TEXT.labelPrivate}
-          </Text>
           <Pressable
+            ref={labelRef}
             accessibilityRole="button"
             accessibilityLabel={STAMP_TEXT.menuLabel}
-            onPress={() => setMenu(true)}
-            style={styles.more}
+            accessibilityState={{ expanded: menu }}
+            onPress={openMenu}
+            style={styles.pullDown}
           >
-            <Text style={styles.moreText}>⋯</Text>
+            <Text style={styles.label} numberOfLines={1} testID="stamp-label">
+              {stamp.visibility === "public" ? STAMP_TEXT.labelPublic : STAMP_TEXT.labelPrivate}
+            </Text>
+            <Text style={styles.caret}>▾</Text>
           </Pressable>
         </>
       ) : (
@@ -178,22 +194,19 @@ export function StampButton({ libraryId }: { libraryId: number }) {
 
       {menu && stamp ? (
         <Modal transparent animationType="fade" onRequestClose={() => setMenu(false)}>
-          <View style={styles.backdrop}>
-            <View style={styles.sheet} testID="stamp-menu">
-              <Pressable accessibilityRole="button" onPress={onMenuFlip} style={styles.row}>
-                <Text style={styles.rowText}>
+          {/* 바깥을 누르면 닫힌다. 메뉴는 글자 바로 아래 오른쪽 맞춤(시트 아님) */}
+          <Pressable accessibilityLabel={STAMP_TEXT.close} style={styles.dropScrim} onPress={() => setMenu(false)}>
+            <View
+              style={[styles.drop, anchor ? { position: "absolute", right: anchor.right, top: anchor.top } : styles.dropFallback]}
+              testID="stamp-menu"
+            >
+              <Pressable accessibilityRole="menuitem" onPress={onMenuFlip} style={styles.dropItem}>
+                <Text style={styles.dropText}>
                   {stamp.visibility === "public" ? STAMP_TEXT.menuToPrivate : STAMP_TEXT.menuToPublic}
                 </Text>
               </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setMenu(false)}
-                style={({ pressed }) => [styles.secondary, pressed && ACT.secondaryPressed]}
-              >
-                <Text style={styles.secondaryText}>{STAMP_TEXT.close}</Text>
-              </Pressable>
             </View>
-          </View>
+          </Pressable>
         </Modal>
       ) : null}
 
@@ -255,8 +268,22 @@ const makeStyles = (theme: Theme) => {
   buttonPressed: { transform: [{ translateY: 1 }], borderBottomWidth: 1 },
   buttonText: { fontSize: 14, fontWeight: "500", color: C.text },
   label: { fontSize: 12, color: C.inkMuted, flexShrink: 1 },
-  more: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
-  moreText: { fontSize: 18, lineHeight: 20, color: C.inkMuted },
+  pullDown: { flexDirection: "row", alignItems: "center", gap: 4, minHeight: 44, flexShrink: 1 },
+  caret: { fontSize: 11, color: C.text },
+  dropScrim: { flex: 1 },
+  // 시안 #el-visithead A: 최소 폭 140, 곡률 9, 항목 높이 44
+  drop: {
+    minWidth: 140,
+    backgroundColor: C.panelLit,
+    borderWidth: 1,
+    borderColor: C.seamHairline,
+    borderRadius: theme.radii.infoCard,
+    paddingVertical: 4,
+    boxShadow: `0 2px 10px 0 ${C.shadowSoft}`,
+  },
+  dropFallback: { position: "absolute", right: 16, top: 160 },
+  dropItem: { minHeight: 44, justifyContent: "center", paddingHorizontal: 14 },
+  dropText: { fontSize: 14, fontWeight: "500", color: C.text },
   backdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: C.shadowDeep },
   sheet: {
     backgroundColor: C.panelLit,

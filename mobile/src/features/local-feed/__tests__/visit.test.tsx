@@ -321,12 +321,15 @@ describe("들어올 때", () => {
 });
 
 describe("머리", () => {
-  test("header shows name then distance and hours with menu on the same row", async () => {
+  test("header puts ‹ and the single ⋯ on the top row, then name, then distance and hours (C-89)", async () => {
     await enter({ distanceM: 320, more: () => <Text testID="more">⋯</Text> });
     expect(await screen.findByText("정독도서관")).toBeTruthy();
+    const top = screen.getByTestId("visit-header-top-row");
+    expect(within(top).getByLabelText("지도 홈으로 돌아가기")).toBeTruthy();
+    expect(within(top).getByTestId("more")).toBeTruthy(); // 이름 길이와 상관없이 ‹와 같은 줄
     const row = screen.getByTestId("visit-header-info-row");
     expect(within(row).getByTestId("visit-header-info").props.children).toEqual(["320m · ", "09:00–18:00"]);
-    expect(within(row).getByTestId("more")).toBeTruthy();
+    expect(within(row).queryByTestId("more")).toBeNull();
   });
 
   test("header hides distance when not passed", async () => {

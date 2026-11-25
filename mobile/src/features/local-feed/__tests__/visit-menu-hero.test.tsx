@@ -1,4 +1,4 @@
-// 방문 페이지 ⋯ 메뉴의 홈 처음 주인공 설정 (L6 2026-11-19 D 결정 "방문 ⋯에 같이 추가")
+// 방문 페이지 ⋯ 메뉴: 홈 처음 주인공 설정은 2026-11-25 설정 화면으로 옮겼다(C-89). 여기는 빠졌는지만 본다
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import React from "react";
@@ -20,13 +20,6 @@ const getDefaultLibrary = jest.mocked(visits.getDefaultLibrary);
 
 const LIB = { id: 103, name: "남산도서관", homepage: null };
 
-async function openMenu(onNotice = jest.fn<(t: string) => void>()) {
-  await render(<VisitMenu library={LIB} onNotice={onNotice} />);
-  await fireEvent.press(screen.getByLabelText("도서관 메뉴"));
-  await screen.findByTestId("visit-menu-card");
-  return onNotice;
-}
-
 beforeEach(() => {
   jest.clearAllMocks();
   getDefaultLibrary.mockResolvedValue(null);
@@ -34,36 +27,16 @@ beforeEach(() => {
   setHeroRule.mockResolvedValue(undefined);
 });
 
-describe("VISIT-2 menu: home first-hero setting (L6)", () => {
-  test("shows the same title and two choices as the home long-press menu, nearest marked basic and selected", async () => {
-    await openMenu();
-    expect(screen.getByText("홈을 열면 처음 크게 보일 도서관")).toBeTruthy();
-    expect(screen.getByText("가장 가까운 곳")).toBeTruthy();
-    expect(screen.getByText("최근 방문한 곳")).toBeTruthy();
-    await waitFor(() =>
-      expect(screen.getByTestId("visit-menu-hero-nearest").props.accessibilityState).toEqual({ disabled: false, selected: true })
-    );
-    expect(screen.getByTestId("visit-menu-hero-recent").props.accessibilityState).toEqual({ disabled: false, selected: false });
-    // 기본값 켜기 줄은 그대로 맨 위에 있다
-    expect(screen.getByText(MENU_TEXT.turnOn)).toBeTruthy();
-  });
-
-  test("choosing recent saves to the shared device key, closes and shows a notice", async () => {
-    const onNotice = await openMenu();
-    await waitFor(() => expect(screen.getByTestId("visit-menu-hero-recent").props.accessibilityState.disabled).toBe(false));
-    await fireEvent.press(screen.getByTestId("visit-menu-hero-recent"));
-    expect(setHeroRule).toHaveBeenCalledWith("recent");
-    await waitFor(() => expect(onNotice).toHaveBeenCalledWith("홈을 열면 최근 방문한 곳을 크게 보여 줘요"));
-    expect(screen.queryByTestId("visit-menu-card")).toBeNull();
-  });
-
-  test("choosing the current setting again only closes the menu", async () => {
-    getHeroRule.mockResolvedValue("recent");
-    const onNotice = await openMenu();
-    await waitFor(() => expect(screen.getByTestId("visit-menu-hero-recent").props.accessibilityState.selected).toBe(true));
-    await fireEvent.press(screen.getByTestId("visit-menu-hero-recent"));
+describe("VISIT-2 menu after C-89: home first-hero setting moved to settings", () => {
+  test("menu has only open-here-first and homepage, no first-hero group", async () => {
+    await render(<VisitMenu library={{ ...LIB, homepage: "https://lib.example.org" }} onNotice={jest.fn()} />);
+    await fireEvent.press(screen.getByLabelText("도서관 메뉴"));
+    await screen.findByTestId("visit-menu-card");
+    await waitFor(() => expect(screen.getByText(MENU_TEXT.turnOn)).toBeTruthy());
+    expect(screen.getByText(MENU_TEXT.homepage)).toBeTruthy();
+    expect(screen.queryByText("홈을 열면 처음 크게 보일 도서관")).toBeNull();
+    expect(screen.queryByTestId("visit-menu-hero-recent")).toBeNull();
+    expect(getHeroRule).not.toHaveBeenCalled();
     expect(setHeroRule).not.toHaveBeenCalled();
-    expect(onNotice).not.toHaveBeenCalled();
-    expect(screen.queryByTestId("visit-menu-card")).toBeNull();
   });
 });

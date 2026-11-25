@@ -10,6 +10,7 @@ import { LoansSection, REMINDERS_DENIED, WEB_NO_REMINDERS } from "../LoansSectio
 import * as platform from "../notifications.platform";
 import { registerSignOutCleanup } from "../../../auth/AuthProvider";
 import { REMINDER_TITLE, clearLoanReminders, fetchAllOnLoan, reminderPlan, syncLoanReminders } from "../reminders";
+import { setLoanRemindersEnabled } from "../reminderPref";
 
 // @types/node 없이 쓰는 최소 타입(소스 검사용, search.test.tsx와 같은 방식)
 declare const __dirname: string;
@@ -136,6 +137,19 @@ describe("LOAN-3-P1", () => {
     ]);
     // 연체: 하나도 없음
     expect(reminderPlan(loan("a", { due_on: "2026-11-10", d_day: -6, is_overdue: true }), "2026-11-16", EARLY)).toEqual([]);
+  });
+
+  test("turned off in settings: no permission ask, existing loan reminders cleared (C-90)", async () => {
+    await syncLoanReminders([loan("a")], "2026-11-16", EARLY);
+    expect([...mockDevice.scheduled.keys()].some((k) => k.startsWith("loan:"))).toBe(true);
+    await setLoanRemindersEnabled(false);
+    requestPermission.mockClear();
+    const res = await syncLoanReminders([loan("a")], "2026-11-16", EARLY);
+    expect(res).toEqual({ scheduled: 0, skipped: 0, status: "off" });
+    expect(requestPermission).not.toHaveBeenCalled();
+    expect([...mockDevice.scheduled.keys()].filter((k) => k.startsWith("loan:"))).toEqual([]);
+    await setLoanRemindersEnabled(true);
+    expect((await syncLoanReminders([loan("a")], "2026-11-16", EARLY)).status).toBe("scheduled");
   });
 
   test("returned loan has no reminders", () => {
