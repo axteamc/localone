@@ -29,7 +29,19 @@ gcloud run deploy localone-web --source "$STAGE" --region "$REGION" --project "$
   --allow-unauthenticated --port 8080 --quiet
 
 WEB_URL="$(gcloud run services describe localone-web --region "$REGION" --project "$PROJECT" --format='value(status.url)')"
-# 서비스 URL 두 형식 중 번들·브라우저가 쓰는 형식(프로젝트번호 기반)도 허용
+# Cloud Run 서비스 URL은 두 형식(해시형 status.url, 프로젝트번호형)이 모두 열린다. 브라우저는 프로젝트번호형으로
+# 여는 일이 많으므로 둘 다 허용한다(하나만 넣으면 그 주소에서 모든 API가 CORS로 막힌다 — 2026-11-25 장애).
+PROJECT_NUMBER="$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')"
+NUMBER_URL="https://localone-web-$PROJECT_NUMBER.$REGION.run.app"
+ORIGINS="$NUMBER_URL,$WEB_URL"
 gcloud run services update localone-api --region "$REGION" --project "$PROJECT" \
-  --update-env-vars "^|^CORS_ALLOWED_ORIGINS=$WEB_URL" --quiet
-echo "웹: $WEB_URL"
+  --update-env-vars "^|^CORS_ALLOWED_ORIGINS=$ORIGINS" --quiet
+
+# 두 주소 모두 사전 요청(OPTIONS)이 통과하는지 확인
+API_BASE="${API_URL%/}"
+for origin in "$NUMBER_URL" "$WEB_URL"; do
+  code="$(curl -s -o /dev/null -w '%{http_code}' -X OPTIONS "$API_BASE/api/v1/libraries" \
+    -H "Origin: $origin" -H 'Access-Control-Request-Method: GET' -H 'Access-Control-Request-Headers: authorization')"
+  [ "$code" = 200 ] || { echo "CORS 사전 요청 실패($code): $origin"; exit 1; }
+done
+echo "웹: $WEB_URL (CORS 허용: $ORIGINS)"
