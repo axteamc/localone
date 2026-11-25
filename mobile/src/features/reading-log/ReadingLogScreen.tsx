@@ -27,6 +27,7 @@ import { paletteIndexOf } from "../library-visit/direction";
 import { fetchReadingLogs, shelfDate, shelfStore, type ReadingLog, type ReadingStats, type ReadingStatsLibrary } from "./api";
 import { Cover, TEXT as EDITOR_TEXT, Toast, monthDay, styles as base } from "./ReadingLogEditor";
 import { useReadingLogs } from "./useReadingLogs";
+import { BackChevron } from "../../theme/ScreenHeader";
 
 export const TEXT = {
   title: "독서 기록",
@@ -441,7 +442,7 @@ export function ReadingLogScreen() {
     head = (
       <View testID="reading-head" style={styles.head} onLayout={onHeadLayout}>
         <Pressable accessibilityRole="button" accessibilityLabel={TEXT.back} onPress={() => goView("libraries")} hitSlop={8} style={styles.backBtn}>
-          <Text style={styles.backText}>‹</Text>
+          <BackChevron color={C.inkStrong} />
         </Pressable>
         <Text style={[styles.headTitle, base.flex]} numberOfLines={1}>{view.name}</Text>
         <Text style={base.sub}>{`${liveCount}권`}</Text>
@@ -626,7 +627,7 @@ const styles = StyleSheet.create({
   headTitle: { fontSize: 17, fontWeight: "500", color: C.inkStrong },
   toggleBtn: { minHeight: 36, paddingVertical: 6, paddingHorizontal: 12 },
   toggleText: { fontSize: 13 },
-  backBtn: { minWidth: 36, minHeight: 36, alignItems: "center", justifyContent: "center" },
+  backBtn: { minWidth: 44, minHeight: 44, alignItems: "center", justifyContent: "center" },
   backText: { fontSize: 24, lineHeight: 26, color: C.inkStrong },
   statLine: { marginTop: -8 },
   statNum: { color: C.text },

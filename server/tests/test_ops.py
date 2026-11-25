@@ -460,3 +460,58 @@ def test_restore_template_race_leaves_one_published_and_audits_only_success(
         db_engine, "SELECT id, status FROM posts WHERE reading_log_id = :log ORDER BY status", log=log,
     )] == [(old_id, "hidden"), (second.json()["id"], "published")]
     assert actions(db_engine) == before_actions
+
+
+# ─────────── C-92 스탬프(한마디) 신고·숨김 — 게시물과 같은 길 ───────────
+
+
+def seed_stamp(db_engine, user=B, visibility="public", body="2층 창가 햇살 좋아요") -> str:
+    from app.common import today_kst  # 서버 서울 날짜(DB CURRENT_DATE는 UTC라 아침에 하루 어긋난다)
+
+    return str(one(db_engine, "INSERT INTO visit_stamps (user_id, library_id, stamped_on, visibility, body) "
+                              "VALUES (:u, :l, :d, :v, :b) RETURNING id",
+                   u=user, l=LIB_1, d=today_kst(), v=visibility, b=body))
+
+
+def feed_stamp_ids(client, headers=None) -> list[str]:
+    items = client.get(f"/api/v1/libraries/{LIB_1}/feed", headers=headers or {}).json()["items"]
+    return [i["stamp"]["id"] for i in items if i["kind"] == "stamp"]
+
+
+def test_stamp_report_hide_restore_like_post(client, ops, db_engine):
+    stamp_id = seed_stamp(db_engine)
+    report = {"target_kind": "stamp", "target_id": stamp_id, "reason": "abuse"}
+    assert client.post("/api/v1/reports", json=report, headers=ops["A"]).status_code == 201
+    assert client.post("/api/v1/reports", json=report, headers=ops["B"]).status_code == 422  # 내 글은 신고 못 함
+    listed, = client.get("/api/v1/ops/reports", headers=ops["A"]).json()["items"]
+    assert (listed["target_kind"], listed["target_status"], listed["target_preview"]) == (
+        "stamp", "published", "2층 창가 햇살 좋아요")
+    assert client.put(f"/api/v1/stamps/{stamp_id}/bookmark", headers=ops["A"]).status_code == 200
+
+    r = client.post(f"/api/v1/ops/targets/stamp/{stamp_id}/hide", json=REASON, headers=ops["A"])
+    assert r.status_code == 200 and r.json() == {"target_kind": "stamp", "target_id": stamp_id, "status": "hidden"}
+    assert one(db_engine, "SELECT status FROM visit_stamps WHERE id = :i", i=stamp_id) == "hidden"
+    assert one(db_engine, "SELECT status FROM reports WHERE target_id = :i", i=stamp_id) == "actioned"
+    assert [i.target for i in inbox_of(db_engine, B)] == [{"stamp_id": stamp_id}]
+    assert feed_stamp_ids(client) == [] and feed_stamp_ids(client, ops["B"]) == []  # 작성자에게도 피드에서 빠진다
+    assert client.put(f"/api/v1/stamps/{stamp_id}/bookmark", headers=ops["A"]).status_code == 404
+    bookmarks = client.get("/api/v1/me/bookmarks", headers=ops["A"]).json()["items"]
+    assert all(b.get("id") != stamp_id for b in bookmarks)
+    # 본인이 공개 범위를 바꿔도 숨김은 풀리지 않는다
+    sid = client.put(f"/api/v1/libraries/{LIB_1}/stamps/today", json={"visibility": "public"}, headers=ops["B"])
+    assert sid.status_code == 200 and sid.json()["stamp"]["id"] == stamp_id and feed_stamp_ids(client) == []
+    assert client.post("/api/v1/reports", json=report, headers=ops["A"]).status_code == 404  # 숨긴 것은 신고 대상 아님
+
+    r = client.post(f"/api/v1/ops/targets/stamp/{stamp_id}/restore", json=REASON, headers=ops["A"])
+    assert r.json()["status"] == "published"
+    assert feed_stamp_ids(client) == [stamp_id]
+    assert [a.action for a in actions(db_engine)] == ["hide", "restore"]
+
+
+def test_private_stamp_cannot_be_reported_or_hidden(client, ops, db_engine):
+    stamp_id = seed_stamp(db_engine, visibility="private")
+    report = {"target_kind": "stamp", "target_id": stamp_id, "reason": "spam"}
+    assert client.post("/api/v1/reports", json=report, headers=ops["A"]).status_code == 404
+    assert client.post(f"/api/v1/ops/targets/stamp/{stamp_id}/hide", json=REASON, headers=ops["A"]).status_code == 404
+    assert one(db_engine, "SELECT status FROM visit_stamps WHERE id = :i", i=stamp_id) == "published"
+    assert q(db_engine, "SELECT id FROM reports") == [] and actions(db_engine) == []

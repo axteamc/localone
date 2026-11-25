@@ -14,6 +14,7 @@ import { useAuth } from "../../auth/AuthProvider";
 import { createLatestRunner } from "../../lib/latest";
 import { ApiCallError, fetchLibrary, type LibraryDetail } from "../../lib/publicApi";
 import { getDefaultLibrary, recordVisit } from "../../lib/visits";
+import { GLASS_PRESSED, GLASS_SURFACE } from "../../lib/HorizontalArrows";
 import { actionColors, cardSurface, type Theme } from "../../theme";
 import { LibraryLookProvider, lookKit, useLibraryLook, useLook } from "./useLibraryLook";
 import { FOLD_AT, VisitHeader, VisitHeaderFolded } from "./VisitHeader";
@@ -24,11 +25,10 @@ import {
   onStampChanged,
   onStampNotice,
   type FeedItem,
-  type GuestbookItem,
   type ShelfResponse,
 } from "./api";
 import { Bookshelf, SHELF_FADE_HEIGHT, SHELF_HEIGHT } from "./Bookshelf";
-import { ComposeChooser, GUESTBOOK_TEXT, GuestbookComposer, GuestbookLoginSheet } from "./GuestbookComposer";
+import { ComposeChooser } from "./ComposeChooser";
 import { LibraryFeed } from "./LibraryFeed";
 import { StampButton } from "./StampButton";
 import { VisitMenu } from "./VisitMenu";
@@ -53,7 +53,6 @@ export const VISIT_TEXT = {
   loginNeeded: "로그인하면 글을 올릴 수 있어요",
   login: "로그인하기",
   close: "닫기",
-  feedTitle: "이 도서관 이야기", // VISIT-4 시안 피드 머리(왼쪽 제목, 오른쪽 "다녀왔어요")
 } as const;
 
 /** 피드 불러오기(VISIT-3부터 #32 혼합 피드). cursor가 있으면 다음 묶음(LOCAL-2 H2·H13) */
@@ -71,8 +70,9 @@ const itemKey = (item: unknown): string | undefined =>
   feedItemKey(item as FeedItem) ?? (item as { id?: string }).id;
 
 const END_REACHED_PX = 600; // 바닥에서 이만큼 남으면 다음 묶음
-const FAB_SIZE = 64;
+const FAB_SIZE = 52; // C-92 V3-O3: 유리 원 + (책장 넘김 버튼과 같은 유리, 누르는 자리 52)
 const FAB_BOTTOM = SHELF_HEIGHT + 12; // VISIT-3 V3-O3: 책장 바로 위 오른쪽(책장 위 12)
+const POP_GAP = 8; // + 와 작은 카드 사이
 const TOAST_BOTTOM = FAB_BOTTOM + FAB_SIZE + 24; // 한 줄 안내는 + 위에
 
 type LibState =
@@ -132,9 +132,7 @@ function VisitScreenInner({
   const [ment, setMent] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
   const [loginSheet, setLoginSheet] = useState(false);
-  const [chooser, setChooser] = useState(false); // VISIT-3 V3-O3: "+" → 게시물/방명록 고르기
-  const [composer, setComposer] = useState(false);
-  const [gbLogin, setGbLogin] = useState(false);
+  const [chooser, setChooser] = useState(false); // C-92 V3-O3: "+" → 바로 위 작은 카드(게시물/모임)
   // 한 줄 안내. action이 있으면 오른쪽에 글자 버튼(VISIT-4 V4-O1 "피드에도 남기기")
   const [notice, setNotice] = useState<{ text: string; action?: { label: string; run(): void } } | null>(null);
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -329,8 +327,6 @@ function VisitScreenInner({
     setAsking(false);
     setLoginSheet(false);
     setChooser(false);
-    setComposer(false);
-    setGbLogin(false);
     if (libraryId === null) {
       setLib({ kind: "notFound" });
       setFeed({ kind: "empty" }); // 없는 도서관: 피드를 부르지 않는다
@@ -368,16 +364,6 @@ function VisitScreenInner({
     router.push({ pathname: "/posts/new", params: { libraryId: String(libraryId) } });
   };
 
-  // 고르기 창에서 "방명록 남기기": 로그인 확인은 고른 뒤(V3-O3, 예외 #4)
-  const openGuestbook = () => {
-    setChooser(false);
-    if (status !== "signedIn") {
-      setGbLogin(true); // 서버에 묻지 않는다
-      return;
-    }
-    setComposer(true);
-  };
-
   // CLUB-1 K1-O1: 고르기 창에서 "모임 만들기" → 만들기 화면. 로그인 확인은 고른 뒤(방명록과 같은 순서)
   const openClub = () => {
     setChooser(false);
@@ -386,19 +372,6 @@ function VisitScreenInner({
       return;
     }
     router.push({ pathname: "/clubs/new", params: { libraryId: String(libraryId) } });
-  };
-
-  // 올린 방명록은 피드 맨 앞에. 같은 글이 이미 있으면 하나만(V3-9·예외 #3)
-  const onGuestbookPosted = (item: GuestbookItem) => {
-    setComposer(false);
-    showNotice(GUESTBOOK_TEXT.posted);
-    const mine: FeedItem = { kind: "guestbook", guestbook: item };
-    const key = itemKey(mine);
-    setFeed((prev) => {
-      const rest = prev.kind === "items" ? prev.items.filter((p) => itemKey(p) !== key) : [];
-      const nextCursor = prev.kind === "items" ? prev.nextCursor : null;
-      return { kind: "items", items: [mine, ...rest], nextCursor };
-    });
   };
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
@@ -470,16 +443,9 @@ function VisitScreenInner({
             onBack={goBack}
             more={moreNode}
             folded={folded && lib.kind === "ok"}
+            stamp={libraryId !== null ? <StampButton libraryId={libraryId} /> : null}
           />
         )}
-        {libraryId !== null && lib.kind !== "error" ? (
-          <View style={styles.feedHead} testID="visit-feed-head">
-            <Text style={styles.feedTitle} numberOfLines={1}>
-              {VISIT_TEXT.feedTitle}
-            </Text>
-            <StampButton libraryId={libraryId} />
-          </View>
-        ) : null}
         <View style={[styles.feed, feed.kind === "items" && styles.feedItems]} testID="visit-feed">
           {feed.kind === "loading" ? (
             <View style={styles.pill}>
@@ -522,17 +488,30 @@ function VisitScreenInner({
           libraryId={libraryId}
           load={loadShelf}
           onOpenBook={(isbn13) => router.push({ pathname: "/books/[isbn13]", params: { isbn13 } })}
+          onWriteRecord={() => router.push("/reading/new")}
           onHeight={setShelfHeight}
         />
       ) : null}
 
       {folded && lib.kind === "ok" ? <VisitHeaderFolded name={name} onBack={goBack} more={moreNode} /> : null}
 
+      <ComposeChooser
+        visible={chooser}
+        bottom={FAB_BOTTOM + shelfShift + FAB_SIZE + POP_GAP}
+        onClose={() => setChooser(false)}
+        onPost={() => {
+          setChooser(false);
+          openCompose();
+        }}
+        onClub={openClub}
+      />
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="글쓰기"
-        onPress={() => setChooser(true)}
-        style={({ pressed }) => [styles.fab, shelfShift !== 0 && { bottom: FAB_BOTTOM + shelfShift }, pressed && ACT.primaryPressed]}
+        accessibilityState={{ expanded: chooser }}
+        onPress={() => setChooser((v) => !v)}
+        testID="visit-fab"
+        style={({ pressed }) => [styles.fab, shelfShift !== 0 && { bottom: FAB_BOTTOM + shelfShift }, pressed && GLASS_PRESSED]}
       >
         <Text style={styles.fabText}>+</Text>
       </Pressable>
@@ -570,26 +549,6 @@ function VisitScreenInner({
         </View>
       ) : null}
 
-      <ComposeChooser
-        visible={chooser}
-        onClose={() => setChooser(false)}
-        onPost={() => {
-          setChooser(false);
-          openCompose();
-        }}
-        onGuestbook={openGuestbook}
-        onClub={openClub}
-      />
-      <GuestbookLoginSheet visible={gbLogin} onClose={() => setGbLogin(false)} />
-      {libraryId !== null ? (
-        <GuestbookComposer
-          libraryId={libraryId}
-          libraryName={name}
-          visible={composer}
-          onClose={() => setComposer(false)}
-          onPosted={onGuestbookPosted}
-        />
-      ) : null}
 
       {loginSheet ? (
         <View style={styles.sheetBackdrop}>
@@ -637,16 +596,6 @@ const makeStyles = (theme: Theme) => {
   moreSpace: { width: 44 },
   feed: { flexGrow: 1, minHeight: 360, justifyContent: "center", paddingHorizontal: 12, paddingTop: 12 },
   feedItems: { justifyContent: "flex-start" },
-  feedHead: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingTop: 8,
-    minHeight: 52,
-  },
-  feedTitle: { fontSize: 13, color: C.textSub, flexShrink: 0 },
   pill: {
     alignSelf: "center",
     backgroundColor: C.panelLit,
@@ -664,17 +613,17 @@ const makeStyles = (theme: Theme) => {
   textButton: { paddingVertical: 8, paddingHorizontal: 4, minHeight: 44, justifyContent: "center" },
   link: { fontSize: 15, fontWeight: "500", color: C.inkStrong },
   fab: {
-    ...ACT.primary,
+    ...GLASS_SURFACE,
     position: "absolute",
     right: 16,
     bottom: FAB_BOTTOM,
     width: FAB_SIZE,
     height: FAB_SIZE,
-    borderRadius: theme.radii.control,
     alignItems: "center",
     justifyContent: "center",
+    zIndex: 10,
   },
-  fabText: { ...ACT.primaryText, fontSize: 32, lineHeight: 36, fontWeight: "400" },
+  fabText: { color: C.inkStrong, fontSize: 28, lineHeight: 30, fontWeight: "400", marginTop: -2 },
   ment: {
     ...cardSurface(theme, { onPanel: true }),
     position: "absolute",

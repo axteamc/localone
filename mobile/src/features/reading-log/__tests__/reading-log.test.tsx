@@ -325,7 +325,7 @@ describe("기록 화면 (R1-O4·R1-O5)", () => {
     expect(screen.getByText(DETAIL.edit)).toBeTruthy();
     expect(screen.getByText(DETAIL.remove)).toBeTruthy();
     await fireEvent.press(screen.getByText(DETAIL.edit));
-    expect(screen.getByText(EDITOR.editTitle)).toBeTruthy();
+    expect(screen.getByLabelText(EDITOR.editTitle)).toBeTruthy();
     await fireEvent.press(screen.getByTestId("book-field"));
     expect(screen.queryByTestId("book-finder")).toBeNull();
     expect(screen.getByText(EDITOR.bookLocked)).toBeTruthy();
@@ -337,7 +337,7 @@ describe("기록 화면 (R1-O4·R1-O5)", () => {
     expect(patch).toEqual({ note: "고친 감상" });
     expect(patch).not.toHaveProperty("isbn13");
     expect(await screen.findByText("고친 감상")).toBeTruthy();
-    expect(screen.getByText(DETAIL.title)).toBeTruthy();
+    expect(screen.getByLabelText(DETAIL.title)).toBeTruthy();
   });
 
   test("delete asks first and removes from shelf", async () => {
@@ -474,13 +474,13 @@ describe("책장 탭 (C3·C6)", () => {
     expect(await screen.findByText("A만 볼 수 있는 감상")).toBeTruthy();
     await fireEvent.press(screen.getByLabelText(DETAIL.more));
     await fireEvent.press(screen.getByText(DETAIL.edit));
-    expect(screen.getByText(EDITOR.editTitle)).toBeTruthy();
+    expect(screen.getByLabelText(EDITOR.editTitle)).toBeTruthy();
 
     let resolveLateA!: (l: ReadingLog) => void;
     signedIn(USER_B);
     fetchReadingLog.mockReturnValueOnce(new Promise((r) => { resolveLateA = r; }));
     await detailView.rerender(<ReadingLogDetail logId={log.id} />);
-    expect(screen.queryByText(EDITOR.editTitle)).toBeNull();
+    expect(screen.queryByLabelText(EDITOR.editTitle)).toBeNull();
     expect(screen.queryByText("A만 볼 수 있는 감상")).toBeNull();
     expect(screen.queryByLabelText(DETAIL.more)).toBeNull();
 

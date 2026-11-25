@@ -1,6 +1,7 @@
 // CLUB-1-P2 모임 만들기·고치기 `/clubs/new?libraryId=` · `/clubs/new?clubId=` — contracts/book-club.md CLUB-1 K1-O2·K1-O3·C3·C4
 // 결정 2(D 시안 확인 후보 C): 처음엔 이름(필수)·날짜만, "+ 장소·책·정원·소개 더 쓰기"로 나머지 4칸을 펼친다.
-// 날짜·시각은 LOAN-2 DueDateSheet처럼 새 라이브러리 없이 글자 칸("YYYY-MM-DD"·"HH:MM")으로 받는다(C4, 세 플랫폼 공통).
+// 날짜·시각은 새 라이브러리 없이 글자 칸("YYYY-MM-DD"·"HH:MM")으로 받고, 칸 끝 아이콘으로 작은 달력·시/분 휠을 연다
+// (2026-11-25 C-92 K1-O2a, WhenFields — 세 플랫폼 공통).
 import * as Crypto from "expo-crypto";
 import { useRouter } from "expo-router";
 import React, { useEffect, useRef, useState } from "react";
@@ -21,6 +22,8 @@ import {
   type Club,
   type ClubInput,
 } from "./api";
+import { ScreenHeader } from "../../theme/ScreenHeader";
+import { WhenFields } from "./WhenFields";
 
 const C = theme.colors;
 const ACT = actionColors(theme.colors);
@@ -206,14 +209,14 @@ export function ClubEditor({ libraryId, clubId = null }: ClubEditorProps) {
   }
 
   const head = (
-    <View style={[styles.head, { paddingTop: 10 + insets.top }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel="닫기" onPress={close} hitSlop={10}>
-        <Text style={styles.x}>✕</Text>
-      </Pressable>
-      <Text style={styles.headTitle} numberOfLines={1}>
-        {editing ? EDITOR_TEXT.editTitle : EDITOR_TEXT.createTitle}
-      </Text>
-      <Pressable
+    <ScreenHeader
+      label={editing ? "EDIT CLUB" : "NEW CLUB"}
+      title={editing ? EDITOR_TEXT.editTitle : EDITOR_TEXT.createTitle}
+      onBack={close}
+      backKind="close"
+      topInset={insets.top}
+      testID="club-editor-head"
+      right={<Pressable
         accessibilityRole="button"
         accessibilityState={{ disabled: !name.trim() || busy }}
         disabled={!name.trim() || busy}
@@ -224,8 +227,8 @@ export function ClubEditor({ libraryId, clubId = null }: ClubEditorProps) {
         <Text style={styles.submitText} numberOfLines={1}>
           {busy ? EDITOR_TEXT.sending : editing ? EDITOR_TEXT.editSubmit : EDITOR_TEXT.createSubmit}
         </Text>
-      </Pressable>
-    </View>
+      </Pressable>}
+    />
   );
 
   if (status === "signedOut") {
@@ -300,35 +303,16 @@ export function ClubEditor({ libraryId, clubId = null }: ClubEditorProps) {
             <Text style={styles.placeholderText}>{EDITOR_TEXT.undecidedNote}</Text>
           </View>
         ) : (
-          <View style={styles.whenRow}>
-            <TextInput
-              value={date}
-              onChangeText={setDate}
-              placeholder={EDITOR_TEXT.datePlaceholder}
-              placeholderTextColor={C.inkMuted}
-              style={[styles.input, styles.date]}
-              accessibilityLabel="날짜"
-              testID="club-editor-date"
-            />
-            <TextInput
-              value={start}
-              onChangeText={setStart}
-              placeholder={EDITOR_TEXT.startPlaceholder}
-              placeholderTextColor={C.inkMuted}
-              style={[styles.input, styles.time]}
-              accessibilityLabel="시작 시각"
-              testID="club-editor-start"
-            />
-            <TextInput
-              value={end}
-              onChangeText={setEnd}
-              placeholder={EDITOR_TEXT.endPlaceholder}
-              placeholderTextColor={C.inkMuted}
-              style={[styles.input, styles.time]}
-              accessibilityLabel="끝나는 시각"
-              testID="club-editor-end"
-            />
-          </View>
+          <WhenFields
+            date={date}
+            start={start}
+            end={end}
+            onDate={setDate}
+            onStart={setStart}
+            onEnd={setEnd}
+            placeholders={{ date: EDITOR_TEXT.datePlaceholder, start: EDITOR_TEXT.startPlaceholder, end: EDITOR_TEXT.endPlaceholder }}
+            testIDPrefix="club-editor"
+          />
         )}
         {warnFor("when")}
 

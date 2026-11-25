@@ -36,7 +36,7 @@ PREVIEW_MAX = 80
 router = APIRouter(prefix="/api/v1/ops")
 
 Reason = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=REASON_MAX)]
-TargetKind = Literal["post", "guestbook", "club", "club_comment"]
+TargetKind = Literal["post", "guestbook", "club", "club_comment", "stamp"]  # stamp: C-92 V4-12
 
 
 def not_found() -> ApiError:
@@ -116,13 +116,20 @@ TARGETS: dict[str, tuple[str, str, tuple[str, ...], bool]] = {
     "guestbook": ("guestbook_entries", "user_id", ("published",), True),
     "club": ("clubs", "host_id", ("open", "closed", "canceled"), True),
     "club_comment": ("club_comments", "user_id", ("published",), False),
+    # C-92: 공개 스탬프(한마디)도 게시물과 같이 숨긴다. 비공개는 남에게 안 보이므로 대상이 아니다(아래 상태 계산)
+    "stamp": ("visit_stamps", "user_id", ("published",), True),
 }
+
+# 스탬프 상태 = 숨김이면 hidden, 공개면 published, 비공개면 private(신고·숨김 대상 아님)
+STAMP_STATUS_SQL = "CASE WHEN status = 'hidden' THEN 'hidden' WHEN visibility = 'public' THEN 'published' ELSE 'private' END"
 
 
 def lock_target(c: Connection, kind: str, target_id: UUID) -> Any:
     table, owner, _, _ = TARGETS[kind]
     extra = ", club_id" if kind == "club_comment" else ", cancel_reason" if kind == "club" else ""
-    return c.execute(text(f"SELECT id, status, {owner} AS owner_id{extra} FROM {table} WHERE id = :id FOR UPDATE"),
+    extra += ", library_id" if kind == "stamp" else ""
+    status = f"{STAMP_STATUS_SQL} AS status" if kind == "stamp" else "status"
+    return c.execute(text(f"SELECT id, {status}, {owner} AS owner_id{extra} FROM {table} WHERE id = :id FOR UPDATE"),
                      {"id": target_id}).one_or_none()
 
 
@@ -140,6 +147,8 @@ def inbox_target(kind: str, row: Any) -> dict[str, str]:
         return {"guestbook_id": str(row.id)}
     if kind == "club":
         return {"club_id": str(row.id)}
+    if kind == "stamp":
+        return {"stamp_id": str(row.id)}
     return {"club_id": str(row.club_id), "comment_id": str(row.id)}
 
 
@@ -203,13 +212,16 @@ async def restore_target(request: Request, kind: TargetKind, target_id: UUID, bo
 
 REPORT_SQL = f"""
 SELECT r.id, r.target_kind, r.target_id, r.reason, r.text, r.status, r.created_at,
-       COALESCE(p.status, g.status, cl.status, cc.status) AS target_status,
-       LEFT(COALESCE(p.overlay_text, p.body, g.body, cl.name, cc.body), {PREVIEW_MAX}) AS target_preview
+       COALESCE(p.status, g.status, cl.status, cc.status,
+                CASE WHEN vs.status = 'hidden' THEN 'hidden' WHEN vs.visibility = 'public' THEN 'published'
+                     WHEN vs.id IS NOT NULL THEN 'private' END) AS target_status,
+       LEFT(COALESCE(p.overlay_text, p.body, g.body, cl.name, cc.body, vs.body), {PREVIEW_MAX}) AS target_preview
 FROM reports r
 LEFT JOIN posts p ON r.target_kind = 'post' AND p.id = r.target_id
 LEFT JOIN guestbook_entries g ON r.target_kind = 'guestbook' AND g.id = r.target_id
 LEFT JOIN clubs cl ON r.target_kind = 'club' AND cl.id = r.target_id
 LEFT JOIN club_comments cc ON r.target_kind = 'club_comment' AND cc.id = r.target_id
+LEFT JOIN visit_stamps vs ON r.target_kind = 'stamp' AND vs.id = r.target_id
 """
 
 

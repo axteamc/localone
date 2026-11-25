@@ -12,6 +12,7 @@ import { ddayColors, ddayFormat, ddayGauge } from "./dday";
 import { DueDateSheet, useOpenGeneration } from "./DueDateSheet";
 import { NOTIFICATIONS_SUPPORTED, openNotificationSettings } from "./notifications.platform";
 import { fetchAllOnLoan, syncLoanReminders } from "./reminders";
+import { ModalFrame } from "../../theme/WebFrame";
 
 export const LOANS_TITLE = "내 대출";
 export const LOANS_EMPTY = "지금 빌린 책이 없어요. 책 상세나 빌릴 예정에서 '빌렸어요'를 눌러 보세요.";
@@ -469,7 +470,7 @@ function ReturnConfirm({
   };
 
   return (
-    <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
+    <Modal visible transparent animationType="fade" onRequestClose={onCancel}><ModalFrame>
       <View style={styles.center}>
         <View testID="return-confirm" style={styles.dialog}>
           <Text style={styles.gauge} numberOfLines={1}>CONFIRM RETURN</Text>
@@ -498,7 +499,7 @@ function ReturnConfirm({
           </View>
         </View>
       </View>
-    </Modal>
+    </ModalFrame></Modal>
   );
 }
 

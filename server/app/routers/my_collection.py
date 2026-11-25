@@ -236,7 +236,7 @@ def select_bookmark_keys(c: Connection, uid: UUID, after: tuple[datetime, str, U
         "  UNION ALL "
         "  SELECT sb.saved_at AS collected_at, 'stamp'::text AS item_kind, vs.id AS id "
         "  FROM stamp_bookmarks sb JOIN visit_stamps vs ON vs.id = sb.stamp_id "
-        "  WHERE sb.user_id = :uid AND vs.visibility = 'public'"
+        "  WHERE sb.user_id = :uid AND vs.visibility = 'public' AND vs.status = 'published'"
         ") "
         "SELECT collected_at, item_kind, id FROM combined"
     )
@@ -274,7 +274,7 @@ async def list_merged_bookmarks(request: Request, user: CurrentUser, cursor: str
         if stamp_ids:
             stamp_rows = c.execute(
                 text(
-                    "SELECT s.id, s.user_id, s.library_id, l.name AS library_name, s.stamped_on, "
+                    "SELECT s.id, s.user_id, s.library_id, l.name AS library_name, s.stamped_on, s.body, "
                     "s.created_at AS published_at, COALESCE(up.nickname, '이웃') AS nickname "
                     "FROM visit_stamps s "
                     "JOIN libraries l ON l.id = s.library_id "

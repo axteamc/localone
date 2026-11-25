@@ -7,6 +7,7 @@ import type { AvailabilityItem } from "../../lib/publicApi";
 import { theme, actionColors, type as typeScale } from "../../theme";
 import { ApiCallError, saveLoanPlan, type LoanPlan } from "./api";
 import { distanceLabel, holdingText } from "./availabilityText";
+import { ModalFrame } from "../../theme/WebFrame";
 
 export const SHEET_TITLE = "어느 도서관에서 빌릴 예정인가요?";
 export const SHEET_SUBTITLE = "본인만 보는 메모예요. 도서관에 예약되지는 않아요.";
@@ -58,7 +59,7 @@ export function SavePlanSheet({
   };
 
   return (
-    <Modal transparent visible={visible} animationType="slide" onRequestClose={close}>
+    <Modal transparent visible={visible} animationType="slide" onRequestClose={close}><ModalFrame>
       <View style={styles.scrim}>
         <View testID="save-plan-sheet" style={styles.sheet}>
           <View style={styles.head}>
@@ -107,7 +108,7 @@ export function SavePlanSheet({
           )}
         </View>
       </View>
-    </Modal>
+    </ModalFrame></Modal>
   );
 }
 

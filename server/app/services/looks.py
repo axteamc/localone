@@ -3,12 +3,13 @@
 - 룩: 운영자는 `modern`만 지정한다. 나머지는 `warm`·`toffee`·`oxford` 중 자동 — 반경 5km 안(직선거리, 자기 제외)
   도서관들이 이미 쓰는 팔레트 중 가장 적게 쓰인 것(동률은 이름순). 주변에 배정된 곳이 2곳 이하면 자연히 서로 다르다.
   한 번 정하면 저장하고, 새 도서관이 생겨도 바꾸지 않는다. 동시에 두 곳을 배정해도 규칙이 지켜지게 전역 잠금으로 줄 세운다.
-- 책장: DB만 읽는 페이지(`recent_reads`·`theme`)를 여기서 만든다. `popular`는 외부 조회가 있어 라우터가 엔진으로 만든다.
+- 책장(2026-11-25 C-92 3장 체제): DB만 읽는 `theme`을 여기서 만든다. `popular`(YES24 베스트셀러)와
+  `recent_reads`(정보나루 도서관별 최근 30일 대출)는 외부 조회가 있어 라우터가 엔진으로 만든다(이 파일은 필터만).
 """
 
 import unicodedata
 from collections import Counter
-from datetime import date, timedelta
+from datetime import date
 from typing import Any, Literal, cast
 
 from sqlalchemy import text
@@ -22,10 +23,9 @@ AUTO_LOOKS: tuple[LookPreset, ...] = ("warm", "toffee", "oxford")
 LOOK_RADIUS_KM = 5.0  # Z6
 LOOK_LOCK_KEY = "libraries:look"
 
-RECENT_READS_DAYS = 30  # Q-49 미확인(임시)
-RECENT_READS_MIN_COUNT = 3  # Q-49 미확인(임시): 도서관-책 합계 3건 이상만
-TITLE_RECENT_READS = "요즘 사람들이 읽은 책"
-TITLE_POPULAR = "인기 도서"
+TITLE_POPULAR = "인기 도서"  # ① YES24 베스트셀러(C-92)
+TITLE_RECENT_LOANS = "최근 대출 도서"  # ③ 정보나루 loanItemSrchByLib 최근 30일(C-92, 이전 ② "인기 도서")
+SHELF_BESTSELLER_LABEL = "YES24 베스트셀러"
 
 
 # ─────────── 룩 ───────────
@@ -87,23 +87,6 @@ def set_look_by_operator(conn: Connection, library_id: int, mode: Literal["moder
 def shelf_book(row: Any) -> dict[str, Any]:
     """core `Book` 네 칸만(VISIT-3 C3)."""
     return {"isbn13": row.isbn13, "title": row.title, "author": row.author, "cover_url": row.cover_url}
-
-
-def recent_reads_page(conn: Connection, library_id: int, today: date) -> dict[str, Any] | None:
-    rows = conn.execute(text(
-        """
-        SELECT b.isbn13, b.title, b.author, b.cover_url, SUM(s.return_count) AS n
-        FROM library_return_stats s JOIN books b ON b.id = s.book_id
-        WHERE s.library_id = :lid AND s.returned_on BETWEEN :start AND :today AND b.isbn13 IS NOT NULL
-        GROUP BY b.id HAVING SUM(s.return_count) >= :min
-        ORDER BY n DESC, b.id LIMIT :limit
-        """),
-        {"lid": library_id, "start": today - timedelta(days=RECENT_READS_DAYS - 1), "today": today,
-         "min": RECENT_READS_MIN_COUNT, "limit": policy.SHELF_BOOKS_PER_PAGE}).all()
-    if not rows:
-        return None
-    return {"kind": "recent_reads", "title": TITLE_RECENT_READS,
-            "basis_label": f"최근 {RECENT_READS_DAYS}일 · 이 도서관", "books": [shelf_book(r) for r in rows]}
 
 
 def theme_page(conn: Connection, library_id: int, today: date) -> dict[str, Any] | None:

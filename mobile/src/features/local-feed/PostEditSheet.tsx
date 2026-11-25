@@ -5,6 +5,7 @@ import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleShee
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { cardSurface, theme } from "../../theme";
 import { ApiCallError, editPost, type Post } from "./api";
+import { ModalFrame } from "../../theme/WebFrame";
 
 export const EDIT_TEXT = {
   title: "게시물 수정",
@@ -62,7 +63,7 @@ export function PostEditSheet({ post, visible, onClose, onSaved }: {
   };
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}><ModalFrame>
       <KeyboardAvoidingView style={styles.root} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View style={[styles.head, { paddingTop: Platform.OS === "ios" ? 8 : 8 + insets.top }]}>
           <Pressable accessibilityRole="button" onPress={onClose} style={styles.headBtn} disabled={busy}>
@@ -110,7 +111,7 @@ export function PostEditSheet({ post, visible, onClose, onSaved }: {
           <Text style={styles.keep}>{EDIT_TEXT.keep}</Text>
         </ScrollView>
       </KeyboardAvoidingView>
-    </Modal>
+    </ModalFrame></Modal>
   );
 }
 

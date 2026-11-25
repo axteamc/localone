@@ -10,7 +10,7 @@ import * as api from "../api";
 import type { FeedItem, FeedPost, GuestbookItem } from "../api";
 import { FeedItemCard } from "../FeedItemCard";
 import { GUESTBOOK_CARD_TEXT, guestbookTime } from "../GuestbookCard";
-import { GUESTBOOK_TEXT } from "../GuestbookComposer";
+import { COMPOSE_TEXT } from "../ComposeChooser";
 import { VisitScreen } from "../VisitScreen";
 
 const mockPush = jest.fn();
@@ -34,13 +34,11 @@ jest.mock("../api", () => ({
   ...jest.requireActual<object>("../api"),
   fetchShelf: jest.fn(async () => ({ pages: [] })),
   fetchLibraryFeedItems: jest.fn(),
-  postGuestbook: jest.fn(),
   withdrawGuestbook: jest.fn(),
 }));
 jest.mock("../../../lib/visits", () => ({ recordVisit: jest.fn(), getDefaultLibrary: jest.fn() }));
 
 const fetchItems = jest.mocked(api.fetchLibraryFeedItems);
-const postGuestbook = jest.mocked(api.postGuestbook);
 const withdrawGuestbook = jest.mocked(api.withdrawGuestbook);
 
 function lib(id: number): LibraryDetail {
@@ -87,12 +85,6 @@ async function enter(items: FeedItem[] = []) {
   fetchItems.mockResolvedValue({ items, next_cursor: null });
   await render(<VisitScreen libraryId={101} distanceM={null} />);
   await screen.findByText("정독도서관");
-}
-
-async function openComposer() {
-  await fireEvent.press(screen.getByLabelText("글쓰기"));
-  await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.chooseGuestbook));
-  return screen.findByTestId("guestbook-composer");
 }
 
 const network = () => new publicApi.ApiCallError(0, "NETWORK", "서버에 연결하지 못했어요.", "");
@@ -158,108 +150,41 @@ describe("VISIT-3-P3 혼합 피드", () => {
   });
 });
 
-describe("VISIT-3-P3 방명록 쓰기", () => {
-  test("plus opens chooser and guestbook option opens composer", async () => {
+describe("C-92 + 작은 카드(게시물·모임)", () => {
+  test("plus opens a two-item popover without guestbook and routes post/club", async () => {
     await enter();
     await fireEvent.press(screen.getByLabelText("글쓰기"));
-    expect(screen.getByTestId("compose-chooser")).toBeTruthy();
-    expect(screen.getByText(GUESTBOOK_TEXT.choosePost)).toBeTruthy();
-    expect(screen.getByText(GUESTBOOK_TEXT.chooseGuestbook)).toBeTruthy();
-    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.chooseGuestbook));
-    expect(await screen.findByTestId("guestbook-composer")).toBeTruthy();
-    expect(screen.getByText(GUESTBOOK_TEXT.guide("정독도서관"))).toBeTruthy();
-    expect(mockPush).not.toHaveBeenCalled();
-    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.close));
-    await fireEvent.press(screen.getByLabelText("글쓰기"));
-    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.choosePost));
-    expect(mockPush).toHaveBeenCalledTimes(1);
+    const pop = screen.getByTestId("compose-chooser");
+    expect(within(pop).getByText(COMPOSE_TEXT.choosePost)).toBeTruthy();
+    expect(within(pop).getByText(COMPOSE_TEXT.chooseClub)).toBeTruthy();
+    expect(screen.queryByText("방명록 남기기")).toBeNull(); // 한마디는 스탬프 ▾ 메뉴로(V4-O6)
+    await fireEvent.press(within(pop).getByText(COMPOSE_TEXT.choosePost));
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/posts/new", params: { libraryId: "101" } });
+    expect(screen.queryByTestId("compose-chooser")).toBeNull();
+    await fireEvent.press(screen.getByLabelText("글쓰기"));
+    await fireEvent.press(screen.getByText(COMPOSE_TEXT.chooseClub));
+    expect(mockPush).toHaveBeenLastCalledWith({ pathname: "/clubs/new", params: { libraryId: "101" } });
   });
 
-  test("signed out guestbook write shows login prompt", async () => {
+  test("tapping outside or plus again closes the popover", async () => {
+    await enter();
+    await fireEvent.press(screen.getByLabelText("글쓰기"));
+    await fireEvent.press(screen.getByTestId("compose-scrim"));
+    expect(screen.queryByTestId("compose-chooser")).toBeNull();
+    await fireEvent.press(screen.getByLabelText("글쓰기"));
+    expect(screen.getByLabelText("글쓰기").props.accessibilityState).toMatchObject({ expanded: true });
+    await fireEvent.press(screen.getByLabelText("글쓰기"));
+    expect(screen.queryByTestId("compose-chooser")).toBeNull();
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  test("signed out picks show the login sheet without moving", async () => {
     setAuth("signedOut");
     await enter();
     await fireEvent.press(screen.getByLabelText("글쓰기"));
-    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.chooseGuestbook));
-    expect(screen.getByTestId("guestbook-login-sheet")).toBeTruthy();
-    expect(screen.getByText(GUESTBOOK_TEXT.loginNeeded)).toBeTruthy();
-    expect(screen.queryByTestId("guestbook-composer")).toBeNull();
-    expect(postGuestbook).not.toHaveBeenCalled();
-    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.login));
-    expect(mockPush).toHaveBeenCalledWith({ pathname: "/login" });
-  });
-
-  test("guestbook double submit creates one card", async () => {
-    await enter([gbItem(gb("g1"))]);
-    await openComposer();
-    const pending = deferred<GuestbookItem>();
-    postGuestbook.mockReturnValueOnce(pending.promise);
-    await fireEvent.changeText(screen.getByTestId("guestbook-input"), "  오늘 햇살 좋아요  ");
-    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.submit));
-    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.sending));
-    expect(postGuestbook).toHaveBeenCalledTimes(1);
-    expect(postGuestbook.mock.calls[0]!.slice(0, 2)).toEqual([101, "오늘 햇살 좋아요"]);
-    await act(async () => pending.resolve(gb("mine1", { body: "오늘 햇살 좋아요", mine: true })));
-    expect(await screen.findByText(GUESTBOOK_TEXT.posted)).toBeTruthy();
-    expect(screen.queryByTestId("guestbook-composer")).toBeNull();
-    expect(screen.getAllByTestId("guestbook-card-mine1")).toHaveLength(1);
-    expect(screen.getAllByTestId(/^guestbook-card-/).map((n) => n.props.testID)).toEqual([
-      "guestbook-card-mine1",
-      "guestbook-card-g1",
-    ]);
-  });
-
-  test("posted guestbook already in feed stays one card at the top", async () => {
-    await enter([postItem(post("p1")), gbItem(gb("same", { mine: true }))]);
-    await openComposer();
-    postGuestbook.mockResolvedValueOnce(gb("same", { mine: true }));
-    await fireEvent.changeText(screen.getByTestId("guestbook-input"), "한마디 same");
-    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.submit));
-    await screen.findByText(GUESTBOOK_TEXT.posted);
-    expect(screen.getAllByTestId("guestbook-card-same")).toHaveLength(1);
-  });
-
-  test("guestbook failure keeps text and retries with same request id", async () => {
-    await enter();
-    await openComposer();
-    postGuestbook.mockRejectedValueOnce(network()).mockResolvedValueOnce(gb("mine2", { mine: true }));
-    await fireEvent.changeText(screen.getByTestId("guestbook-input"), "다시 올릴 글");
-    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.submit));
-    expect(await screen.findByText(GUESTBOOK_TEXT.postFailed)).toBeTruthy();
-    expect(screen.getByTestId("guestbook-input").props.value).toBe("다시 올릴 글");
-    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.submit));
-    await screen.findByTestId("guestbook-card-mine2");
-    expect(postGuestbook).toHaveBeenCalledTimes(2);
-    expect(postGuestbook.mock.calls[1]![2]).toBe(postGuestbook.mock.calls[0]![2]);
-  });
-
-  test("new composer gets a new request id after success", async () => {
-    await enter();
-    postGuestbook.mockResolvedValueOnce(gb("a", { mine: true })).mockResolvedValueOnce(gb("b", { mine: true }));
-    await openComposer();
-    await fireEvent.changeText(screen.getByTestId("guestbook-input"), "첫 글");
-    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.submit));
-    await screen.findByTestId("guestbook-card-a");
-    await openComposer();
-    await fireEvent.changeText(screen.getByTestId("guestbook-input"), "둘째 글");
-    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.submit));
-    await screen.findByTestId("guestbook-card-b");
-    expect(postGuestbook.mock.calls[1]![2]).not.toBe(postGuestbook.mock.calls[0]![2]);
-  });
-
-  test("blank guestbook is not sent and too long shows 140 guide", async () => {
-    await enter();
-    await openComposer();
-    await fireEvent.changeText(screen.getByTestId("guestbook-input"), "   ");
-    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.submit));
-    expect(screen.getByText(GUESTBOOK_TEXT.empty)).toBeTruthy();
-    expect(postGuestbook).not.toHaveBeenCalled();
-    expect(screen.getByTestId("guestbook-input").props.maxLength).toBe(140);
-    postGuestbook.mockRejectedValueOnce(new publicApi.ApiCallError(422, "VALIDATION_ERROR", "x", "body"));
-    await fireEvent.changeText(screen.getByTestId("guestbook-input"), "안녕");
-    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.submit));
-    expect(await screen.findByText(GUESTBOOK_TEXT.tooLong)).toBeTruthy();
-    expect(screen.getByTestId("guestbook-input").props.value).toBe("안녕");
+    await fireEvent.press(screen.getByText(COMPOSE_TEXT.chooseClub));
+    expect(screen.getByTestId("visit-login-sheet")).toBeTruthy();
+    expect(mockPush).not.toHaveBeenCalled();
   });
 });
 

@@ -5,6 +5,7 @@ import { registerSignOutCleanup, useAuth } from "../../auth/AuthProvider";
 import { actionColors, type Theme } from "../../theme";
 import { lookKit, useLook } from "./useLibraryLook";
 import { ApiCallError, reportTarget, type ReportKind, type ReportReason } from "./api";
+import { ModalFrame } from "../../theme/WebFrame";
 
 export type ReportTarget = { kind: ReportKind; id: string };
 
@@ -138,7 +139,7 @@ function ReportForm({
   };
 
   return (
-    <Modal transparent animationType="fade" onRequestClose={close}>
+    <Modal transparent animationType="fade" onRequestClose={close}><ModalFrame>
       <View style={styles.backdrop}>
         <ScrollView style={styles.sheet} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <Text style={T.title}>{REPORT_TEXT.open}</Text>
@@ -193,7 +194,7 @@ function ReportForm({
           </Pressable>
         </ScrollView>
       </View>
-    </Modal>
+    </ModalFrame></Modal>
   );
 }
 

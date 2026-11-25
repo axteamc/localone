@@ -47,7 +47,16 @@ export function FeedItemCard({ item, width, onOpenPost, onMenu, onToggleStampBoo
     );
   }
   if (isClubItem(item)) return <ClubFeedCard club={item.club} width={width} />; // CLUB-1-P3
-  if (isStampItem(item)) return <StampCard stamp={item.stamp} width={width} onToggleBookmark={onToggleStampBookmark} />;
+  if (isStampItem(item)) {
+    return (
+      <StampCard
+        stamp={item.stamp}
+        width={width}
+        onToggleBookmark={onToggleStampBookmark}
+        onMenu={onMenu ? (stamp) => onMenu({ kind: "stamp", stamp }) : undefined}
+      />
+    );
+  }
 
   return null;
 }

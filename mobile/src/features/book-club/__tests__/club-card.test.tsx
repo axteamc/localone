@@ -5,7 +5,7 @@ import React from "react";
 import { StyleSheet } from "react-native";
 import { feedItemKey } from "../../local-feed/api";
 import { FeedItemCard } from "../../local-feed/FeedItemCard";
-import { ComposeChooser, GUESTBOOK_TEXT } from "../../local-feed/GuestbookComposer";
+import { COMPOSE_TEXT, ComposeChooser } from "../../local-feed/ComposeChooser";
 import { feedItemHeightRatio } from "../../local-feed/LibraryFeed";
 import type { ClubItem } from "../api";
 import { CARD_TEXT, ClubCard, formatClubWhen } from "../ClubCard";
@@ -92,10 +92,10 @@ describe("피드 모임 카드", () => {
   test("club feed key, height ratio, and chooser onClub work together", async () => {
     const entry = { kind: "club" as const, club: item() };
     expect(feedItemKey(entry)).toBe("club:club-1");
-    expect(feedItemHeightRatio(entry)).toBe(1.15);
+    expect(feedItemHeightRatio(entry)).toBe(1.0); // C-92 K1-O5a: 아치 없는 정보 카드
     const onClub = jest.fn();
-    await render(<ComposeChooser visible onPost={jest.fn()} onGuestbook={jest.fn()} onClub={onClub} onClose={jest.fn()} />);
-    await fireEvent.press(screen.getByText(GUESTBOOK_TEXT.chooseClub));
+    await render(<ComposeChooser visible bottom={300} onPost={jest.fn()} onClub={onClub} onClose={jest.fn()} />);
+    await fireEvent.press(screen.getByText(COMPOSE_TEXT.chooseClub));
     expect(onClub).toHaveBeenCalledTimes(1);
   });
 });

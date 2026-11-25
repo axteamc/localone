@@ -2,9 +2,10 @@
 // 누르면 바로 "나만 보기"로 남고(#36 private), 아래 한 줄 안내의 "피드에도 남기기"로 공개(#36 public + expected_stamp_id).
 // 남긴 뒤에는 버튼 대신 "오늘 다녀감 · 나만 보기 ▾" — 그 글자를 누르면 바로 아래 작은 메뉴에서 바꾼다
 // (2026-11-25 C-89, 시안 실기기개선_P2-P4 #el-visithead 후보 A. 이전: 옆 ⋯ → 아래에서 올라오는 시트). 기기 방문 기록(lib/visits)은 건드리지 않는다(V4-7).
+// 2026-11-25 C-92(V4-12·V4-O6, 시안 오늘의서가_UI개선 #el-compose A): ▾ 메뉴에 "한마디 남기기/수정" — 스탬프와 방명록을 하나로.
 import { useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Dimensions, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { Dimensions, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 
 const windowWidth = () => Dimensions.get("window").width;
 type ViewType = React.ComponentRef<typeof Pressable>;
@@ -18,9 +19,11 @@ import {
   emitStampNotice,
   fetchTodayStamp,
   putTodayStamp,
+  STAMP_BODY_MAX,
   type StampVisibility,
   type TodayStamp,
 } from "./api";
+import { ModalFrame } from "../../theme/WebFrame";
 
 const PRIVATE_NOTICE_MS = 5000; // V4-O1 안내 5초
 
@@ -42,11 +45,24 @@ export const STAMP_TEXT = {
   loginNeeded: "로그인하면 다녀왔어요를 남길 수 있어요",
   loginSub: "피드와 책장은 로그인 없이도 볼 수 있어요.",
   login: "로그인하기",
+  noteAdd: "한마디 남기기",
+  noteEdit: "한마디 수정",
+  noteSub: `${STAMP_BODY_MAX}자 방문 방명록`,
+  noteGuide: "오늘 방문 기록에 남겨요. 나만 보기면 나만, 피드에 공개면 모두가 봐요.",
+  notePlaceholder: "예) 2층 창가 자리 오늘 햇살 좋아요",
+  noteCount: (n: number) => `${n}/${STAMP_BODY_MAX}`,
+  noteSave: "저장",
+  noteSaving: "저장하는 중…",
+  noteAdded: "한마디를 남겼어요",
+  noteEdited: "한마디를 고쳤어요",
+  noteCleared: "한마디를 지웠어요",
+  noteFailed: "저장하지 못했어요. 다시 해 주세요",
 } as const;
 
 /** 도서관·로그인 사용자·화면 세대를 묶은 범위. 바뀌면 새 객체가 되어 앞 범위의 응답·안내는 아무것도 바꾸지 못한다 */
 type Scope = { libraryId: number; userId: string | null; alive: boolean; pending: boolean };
-type Action = "first" | "change";
+type Action = "first" | "change" | "note";
+type Outcome = "ok" | "failed" | "dateChanged" | "skipped";
 type ReadState = "idle" | "loading" | "ok" | "error";
 
 export function StampButton({ libraryId }: { libraryId: number }) {
@@ -59,6 +75,7 @@ export function StampButton({ libraryId }: { libraryId: number }) {
   const [anchor, setAnchor] = useState<{ right: number; top: number } | null>(null); // 글자 바로 아래(창 기준)
   const labelRef = useRef<ViewType>(null);
   const [loginSheet, setLoginSheet] = useState(false);
+  const [note, setNote] = useState<{ text: string; busy: boolean; failed: boolean } | null>(null); // 한마디 창(V4-O6)
   const readRunner = useRef(createLatestRunner()).current;
   const scopeRef = useRef<Scope>({ libraryId, userId: signedInUser, alive: true, pending: false });
 
@@ -89,6 +106,7 @@ export function StampButton({ libraryId }: { libraryId: number }) {
     setRead("idle");
     setMenu(false);
     setLoginSheet(false);
+    setNote(null);
     if (scope.userId !== null) void reloadToday(scope);
     return () => {
       scope.alive = false;
@@ -99,20 +117,29 @@ export function StampButton({ libraryId }: { libraryId: number }) {
   const notice = (scope: Scope, text: string, extra?: { ms: number; action: { label: string; run(): void } }) =>
     emitStampNotice({ libraryId: scope.libraryId, text, ...(extra ?? {}) });
 
-  const put = async (scope: Scope, visibility: StampVisibility, action: Action, expectedStampId?: string) => {
-    if (!isCurrentSignedIn(scope) || scope.pending) return; // 이전 화면 안내·메뉴와 연타 차단
+  const put = async (
+    scope: Scope,
+    visibility: StampVisibility,
+    action: Action,
+    expectedStampId?: string,
+    body?: { before: string | null; after: string | null }
+  ): Promise<Outcome> => {
+    if (!isCurrentSignedIn(scope) || scope.pending) return "skipped"; // 이전 화면 안내·메뉴와 연타 차단
     scope.pending = true;
     readRunner.cancel(); // 앞서 시작한 #35의 응답 무효화
     try {
-      const result = await putTodayStamp(scope.libraryId, visibility, expectedStampId);
-      if (!isCurrentSignedIn(scope)) return;
+      const result = await putTodayStamp(scope.libraryId, visibility, expectedStampId, body ? { body: body.after } : undefined);
+      if (!isCurrentSignedIn(scope)) return "skipped";
       setToday(result);
       setRead("ok");
       setMenu(false);
       const stamp = result.stamp;
-      if (stamp === null) return;
+      if (stamp === null) return "ok";
       emitStampChanged({ libraryId: scope.libraryId, userId: scope.userId!, stampId: stamp.id, visibility: stamp.visibility });
-      if (action === "first") {
+      if (action === "note") {
+        setNote(null);
+        notice(scope, stamp.body === null ? STAMP_TEXT.noteCleared : body?.before ? STAMP_TEXT.noteEdited : STAMP_TEXT.noteAdded);
+      } else if (action === "first") {
         notice(scope, STAMP_TEXT.privateNotice, {
           ms: PRIVATE_NOTICE_MS,
           action: { label: STAMP_TEXT.toPublic, run: () => void put(scope, "public", "change", stamp.id) },
@@ -120,15 +147,19 @@ export function StampButton({ libraryId }: { libraryId: number }) {
       } else {
         notice(scope, stamp.visibility === "public" ? STAMP_TEXT.savedPublic : STAMP_TEXT.changedPrivate);
       }
+      return "ok";
     } catch (e) {
-      if (!isCurrentSignedIn(scope)) return;
+      if (!isCurrentSignedIn(scope)) return "skipped";
       setMenu(false);
       if (e instanceof ApiCallError && e.status === 409 && e.code === "STAMP_DATE_CHANGED") {
+        setNote(null);
         notice(scope, STAMP_TEXT.dateChanged);
         void reloadToday(scope); // #35 재조회로 새 날짜 버튼 복구
-      } else {
-        notice(scope, action === "first" ? STAMP_TEXT.failed : STAMP_TEXT.changeFailed);
+        return "dateChanged";
       }
+      if (action === "note") return "failed"; // 한마디 창·글 그대로, 창 안에 실패 안내
+      notice(scope, action === "first" ? STAMP_TEXT.failed : STAMP_TEXT.changeFailed);
+      return "failed";
     } finally {
       scope.pending = false;
     }
@@ -152,6 +183,24 @@ export function StampButton({ libraryId }: { libraryId: number }) {
     const stamp = today?.stamp;
     if (!stamp) return;
     void put(scopeRef.current, stamp.visibility === "public" ? "private" : "public", "change", stamp.id);
+  };
+
+  const openNote = () => {
+    const stamp = today?.stamp;
+    if (!stamp) return;
+    setMenu(false);
+    setNote({ text: stamp.body ?? "", busy: false, failed: false });
+  };
+
+  const saveNote = async () => {
+    const stamp = today?.stamp;
+    if (!stamp || !note || note.busy) return;
+    const after = note.text.trim() || null;
+    setNote({ ...note, busy: true, failed: false });
+    const outcome = await put(scopeRef.current, stamp.visibility, "note", stamp.id, { before: stamp.body ?? null, after });
+    if (outcome === "failed" || outcome === "skipped") {
+      setNote((n) => (n ? { ...n, busy: false, failed: outcome === "failed" } : n));
+    }
   };
 
   const openMenu = () => {
@@ -205,9 +254,29 @@ export function StampButton({ libraryId }: { libraryId: number }) {
                   {stamp.visibility === "public" ? STAMP_TEXT.menuToPrivate : STAMP_TEXT.menuToPublic}
                 </Text>
               </Pressable>
+              <View style={styles.dropDivider} />
+              <Pressable accessibilityRole="menuitem" onPress={openNote} style={styles.dropItem} testID="stamp-menu-note">
+                <Text style={styles.dropText}>{stamp.body ? STAMP_TEXT.noteEdit : STAMP_TEXT.noteAdd}</Text>
+                <Text style={styles.dropSub}>{STAMP_TEXT.noteSub}</Text>
+              </Pressable>
             </View>
           </Pressable>
         </Modal>
+      ) : null}
+
+      {note && stamp ? (
+        <StampNoteSheet
+          title={stamp.body ? STAMP_TEXT.noteEdit : STAMP_TEXT.noteAdd}
+          text={note.text}
+          unchanged={(note.text.trim() || null) === (stamp.body ?? null)}
+          busy={note.busy}
+          failed={note.failed}
+          onChange={(text) => setNote((n) => (n ? { ...n, text, failed: false } : n))}
+          onSave={() => void saveNote()}
+          onClose={() => {
+            if (!note.busy) setNote(null);
+          }}
+        />
       ) : null}
 
       <StampLoginSheet visible={loginSheet} title={STAMP_TEXT.loginNeeded} onClose={() => setLoginSheet(false)} />
@@ -215,13 +284,77 @@ export function StampButton({ libraryId }: { libraryId: number }) {
   );
 }
 
-/** 비로그인 안내(V4-O4). VISIT-3 GuestbookLoginSheet와 같은 모양. 스탬프 카드 북마크도 같이 쓴다 */
+/** 한마디 쓰는 창(V4-O6). 기존 한마디를 채워 열고, 비우고 저장하면 지운다 */
+function StampNoteSheet(props: {
+  title: string;
+  text: string;
+  unchanged: boolean;
+  busy: boolean;
+  failed: boolean;
+  onChange(text: string): void;
+  onSave(): void;
+  onClose(): void;
+}) {
+  const { C, ACT, styles } = useLook(makeStyles);
+  const disabled = props.unchanged || props.busy;
+  return (
+    <Modal transparent animationType="fade" onRequestClose={props.onClose}>
+      <ModalFrame>
+        <View style={styles.backdrop}>
+          <View style={styles.sheet} testID="stamp-note-sheet">
+            <Text style={styles.sheetTitle}>{props.title}</Text>
+            <Text style={styles.sheetSub}>{STAMP_TEXT.noteGuide}</Text>
+            <TextInput
+              value={props.text}
+              onChangeText={props.onChange}
+              placeholder={STAMP_TEXT.notePlaceholder}
+              placeholderTextColor={C.inkMuted}
+              maxLength={STAMP_BODY_MAX}
+              multiline
+              autoFocus
+              accessibilityLabel={props.title}
+              style={styles.noteInput}
+              testID="stamp-note-input"
+            />
+            <Text style={styles.noteCount}>{STAMP_TEXT.noteCount(props.text.trim().length)}</Text>
+            {props.failed ? (
+              <Text style={styles.sheetSub} accessibilityRole="alert" testID="stamp-note-failed">
+                {STAMP_TEXT.noteFailed}
+              </Text>
+            ) : null}
+            <View style={styles.noteActions}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={props.onClose}
+                style={({ pressed }) => [styles.secondary, styles.noteAction, pressed && ACT.secondaryPressed]}
+              >
+                <Text style={styles.secondaryText}>{STAMP_TEXT.close}</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ disabled }}
+                disabled={disabled}
+                onPress={props.onSave}
+                testID="stamp-note-save"
+                style={({ pressed }) => [styles.primary, styles.noteAction, pressed && ACT.primaryPressed, disabled && styles.dim]}
+              >
+                <Text style={styles.primaryText}>{props.busy ? STAMP_TEXT.noteSaving : STAMP_TEXT.noteSave}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </ModalFrame>
+    </Modal>
+  );
+}
+
+/** 비로그인 안내(V4-O4). 아래에서 올라오는 안내 창. 스탬프 카드 북마크도 같이 쓴다 */
 export function StampLoginSheet({ visible, title, onClose }: { visible: boolean; title: string; onClose(): void }) {
   const { ACT, styles } = useLook(makeStyles);
   const router = useRouter();
   if (!visible) return null;
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
+    <Modal transparent animationType="fade" onRequestClose={onClose}><ModalFrame>
       <View style={styles.backdrop}>
         <View style={styles.sheet} accessibilityRole="alert" testID="stamp-login-sheet">
           <Text style={styles.sheetTitle}>{title}</Text>
@@ -245,7 +378,7 @@ export function StampLoginSheet({ visible, title, onClose }: { visible: boolean;
           </Pressable>
         </View>
       </View>
-    </Modal>
+    </ModalFrame></Modal>
   );
 }
 
@@ -284,6 +417,24 @@ const makeStyles = (theme: Theme) => {
   dropFallback: { position: "absolute", right: 16, top: 160 },
   dropItem: { minHeight: 44, justifyContent: "center", paddingHorizontal: 14 },
   dropText: { fontSize: 14, fontWeight: "500", color: C.text },
+  dropSub: { fontSize: 11, color: C.inkMuted, marginTop: 1 },
+  dropDivider: { height: 1, backgroundColor: C.seamHairline, marginHorizontal: 10 },
+  noteInput: {
+    minHeight: 96,
+    borderWidth: 1,
+    borderColor: C.seamHairline,
+    borderRadius: theme.radii.infoCard,
+    backgroundColor: C.paper,
+    padding: 12,
+    fontSize: 15,
+    lineHeight: 22,
+    color: C.text,
+    textAlignVertical: "top",
+  },
+  noteCount: { alignSelf: "flex-end", fontSize: 12, color: C.inkMuted },
+  noteActions: { flexDirection: "row", gap: 10 },
+  noteAction: { flex: 1 },
+  dim: { opacity: 0.5 },
   backdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: C.shadowDeep },
   sheet: {
     backgroundColor: C.panelLit,

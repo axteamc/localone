@@ -8,6 +8,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from "react-nati
 import { actionColors, theme, type as T } from "../../theme";
 import { startLoan } from "../loan-assistant/api";
 import type { BatchCandidate, LoanPlan } from "./api";
+import { ModalFrame } from "../../theme/WebFrame";
 
 export const BATCH_LOAN_TITLE = "선택한 책을 빌렸나요?";
 export const BATCH_LOAN_SUBTITLE = "빌린 도서관을 확인해 주세요. 내 대출로 옮겨요.";
@@ -94,7 +95,7 @@ export function BatchLoanSheet({
   return (
     <Modal transparent visible={visible} animationType="slide" onRequestClose={() => {
       if (!busy) onClose();
-    }}>
+    }}><ModalFrame>
       <View style={styles.scrim}>
         <View testID="batch-loan-sheet" style={styles.sheet}>
           <View style={styles.head}>
@@ -161,7 +162,7 @@ export function BatchLoanSheet({
           </Pressable>
         </View>
       </View>
-    </Modal>
+    </ModalFrame></Modal>
   );
 }
 

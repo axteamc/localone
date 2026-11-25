@@ -1,6 +1,6 @@
 // 미니멀 플랫 선(1.5px stroke) SVG 아이콘 — 이모지·스큐어모픽 아이콘 대신 사용한다.
 import React from "react";
-import Svg, { Circle, Path } from "react-native-svg";
+import Svg, { Circle, Line, Path, Polyline, Rect } from "react-native-svg";
 
 type IconProps = {
   size?: number;
@@ -32,6 +32,28 @@ export function UserIcon({ size = 26, color }: IconProps) {
         strokeWidth={1.5}
         strokeLinecap="round"
       />
+    </Svg>
+  );
+}
+
+/** 달력(2026-11-25 C-92 book-club K1-O2a, 시안 #el-datetime A: 선 1.6) */
+export function CalendarIcon({ size = 14, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round">
+      <Rect x={3} y={4} width={18} height={17} rx={3} />
+      <Line x1={16} y1={2} x2={16} y2={6} />
+      <Line x1={8} y1={2} x2={8} y2={6} />
+      <Line x1={3} y1={10} x2={21} y2={10} />
+    </Svg>
+  );
+}
+
+/** 시계(C-92 K1-O2a) */
+export function ClockIcon({ size = 14, color }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <Circle cx={12} cy={12} r={9} />
+      <Polyline points="12 7 12 12 15 14" />
     </Svg>
   );
 }

@@ -13,7 +13,9 @@ from app import policy
 from app.common import ApiError, today_kst
 from app.db import run_db
 from app.services.hours import today_hours
-from app.services.looks import TITLE_POPULAR, assign_look, recent_reads_page, shelf_popular_books, theme_page
+from app.services.looks import (
+    SHELF_BESTSELLER_LABEL, TITLE_POPULAR, TITLE_RECENT_LOANS, assign_look, shelf_book, shelf_popular_books, theme_page,
+)
 from app.services.provider_engine import (
     LibraryRow, ProviderEngine, get_library, libraries_by_name, libraries_in_region, libraries_nearby,
 )
@@ -141,9 +143,20 @@ async def library_detail(request: Request, library_id: int = Path(ge=1, le=BIGIN
             "operating_time_text": lib.operating_time_text, "closed_text": lib.closed_text, "look": look}
 
 
-async def popular_page(engine: ProviderEngine, lib: LibraryRow) -> dict[str, Any] | None:
-    """LIB-0 도서관별 인기 캐시 상위 3권(외부 조회는 엔진, 트랜잭션 밖). 도서관 데이터가 없어 전국으로 대체되거나
-    받지 못하면 페이지를 뺀다(책장은 "이 도서관"). Q-42 실측 전 임시."""
+async def bestseller_page(engine: ProviderEngine) -> dict[str, Any] | None:
+    """① `popular` 「인기 도서」(C-92): YES24 베스트셀러(국내도서, KST 일 1회 캐시, 오래된 캐시도 씀) 상위 최대 4권.
+    이미 성인·비도서(만화 포함)를 걸러 둔 `curated_books` 결과를 순서대로 쓴다. 받지 못하면 페이지를 뺀다."""
+    curated = await engine.curated_books("bestseller")
+    if curated is None or not curated.books:
+        return None
+    books = [shelf_book(book) for book in curated.books[: policy.SHELF_BOOKS_PER_PAGE]]
+    return {"kind": "popular", "title": TITLE_POPULAR, "basis_label": SHELF_BESTSELLER_LABEL, "books": books}
+
+
+async def recent_loans_page(engine: ProviderEngine, lib: LibraryRow) -> dict[str, Any] | None:
+    """③ `recent_reads` 「최근 대출 도서」(C-92): LIB-0 도서관별 인기대출(`loanItemSrchByLib`, 최근 30일) 상위 20개에서
+    만화·시리즈를 거른 최대 4권(외부 조회는 엔진, 트랜잭션 밖). 도서관 데이터가 없어 전국으로 대체되거나 받지 못하면
+    페이지를 뺀다(책장은 "이 도서관")."""
     try:
         result = await engine.popular_books(lib)
     except ApiError:
@@ -153,23 +166,25 @@ async def popular_page(engine: ProviderEngine, lib: LibraryRow) -> dict[str, Any
     books = shelf_popular_books(result)
     if not books:
         return None
-    return {"kind": "popular", "title": TITLE_POPULAR, "basis_label": result.period_label, "books": books}
+    return {"kind": "recent_reads", "title": TITLE_RECENT_LOANS, "basis_label": result.period_label, "books": books}
 
 
 @router.get("/{library_id}/shelf")
 async def library_shelf(request: Request, library_id: int = Path(ge=1, le=BIGINT_MAX)) -> Any:
-    """#31 책장 페이지(Z8): ① recent_reads ② popular ③ theme 순, 빈 페이지는 뺀다."""
+    """#31 책장 페이지(Z8, C-92): ① popular(YES24 베스트셀러) ② theme ③ recent_reads(최근 대출) 순, 빈 페이지는 뺀다."""
     today = today_kst()
 
-    def tx(c: Connection) -> tuple[LibraryRow, dict[str, Any] | None, dict[str, Any] | None] | None:
+    def tx(c: Connection) -> tuple[LibraryRow, dict[str, Any] | None] | None:
         lib = get_library(c, library_id)
         if lib is None:
             return None
-        return lib, recent_reads_page(c, library_id, today), theme_page(c, library_id, today)
+        return lib, theme_page(c, library_id, today)
 
     found = await run_db(request.app.state.engine, tx)
     if found is None:
         raise not_found()
-    lib, recent, theme = found
-    popular = await popular_page(request.app.state.provider_engine, lib)
-    return {"pages": [page for page in (recent, popular, theme) if page is not None]}
+    lib, theme = found
+    engine: ProviderEngine = request.app.state.provider_engine
+    popular = await bestseller_page(engine)
+    recent = await recent_loans_page(engine, lib)
+    return {"pages": [page for page in (popular, theme, recent) if page is not None]}

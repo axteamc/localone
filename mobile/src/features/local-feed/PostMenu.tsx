@@ -9,6 +9,7 @@ import { lookKit, useLook } from "./useLibraryLook";
 import { ApiCallError, fetchPost, setBookmark, setReaction, type FeedPost, type PostReactionPatch } from "./api";
 import { REPORT_TEXT, ReportSheet } from "./ReportSheet";
 import { shareNotice, sharePost } from "./share";
+import { ModalFrame } from "../../theme/WebFrame";
 
 
 export const MENU_TEXT = {
@@ -38,7 +39,7 @@ export function LoginPrompt({ onClose }: { onClose: () => void }) {
   const { ACT, styles } = useLook(makeStyles);
   const router = useRouter();
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
+    <Modal transparent animationType="fade" onRequestClose={onClose}><ModalFrame>
       <View style={styles.sheetBackdrop}>
         <View style={styles.sheet} accessibilityRole="alert" testID="login-prompt">
           <Text style={styles.sheetTitle}>{MENU_TEXT.loginNeeded}</Text>
@@ -61,7 +62,7 @@ export function LoginPrompt({ onClose }: { onClose: () => void }) {
           </Pressable>
         </View>
       </View>
-    </Modal>
+    </ModalFrame></Modal>
   );
 }
 
@@ -166,7 +167,7 @@ export function PostMenu({
 
   const canReport = !authLoading && (!signedIn || (ownership?.identity === identity && !ownership.mine));
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
+    <Modal transparent animationType="fade" onRequestClose={onClose}><ModalFrame>
       <Pressable style={styles.scrim} onPress={onClose} accessibilityLabel="메뉴 닫기">
         {/* 창 안을 눌러도 닫히지 않게 한 겹 더 감싼다 */}
         <Pressable style={styles.menu} onPress={() => {}} testID="post-menu" accessibilityViewIsModal>
@@ -208,7 +209,7 @@ export function PostMenu({
           ) : null}
         </Pressable>
       </Pressable>
-    </Modal>
+    </ModalFrame></Modal>
   );
 }
 

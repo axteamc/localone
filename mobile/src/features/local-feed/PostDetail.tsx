@@ -20,6 +20,7 @@ import { ReactionButton, SaveButton } from "./ReactionButton";
 import { LibraryOtherPosts, SameBookPosts } from "./SameBookPosts";
 import { PostEditSheet } from "./PostEditSheet";
 import { shareNotice, sharePost } from "./share";
+import { BackChevron } from "../../theme/ScreenHeader";
 
 const WIDE_AT = 768; // H14
 const NOTICE_MS = 2000;
@@ -203,7 +204,7 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
           onPress={goBack}
           style={[styles.backFloating, { top: 12 + insets.top }]}
         >
-          <Text style={styles.backText}>‹</Text>
+          <BackChevron color={C.inkStrong} size={13} />
         </Pressable>
         {state.kind === "loading" ? (
           <Text style={styles.sub}>{DETAIL_TEXT.loading}</Text>
@@ -280,7 +281,7 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
       )}
       {/* 이미지 위에는 ‹만 둔다. 사이트 방문·이미지 검색·확대 버튼은 두지 않는다(H9) */}
       <Pressable accessibilityRole="button" accessibilityLabel="돌아가기" onPress={goBack} style={styles.backOnImage}>
-        <Text style={[styles.backText, backOnDark && styles.backTextLight]}>‹</Text>
+        <BackChevron color={backOnDark ? ON_FILL_LIGHT : C.inkStrong} size={13} />
       </Pressable>
     </View>
   );

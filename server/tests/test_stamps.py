@@ -172,10 +172,74 @@ def test_expected_stamp_id_same_day_changes_visibility(client, auth, db_engine):
     stamp_id = put_stamp(client, auth["A"], "private").json()["stamp"]["id"]
     response = put_stamp(client, auth["A"], "public", expected_stamp_id=stamp_id)
     assert response.status_code == 200
-    assert response.json()["stamp"] == {"id": stamp_id, "stamped_on": "2026-11-24", "visibility": "public"}
+    assert response.json()["stamp"] == {"id": stamp_id, "stamped_on": "2026-11-24", "visibility": "public", "body": None}
     other_library = put_stamp(client, auth["A"], "public", library_id=LIB_2, expected_stamp_id=stamp_id)
     assert other_library.status_code == 409  # 다른 도서관의 오늘 행이 아니다
     assert [r.visibility for r in rows(db_engine)] == ["public"]
+
+
+# ─────────── #36 한마디(body, C-92) — 공개 범위 × 본문 유/무 4상태 ───────────
+
+
+def stored_bodies(db_engine):
+    with db_engine.connect() as conn:
+        return conn.execute(text("SELECT visibility, body FROM visit_stamps ORDER BY created_at")).all()
+
+
+def test_stamp_body_four_states_and_keep_when_key_missing(client, auth, db_engine):
+    first = put_stamp(client, auth["A"], "private")
+    stamp_id = first.json()["stamp"]["id"]
+    assert first.json()["stamp"]["body"] is None  # ① 비공개 · 본문 없음
+    r = put_stamp(client, auth["A"], "private", expected_stamp_id=stamp_id, body="  2층 창가 햇살 좋아요  ")
+    assert r.status_code == 200 and r.json()["stamp"]["body"] == "2층 창가 햇살 좋아요"  # ② 비공개 · 본문 있음(앞뒤 공백 정리)
+    assert stamp_items(feed(client, auth["B"]).json()) == []  # 비공개 본문은 남에게 안 보인다
+    r = put_stamp(client, auth["A"], "public", expected_stamp_id=stamp_id)  # body 키 없음 → 그대로
+    assert r.json()["stamp"]["body"] == "2층 창가 햇살 좋아요"  # ③ 공개 · 본문 있음
+    card, = stamp_items(feed(client, auth["B"]).json())
+    assert card["body"] == "2층 창가 햇살 좋아요"
+    r = put_stamp(client, auth["A"], "public", expected_stamp_id=stamp_id, body="   ")  # 빈 글자 → 비움
+    assert r.json()["stamp"]["body"] is None  # ④ 공개 · 본문 없음
+    assert stamp_items(feed(client, auth["B"]).json())[0]["body"] is None
+    put_stamp(client, auth["A"], "public", expected_stamp_id=stamp_id, body="다시")
+    assert put_stamp(client, auth["A"], "public", expected_stamp_id=stamp_id, body=None).json()["stamp"]["body"] is None
+    today = client.get(f"/api/v1/libraries/{LIB_1}/stamps/today", headers=auth["A"]).json()
+    assert today["stamp"]["body"] is None
+    assert [tuple(row) for row in stored_bodies(db_engine)] == [("public", None)]
+
+
+def test_stamp_body_on_first_stamp_and_idempotent_restamp_keeps_body(client, auth, db_engine):
+    r = put_stamp(client, auth["A"], "public", body="처음부터 한마디")
+    assert r.status_code == 200 and r.json()["stamp"]["body"] == "처음부터 한마디"
+    again = put_stamp(client, auth["A"], "private")  # 연타·재시도(본문 키 없음) → 본문 유지
+    assert again.json()["stamp"]["id"] == r.json()["stamp"]["id"]
+    assert [tuple(row) for row in stored_bodies(db_engine)] == [("private", "처음부터 한마디")]
+
+
+@pytest.mark.parametrize("bad", ["가" * 141, 5, ["x"]])
+def test_stamp_body_too_long_or_wrong_type_is_422_and_keeps_row(client, auth, db_engine, bad):
+    stamp_id = put_stamp(client, auth["A"], "private", body="원래 글").json()["stamp"]["id"]
+    r = put_stamp(client, auth["A"], "public", expected_stamp_id=stamp_id, body=bad)
+    assert r.status_code == 422 and r.json()["error"]["code"] == "VALIDATION_ERROR"
+    if isinstance(bad, str):
+        assert r.json()["error"]["detail"] == "body"
+    assert [tuple(row) for row in stored_bodies(db_engine)] == [("private", "원래 글")]
+    assert put_stamp(client, auth["A"], "private", expected_stamp_id=stamp_id, body="가" * 140).status_code == 200
+
+
+def test_stamp_body_after_midnight_is_409_and_keeps_yesterday(client, auth, db_engine, clock):
+    stamp_id = put_stamp(client, auth["A"], "private").json()["stamp"]["id"]
+    clock.set(datetime(2026, 11, 25, 0, 1, tzinfo=KST))
+    r = put_stamp(client, auth["A"], "private", expected_stamp_id=stamp_id, body="늦은 한마디")
+    assert r.status_code == 409 and r.json()["error"]["code"] == "STAMP_DATE_CHANGED"
+    assert [tuple(row) for row in stored_bodies(db_engine)] == [("private", None)]
+
+
+def test_stamp_body_db_check_rejects_empty_or_long(db_engine, client, auth):
+    put_stamp(client, auth["A"], "private")
+    for bad in ("", "가" * 141):
+        with pytest.raises(Exception, match="visit_stamps_body_len_check"):
+            with db_engine.begin() as conn:
+                conn.execute(text("UPDATE visit_stamps SET body = :b"), {"b": bad})
 
 
 # ─────────── #32 stamp ───────────
@@ -191,7 +255,8 @@ def test_public_stamp_card_in_feed_and_flags(client, auth):
     stamp_id = put_stamp(client, auth["A"], "public").json()["stamp"]["id"]
     assert client.put(f"/api/v1/stamps/{stamp_id}/bookmark", headers=auth["B"]).status_code == 200
     as_a, as_b, anon = (stamp_items(feed(client, h).json()) for h in (auth["A"], auth["B"], {}))
-    assert set(as_a[0]) == {"id", "library_id", "stamped_on", "author_nickname", "published_at", "mine", "my_bookmark"}
+    assert set(as_a[0]) == {"id", "library_id", "stamped_on", "body", "author_nickname", "published_at", "mine",
+                            "my_bookmark"}
     assert as_a[0]["id"] == stamp_id and as_a[0]["stamped_on"] == "2026-11-24"
     assert as_a[0]["published_at"].endswith("+09:00")
     assert (as_a[0]["mine"], as_a[0]["my_bookmark"]) == (True, False)

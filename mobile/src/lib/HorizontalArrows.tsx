@@ -116,6 +116,18 @@ function Arrow({ side, label, glyph, top, onPress }: {
 }
 
 const c = theme.colors;
+
+/** 유리 원 바탕(가로 넘김 버튼과 같은 값). 방문 화면 `+`도 쓴다(2026-11-25 C-92 V3-O3) */
+export const GLASS_SURFACE = {
+  borderRadius: theme.radii.control,
+  backgroundColor: `${c.paper}9E`, // 62%
+  borderWidth: 1,
+  borderColor: `${c.paper}BF`, // 75%
+  boxShadow: `0 1px 6px 0 ${c.shadowSoft}`,
+  ...(Platform.OS === "web" ? ({ backdropFilter: "blur(8px)" } as object) : null),
+} as const;
+export const GLASS_PRESSED = { backgroundColor: `${c.paper}D9` } as const;
+
 const styles = StyleSheet.create({
   hit: { position: "absolute", width: HIT, height: HIT, alignItems: "center", justifyContent: "center", zIndex: 2 },
   left: { left: 2 },

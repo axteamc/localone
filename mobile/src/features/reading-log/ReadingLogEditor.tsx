@@ -33,6 +33,8 @@ import {
   type ReadingLog,
   type ReadingLogInput,
 } from "./api";
+import { ModalFrame } from "../../theme/WebFrame";
+import { BackChevron, CloseMark, HeaderTitle } from "../../theme/ScreenHeader";
 
 export const TEXT = {
   newTitle: "기록 쓰기",
@@ -367,11 +369,11 @@ export function ReadingLogEditor(props: Props) {
     <View style={styles.screen}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <Pressable accessibilityRole="button" accessibilityLabel={TEXT.close} onPress={onClose} hitSlop={8} style={styles.headerSide}>
-          <Text style={styles.headerX}>✕</Text>
+          <CloseMark color={C.inkStrong} />
         </Pressable>
-        <Text accessibilityRole="header" style={styles.headerTitle} numberOfLines={1}>
-          {editing ? TEXT.editTitle : TEXT.newTitle}
-        </Text>
+        <View style={styles.flex}>
+          <HeaderTitle label={editing ? "EDIT RECORD" : "NEW RECORD"} title={editing ? TEXT.editTitle : TEXT.newTitle} />
+        </View>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={TEXT.save}
@@ -614,7 +616,7 @@ export function Toast({ text }: { text: string | null }) {
 function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   const insets = useSafeAreaInsets();
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible transparent animationType="slide" onRequestClose={onClose}><ModalFrame>
       <View style={styles.backdrop}>
         <Pressable style={styles.flex} accessibilityLabel={TEXT.close} onPress={onClose} />
         <View style={[styles.sheet, { paddingBottom: insets.bottom + 16 }]}>
@@ -627,7 +629,7 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
           {children}
         </View>
       </View>
-    </Modal>
+    </ModalFrame></Modal>
   );
 }
 
@@ -841,9 +843,11 @@ function BookFinder({ onPick, onClose }: { onPick: (book: Book) => void; onClose
     <View style={[styles.finder, { paddingTop: insets.top + 8 }]} testID="book-finder">
       <View style={styles.finderHead}>
         <Pressable accessibilityRole="button" accessibilityLabel="돌아가기" onPress={onClose} hitSlop={8} style={styles.headerSide}>
-          <Text style={styles.headerX}>‹</Text>
+          <BackChevron color={C.inkStrong} />
         </Pressable>
-        <Text accessibilityRole="header" style={styles.headerTitle} numberOfLines={1}>{TEXT.bookSearchTitle}</Text>
+        <View style={styles.flex}>
+          <HeaderTitle label="FIND BOOK" title={TEXT.bookSearchTitle} />
+        </View>
         <View style={styles.headerSide} />
       </View>
       <TextInput

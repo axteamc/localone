@@ -92,7 +92,7 @@ async function send<T>(path: string, init: RequestInit, signal?: AbortSignal): P
   return response.json() as Promise<T>;
 }
 
-export type ReportKind = "post" | "guestbook" | "club" | "club_comment";
+export type ReportKind = "post" | "guestbook" | "club" | "club_comment" | "stamp"; // stamp: C-92 공개 스탬프(한마디)
 export type ReportReason = "spam" | "abuse" | "privacy" | "other";
 
 export async function reportTarget(
@@ -253,7 +253,6 @@ export function fetchShelf(libraryId: number, signal?: AbortSignal): Promise<She
 
 // ─────────── VISIT-3 방명록·혼합 피드(contracts/local-feed.md VISIT-3 C2·C3) ───────────
 
-export const GUESTBOOK_MAX = 140; // V3-O5
 
 export type GuestbookItem = {
   id: string;
@@ -267,7 +266,9 @@ export type GuestbookItem = {
 // ─────────── VISIT-4 방문 스탬프(contracts/local-feed.md VISIT-4 C2·C3) ───────────
 
 export type StampVisibility = "private" | "public";
-export type MyStamp = { id: string; stamped_on: string; visibility: StampVisibility };
+/** 오늘 내 스탬프. `body`는 한마디(C-92 V4-12, 없으면 null) */
+export type MyStamp = { id: string; stamped_on: string; visibility: StampVisibility; body: string | null };
+export const STAMP_BODY_MAX = 140; // C-92 V4-12 (옛 방명록 V3-O5와 같은 상한)
 export type TodayStamp = { stamped: boolean; stamp: MyStamp | null };
 
 /** 피드의 공개 스탬프 카드(C3). user_id는 없다 */
@@ -275,6 +276,8 @@ export type StampItem = {
   id: string;
   library_id: number;
   stamped_on: string;
+  /** 공개 스탬프의 한마디(C-92 V4-O7). 옛 응답에는 없을 수 있다 */
+  body?: string | null;
   author_nickname: string;
   published_at: string;
   mine: boolean;
@@ -324,14 +327,7 @@ export function fetchLibraryFeedItems(
   return send<FeedItemPage>(`libraries/${libraryId}/feed${pageQuery(page)}`, { method: "GET" }, signal);
 }
 
-/** #33 `POST /api/v1/libraries/{library_id}/guestbook` — 같은 clientRequestId면 같은 글(200, V3-9) */
-export function postGuestbook(libraryId: number, body: string, clientRequestId: string): Promise<GuestbookItem> {
-  return send<GuestbookItem>(`libraries/${libraryId}/guestbook`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ body, client_request_id: clientRequestId }),
-  });
-}
+// #33 방명록 올리기는 2026-11-25 C-92에 없앴다(한마디는 스탬프 #36 `body`). 이미 있는 글은 #34로 지운다.
 
 /** #34 `POST /api/v1/guestbook/{entry_id}/withdraw` — 이미 지운 글도 200 */
 export async function withdrawGuestbook(entryId: string): Promise<void> {
@@ -347,10 +343,13 @@ export function fetchTodayStamp(libraryId: number, signal?: AbortSignal): Promis
 export function putTodayStamp(
   libraryId: number,
   visibility: StampVisibility,
-  expectedStampId?: string
+  expectedStampId?: string,
+  note?: { body: string | null }
 ): Promise<TodayStamp> {
-  const body: { visibility: StampVisibility; expected_stamp_id?: string } = { visibility };
+  // note가 없으면 body 키를 보내지 않는다 → 서버가 기존 한마디를 그대로 둔다(C-92 V4-12)
+  const body: { visibility: StampVisibility; expected_stamp_id?: string; body?: string | null } = { visibility };
   if (expectedStampId) body.expected_stamp_id = expectedStampId;
+  if (note) body.body = note.body;
   return send<TodayStamp>(`libraries/${libraryId}/stamps/today`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },

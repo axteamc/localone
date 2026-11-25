@@ -17,6 +17,7 @@ STAMP_BOOKMARK_KEYS = {
     "id",
     "library_id",
     "library_name",
+    "body",  # C-92 스탬프 한마디
     "stamped_on",
     "author_nickname",
     "published_at",

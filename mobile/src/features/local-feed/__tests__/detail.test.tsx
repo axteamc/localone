@@ -438,17 +438,17 @@ describe("이어지는 글 (H7·H15)", () => {
   test("back button uses light ink on dark color or photo/cover and dark ink on light color", async () => {
     await enter(post({ image_kind: "color", image_color: "inkStrong", image_url: null }));
     const darkBtn = screen.getByRole("button", { name: "돌아가기" });
-    const darkGlyph = within(darkBtn).getByText("‹");
-    expect(StyleSheet.flatten(darkGlyph.props.style)?.color).toBe(ON_FILL_LIGHT);
+    const darkGlyph = within(darkBtn).getByTestId("back-chevron");
+    expect(StyleSheet.flatten(darkGlyph.props.style)?.borderColor).toBe(ON_FILL_LIGHT);
 
     await enter(post({ image_kind: "color", image_color: "fill1", image_url: null }));
     const lightBtn = screen.getByRole("button", { name: "돌아가기" });
-    const lightGlyph = within(lightBtn).getByText("‹");
-    expect(StyleSheet.flatten(lightGlyph.props.style)?.color).toBe(theme.colors.inkStrong);
+    const lightGlyph = within(lightBtn).getByTestId("back-chevron");
+    expect(StyleSheet.flatten(lightGlyph.props.style)?.borderColor).toBe(theme.colors.inkStrong);
 
     await enter(post({ image_kind: "photo", image_color: null, image_url: "https://example.com/a.jpg" }));
     const photoBtn = screen.getByRole("button", { name: "돌아가기" });
-    const photoGlyph = within(photoBtn).getByText("‹");
-    expect(StyleSheet.flatten(photoGlyph.props.style)?.color).toBe(ON_FILL_LIGHT);
+    const photoGlyph = within(photoBtn).getByTestId("back-chevron");
+    expect(StyleSheet.flatten(photoGlyph.props.style)?.borderColor).toBe(ON_FILL_LIGHT);
   });
 });

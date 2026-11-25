@@ -29,6 +29,8 @@ import {
   type ClubComment,
 } from "./api";
 import { formatClubWhen } from "./ClubCard";
+import { ModalFrame } from "../../theme/WebFrame";
+import { ScreenHeader } from "../../theme/ScreenHeader";
 
 const C = theme.colors;
 const ACT = actionColors(theme.colors);
@@ -36,6 +38,7 @@ const ACT = actionColors(theme.colors);
 /** C3 화면 문구 한곳(테스트도 이 상수로 단언) */
 export const CLUB_TEXT = {
   header: "모임",
+  headerLabel: "CLUB", // C-92 core K27: 영어 표찰, 한글은 접근성 이름
   join: "모임에 참가",
   joining: "참가하는 중…",
   leave: "참가 취소",
@@ -376,14 +379,13 @@ export function ClubScreen({ clubId }: { clubId: string }) {
   }
 
   const head = (club: Club | null) => (
-    <View style={[styles.head, { paddingTop: 10 + insets.top }]}>
-      <Pressable accessibilityRole="button" accessibilityLabel="뒤로" onPress={goBack} hitSlop={10}>
-        <Text style={styles.back}>‹</Text>
-      </Pressable>
-      <Text style={styles.headTitle} numberOfLines={1}>
-        {CLUB_TEXT.header}
-      </Text>
-      {club?.is_host && club.status !== "canceled" && club.status !== "ended" ? (
+    <ScreenHeader
+      label={CLUB_TEXT.headerLabel}
+      title={CLUB_TEXT.header}
+      onBack={goBack}
+      topInset={insets.top}
+      testID="club-head"
+      right={club?.is_host && club.status !== "canceled" && club.status !== "ended" ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="모임 메뉴"
@@ -398,10 +400,8 @@ export function ClubScreen({ clubId }: { clubId: string }) {
           onPress={() => openReport({ kind: "club", id: club.id })}>
           <Text style={styles.line}>{REPORT_TEXT.open}</Text>
         </Pressable>
-      ) : (
-        <View style={styles.headSide} />
-      )}
-    </View>
+      ) : undefined}
+    />
   );
 
   if (load.state !== "ok") {
@@ -693,13 +693,13 @@ function ClubDialog({
     );
   }
   return (
-    <Modal transparent animationType="fade" onRequestClose={onClose}>
+    <Modal transparent animationType="fade" onRequestClose={onClose}><ModalFrame>
       <View style={styles.backdrop}>
         <View style={styles.sheet} testID={`club-dialog-${dialog.kind}`}>
           {body}
         </View>
       </View>
-    </Modal>
+    </ModalFrame></Modal>
   );
 }
 

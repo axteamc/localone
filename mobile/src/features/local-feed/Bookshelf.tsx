@@ -30,12 +30,15 @@ const BOOK_GAP = 16;
 const PAGE_TOP = 8; // page paddingTop
 const OPEN_LOCK_MS = 1000; // 책 연타: 책 화면은 한 번만(예외 #3)
 
-/** V3-O1 (2026-11-19 D 변경): 요즘 사람들이 읽은 책 → 테마 추천 → 인기 도서. 서버가 뺀 장은 건너뛴다 */
-export const SHELF_ORDER: readonly ShelfKind[] = ["recent_reads", "theme", "popular"];
+/** V3-O1 (2026-11-25 C-92 3장 체제): 인기 도서(YES24 베스트셀러) → {테마} → 최근 대출 도서(정보나루 최근 30일).
+ * 서버도 같은 순서로 주지만 앱이 한 번 더 맞춘다. 서버가 뺀 장은 건너뛴다(이전: recent_reads → theme → popular) */
+export const SHELF_ORDER: readonly ShelfKind[] = ["popular", "theme", "recent_reads"];
 
 export const SHELF_TEXT = {
   emptyTitle: "아직 이 도서관 책장이 비어 있어요",
-  emptySub: "빌린 책을 반납하면 여기에 쌓여요",
+  // C-92: 책장은 YES24·테마·정보나루 대출로 채운다(반납 집계 안 씀) → 비면 내 독서 기록으로 잇는다
+  emptySub: "읽은 책은 독서 기록에 남겨 보세요",
+  emptyLink: "독서 기록 쓰기 →",
   failed: "책장을 불러오지 못했어요",
   retry: "다시 해 보기",
 } as const;
@@ -52,9 +55,11 @@ export type BookshelfProps = {
   load?: (libraryId: number, signal: AbortSignal) => Promise<ShelfResponse>; // 기본: fetchShelf(#31)
   /** 아래 안전 영역을 뺀 책장 높이(글쓰기 버튼·피드 여백 맞춤용) */
   onHeight?: (height: number) => void;
+  /** 빈 책장 "독서 기록 쓰기 →"(C-92). 없으면 링크를 그리지 않는다 */
+  onWriteRecord?(): void;
 };
 
-export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf, onHeight }: BookshelfProps) {
+export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf, onHeight, onWriteRecord }: BookshelfProps) {
   const { styles } = useLook(makeStyles);
   const insets = useSafeAreaInsets();
   const runner = useRef(createLatestRunner()).current;
@@ -151,6 +156,11 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf, onHeight }
         <View style={styles.message} testID="shelf-empty">
           <Text style={styles.messageTitle}>{SHELF_TEXT.emptyTitle}</Text>
           <Text style={styles.messageSub}>{SHELF_TEXT.emptySub}</Text>
+          {onWriteRecord ? (
+            <Pressable accessibilityRole="link" onPress={onWriteRecord} style={styles.retry} testID="shelf-empty-record">
+              <Text style={styles.retryText}>{SHELF_TEXT.emptyLink}</Text>
+            </Pressable>
+          ) : null}
         </View>
       ) : state.kind === "loading" ? (
         <View style={styles.message} testID="shelf-loading" />
