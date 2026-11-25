@@ -106,6 +106,8 @@ function Row({ title, sub, value, disabled, onChange, testID, last = false }: {
         onValueChange={onChange}
         trackColor={{ false: c.surface3, true: c.inkStrong }}
         thumbColor={c.paper}
+        // 웹(react-native-web)은 켜진 손잡이 색을 따로 받는다(없으면 기본 청록)
+        {...({ activeThumbColor: c.paper } as object)}
       />
     </View>
   );
