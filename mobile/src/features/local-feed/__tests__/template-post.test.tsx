@@ -112,19 +112,45 @@ test("template post renders without image upload and only selected public fields
   expect(load.mock.calls[0]?.[0]).toBe("log-A");
   expect(screen.getByText("기록의 도서관")).toBeTruthy();
   await fireEvent.press(screen.getByLabelText("잉크 손글씨"));
-  await fireEvent.changeText(screen.getByLabelText("공개할 문장"), "  공개할 문장만  ");
+  await fireEvent.changeText(screen.getByLabelText("이미지 위 글자"), "  공개할 문장만  ");
+  expect(screen.queryByLabelText("표지 설정")).toBeNull(); // 템플릿에는 칩이 없다(LOCAL-1b P1b-1)
+  await fireEvent.press(screen.getByText("+ 감상 쓰기")); // LOCAL-1b P1b-9 접힌 감상
+  await fireEvent.changeText(screen.getByLabelText("감상"), "  공개할 감상  ");
   await fireEvent.press(screen.getByRole("checkbox"));
   await fireEvent.press(screen.getByText("도서관 변경"));
   await pickLibrary();
   expect(publish).not.toHaveBeenCalled();
   await fireEvent.press(screen.getByText("올리기"));
-  await screen.findByText("올렸어요");
+  await screen.findByText("UPLOADED");
   expect(screen.getByTestId("template-card-ink")).toBeTruthy();
   expect(upload).not.toHaveBeenCalled();
   expect(publish.mock.calls[0]?.[0]).toEqual({
     client_request_id: "template-request", reading_log_id: "log-A", library_id: 202, isbn13: null,
     image_kind: "template", image_value: "ink", image_path: null, image_color: null,
-    overlay_text: "공개할 문장만", body: null,
+    overlay_text: "공개할 문장만", body: "공개할 감상",
+    overlay_pos: null, overlay_tone: null, image_fit: null,
+  });
+  // 올린 뒤(P1b-8): 큰 「게시물 보기」 → 상세로 바꿔 열기, 작은 「기록으로 돌아가기」
+  expect(screen.getByText("기록으로 돌아가기")).toBeTruthy();
+  await fireEvent.press(screen.getByText("게시물 보기"));
+  expect(mockReplace).toHaveBeenCalledWith({ pathname: "/posts/[postId]", params: { postId: expect.any(String) } });
+});
+
+test("cover template post sends style chosen from the 표지 설정 chip", async () => {
+  load.mockReset().mockResolvedValue(record({ book: { ...book, cover_url: "https://img.test/c.jpg" } }));
+  await render(<NewPostScreen />);
+  await screen.findByText("게시할 내용 미리보기");
+  await fireEvent.press(screen.getByLabelText("책 표지"));
+  expect(screen.getByTestId("template-cover-preview-fit-contain")).toBeTruthy(); // 기본 여백
+  await fireEvent.press(screen.getByLabelText("표지 설정"));
+  await fireEvent.press(screen.getByText("아래"));
+  await fireEvent.press(screen.getByLabelText("검정 글자"));
+  await fireEvent.press(screen.getByText("흐림"));
+  expect(screen.getByTestId("template-cover-preview-fit-blur")).toBeTruthy();
+  await fireEvent.press(screen.getByText("올리기"));
+  await screen.findByText("UPLOADED");
+  expect(publish.mock.calls[0]?.[0]).toMatchObject({
+    image_kind: "cover", overlay_pos: "bot", overlay_tone: "dark", image_fit: "blur",
   });
 });
 
@@ -134,7 +160,7 @@ test("missing library requires a manual selection and load failure offers retry"
   await render(<NewPostScreen />);
   await fireEvent.press(await screen.findByText("다시 시도"));
   await screen.findByText("도서관 선택");
-  expect(screen.getByLabelText("공개할 문장").props.value).toBe("");
+  expect(screen.getByLabelText("이미지 위 글자").props.value).toBe("");
   expect(screen.getByRole("button", { name: "올리기" }).props.accessibilityState?.disabled).toBe(true);
   await fireEvent.press(screen.getByText("도서관 선택"));
   await pickLibrary();
@@ -182,9 +208,9 @@ test("stale record and publication responses never replace a new record draft", 
   mockParams = { fromLog: "log-C" };
   await rendered.rerender(<NewPostScreen />);
   await screen.findByDisplayValue("C의 문장");
-  await fireEvent.changeText(screen.getByLabelText("공개할 문장"), "C의 새 초안");
+  await fireEvent.changeText(screen.getByLabelText("이미지 위 글자"), "C의 새 초안");
   await act(async () => oldPost.resolve(post(publish.mock.calls[0]![0])));
-  expect(screen.queryByText("올렸어요")).toBeNull();
+  expect(screen.queryByText("UPLOADED")).toBeNull();
   expect(screen.getByDisplayValue("C의 새 초안")).toBeTruthy();
   expect(mockReplace).not.toHaveBeenCalled();
   expect(publish).toHaveBeenCalledTimes(1);
@@ -197,7 +223,7 @@ test("retries preserve the request key and conflicts open the verified public po
     .mockResolvedValueOnce(record({ published_post_id: "verified" }));
   await render(<NewPostScreen />);
   await screen.findByText("게시할 내용 미리보기");
-  await fireEvent.changeText(screen.getByLabelText("공개할 문장"), "보존할 초안");
+  await fireEvent.changeText(screen.getByLabelText("이미지 위 글자"), "보존할 초안");
   await fireEvent.press(screen.getByText("올리기"));
   await fireEvent.press(await screen.findByText("다시 올리기"));
   await screen.findByText("이미 올린 게시물을 확인하지 못했어요. 다시 시도해 주세요.");

@@ -19,31 +19,45 @@ import Svg, { Circle, Path, Rect } from "react-native-svg";
 import { useAuth } from "../../auth/AuthProvider";
 import { fetchBook, fetchLibrary, searchBooks, searchLibrariesByName, type Book, type LibrarySummary } from "../../lib/publicApi";
 import type { ReadingLog } from "../reading-log/api";
-import { ON_FILL_LIGHT } from "../../theme/tokens";
-import { actionColors, cardSurface, onFill, panel, resolvePostColor, theme, type as T } from "../../theme";
+import { ON_FILL_LIGHT, TEXT_COLOR } from "../../theme/tokens";
+import { actionColors, cardSurface, panel, resolvePostColor, theme, type as T } from "../../theme";
 import {
   ApiCallError,
   BODY_MAX,
-  COLOR_TOKENS,
+  COMPOSE_COLOR_TOKENS,
   OVERLAY_MAX,
   createPost,
   uploadPostImage,
   withdrawPost,
   type ColorToken,
+  type ImageFit,
   type ImageKind,
+  type OverlayPos,
+  type OverlayTone,
   type Post,
   type UploadedImage,
 } from "./api";
 import { TemplateCard, TEMPLATE_LABELS, type TemplateKey } from "./templates";
 import { canUseCamera, pickPostImage, type PickSource } from "./imagePicker";
+import { overlayColorOf, overlayPosOf, PostImageFill } from "./postLook";
 
-export type OverlayPos = "top" | "mid" | "bot";
+export type { ImageFit, OverlayPos, OverlayTone } from "./api";
 
 export const TEXT = {
   needImage: "이미지를 하나 골라야 올릴 수 있어요",
   submit: "올리기",
   submitting: "올리는 중…",
   posted: "올렸어요",
+  postedGauge: "UPLOADED", // LOCAL-1b P1b-8
+  postedTitle: "내 게시물",
+  viewPost: "게시물 보기",
+  viewFeed: "피드 보기",
+  backToLog: "기록으로 돌아가기",
+  styleChip: "표지 설정", // LOCAL-1b P1b-1
+  stylePos: "글자 위치",
+  styleTone: "글자 색",
+  styleFit: "표지 맞춤",
+  overlayPlaceholder: "글자를 넣어 보세요",
   failed: "지금은 올릴 수 없어요. 쓴 내용은 그대로 있어요.",
   tooLarge: "사진이 너무 커요.",
   retry: "다시 올리기",
@@ -73,6 +87,8 @@ const TOAST_MS = 2000;
 const C = theme.colors;
 const POS_TOP: Record<OverlayPos, `${number}%` | undefined> = { top: "10%", mid: "45%", bot: undefined };
 const POS_LABEL: Record<OverlayPos, string> = { top: "위", mid: "가운데", bot: "아래" };
+const TONE_LABEL: Record<OverlayTone, string> = { light: "흰 글자", dark: "검정 글자", auto: "자동" };
+const FIT_LABEL: Record<ImageFit, string> = { contain: "여백", blur: "흐림", cover: "확대" };
 
 /** 표지 없는 책(F14): 제목·저자 글자를 80자 이내로 */
 export function titleAuthorText(book: Pick<Book, "title" | "author">): string {
@@ -115,32 +131,141 @@ type PreviewProps = {
   imageUrl: string | null;
   color: ColorToken | null;
   text: string | null;
-  pos: OverlayPos;
+  /** 저장된 글자 자리(null = 옛 게시물 → 아래, 단색은 늘 가운데 — LOCAL-1b P1b-3) */
+  pos: OverlayPos | null | undefined;
+  tone?: OverlayTone | null;
+  fit?: ImageFit | null;
   testID?: string;
 };
 
-export function PostImage({ kind, imageUrl, color, text, pos, testID }: PreviewProps) {
+export function PostImage({ kind, imageUrl, color, text, pos, tone, fit, testID }: PreviewProps) {
   const bg = kind === "color" ? resolvePostColor(color, C) : C.surface3;
-  const onColor = kind === "color" && color ? onFill(bg) : ON_FILL_LIGHT;
-  const place = kind === "color" ? "mid" : pos; // 단색은 늘 가운데(큰 틀 결정 2)
+  const ink = overlayColorOf(kind, color, tone, C);
+  const place = overlayPosOf(kind, pos);
   return (
     <View testID={testID} style={[styles.image, { backgroundColor: bg }]}>
-      {kind !== "color" && imageUrl ? (
-        <Image source={{ uri: imageUrl }} style={StyleSheet.absoluteFill} resizeMode="cover" />
-      ) : null}
+      {kind !== "color" && imageUrl ? <PostImageFill uri={imageUrl} kind={kind} fit={fit} testID={testID} /> : null}
       {text ? (
         <Text
           testID={testID ? `${testID}-text-${place}` : undefined}
           style={[
             styles.overlay,
-            { color: onColor },
-            kind !== "color" && styles.overlayShadow,
-            place === "bot" ? { bottom: 12 } : { top: POS_TOP[place] },
+            { color: ink.color },
+            ink.shadow && styles.overlayShadow,
+            place === "bot" ? styles.overlayBot : { top: POS_TOP[place] },
           ]}
         >
           {text}
         </Text>
       ) : null}
+    </View>
+  );
+}
+
+// ─────────── 「표지 설정」 칩(LOCAL-1b P1b-1): 글자 위치·색·표지 맞춤을 한 칩에서 ───────────
+
+type StyleChipProps = {
+  kind: ImageKind;
+  pos: OverlayPos;
+  tone: OverlayTone;
+  fit: ImageFit;
+  open: boolean;
+  onOpenChange(open: boolean): void;
+  onPos(pos: OverlayPos): void;
+  onTone(tone: OverlayTone): void;
+  onFit(fit: ImageFit): void;
+};
+
+export function StyleChip({ kind, pos, tone, fit, open, onOpenChange, onPos, onTone, onFit }: StyleChipProps) {
+  if (kind === "template") return null;
+  return (
+    <>
+      {open ? (
+        <View style={styles.styleMenu} testID="style-menu">
+          {kind !== "color" ? (
+            <>
+              <Text style={styles.styleMenuLabel}>{TEXT.stylePos}</Text>
+              <View style={styles.styleRow} accessibilityRole="radiogroup" accessibilityLabel={TEXT.stylePos}>
+                {(["top", "mid", "bot"] as const).map((p) => (
+                  <SegOption key={p} label={POS_LABEL[p]} on={pos === p} onPress={() => onPos(p)} />
+                ))}
+              </View>
+            </>
+          ) : null}
+          <Text style={styles.styleMenuLabel}>{TEXT.styleTone}</Text>
+          <View style={styles.styleRow} accessibilityRole="radiogroup" accessibilityLabel={TEXT.styleTone}>
+            {(["light", "dark"] as const).map((t) => (
+              <Pressable
+                key={t}
+                accessibilityRole="radio"
+                accessibilityLabel={TONE_LABEL[t]}
+                accessibilityState={{ checked: tone === t }}
+                onPress={() => onTone(t)}
+                style={[styles.toneDot, { backgroundColor: t === "light" ? ON_FILL_LIGHT : TEXT_COLOR }, tone === t && styles.toneDotOn]}
+              />
+            ))}
+            <SegOption label={TONE_LABEL.auto} on={tone === "auto"} onPress={() => onTone("auto")} />
+          </View>
+          {kind === "cover" ? (
+            <>
+              <Text style={styles.styleMenuLabel}>{TEXT.styleFit}</Text>
+              <View style={styles.styleRow} accessibilityRole="radiogroup" accessibilityLabel={TEXT.styleFit}>
+                {(["contain", "blur", "cover"] as const).map((f) => (
+                  <SegOption key={f} label={FIT_LABEL[f]} on={fit === f} onPress={() => onFit(f)} />
+                ))}
+              </View>
+            </>
+          ) : null}
+          <Pressable accessibilityRole="button" onPress={() => onOpenChange(false)} style={styles.styleClose}>
+            <Text style={styles.link}>{TEXT.close}</Text>
+          </Pressable>
+        </View>
+      ) : null}
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={TEXT.styleChip}
+        accessibilityState={{ expanded: open }}
+        testID="style-chip"
+        onPress={() => onOpenChange(!open)}
+        style={({ pressed }) => [styles.styleChip, pressed && ACT.secondaryPressed]}
+      >
+        <Text style={styles.styleChipText}>{TEXT.styleChip}</Text>
+      </Pressable>
+    </>
+  );
+}
+
+function SegOption({ label, on, onPress }: { label: string; on: boolean; onPress(): void }) {
+  return (
+    <Pressable
+      accessibilityRole="radio"
+      accessibilityState={{ checked: on }}
+      onPress={onPress}
+      style={({ pressed }) => [styles.pill, on && styles.pillOn, pressed && ACT.secondaryPressed]}
+    >
+      <Text style={[styles.pillText, on && styles.pillTextOn]}>{label}</Text>
+    </Pressable>
+  );
+}
+
+/** 올린 뒤 화면 버튼(LOCAL-1b P1b-8): 큰 「게시물 보기」 + 작은 보조 버튼 */
+function PostedActions({ onView, secondary, onSecondary }: { onView(): void; secondary: string; onSecondary(): void }) {
+  return (
+    <View style={styles.postedActions}>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onView}
+        style={({ pressed }) => [styles.primary, pressed && ACT.primaryPressed]}
+      >
+        <Text style={styles.primaryText}>{TEXT.viewPost}</Text>
+      </Pressable>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onSecondary}
+        style={({ pressed }) => [styles.secondaryBtn, pressed && ACT.secondaryPressed]}
+      >
+        <Text style={styles.secondaryBtnText}>{secondary}</Text>
+      </Pressable>
     </View>
   );
 }
@@ -386,6 +511,12 @@ function TemplateComposer({ logId }: { logId: string }) {
   const [library, setLibrary] = useState<ReadingLog["library"]>(null);
   const [template, setTemplate] = useState<"cover" | TemplateKey>("minimal");
   const [sentence, setSentence] = useState("");
+  const [body, setBody] = useState(""); // LOCAL-1b P1b-9: 접힌 감상도 보낸다
+  const [bodyOpen, setBodyOpen] = useState(false);
+  const [pos, setPos] = useState<OverlayPos>("mid");
+  const [tone, setTone] = useState<OverlayTone>("auto");
+  const [fit, setFit] = useState<ImageFit>("contain");
+  const [styleOpen, setStyleOpen] = useState(false);
   const [includeBook, setIncludeBook] = useState(true);
   const [editingLibrary, setEditingLibrary] = useState(false);
   const [reload, setReload] = useState(0);
@@ -465,7 +596,10 @@ function TemplateComposer({ logId }: { logId: string }) {
             image_path: null,
             image_color: null,
             overlay_text: nullIfBlank(sentence),
-            body: null,
+            body: nullIfBlank(body),
+            overlay_pos: useCover ? pos : null,
+            overlay_tone: useCover ? tone : null,
+            image_fit: useCover ? fit : null,
           }, ctrl.signal);
           if (!ctrl.signal.aborted) setPosted(post);
           return;
@@ -519,7 +653,10 @@ function TemplateComposer({ logId }: { logId: string }) {
     return (
       <ScrollView style={styles.screen} contentContainerStyle={styles.body}>
         <View style={styles.postedHead}>
-          <Text style={T.title}>{TEXT.posted}</Text>
+          <View style={styles.pageHead}>
+            <Text style={T.gauge}>{TEXT.postedGauge}</Text>
+            <Text style={T.pageTitle}>{TEXT.postedTitle}</Text>
+          </View>
           <PostMoreMenu post={posted} onWithdrawn={leave} />
         </View>
         {posted.image_kind === "cover" ? (
@@ -528,7 +665,9 @@ function TemplateComposer({ logId }: { logId: string }) {
             imageUrl={posted.image_url ?? log.book.cover_url}
             color={null}
             text={posted.overlay_text}
-            pos="mid"
+            pos={posted.overlay_pos ?? pos}
+            tone={posted.overlay_tone ?? tone}
+            fit={posted.image_fit ?? fit}
             testID="template-cover-posted"
           />
         ) : (
@@ -539,9 +678,11 @@ function TemplateComposer({ logId }: { logId: string }) {
             width={previewWidth}
           />
         )}
-        <Pressable accessibilityRole="button" style={styles.secondaryBtn} onPress={leave}>
-          <Text style={styles.secondaryBtnText}>기록으로 돌아가기</Text>
-        </Pressable>
+        <PostedActions
+          onView={() => router.replace({ pathname: "/posts/[postId]", params: { postId: posted.id } })}
+          secondary={TEXT.backToLog}
+          onSecondary={leave}
+        />
       </ScrollView>
     );
   }
@@ -553,14 +694,29 @@ function TemplateComposer({ logId }: { logId: string }) {
     <ScrollView style={styles.screen} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
       <Text style={T.title}>게시할 내용 미리보기</Text>
       {usingCover ? (
-        <PostImage
-          kind="cover"
-          imageUrl={log.book.cover_url}
-          color={null}
-          text={nullIfBlank(sentence)}
-          pos="mid"
-          testID="template-cover-preview"
-        />
+        <View style={styles.previewFrame}>
+          <PostImage
+            kind="cover"
+            imageUrl={log.book.cover_url}
+            color={null}
+            text={nullIfBlank(sentence)}
+            pos={pos}
+            tone={tone}
+            fit={fit}
+            testID="template-cover-preview"
+          />
+          <StyleChip
+            kind="cover"
+            pos={pos}
+            tone={tone}
+            fit={fit}
+            open={styleOpen}
+            onOpenChange={setStyleOpen}
+            onPos={setPos}
+            onTone={setTone}
+            onFit={setFit}
+          />
+        </View>
       ) : (
         <TemplateCard
           template={template === "cover" ? "minimal" : template}
@@ -606,10 +762,14 @@ function TemplateComposer({ logId }: { logId: string }) {
           );
         })}
       </View>
-      <Text style={T.name}>공개할 문장</Text>
+      <View style={styles.stepLine}>
+        <Text style={T.gauge}>02 · OVERLAY TEXT</Text>
+        <Text style={T.gauge}>MAX 80</Text>
+      </View>
       <TextInput
-        accessibilityLabel="공개할 문장"
-        placeholder="문장을 써 주세요"
+        accessibilityLabel="이미지 위 글자"
+        placeholder={TEXT.overlayPlaceholder}
+        placeholderTextColor={C.inkMuted}
         value={sentence}
         onChangeText={setSentence}
         maxLength={OVERLAY_MAX}
@@ -620,6 +780,27 @@ function TemplateComposer({ logId }: { logId: string }) {
         <Pressable accessibilityRole="button" onPress={() => setSentence((log.note ?? "").slice(0, OVERLAY_MAX))} style={styles.pill}>
           <Text style={styles.pillText}>감상 앞부분 가져오기</Text>
         </Pressable>
+      ) : null}
+      <View style={styles.stepLine}>
+        <Text style={T.gauge}>03 · BODY</Text>
+        {!bodyOpen ? (
+          <Pressable accessibilityRole="button" onPress={() => setBodyOpen(true)} style={styles.textLinkWrap}>
+            <Text style={styles.link}>{TEXT.openBody}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+      {bodyOpen ? (
+        <TextInput
+          accessibilityLabel="감상"
+          placeholder="감상(선택)"
+          placeholderTextColor={C.inkMuted}
+          value={body}
+          onChangeText={setBody}
+          maxLength={BODY_MAX}
+          multiline
+          autoFocus
+          style={[styles.input, styles.bodyInput]}
+        />
       ) : null}
       <Pressable
         accessibilityRole="checkbox"
@@ -722,6 +903,9 @@ function RegularComposer({ libraryId, isbn13, templateEntry }: Omit<ComposeScree
   const [book, setBook] = useState<Book | null>(null);
   const [overlay, setOverlay] = useState("");
   const [pos, setPos] = useState<OverlayPos>("mid");
+  const [tone, setTone] = useState<OverlayTone>("auto"); // LOCAL-1b P1b-2
+  const [fit, setFit] = useState<ImageFit>("contain");
+  const [styleOpen, setStyleOpen] = useState(false);
   const [bodyOpen, setBodyOpen] = useState(false);
   const [body, setBody] = useState("");
   const [finder, setFinder] = useState<null | "cover" | "attach">(null);
@@ -891,15 +1075,19 @@ function RegularComposer({ libraryId, isbn13, templateEntry }: Omit<ComposeScree
         imagePath = uploaded.current.image.image_path;
       }
       const userText = nullIfBlank(overlay);
+      const kind: ImageKind = coverMissing ? "color" : picked.kind;
       const post = await createPost({
         client_request_id: clientRequestId,
         library_id: libraryId,
         isbn13: book?.isbn13 ?? null,
-        image_kind: coverMissing ? "color" : picked.kind,
+        image_kind: kind,
         image_path: imagePath,
         image_color: coverMissing ? "fill3" : picked.kind === "color" ? picked.token : null,
         overlay_text: coverMissing && book ? userText ?? titleAuthorText(book) : userText,
         body: nullIfBlank(body),
+        overlay_pos: kind === "photo" || kind === "cover" ? pos : null,
+        overlay_tone: tone,
+        image_fit: kind === "cover" ? fit : null,
       });
       setPosted(post);
       showToast(TEXT.posted);
@@ -990,8 +1178,8 @@ function RegularComposer({ libraryId, isbn13, templateEntry }: Omit<ComposeScree
         <ScrollView style={styles.scroll} contentContainerStyle={styles.body}>
           <View style={styles.postedHead}>
             <View style={styles.pageHead}>
-              <Text style={T.gauge}>POSTED</Text>
-              <Text style={T.pageTitle}>내 게시물</Text>
+              <Text style={T.gauge}>{TEXT.postedGauge}</Text>
+              <Text style={T.pageTitle}>{TEXT.postedTitle}</Text>
             </View>
             {!withdrawnDone ? (
               <PostMoreMenu
@@ -1010,7 +1198,9 @@ function RegularComposer({ libraryId, isbn13, templateEntry }: Omit<ComposeScree
                 imageUrl={posted.image_url}
                 color={posted.image_color}
                 text={posted.overlay_text}
-                pos={pos}
+                pos={posted.overlay_pos ?? pos}
+                tone={posted.overlay_tone ?? tone}
+                fit={posted.image_fit ?? fit}
               />
               {posted.book ? (
                 <Text style={styles.sub}>📖 {posted.book.title}{posted.book.author ? ` · ${posted.book.author}` : ""}</Text>
@@ -1018,13 +1208,21 @@ function RegularComposer({ libraryId, isbn13, templateEntry }: Omit<ComposeScree
               <Text style={styles.sub}>{posted.library.name} · {posted.author.nickname}</Text>
             </View>
           ) : null}
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.replace(`/libraries/${libraryId}`)}
-            style={({ pressed }) => [styles.secondaryBtn, pressed && ACT.secondaryPressed]}
-          >
-            <Text style={styles.secondaryBtnText}>피드 보기</Text>
-          </Pressable>
+          {!withdrawnDone ? (
+            <PostedActions
+              onView={() => router.replace({ pathname: "/posts/[postId]", params: { postId: posted.id } })}
+              secondary={TEXT.viewFeed}
+              onSecondary={() => router.replace(`/libraries/${libraryId}`)}
+            />
+          ) : (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => router.replace(`/libraries/${libraryId}`)}
+              style={({ pressed }) => [styles.secondaryBtn, pressed && ACT.secondaryPressed]}
+            >
+              <Text style={styles.secondaryBtnText}>{TEXT.viewFeed}</Text>
+            </Pressable>
+          )}
         </ScrollView>
         <Toast text={toast} />
       </View>
@@ -1079,16 +1277,38 @@ function RegularComposer({ libraryId, isbn13, templateEntry }: Omit<ComposeScree
           </Pressable>
         ) : (
           <View style={styles.previewWrap}>
-            <Pressable accessibilityRole="button" accessibilityLabel="이미지 바꾸기" onPress={() => setAttachOpen(true)}>
-              <PostImage
-                testID="compose-preview"
+            <View style={styles.previewFrame}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="이미지 바꾸기"
+                onPress={() => {
+                  setStyleOpen(false);
+                  setAttachOpen(true);
+                }}
+              >
+                <PostImage
+                  testID="compose-preview"
+                  kind={effectiveKind ?? "color"}
+                  imageUrl={picked.kind === "photo" ? picked.uri : picked.kind === "cover" ? book?.cover_url ?? null : null}
+                  color={coverMissing ? "fill3" : picked.kind === "color" ? picked.token : null}
+                  text={previewText}
+                  pos={pos}
+                  tone={tone}
+                  fit={fit}
+                />
+              </Pressable>
+              <StyleChip
                 kind={effectiveKind ?? "color"}
-                imageUrl={picked.kind === "photo" ? picked.uri : picked.kind === "cover" ? book?.cover_url ?? null : null}
-                color={coverMissing ? "fill3" : picked.kind === "color" ? picked.token : null}
-                text={previewText}
                 pos={pos}
+                tone={tone}
+                fit={fit}
+                open={styleOpen}
+                onOpenChange={setStyleOpen}
+                onPos={setPos}
+                onTone={setTone}
+                onFit={setFit}
               />
-            </Pressable>
+            </View>
             {coverMissing ? (
               <Text style={styles.sub}>
                 {TEXT.noCover}
@@ -1099,8 +1319,8 @@ function RegularComposer({ libraryId, isbn13, templateEntry }: Omit<ComposeScree
             ) : null}
             <View style={styles.previewMeta}>
               {picked.kind === "color" ? (
-                <View style={styles.choiceRow}>
-                  {COLOR_TOKENS.map((token) => (
+                <View style={styles.swatchRow}>
+                  {COMPOSE_COLOR_TOKENS.map((token) => (
                     <Pressable
                       key={token}
                       accessibilityRole="button"
@@ -1118,7 +1338,7 @@ function RegularComposer({ libraryId, isbn13, templateEntry }: Omit<ComposeScree
               ) : (
                 <View />
               )}
-              <Pressable accessibilityRole="button" onPress={() => setAttachOpen(true)} style={styles.textLinkWrap}>
+              <Pressable accessibilityRole="button" onPress={() => setAttachOpen(true)} style={[styles.textLinkWrap, styles.noShrink]}>
                 <Text style={styles.link}>이미지 바꾸기</Text>
               </Pressable>
             </View>
@@ -1132,7 +1352,7 @@ function RegularComposer({ libraryId, isbn13, templateEntry }: Omit<ComposeScree
         </View>
         <TextInput
           accessibilityLabel="이미지 위 글자"
-          placeholder="글자를 넣어 보세요"
+          placeholder={TEXT.overlayPlaceholder}
           placeholderTextColor={C.inkMuted}
           value={overlay}
           onChangeText={setOverlay}
@@ -1153,25 +1373,6 @@ function RegularComposer({ libraryId, isbn13, templateEntry }: Omit<ComposeScree
           spellCheck={false}
           style={[styles.input, overlayFocused && styles.inputFocus]}
         />
-        {effectiveKind === "photo" || effectiveKind === "cover" ? (
-          <View style={styles.choiceRow} accessibilityRole="radiogroup">
-            {(["top", "mid", "bot"] as const).map((p) => {
-              const active = pos === p;
-              return (
-                <Pressable
-                  key={p}
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: active }}
-                  onPress={() => setPos(p)}
-                  style={({ pressed }) => [styles.pill, active && styles.pillOn, pressed && ACT.secondaryPressed]}
-                >
-                  <Text style={[styles.pillText, active && styles.pillTextOn]}>{POS_LABEL[p]}</Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        ) : null}
-
         <View style={styles.stepLine}>
           <Text style={T.gauge}>03 · BODY</Text>
           {!bodyOpen ? (
@@ -1306,7 +1507,7 @@ function RegularComposer({ libraryId, isbn13, templateEntry }: Omit<ComposeScree
               label="단색 배경"
               onPress={() => {
                 setAttachOpen(false);
-                setPicked({ kind: "color", token: COLOR_TOKENS[0] });
+                setPicked({ kind: "color", token: COMPOSE_COLOR_TOKENS[0]! });
               }}
             />
           </View>
@@ -1438,7 +1639,39 @@ const styles = StyleSheet.create({
   slotPlusText: { fontSize: 20, fontWeight: "400", color: C.inkStrong, lineHeight: 22 },
   slotSub: { fontSize: 13, color: C.inkMuted },
   previewWrap: { gap: 8 },
-  previewMeta: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
+  previewFrame: { width: "100%", maxWidth: 420, alignSelf: "center" },
+  styleChip: {
+    position: "absolute",
+    left: 10,
+    bottom: 10,
+    minHeight: 32,
+    paddingHorizontal: 12,
+    justifyContent: "center",
+    borderRadius: theme.radii.control,
+    backgroundColor: C.panelLit,
+    borderWidth: 1,
+    borderColor: C.seamHairline,
+  },
+  styleChipText: { color: C.inkStrong, fontSize: 13, fontWeight: "600" },
+  styleMenu: {
+    ...cardSurface(theme, { onPanel: true }),
+    position: "absolute",
+    left: 10,
+    bottom: 50,
+    minWidth: 220,
+    padding: 12,
+    gap: 6,
+    zIndex: 6,
+  },
+  styleMenuLabel: { color: C.inkMuted, fontSize: 12, fontWeight: "500" },
+  styleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  styleClose: { alignSelf: "flex-end", minHeight: 32, justifyContent: "center", paddingHorizontal: 2 },
+  toneDot: { width: 30, height: 30, borderRadius: theme.radii.control, borderWidth: 1, borderColor: C.seamHairline },
+  toneDotOn: { borderWidth: 2.5, borderColor: C.inkStrong },
+  swatchRow: { flexDirection: "row", flexWrap: "nowrap", flexShrink: 1, gap: 6 },
+  noShrink: { flexShrink: 0 },
+  postedActions: { gap: 8 },
+  previewMeta: { flexDirection: "row", flexWrap: "nowrap", alignItems: "center", justifyContent: "space-between", gap: 8 },
   attachOverlay: {
     position: "absolute",
     top: 0,
@@ -1495,12 +1728,14 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: "500",
   },
+  overlayBot: { bottom: "12%" }, // 칩과 겹치지 않게(P1b-6)
   overlayShadow: {
     textShadowColor: C.shadowSoft,
     textShadowRadius: 6,
     textShadowOffset: { width: 0, height: 1 },
   },
-  swatch: { width: 32, height: 32, borderRadius: theme.radii.control, borderWidth: 1, borderColor: C.seamHairline },
+  // 8색이 한 줄(P1b-7): 좁으면 점이 줄어든다(최대 30)
+  swatch: { flexBasis: 30, flexShrink: 1, maxWidth: 30, minWidth: 18, aspectRatio: 1, borderRadius: theme.radii.control, borderWidth: 1, borderColor: C.seamHairline },
   swatchOn: { borderWidth: 2.5, borderColor: C.inkStrong },
   input: {
     backgroundColor: C.paper,

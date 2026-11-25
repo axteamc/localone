@@ -40,6 +40,9 @@ FEED_COLOR_TOKENS = (
 )  # F7 (H6 선정 9색)
 LEGACY_COLOR_TOKENS = ("fill1", "fill2", "fill3", "cream", "paper", "inkStrong")  # F7 (옛 6개 호환)
 COLOR_TOKENS = FEED_COLOR_TOKENS + LEGACY_COLOR_TOKENS
+OverlayPos = Literal["top", "mid", "bot"]  # LOCAL-1b P1b-2
+OverlayTone = Literal["light", "dark", "auto"]
+ImageFit = Literal["contain", "blur", "cover"]
 
 MSG_VALIDATION = "요청 형식이 올바르지 않아요."
 MSG_NOT_FOUND = "찾을 수 없어요."
@@ -140,6 +143,9 @@ class PostCreate(BaseModel):
     image_color: str | None = None
     overlay_text: str | None = None
     body: str | None = None
+    overlay_pos: OverlayPos | None = None  # LOCAL-1b: photo·cover만
+    overlay_tone: OverlayTone | None = None  # LOCAL-1b: template 제외
+    image_fit: ImageFit | None = None  # LOCAL-1b: cover만
 
     @field_validator("overlay_text", mode="before")
     @classmethod
@@ -177,10 +183,18 @@ def validate_kind_fields(body: PostCreate, user_id: UUID) -> None:
             raise validation_error("image_value")
     elif body.isbn13 is None:  # cover
         raise validation_error("isbn13")
+    # LOCAL-1b C3: 종류에 맞지 않는 꾸미기 칸은 422(목록 밖 값은 Literal이 422)
+    if body.overlay_pos is not None and body.image_kind not in ("photo", "cover"):
+        raise validation_error("overlay_pos")
+    if body.overlay_tone is not None and body.image_kind == "template":
+        raise validation_error("overlay_tone")
+    if body.image_fit is not None and body.image_kind != "cover":
+        raise validation_error("image_fit")
 
 
 POST_COLUMNS = (
     "p.id, p.user_id, p.library_id, p.image_kind, p.image_value, p.reading_log_id, p.overlay_text, p.body, "
+    "p.overlay_pos, p.overlay_tone, p.image_fit, "
     "p.status, p.published_at, l.name AS library_name, b.isbn13 AS book_isbn13, "
     "b.title AS book_title, b.author AS book_author, b.cover_url AS book_cover_url, "
     "COALESCE(up.nickname, '이웃') AS nickname"
@@ -193,8 +207,9 @@ POST_JOINS = (
 
 INSERT_POST_ON_CONFLICT_DO_NOTHING_RETURNING = text(
     "INSERT INTO posts (user_id, library_id, book_id, image_kind, image_value, overlay_text, body, "
-    "client_request_id, reading_log_id) VALUES (:uid, :library_id, :book_id, :image_kind, :image_value, :overlay_text, "
-    ":body, :rid, :reading_log_id) ON CONFLICT (user_id, client_request_id) DO NOTHING RETURNING id"
+    "client_request_id, reading_log_id, overlay_pos, overlay_tone, image_fit) VALUES (:uid, :library_id, :book_id, "
+    ":image_kind, :image_value, :overlay_text, :body, :rid, :reading_log_id, :overlay_pos, :overlay_tone, :image_fit) "
+    "ON CONFLICT (user_id, client_request_id) DO NOTHING RETURNING id"
 )
 SELECT_BY_CLIENT_REQUEST_ID = text(
     "SELECT id FROM posts WHERE user_id = :uid AND client_request_id = :rid"
@@ -225,6 +240,9 @@ def params(body: PostCreate, user_id: UUID, book: BookRecord | None) -> dict[str
         "body": body.body,
         "rid": body.client_request_id,
         "reading_log_id": body.reading_log_id,
+        "overlay_pos": body.overlay_pos,
+        "overlay_tone": body.overlay_tone,
+        "image_fit": body.image_fit,
     }
 
 
@@ -267,6 +285,9 @@ def post_public(
         "from_reading_log": row.reading_log_id is not None,
         "image_color": row.image_value if row.image_kind == "color" else None,
         "overlay_text": row.overlay_text,
+        "overlay_pos": row.overlay_pos,
+        "overlay_tone": row.overlay_tone,
+        "image_fit": row.image_fit,
         "body": row.body,
         "author": {"nickname": nickname},
         "is_mine": viewer is not None and viewer.id == row.user_id,
