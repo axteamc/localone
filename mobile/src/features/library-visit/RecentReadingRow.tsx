@@ -6,7 +6,7 @@ import { useFocusEffect } from "expo-router";
 import React, { useCallback, useState } from "react";
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import { useAuth } from "../../auth/AuthProvider";
-import { WebHorizontalControls, useWebHorizontalScroll } from "../../lib/WebHorizontalControls";
+import { GlassArrows, useHorizontalScroll } from "../../lib/HorizontalArrows";
 import { theme, type as T } from "../../theme";
 import { fetchReadingLogs, type ReadingLog } from "./deps";
 
@@ -23,7 +23,7 @@ export function RecentReadingRow(props: { onOpenLog(logId: string): void }): Rea
 
 function OwnRecentRow({ onOpenLog }: { onOpenLog(logId: string): void }): React.JSX.Element | null {
   const [items, setItems] = useState<ReadingLog[]>([]);
-  const scroll = useWebHorizontalScroll(items.length > 0);
+  const scroll = useHorizontalScroll(items.length > 0);
 
   useFocusEffect(
     useCallback(() => {
@@ -46,8 +46,8 @@ function OwnRecentRow({ onOpenLog }: { onOpenLog(logId: string): void }): React.
     <View testID="recent-reading" style={styles.wrap}>
       <View style={styles.head}>
         <Text style={styles.title}>{RECENT_TEXT.title}</Text>
-        <WebHorizontalControls label={RECENT_TEXT.title} {...scroll.edges} onMove={scroll.onMove} />
       </View>
+      <View>
       <ScrollView {...scroll.scrollProps} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
         {items.map((log) => (
           <Pressable
@@ -67,6 +67,8 @@ function OwnRecentRow({ onOpenLog }: { onOpenLog(logId: string): void }): React.
           </Pressable>
         ))}
       </ScrollView>
+      <GlassArrows label={RECENT_TEXT.title} {...scroll.edges} centerY={COVER_H / 2} onMove={scroll.onMove} />
+      </View>
     </View>
   );
 }

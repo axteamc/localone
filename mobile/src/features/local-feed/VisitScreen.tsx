@@ -126,6 +126,9 @@ function VisitScreenInner({
   feedRef.current = feed;
   const moreCursor = useRef<string | null>(null); // 지금 받는 중이거나 받은 커서(같은 커서 두 번 요청 금지)
   const [folded, setFolded] = useState(false);
+  // 책장 실제 높이(P2: 높이를 내용에 맞춤). 처음엔 SHELF_HEIGHT, 재면 그만큼 글쓰기·안내·피드 아래 여백을 옮긴다
+  const [shelfHeight, setShelfHeight] = useState(SHELF_HEIGHT);
+  const shelfShift = libraryId !== null ? shelfHeight - SHELF_HEIGHT : 0;
   const [ment, setMent] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
   const [loginSheet, setLoginSheet] = useState(false);
@@ -444,7 +447,7 @@ function VisitScreenInner({
 
   return (
     <View style={styles.screen} testID="visit-screen">
-      <ScrollView onScroll={onScroll} scrollEventThrottle={16} testID="visit-scroll" contentContainerStyle={styles.content}>
+      <ScrollView onScroll={onScroll} scrollEventThrottle={16} testID="visit-scroll" contentContainerStyle={[styles.content, { paddingBottom: SHELF_HEIGHT + shelfShift + SHELF_FADE_HEIGHT + 24 }]}>
         {lib.kind === "error" ? (
           <View style={styles.libError}>
             <Pressable accessibilityRole="button" accessibilityLabel="지도 홈으로 돌아가기" onPress={goBack} style={styles.textButton}>
@@ -519,6 +522,7 @@ function VisitScreenInner({
           libraryId={libraryId}
           load={loadShelf}
           onOpenBook={(isbn13) => router.push({ pathname: "/books/[isbn13]", params: { isbn13 } })}
+          onHeight={setShelfHeight}
         />
       ) : null}
 
@@ -528,13 +532,13 @@ function VisitScreenInner({
         accessibilityRole="button"
         accessibilityLabel="글쓰기"
         onPress={() => setChooser(true)}
-        style={({ pressed }) => [styles.fab, pressed && ACT.primaryPressed]}
+        style={({ pressed }) => [styles.fab, shelfShift !== 0 && { bottom: FAB_BOTTOM + shelfShift }, pressed && ACT.primaryPressed]}
       >
         <Text style={styles.fabText}>+</Text>
       </Pressable>
 
       {ment ? (
-        <View style={styles.ment} pointerEvents="none" testID="visit-ment" accessibilityLiveRegion="polite">
+        <View style={[styles.ment, shelfShift !== 0 && { bottom: TOAST_BOTTOM + shelfShift }]} pointerEvents="none" testID="visit-ment" accessibilityLiveRegion="polite">
           <Text style={styles.mentText}>{ment}</Text>
         </View>
       ) : null}
@@ -543,7 +547,7 @@ function VisitScreenInner({
 
       {notice ? (
         <View
-          style={[styles.ment, notice.action && styles.noticeRow]}
+          style={[styles.ment, shelfShift !== 0 && { bottom: TOAST_BOTTOM + shelfShift }, notice.action && styles.noticeRow]}
           pointerEvents={notice.action ? "box-none" : "none"}
           testID="visit-notice"
           accessibilityLiveRegion="polite"

@@ -30,3 +30,13 @@ describe("popularMix", () => {
     }
   });
 });
+
+describe("isSeriesVolume (P2 홈 시리즈 제외)", () => {
+  const { isSeriesVolume } = require("../popularMix") as typeof import("../popularMix");
+  test.each(["화산귀환 10", "토지 3권", "해리포터 2부", "삼국지(5)", "태백산맥 上", "나 혼자만 레벨업 제 3 권"])("%s is a series volume", (t) =>
+    expect(isSeriesVolume(t)).toBe(true)
+  );
+  test.each(["1984", "책1", "아몬드", "82년생 김지영", "불편한 편의점(벚꽃 에디션)"])("%s is not", (t) =>
+    expect(isSeriesVolume(t)).toBe(false)
+  );
+});
