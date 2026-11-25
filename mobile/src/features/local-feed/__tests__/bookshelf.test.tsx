@@ -86,7 +86,7 @@ describe("VISIT-3-P2 책장", () => {
     const fourth = { isbn13: "9780000000100", title: "네 번째 책", author: null, cover_url: null };
     const page = { ...POPULAR_PAGE, books: [...POPULAR_PAGE.books, fourth] };
     await render(<Bookshelf libraryId={101} onOpenBook={onOpen} load={async () => ({ pages: [page] })} />);
-    await screen.findByText("인기 도서");
+    await screen.findByText("화제의 책");
     await fireEvent(screen.getByTestId("bookshelf"), "layout", { nativeEvent: { layout: { width: 320 } } });
     const books = screen.getAllByLabelText(/책 화면 열기$/);
     expect(books).toHaveLength(4);
@@ -99,7 +99,7 @@ describe("VISIT-3-P2 책장", () => {
 
   test("shelf hides missing pages and never says loanable", async () => {
     await render(<Bookshelf libraryId={101} onOpenBook={jest.fn()} load={async () => SHELF_C7} />);
-    expect(await screen.findByText("인기 도서")).toBeTruthy();
+    expect(await screen.findByText("화제의 책")).toBeTruthy();
     expect(screen.getByText("YES24 베스트셀러")).toBeTruthy();
     expect(screen.getAllByLabelText(/책 화면 열기$/)).toHaveLength(3);
     expect(screen.queryByTestId("shelf-dots")).toBeNull(); // 장이 1개면 점을 그리지 않음
@@ -111,7 +111,7 @@ describe("VISIT-3-P2 책장", () => {
     // 서버 순서를 섞어 준다: 서버 순서 그대로 그리면 실패
     const load = async () => ({ pages: [RECENT_PAGE, THEME_PAGE, POPULAR_PAGE] });
     await render(<Bookshelf libraryId={101} onOpenBook={jest.fn()} load={load} />);
-    await waitFor(() => expect(shelfTitle()).toBe("인기 도서"));
+    await waitFor(() => expect(shelfTitle()).toBe("화제의 책"));
     expect(screen.getByText("YES24 베스트셀러")).toBeTruthy();
     expect(screen.getAllByTestId(/^shelf-dot-/)).toHaveLength(3);
     expect(screen.getByTestId("shelf-dot-0").props.accessibilityState).toEqual({ selected: true });
@@ -119,7 +119,7 @@ describe("VISIT-3-P2 책장", () => {
     expect(shelfTitle()).toBe("비 오는 날 읽기 좋은 책");
     expect(screen.getByTestId("shelf-dot-1").props.accessibilityState).toEqual({ selected: true });
     await fireEvent.press(screen.getByTestId("shelf-dot-2"));
-    expect(shelfTitle()).toBe("최근 대출 도서");
+    expect(shelfTitle()).toBe("요즘 사람들이 읽고 간 책");
     expect(screen.getByText("정독도서관 · 최근 30일 대출")).toBeTruthy();
   });
 
@@ -130,7 +130,7 @@ describe("VISIT-3-P2 책장", () => {
     expect(screen.getAllByTestId(/^shelf-dot-/)).toHaveLength(2);
     expect(screen.queryByText("YES24 베스트셀러")).toBeNull(); // 테마는 basis_label이 없어 비움
     await fireEvent.press(screen.getByTestId("shelf-dot-1"));
-    expect(shelfTitle()).toBe("최근 대출 도서");
+    expect(shelfTitle()).toBe("요즘 사람들이 읽고 간 책");
   });
 
   test("empty shelf points to the reading log (C-92)", async () => {
@@ -204,11 +204,11 @@ describe("VISIT-3-P2 책장", () => {
   test("switching library goes back to the first page", async () => {
     const load = async () => ({ pages: [RECENT_PAGE, THEME_PAGE, POPULAR_PAGE] });
     const view = await render(<Bookshelf libraryId={101} onOpenBook={jest.fn()} load={load} />);
-    await waitFor(() => expect(shelfTitle()).toBe("인기 도서"));
+    await waitFor(() => expect(shelfTitle()).toBe("화제의 책"));
     await fireEvent.press(screen.getByTestId("shelf-dot-2"));
-    expect(shelfTitle()).toBe("최근 대출 도서");
+    expect(shelfTitle()).toBe("요즘 사람들이 읽고 간 책");
     await view.rerender(<Bookshelf libraryId={102} onOpenBook={jest.fn()} load={load} />);
-    await waitFor(() => expect(shelfTitle()).toBe("인기 도서")); // 처음 열 때 늘 첫 장(V3-O1)
+    await waitFor(() => expect(shelfTitle()).toBe("화제의 책")); // 처음 열 때 늘 첫 장(V3-O1)
     expect(screen.getByTestId("shelf-dot-0").props.accessibilityState).toEqual({ selected: true });
   });
 });
