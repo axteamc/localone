@@ -11,7 +11,11 @@ LOCAL_HOSTS = {"localhost", "127.0.0.1"}
 
 # 개발용 CORS: 로컬 출처만(Expo 웹 개발 서버 http://localhost:8081 등). 정규식은 전체 일치로 검사돼
 # http://localhost.evil.com 같은 출처는 통과하지 못한다. production에서는 CORS를 켜지 않는다.
-LOCAL_ORIGIN_REGEX = r"https?://(localhost|127\.0\.0\.1)(:\d+)?"
+# 같은 와이파이의 휴대폰·다른 PC가 http://192.168.x.x:8081 로 여는 경우를 위해 사설 IP 대역(10/8, 172.16/12,
+# 192.168/16)도 허용한다 — 이 정규식은 local·test 환경에서만 쓰인다.
+_OCTET = r"(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)"
+_PRIVATE_IP = rf"(10\.{_OCTET}|172\.(1[6-9]|2\d|3[01])|192\.168)\.{_OCTET}\.{_OCTET}"
+LOCAL_ORIGIN_REGEX = rf"https?://(localhost|127\.0\.0\.1|{_PRIVATE_IP})(:\d+)?"
 CORS_ENVS = {"local", "test"}
 
 

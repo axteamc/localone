@@ -33,7 +33,17 @@ def preflight(c: TestClient, origin: str):
 
 @pytest.mark.parametrize("env", ["local", "test"])
 @pytest.mark.parametrize(
-    "origin", [WEB_DEV_ORIGIN, "http://127.0.0.1:8081", "http://localhost", "https://localhost:3000"]
+    "origin",
+    [
+        WEB_DEV_ORIGIN,
+        "http://127.0.0.1:8081",
+        "http://localhost",
+        "https://localhost:3000",
+        "http://192.168.0.19:8081",  # 같은 와이파이 기기에서 여는 Expo 웹
+        "http://10.0.2.2:8081",
+        "http://172.16.5.4:8081",
+        "http://172.31.255.255:8081",
+    ],
 )
 def test_local_origin_is_allowed_in_dev(env, origin):
     with client(env) as c:
@@ -52,6 +62,11 @@ def test_local_origin_is_allowed_in_dev(env, origin):
         "http://localhost.evil.com",
         "http://evil.com:8081",
         "http://localhost:8081.evil.com",
+        "http://192.168.0.19.evil.com:8081",
+        "http://192.169.0.19:8081",
+        "http://172.32.0.1:8081",
+        "http://11.0.0.1:8081",
+        "http://192.168.0.256:8081",
         "null",
     ],
 )
