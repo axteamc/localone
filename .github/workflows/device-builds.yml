@@ -1,0 +1,109 @@
+name: 실기기 빌드
+
+# 실기기 확인용 앱 파일을 만든다(수동 실행만). 참고: 개발산출물/부록/iOS_IPA_사이드스토어_빌드_가이드.md
+# - iOS: 서명 없는 Release .ipa(SideStore + LiveContainer가 설치 때 재서명). Windows에서 Mac 없이 쓴다.
+# - Android: Release .apk(Expo 기본 디버그 키로 서명, JS 번들 내장 — Metro 없이 실행).
+# 값은 레포에 있는 mobile/.env.production(공개 클라이언트 값만, 웹 배포와 같은 값)을 쓴다.
+# 공개 레포라 Artifact를 누구나 받을 수 있다 → 번들에 사설 IP 개발 주소가 있으면 실패시킨다.
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 만들 플랫폼
+        type: choice
+        options: [both, ios, android]
+        default: both
+
+env:
+  NODE_ENV: production
+
+jobs:
+  ios:
+    name: iOS 서명 없는 IPA
+    if: inputs.platform != 'android'
+    # Expo SDK 58은 Xcode 26.4+ 필요 → ci.yml과 같은 macos-26(기본 Xcode 26.6)
+    runs-on: macos-26
+    timeout-minutes: 75
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - run: xcodebuild -version
+      - run: npm ci
+      - run: npx expo prebuild --platform ios --clean
+      - name: 실기기(iphoneos) Release 빌드, 서명 없음
+        working-directory: mobile/ios
+        run: |
+          WORKSPACE=$(ls -d *.xcworkspace | head -n 1)
+          SCHEME="${WORKSPACE%.xcworkspace}"
+          xcodebuild -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release \
+            -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" build
+      - name: 번들 점검 후 .ipa 묶기
+        working-directory: mobile/ios
+        run: |
+          APP_PATH=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -n 1)
+          test -n "$APP_PATH" || { echo "::error::.app이 없어요"; exit 1; }
+          API_URL="$(grep '^EXPO_PUBLIC_API_URL=' ../.env.production | cut -d= -f2-)"
+          grep -qaF "$API_URL" "$APP_PATH/main.jsbundle" || { echo "::error::번들에 운영 API 주소가 없어요"; exit 1; }
+          if grep -qaE '(172\.(1[6-9]|2[0-9]|3[01])|192\.168|10\.[0-9]+\.[0-9]+)\.[0-9]+:[0-9]+' "$APP_PATH/main.jsbundle"; then
+            echo "::error::번들에 사설 IP 개발 주소가 남아 있어요"; exit 1
+          fi
+          mkdir -p Payload && cp -R "$APP_PATH" Payload/
+          zip -qr -y localone-unsigned.ipa Payload
+          ls -lh localone-unsigned.ipa
+      - uses: actions/upload-artifact@v4
+        with:
+          name: localone-unsigned-ipa
+          path: mobile/ios/localone-unsigned.ipa
+          retention-days: 7
+
+  android:
+    name: Android Release APK
+    if: inputs.platform != 'ios'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - run: npm ci
+      - run: npx expo prebuild --platform android --clean
+      - name: Release APK 빌드
+        working-directory: mobile/android
+        run: ./gradlew assembleRelease --no-daemon
+      - name: 번들 점검
+        working-directory: mobile/android
+        run: |
+          APK=app/build/outputs/apk/release/app-release.apk
+          test -f "$APK" || { echo "::error::APK가 없어요"; exit 1; }
+          mkdir -p /tmp/apk && unzip -q -o "$APK" assets/index.android.bundle -d /tmp/apk
+          API_URL="$(grep '^EXPO_PUBLIC_API_URL=' ../.env.production | cut -d= -f2-)"
+          grep -qaF "$API_URL" /tmp/apk/assets/index.android.bundle || { echo "::error::번들에 운영 API 주소가 없어요"; exit 1; }
+          if grep -qaE '(172\.(1[6-9]|2[0-9]|3[01])|192\.168|10\.[0-9]+\.[0-9]+)\.[0-9]+:[0-9]+' /tmp/apk/assets/index.android.bundle; then
+            echo "::error::번들에 사설 IP 개발 주소가 남아 있어요"; exit 1
+          fi
+          mv "$APK" localone-release.apk && ls -lh localone-release.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: localone-release-apk
+          path: mobile/android/localone-release.apk
+          retention-days: 7
