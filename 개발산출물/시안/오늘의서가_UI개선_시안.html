@@ -1,0 +1,782 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="명세" content="../명세/오늘의서가_3장체제_및_개선안.md">
+<title>오늘의 서가 · UI 개선 시안</title>
+<!--
+  시안 (코드 레포 CLAUDE.md "시안 규칙").
+  채택 반영: #el-datetime = A (선형 SVG 아이콘 + 시/분 스크롤 휠), #el-compose = A (+ 바로 위 팝오버)
+-->
+<style>
+  :root {
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+    --cream:#EFEFE7; --paper:#EFF1F1; --ink-strong:#2E333F; --text:#1D1D1F; --sub:#71716F;
+    --me-dot:#3B7BDB; --on-dark-sub:#CFD2D8;
+    --glass-bg:rgba(239,241,241,.68); --glass-border:rgba(239,241,241,.82);
+    --scrim:rgba(29,29,31,.28); --shadow:rgba(0,0,0,.16); --shadow-deep:rgba(0,0,0,.22);
+    --r-card:18px; --r-pill:18px; --r-sm:10px; --r-pop:14px;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; line-height:1.5; }
+  header.page, main { max-width:1280px; margin:0 auto; padding:0 16px 40px; }
+  header.page { padding-top:20px; padding-bottom:0; }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:17px; margin:0 0 4px; } h3 { font-size:15px; margin:0 0 8px; }
+  .how, .flow, .decided { background:var(--cream); border-radius:var(--r-card); padding:12px 16px; margin:10px 0 0; }
+  .decided { border-left:5px solid var(--ink-strong); }
+  section.element { margin-top:32px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:var(--r-pill); background:var(--surface2); margin-left:6px; font-weight:400; }
+  .status.done { background:var(--ink-strong); color:var(--paper); }
+  .pick { margin:8px 0 0; font-size:14px; }
+  .pick select { font:inherit; padding:4px 8px; border-radius:var(--r-sm); border:1px solid var(--surface3); background:var(--paper); }
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-card); padding:14px; border:3px solid transparent; }
+  .cand.recommended { border-color:var(--fill1); } .cand.chosen { border-color:var(--ink-strong); }
+  .badge { display:inline-block; font-size:12px; font-weight:700; padding:1px 9px; border-radius:var(--r-pill); background:var(--fill1); margin-left:6px; }
+  .badge.adopted { background:var(--ink-strong); color:var(--paper); }
+  .cand p, .cand li { font-size:13.5px; margin:6px 0; } .cand ul { padding-left:18px; margin:4px 0; }
+  .lbl { font-weight:700; font-size:12.5px; color:var(--sub); margin-top:10px; display:block; }
+
+  /* ---- 휴대폰 부품 ---- */
+  .phone { width:248px; height:440px; margin:0 auto 10px; background:var(--bg); border-radius:26px; border:5px solid var(--ink-strong); position:relative; overflow:hidden; font-size:11px; }
+  .scr { position:absolute; inset:0; padding:10px 10px 12px; background:var(--bg); overflow:hidden; display:flex; flex-direction:column; }
+  .scr.paper-bg { background:var(--paper); }
+  .hdr { display:flex; align-items:center; justify-content:space-between; height:32px; border-bottom:1px solid var(--surface2); margin:-10px -10px 10px; padding:0 10px; background:var(--paper); }
+  .hdr-left { display:flex; align-items:center; gap:6px; }
+  .hdr-title { font-size:11px; font-weight:600; letter-spacing:2.4px; color:var(--sub); }
+  .hdr-back { background:none; border:0; padding:2px 4px; font-size:15px; line-height:1; color:var(--ink-strong); cursor:pointer; }
+  .hdr-act { border:1px solid var(--surface3); background:var(--paper); color:var(--text); border-radius:var(--r-pill); padding:3px 10px; font-size:10px; cursor:pointer; }
+  .form-lbl { display:flex; justify-content:space-between; align-items:center; font-size:10px; color:var(--sub); margin:8px 2px 4px; }
+  .input-box { height:32px; border-radius:var(--r-sm); border:1px solid var(--surface3); background:var(--paper); display:flex; align-items:center; padding:0 8px; gap:6px; font-size:11px; color:var(--text); }
+  .input-row { display:grid; grid-template-columns:1.15fr .85fr; gap:6px; }
+  .input-btn { width:100%; height:32px; border-radius:var(--r-sm); border:1px solid var(--surface3); background:var(--paper); display:flex; align-items:center; justify-content:space-between; padding:0 8px; font:inherit; font-size:10.5px; color:var(--text); cursor:pointer; text-align:left; }
+  .input-btn.active { border-color:var(--ink-strong); }
+  .ico-svg { display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; color:var(--sub); flex:none; }
+  .input-btn.active .ico-svg { color:var(--ink-strong); }
+  .ico-svg svg { width:14px; height:14px; stroke:currentColor; fill:none; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+  .switch { width:26px; height:15px; border-radius:9px; background:var(--surface3); position:relative; border:0; cursor:pointer; flex:none; }
+  .switch::after { content:""; position:absolute; left:2px; top:2px; width:11px; height:11px; border-radius:50%; background:var(--paper); transition:left .15s; }
+  .switch.on { background:var(--ink-strong); } .switch.on::after { left:13px; }
+
+  /* 팝오버 캘린더·시/분 스크롤 휠 */
+  .pop-wrap { position:relative; }
+  .popover { position:absolute; left:0; right:0; top:4px; background:var(--paper); border:1px solid var(--surface3); border-radius:var(--r-pop); padding:8px; box-shadow:0 6px 18px var(--shadow-deep); z-index:5; }
+  .cal-head { display:flex; justify-content:space-between; align-items:center; font-size:10.5px; font-weight:700; margin-bottom:6px; }
+  .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:2px; text-align:center; font-size:9.5px; }
+  .cal-dow { color:var(--sub); font-size:8.5px; padding:2px 0; }
+  .cal-day { border:0; background:none; border-radius:8px; padding:4px 0; font:inherit; font-size:9.5px; cursor:pointer; color:var(--text); }
+  .cal-day:hover { background:var(--surface2); }
+  .cal-day.sel { background:var(--ink-strong); color:var(--paper); font-weight:700; }
+
+  /* 모바일 시 | 분 스크롤 휠 */
+  .wheel-box { position:relative; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:4px; height:112px; padding:4px 6px; background:var(--cream); border-radius:var(--r-sm); }
+  .wheel-band { position:absolute; left:6px; right:6px; top:50%; transform:translateY(-50%); height:28px; border-radius:8px; background:var(--paper); border:1px solid var(--surface3); pointer-events:none; }
+  .wheel-col { position:relative; z-index:1; height:104px; overflow-y:auto; scroll-snap-type:y mandatory; scrollbar-width:none; padding:38px 0; }
+  .wheel-col::-webkit-scrollbar { display:none; }
+  .wheel-opt { display:block; width:100%; height:28px; line-height:28px; border:0; background:none; font:inherit; font-size:12px; color:var(--sub); text-align:center; scroll-snap-align:center; cursor:pointer; }
+  .wheel-opt.sel { color:var(--ink-strong); font-weight:700; font-size:13px; }
+  .wheel-sep { position:relative; z-index:1; font-weight:700; color:var(--ink-strong); font-size:13px; }
+
+  .time-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; }
+  .time-opt { border:1px solid var(--surface2); background:var(--cream); border-radius:8px; padding:5px 2px; font:inherit; font-size:9.5px; cursor:pointer; color:var(--text); }
+  .time-opt.sel { background:var(--ink-strong); color:var(--paper); border-color:var(--ink-strong); }
+  .quick-list { display:flex; flex-direction:column; gap:2px; }
+  .quick-item { display:flex; align-items:center; justify-content:space-between; border:0; background:none; border-radius:8px; padding:6px 8px; font:inherit; font-size:10.5px; color:var(--text); cursor:pointer; text-align:left; }
+  .quick-item:hover { background:var(--cream); }
+  .quick-item span { color:var(--sub); font-size:9.5px; }
+  .pop-foot { display:flex; justify-content:space-between; align-items:center; margin-top:6px; padding-top:5px; border-top:1px solid var(--surface2); font-size:9.5px; color:var(--sub); }
+
+  /* 방문 화면 & 피드 & 책장 */
+  .visit-top { padding:2px 2px 6px; }
+  .visit-name { font-size:13px; font-weight:700; margin:2px 0; }
+  .visit-meta { display:flex; justify-content:space-between; align-items:center; font-size:9.5px; color:var(--sub); }
+  .feed-grid { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-top:6px; flex:1; align-content:start; }
+  .card { background:var(--paper); border:1px solid var(--surface2); border-radius:var(--r-pop); padding:8px; font-size:10px; }
+  .card-tag { display:flex; align-items:center; gap:4px; font-size:9px; color:var(--sub); margin-bottom:4px; }
+  .card-tag i { width:6px; height:6px; border-radius:50%; background:var(--ink-strong); display:inline-block; }
+  .card-tag i.club { background:var(--fill2); border:1px solid var(--ink-strong); }
+  .card-title { font-weight:700; font-size:10.5px; margin-bottom:2px; }
+  .card-sub { color:var(--sub); font-size:9px; }
+
+  /* 하단 오늘의 서가 */
+  .shelf { position:absolute; left:0; right:0; bottom:0; background:var(--surface2); border-top:1px solid var(--surface3); padding:7px 10px 8px; }
+  .shelf-head { display:flex; justify-content:space-between; align-items:center; font-size:9.5px; margin-bottom:5px; }
+  .shelf-head b { font-size:10px; }
+  .shelf-head span { color:var(--sub); font-size:8.5px; }
+  .shelf-books { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; position:relative; }
+  .book { height:62px; border-radius:4px 7px 7px 4px; background:var(--fill1); }
+  .book.b2 { background:var(--fill2); } .book.b3 { background:var(--fill3); } .book.b4 { background:var(--cream); border:1px solid var(--surface3); }
+  .glass-arrow { position:absolute; right:-4px; top:18px; width:24px; height:24px; border-radius:50%; background:var(--glass-bg); border:1px solid var(--glass-border); box-shadow:0 2px 6px var(--shadow); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--ink-strong); }
+
+  /* + 유리 버튼 & 메뉴 후보 */
+  .fab-glass { position:absolute; right:10px; bottom:102px; width:36px; height:36px; border-radius:50%; background:var(--glass-bg); border:1px solid var(--glass-border); box-shadow:0 3px 10px var(--shadow); display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:400; color:var(--ink-strong); cursor:pointer; z-index:8; backdrop-filter:blur(8px); }
+  .stamp-trigger { border:0; background:none; padding:0; font:inherit; font-size:9.5px; color:var(--ink-strong); font-weight:600; cursor:pointer; }
+  .stamp-menu { position:absolute; right:10px; top:74px; width:152px; background:var(--paper); border:1px solid var(--surface3); border-radius:var(--r-pop); box-shadow:0 6px 18px var(--shadow-deep); padding:4px; z-index:10; }
+  .fab-menu { position:absolute; right:10px; bottom:144px; width:176px; background:var(--paper); border:1px solid var(--surface3); border-radius:var(--r-card); box-shadow:0 8px 22px var(--shadow-deep); padding:6px; z-index:9; }
+  .fab-menu-item { width:100%; border:0; background:none; border-radius:var(--r-sm); padding:7px 8px; text-align:left; cursor:pointer; display:block; font:inherit; color:var(--text); }
+  .fab-menu-item:hover { background:var(--cream); }
+  .fab-menu-item b { display:block; font-size:10.5px; }
+  .fab-menu-item span { display:block; font-size:9px; color:var(--sub); }
+
+  .dial-stack { position:absolute; right:10px; bottom:146px; display:flex; flex-direction:column; align-items:flex-end; gap:6px; z-index:9; }
+  .dial-pill { border:1px solid var(--glass-border); background:var(--paper); color:var(--text); border-radius:var(--r-pill); padding:6px 11px; font:inherit; font-size:10.5px; font-weight:600; box-shadow:0 3px 10px var(--shadow); cursor:pointer; }
+
+  .sheet { position:absolute; left:8px; right:8px; bottom:8px; background:var(--paper); border-radius:var(--r-card); padding:10px 12px; box-shadow:0 4px 16px var(--shadow-deep); z-index:9; }
+  .sheet-title { font-weight:700; font-size:11.5px; margin-bottom:6px; }
+  .sheet-close { width:100%; margin-top:6px; border:1px solid var(--surface3); background:var(--cream); border-radius:var(--r-pill); padding:5px 0; font:inherit; font-size:10px; cursor:pointer; color:var(--text); }
+
+  .toast { position:absolute; left:12px; right:12px; top:44px; background:var(--ink-strong); color:var(--paper); border-radius:var(--r-sm); padding:6px 10px; font-size:10px; display:none; z-index:12; }
+  .toast.on { display:block; }
+  .hide { display:none !important; }
+
+  /* ---- 표 ---- */
+  table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-card); overflow:hidden; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--surface2); }
+  th { background:var(--surface2); }
+  .st { font-size:12px; padding:1px 8px; border-radius:var(--r-pill); background:var(--surface2); white-space:nowrap; }
+  .st.ok { background:var(--ink-strong); color:var(--paper); }
+  #spec, #except, #fullflow { margin-top:32px; }
+  .state button { font:inherit; border:0; border-radius:var(--r-pill); padding:4px 12px; background:var(--surface2); cursor:pointer; margin:2px; }
+  .state button[aria-pressed="true"] { background:var(--ink-strong); color:var(--paper); }
+  .wide { overflow-x:auto; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>오늘의 서가 · UI 개선 시안 — 채택안 반영 (1-A · 2-A)</h1>
+  <div class="how">
+    <b>채택 반영 완료.</b> 1-A(단색 선형 아이콘 + 시/분 스크롤 휠 팝오버)와 2-A(+ 바로 위 팝오버 카드)를 기본 선택으로 반영했어요.
+    후보 A 안의 <b>시간 칸(시계 아이콘)</b>을 눌러 시/분 스크롤 휠을 직접 조작해 보시고, 불편한 점이 있는지 확인해 주세요.
+  </div>
+  <div class="decided">
+    <b>확정 항목 요약:</b>
+    ① 전 페이지 헤더 <code>&lt;</code> 정렬 수정 + <code>H O M E</code> 영문 헤더 통일 ·
+    ② 모임 카드를 방명록 카드(<code>● 모임</code>)와 통합 ·
+    ③ <code>이 도서관 이야기</code> 제거 + <code>오늘 다녀감</code> 메타 줄 우측 이동 ·
+    ④ 오늘의 서가 3장 체제 (<code>인기 도서</code>[YES24 베스트셀러] → <code>{테마}</code> → <code>최근 대출 도서</code>[도서관 최근 30일]) ·
+    ⑤ 모임 날짜/시간 선택기 1-A (선형 아이콘 + 캘린더/시·분 스크롤 휠) ·
+    ⑥ SNS <code>+</code> 유리 버튼 + 바로 위 팝오버 2-A.
+  </div>
+</header>
+
+<main>
+
+<!-- ===== 중심 요소 1: 모임 날짜·시간 선택기 ===== -->
+<section class="element" id="el-datetime" data-chosen="A">
+  <h2>정할 것 1. 모임 만들기 — 날짜·시간 입력과 선택기 모양 <span class="status done">확인</span></h2>
+  <div class="flow">
+    <b>채택 반영.</b> <b>후보 A</b> 채택 — 이모지 대신 단색 선형 SVG 아이콘(달력·시계)을 쓰고,
+    시간 선택기는 모바일 <b>시 | 분 스크롤 휠</b>로 콤팩트하게 바꿨어요. 날짜 칸과 시간 칸을 눌러 번갈아 확인해 보세요.
+  </div>
+  <div class="pick">다시 보기:
+    <select data-for="el-datetime">
+      <option value="A">후보 A — 칸 바로 아래 작은 팝오버 (선형 아이콘 · 시/분 스크롤 휠)</option>
+      <option value="B">후보 B — 빠른 선택 메뉴 + 사용자화 캘린더</option>
+      <option value="C">후보 C — 아래에서 올라오는 날짜·시간 통합 시트</option>
+    </select>
+  </div>
+
+  <div class="cands">
+    <!-- 후보 A (채택) -->
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 칸 바로 아래 작은 팝오버 <span class="badge">추천</span></h3>
+      <div class="phone">
+        <div class="scr paper-bg" data-screen="main">
+          <div class="hdr">
+            <div class="hdr-left"><button class="hdr-back" type="button">✕</button><span class="hdr-title">NEW CLUB</span></div>
+            <button class="hdr-act" type="button">올리기</button>
+          </div>
+          <div class="form-lbl"><span>모임 이름 · 필수</span><span>10/40</span></div>
+          <div class="input-box">톨스토이 같이 읽기</div>
+
+          <div class="form-lbl">
+            <span>날짜·시각 · 선택</span>
+            <span style="display:flex;align-items:center;gap:4px">미정 <button class="switch" type="button" aria-label="미정"></button></span>
+          </div>
+
+          <div class="input-row">
+            <button class="input-btn" type="button" data-pop="calA" data-peer="timeA">
+              <span id="valDateA">2026-11-27</span>
+              <span class="ico-svg" aria-label="달력">
+                <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              </span>
+            </button>
+            <button class="input-btn active" type="button" data-pop="timeA" data-peer="calA">
+              <span id="valTimeA">14:00</span>
+              <span class="ico-svg" aria-label="시계">
+                <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
+              </span>
+            </button>
+          </div>
+
+          <div class="pop-wrap">
+            <!-- 작은 캘린더 팝오버 -->
+            <div class="popover hide" id="calA">
+              <div class="cal-head"><span>‹</span><span>2026년 11월</span><span>›</span></div>
+              <div class="cal-grid">
+                <span class="cal-dow">일</span><span class="cal-dow">월</span><span class="cal-dow">화</span><span class="cal-dow">수</span><span class="cal-dow">목</span><span class="cal-dow">금</span><span class="cal-dow">토</span>
+                <button class="cal-day" type="button" data-set="valDateA:2026-11-22" data-close="calA">22</button>
+                <button class="cal-day" type="button" data-set="valDateA:2026-11-23" data-close="calA">23</button>
+                <button class="cal-day" type="button" data-set="valDateA:2026-11-24" data-close="calA">24</button>
+                <button class="cal-day" type="button" data-set="valDateA:2026-11-25" data-close="calA">25</button>
+                <button class="cal-day" type="button" data-set="valDateA:2026-11-26" data-close="calA">26</button>
+                <button class="cal-day sel" type="button" data-set="valDateA:2026-11-27" data-close="calA">27</button>
+                <button class="cal-day" type="button" data-set="valDateA:2026-11-28" data-close="calA">28</button>
+                <button class="cal-day" type="button" data-set="valDateA:2026-11-29" data-close="calA">29</button>
+                <button class="cal-day" type="button" data-set="valDateA:2026-11-30" data-close="calA">30</button>
+              </div>
+              <div class="pop-foot"><span>직접 입력도 가능</span><button class="hdr-act" type="button" data-close="calA">닫기</button></div>
+            </div>
+
+            <!-- 시 | 분 스크롤 휠 팝오버 (기본 표시) -->
+            <div class="popover" id="timeA">
+              <div class="cal-head"><span>시간 선택 (시 · 분 스크롤)</span></div>
+              <div class="wheel-box">
+                <div class="wheel-band"></div>
+                <div class="wheel-col" id="wheelHour" aria-label="시 선택">
+                  <button class="wheel-opt" type="button" data-wheel-h="09">09</button>
+                  <button class="wheel-opt" type="button" data-wheel-h="10">10</button>
+                  <button class="wheel-opt" type="button" data-wheel-h="11">11</button>
+                  <button class="wheel-opt" type="button" data-wheel-h="12">12</button>
+                  <button class="wheel-opt" type="button" data-wheel-h="13">13</button>
+                  <button class="wheel-opt sel" type="button" data-wheel-h="14">14</button>
+                  <button class="wheel-opt" type="button" data-wheel-h="15">15</button>
+                  <button class="wheel-opt" type="button" data-wheel-h="16">16</button>
+                  <button class="wheel-opt" type="button" data-wheel-h="17">17</button>
+                  <button class="wheel-opt" type="button" data-wheel-h="18">18</button>
+                  <button class="wheel-opt" type="button" data-wheel-h="19">19</button>
+                  <button class="wheel-opt" type="button" data-wheel-h="20">20</button>
+                </div>
+                <span class="wheel-sep">:</span>
+                <div class="wheel-col" id="wheelMin" aria-label="분 선택">
+                  <button class="wheel-opt sel" type="button" data-wheel-m="00">00</button>
+                  <button class="wheel-opt" type="button" data-wheel-m="05">05</button>
+                  <button class="wheel-opt" type="button" data-wheel-m="10">10</button>
+                  <button class="wheel-opt" type="button" data-wheel-m="15">15</button>
+                  <button class="wheel-opt" type="button" data-wheel-m="20">20</button>
+                  <button class="wheel-opt" type="button" data-wheel-m="25">25</button>
+                  <button class="wheel-opt" type="button" data-wheel-m="30">30</button>
+                  <button class="wheel-opt" type="button" data-wheel-m="35">35</button>
+                  <button class="wheel-opt" type="button" data-wheel-m="40">40</button>
+                  <button class="wheel-opt" type="button" data-wheel-m="45">45</button>
+                  <button class="wheel-opt" type="button" data-wheel-m="50">50</button>
+                  <button class="wheel-opt" type="button" data-wheel-m="55">55</button>
+                </div>
+              </div>
+              <div class="pop-foot"><span>직접 입력도 가능</span><button class="hdr-act" type="button" data-close="timeA">확인</button></div>
+            </div>
+          </div>
+
+          <div class="form-lbl" style="margin-top:16px"><span>장소 · 선택</span></div>
+          <div class="input-box" style="color:var(--sub)">예) 2층 세미나실 A</div>
+        </div>
+      </div>
+
+      <p>앱 디자인 기조에 맞춘 단색 선형 아이콘(달력·시계)을 두고, 시간 선택은 콤팩트한 <b>시 | 분 스크롤 휠</b> 팝오버로 띄워요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>달력 아이콘 누름 → 아래 작은 캘린더 팝오버 → 날짜 선택 후 닫힘 / 시계 아이콘 누름 → 시·분 스크롤 휠 팝오버 → 스크롤·탭 선택 후 확인 (직접 타이핑 병행).</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul>
+        <li>단색 선형 SVG 달력·시계 아이콘 (1.6px 선, <code>sub</code>/<code>inkStrong</code>)</li>
+        <li>고정 높이(112px)의 2열 <code>시 : 분</code> 스크롤 휠(5분 단위)</li>
+      </ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>길어지지 않고 00~23시·5분 단위를 빠르고 익숙하게 골라요. / 1분 단위 입력은 직접 타이핑을 써야 해요.</p>
+      <span class="lbl">표준 근거</span>
+      <p>표준 근거: 새 패턴 — 날짜·시간 입력 칸 바로 아래 작은 팝오버로 캘린더·시/분 스크롤 휠과 직접 입력을 동시에 지원</p>
+      <p><b>추천 이유:</b> 디자인 기조와 자연스럽게 어울리는 선형 아이콘 + 길어지지 않는 시/분 스크롤 휠로 웹·모바일 모두 일관되게 동작해요.</p>
+    </article>
+
+    <!-- 후보 B -->
+    <article class="cand" data-id="B">
+      <h3>후보 B — 빠른 선택 메뉴 + 사용자화</h3>
+      <div class="phone">
+        <div class="scr paper-bg" data-screen="main">
+          <div class="hdr">
+            <div class="hdr-left"><button class="hdr-back" type="button">✕</button><span class="hdr-title">NEW CLUB</span></div>
+            <button class="hdr-act" type="button">올리기</button>
+          </div>
+          <div class="form-lbl"><span>모임 이름 · 필수</span><span>10/40</span></div>
+          <div class="input-box">톨스토이 같이 읽기</div>
+
+          <div class="form-lbl">
+            <span>날짜·시각 · 선택</span>
+            <span style="display:flex;align-items:center;gap:4px">미정 <button class="switch" type="button" aria-label="미정"></button></span>
+          </div>
+
+          <div class="input-row">
+            <button class="input-btn active" type="button" data-pop="quickB" data-peer="calB">
+              <span id="valDateB">2026-11-27</span>
+              <span class="ico-svg"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+            </button>
+            <button class="input-btn" type="button" data-toast="toastB">
+              <span>14:00</span>
+              <span class="ico-svg"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg></span>
+            </button>
+          </div>
+
+          <div class="pop-wrap">
+            <div class="popover" id="quickB">
+              <div class="quick-list">
+                <button class="quick-item" type="button" data-set="valDateB:2026-11-25" data-close="quickB"><b>오늘</b><span>11.25</span></button>
+                <button class="quick-item" type="button" data-set="valDateB:2026-11-26" data-close="quickB"><b>내일</b><span>11.26</span></button>
+                <button class="quick-item" type="button" data-set="valDateB:2026-11-28" data-close="quickB"><b>이번 주말</b><span>11.28</span></button>
+                <button class="quick-item" type="button" data-pop="calB" data-peer="quickB"><b>직접 고르기</b><span>달력 ›</span></button>
+              </div>
+            </div>
+            <div class="popover hide" id="calB">
+              <div class="cal-head"><span>2026년 11월</span><button class="hdr-act" type="button" data-close="calB">닫기</button></div>
+              <div class="cal-grid">
+                <span class="cal-dow">목</span><span class="cal-dow">금</span><span class="cal-dow">토</span><span class="cal-dow">일</span><span class="cal-dow">월</span><span class="cal-dow">화</span><span class="cal-dow">수</span>
+                <button class="cal-day" type="button" data-set="valDateB:2026-11-26" data-close="calB">26</button>
+                <button class="cal-day sel" type="button" data-set="valDateB:2026-11-27" data-close="calB">27</button>
+                <button class="cal-day" type="button" data-set="valDateB:2026-11-28" data-close="calB">28</button>
+                <button class="cal-day" type="button" data-set="valDateB:2026-11-29" data-close="calB">29</button>
+                <button class="cal-day" type="button" data-set="valDateB:2026-11-30" data-close="calB">30</button>
+              </div>
+            </div>
+          </div>
+          <div class="toast" id="toastB">오전 10시 / 오후 2시 / 오후 7시 / 직접 고르기 메뉴가 열려요</div>
+        </div>
+      </div>
+
+      <p>먼저 "오늘·내일·이번 주말" 빠른 메뉴가 뜨고, "직접 고르기"에서 달력을 열어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>날짜 칸 누름 → 빠른 날짜 메뉴 팝오버 → 다른 날은 "직접 고르기" → 작은 캘린더 전환.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>빠른 날짜 4줄 메뉴</li><li>달력은 한 단계 더 눌러야 열림</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>가까운 날짜는 빠르게 골라요. / 특정 날짜는 탭이 한 번 더 필요해요.</p>
+      <span class="lbl">표준 근거</span>
+      <p>표준 근거: P-11 머리 오른쪽 ⋯(더 보기) 메뉴 안 항목 (iOS 미리 알림 날짜 팝오버)</p>
+    </article>
+
+    <!-- 후보 C -->
+    <article class="cand" data-id="C">
+      <h3>후보 C — 아래 통합 시트 (날짜+시간)</h3>
+      <div class="phone">
+        <div class="scr paper-bg" data-screen="main">
+          <div class="hdr">
+            <div class="hdr-left"><button class="hdr-back" type="button">✕</button><span class="hdr-title">NEW CLUB</span></div>
+            <button class="hdr-act" type="button">올리기</button>
+          </div>
+          <div class="form-lbl"><span>모임 이름 · 필수</span><span>10/40</span></div>
+          <div class="input-box">톨스토이 같이 읽기</div>
+
+          <div class="form-lbl"><span>날짜·시각 · 선택</span></div>
+          <div class="input-row">
+            <button class="input-btn" type="button" data-show="sheetC">
+              <span id="valDateC">2026-11-27</span>
+              <span class="ico-svg"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="3"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></span>
+            </button>
+            <button class="input-btn" type="button" data-show="sheetC">
+              <span id="valTimeC">14:00</span>
+              <span class="ico-svg"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg></span>
+            </button>
+          </div>
+
+          <div class="sheet" id="sheetC">
+            <div class="sheet-title">날짜와 시간 고르기</div>
+            <div class="cal-grid" style="margin-bottom:6px">
+              <span class="cal-dow">목</span><span class="cal-dow">금</span><span class="cal-dow">토</span><span class="cal-dow">일</span><span class="cal-dow">월</span><span class="cal-dow">화</span><span class="cal-dow">수</span>
+              <button class="cal-day" type="button" data-set="valDateC:2026-11-26">26</button>
+              <button class="cal-day sel" type="button" data-set="valDateC:2026-11-27">27</button>
+              <button class="cal-day" type="button" data-set="valDateC:2026-11-28">28</button>
+              <button class="cal-day" type="button" data-set="valDateC:2026-11-29">29</button>
+              <button class="cal-day" type="button" data-set="valDateC:2026-11-30">30</button>
+            </div>
+            <div class="time-grid">
+              <button class="time-opt" type="button" data-set="valTimeC:10:00">10:00</button>
+              <button class="time-opt sel" type="button" data-set="valTimeC:14:00">14:00</button>
+              <button class="time-opt" type="button" data-set="valTimeC:19:00">19:00</button>
+            </div>
+            <button class="sheet-close" type="button" data-close="sheetC">적용하기</button>
+          </div>
+        </div>
+      </div>
+
+      <p>날짜·시간 아이콘 중 어느 쪽을 눌러도 화면 아래에서 캘린더와 시간이 한 번에 담긴 시트가 올라와요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>날짜/시간 아이콘 누름 → 하단 시트 올라옴 → 날짜·시간 선택 후 "적용하기".</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>하단 반시트 안에 캘린더와 시간 버튼 표시</li><li>적용 버튼으로 확정</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>한 번에 둘 다 골라요. / 입력 칸 바로 아래가 아니라 시선이 아래로 이동해요.</p>
+      <span class="lbl">표준 근거</span>
+      <p>표준 근거: P-04 아래에서 올라오는 시트 (카카오맵·iOS 공유 시트)</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 중심 요소 2: SNS + 버튼 및 작성 메뉴 ===== -->
+<section class="element" id="el-compose" data-chosen="A">
+  <h2>정할 것 2. SNS 화면 <code>+</code> 유리 버튼과 작성 메뉴 · 스탬프/방명록 통합 <span class="status done">확인</span></h2>
+  <div class="flow">
+    <b>채택 반영.</b> <b>후보 A</b> 채택 — <code>+</code> 팝오버에서는 <b>방명록 남기기를 제거</b>해 <code>게시물 올리기 · 모임 만들기</code> 2항목으로 단순화하고,
+    상단 <code>오늘 다녀감 · 나만 보기 ▾</code> 메뉴에 <b>한마디 추가/수정</b>을 통합해요 (공개/비공개 × 본문 유/무 4상태).
+  </div>
+  <div class="pick">다시 보기:
+    <select data-for="el-compose">
+      <option value="A">후보 A — + 바로 위 2항목 팝오버 + 스탬프 ▾ 한마디 통합</option>
+      <option value="B">후보 B — + 버튼 위로 펼쳐지는 알약 줄 (스피드 다이얼)</option>
+      <option value="C">후보 C — 모바일 폭에 맞춘 하단 시트</option>
+    </select>
+  </div>
+
+  <div class="cands">
+    <!-- 후보 A (채택) -->
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — <code>+</code> 2항목 팝오버 + 스탬프 통합 <span class="badge">추천</span></h3>
+      <div class="phone">
+        <div class="scr" data-screen="visit">
+          <div class="hdr">
+            <div class="hdr-left"><button class="hdr-back" type="button">‹</button><span class="hdr-title">LIBRARY</span></div>
+            <button class="hdr-back" type="button">⋯</button>
+          </div>
+          <div class="visit-top">
+            <div class="visit-name">전남광주통합특별시교육청중앙도서관</div>
+            <div class="visit-meta">
+              <span>276M · 09:00~18:00</span>
+              <button class="stamp-trigger" type="button" data-toggle="stampMenuA">오늘 다녀감 · 나만 보기 ▾</button>
+            </div>
+          </div>
+
+          <div class="stamp-menu hide" id="stampMenuA">
+            <button class="fab-menu-item" type="button" data-toast="toastStampPub" data-close="stampMenuA"><b>피드에 공개</b><span>공개 범위 전환</span></button>
+            <button class="fab-menu-item" type="button" data-toast="toastStampEdit" data-close="stampMenuA"><b>한마디 남기기 / 수정</b><span>140자 방문 방명록</span></button>
+          </div>
+
+          <div class="feed-grid">
+            <div class="card">
+              <div class="card-tag"><i class="club"></i><span>모임</span></div>
+              <div class="card-title">11.27 금 · 14:00</div>
+              <div>톨스토이 같이 읽기</div>
+              <div class="card-sub">0명 참가 · 2층 세미나실</div>
+            </div>
+            <div class="card">
+              <div class="card-tag"><i></i><span>다녀감</span></div>
+              <div>오늘도 도서관에서 좋은 책을 만났어요.</div>
+              <div class="card-sub">책읽는이웃 · 3시간 전</div>
+            </div>
+          </div>
+
+          <div class="fab-menu" id="popMenuA">
+            <button class="fab-menu-item" type="button" data-toast="toastCompA" data-close="popMenuA"><b>게시물 올리기</b><span>사진·표지와 글</span></button>
+            <button class="fab-menu-item" type="button" data-toast="toastCompA" data-close="popMenuA"><b>모임 만들기</b><span>같은 도서관 이웃과 약속</span></button>
+          </div>
+          <button class="fab-glass" type="button" data-toggle="popMenuA" aria-label="올리기 메뉴">+</button>
+
+          <div class="shelf">
+            <div class="shelf-head"><b>인기 도서</b><span>YES24 베스트셀러</span></div>
+            <div class="shelf-books">
+              <div class="book"></div><div class="book b2"></div><div class="book b3"></div><div class="book b4"></div>
+              <div class="glass-arrow">›</div>
+            </div>
+          </div>
+          <div class="toast" id="toastCompA">선택한 작성 화면으로 바로 이동해요</div>
+          <div class="toast" id="toastStampPub">공개 범위가 피드에 공개로 바뀌어요</div>
+          <div class="toast" id="toastStampEdit">오늘 스탬프의 한마디(방명록) 작성·수정 창이 열려요</div>
+        </div>
+      </div>
+
+      <p><code>+</code> 팝오버는 <b>게시물·모임</b> 2개만 남기고, 방명록(한마디)은 상단 <b>오늘 다녀감 ▾</b> 메뉴의 수정/추가 버튼으로 통합해요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p><code>+</code> 누름 → 바로 위 팝오버(게시물/모임) / 상단 <code>오늘 다녀감 ▾</code> 누름 → 공개·비공개 전환 또는 한마디(방명록) 추가·수정 창.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul>
+        <li>우측 하단 유리 원 <code>+</code> 버튼 + 2항목 팝오버(게시물·모임)</li>
+        <li>상단 <code>오늘 다녀감 ▾</code> 드롭다운의 공개 전환 + 한마디 추가/수정</li>
+      </ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>방문 기록과 방명록의 중복 진입점이 완전히 정리돼요. / 방명록은 당일 방문 스탬프(공개/비공개)와 함께 관리돼요.</p>
+      <span class="lbl">표준 근거</span>
+      <p>표준 근거: P-11 머리 오른쪽 ⋯(더 보기) 메뉴 안 항목 (iOS 앵커 팝오버 메뉴)</p>
+      <p><b>추천 이유:</b> 최초 설계 의도대로 스탬프와 방명록을 하나로 합치고, <code>+</code> 메뉴도 2개로 깔끔해지며 웹 100vw 깨짐도 해소돼요.</p>
+    </article>
+
+    <!-- 후보 B -->
+    <article class="cand" data-id="B">
+      <h3>후보 B — 위로 펼쳐지는 유리 알약 줄</h3>
+      <div class="phone">
+        <div class="scr" data-screen="visit">
+          <div class="hdr">
+            <div class="hdr-left"><button class="hdr-back" type="button">‹</button><span class="hdr-title">LIBRARY</span></div>
+            <button class="hdr-back" type="button">⋯</button>
+          </div>
+          <div class="visit-top">
+            <div class="visit-name">전남광주통합특별시교육청중앙도서관</div>
+            <div class="visit-meta"><span>276M · 09:00~18:00</span><span>오늘 다녀감 · 나만 보기 ▾</span></div>
+          </div>
+          <div class="feed-grid">
+            <div class="card"><div class="card-tag"><i class="club"></i><span>모임</span></div><div class="card-title">11.27 금</div><div>톨스토이 같이 읽기</div></div>
+            <div class="card"><div class="card-tag"><i></i><span>방명록</span></div><div>오늘도 좋은 책!</div></div>
+          </div>
+
+          <div class="dial-stack" id="dialB">
+            <button class="dial-pill" type="button" data-toast="toastCompB" data-close="dialB">모임 만들기</button>
+            <button class="dial-pill" type="button" data-toast="toastCompB" data-close="dialB">방명록 남기기</button>
+            <button class="dial-pill" type="button" data-toast="toastCompB" data-close="dialB">게시물 올리기</button>
+          </div>
+          <button class="fab-glass" type="button" data-toggle="dialB" aria-label="올리기 메뉴">+</button>
+
+          <div class="shelf">
+            <div class="shelf-head"><b>인기 도서</b><span>YES24 베스트셀러</span></div>
+            <div class="shelf-books">
+              <div class="book"></div><div class="book b2"></div><div class="book b3"></div><div class="book b4"></div>
+              <div class="glass-arrow">›</div>
+            </div>
+          </div>
+          <div class="toast" id="toastCompB">알약 항목을 누르면 작성 화면이 열려요</div>
+        </div>
+      </div>
+
+      <p><code>+</code> 버튼 위로 작은 알약 버튼 3개가 세로로 펼쳐져요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p><code>+</code> 누름 → 위로 알약 3개 펼쳐짐 → 알약 선택 → 작성 화면 이동.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>우측 정렬된 3개의 떠 있는 알약 버튼</li><li>보조 설명 문구 생략</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>피드를 덜 가려요. / 방명록·게시물 차이를 설명하는 보조 문구가 없어요.</p>
+      <span class="lbl">표준 근거</span>
+      <p>표준 근거: P-05 떠 있는 주 행동 버튼(FAB, 오른쪽 아래 "+") (M3 Speed dial)</p>
+    </article>
+
+    <!-- 후보 C -->
+    <article class="cand" data-id="C">
+      <h3>후보 C — 모바일 폭 맞춤 하단 시트</h3>
+      <div class="phone">
+        <div class="scr" data-screen="visit">
+          <div class="hdr">
+            <div class="hdr-left"><button class="hdr-back" type="button">‹</button><span class="hdr-title">LIBRARY</span></div>
+            <button class="hdr-back" type="button">⋯</button>
+          </div>
+          <div class="visit-top">
+            <div class="visit-name">전남광주통합특별시교육청중앙도서관</div>
+            <div class="visit-meta"><span>276M · 09:00~18:00</span><span>오늘 다녀감 · 나만 보기 ▾</span></div>
+          </div>
+          <div class="feed-grid">
+            <div class="card"><div class="card-tag"><i class="club"></i><span>모임</span></div><div class="card-title">11.27 금</div><div>톨스토이 같이 읽기</div></div>
+            <div class="card"><div class="card-tag"><i></i><span>방명록</span></div><div>오늘도 좋은 책!</div></div>
+          </div>
+
+          <button class="fab-glass" type="button" data-show="sheetCompC" aria-label="올리기 메뉴">+</button>
+          <div class="sheet" id="sheetCompC">
+            <div class="sheet-title">무엇을 올릴까요?</div>
+            <button class="fab-menu-item" type="button" data-toast="toastCompC" data-close="sheetCompC"><b>게시물 올리기</b><span>사진·표지와 글</span></button>
+            <button class="fab-menu-item" type="button" data-toast="toastCompC" data-close="sheetCompC"><b>방명록 남기기</b><span>짧은 한마디 (140자까지)</span></button>
+            <button class="fab-menu-item" type="button" data-toast="toastCompC" data-close="sheetCompC"><b>모임 만들기</b><span>같은 도서관 이웃과 약속</span></button>
+            <button class="sheet-close" type="button" data-close="sheetCompC">닫기</button>
+          </div>
+          <div class="toast" id="toastCompC">하단 시트에서 작성 화면으로 이동해요</div>
+        </div>
+      </div>
+
+      <p>기존 "무엇을 올릴까요?" 하단 시트를 모바일 프레임 최대 폭 안에 맞춰 띄워요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p><code>+</code> 누름 → 프레임 폭에 맞춘 하단 시트 올라옴 → 항목 선택 → 작성 화면 이동.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>기존 하단 시트 문구·닫기 버튼 유지</li><li>웹에서도 <code>maxWidth</code> 컨테이너 안쪽에만 표시</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>구조 변경이 적어요. / <code>+</code> 버튼과 메뉴 위치가 떨어져 있고 책장을 덮어요.</p>
+      <span class="lbl">표준 근거</span>
+      <p>표준 근거: P-04 아래에서 올라오는 시트 (iOS 공유 시트)</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 잘 안 될 때 (예외 네 장면) ===== -->
+<section id="except">
+  <h2>잘 안 될 때 보이는 화면</h2>
+  <div class="state" id="exTabs">
+    <button aria-pressed="true" data-ex="0">잘못된 날짜·시간 직접 입력</button>
+    <button aria-pressed="false" data-ex="1">오늘의 서가 일부 장 비어 있음</button>
+    <button aria-pressed="false" data-ex="2">팝오버 열린 채 바깥 누름</button>
+    <button aria-pressed="false" data-ex="3">비로그인 상태로 + 메뉴 선택</button>
+  </div>
+  <div class="phone" style="margin:8px 0 0;height:140px">
+    <div class="scr paper-bg"><p data-exmsg style="margin:8px 4px;font-size:11.5px"></p></div>
+  </div>
+</section>
+
+<!-- ===== 처음부터 끝까지 ===== -->
+<section id="fullflow">
+  <h2>처음부터 끝까지 이렇게 써요</h2>
+  <ol>
+    <li>사용자가 도서관 방문 화면을 열면 영문 헤더(<code>LIBRARY</code>) 아래 도서관 이름과 <code>거리 · 운영시간 | 오늘 다녀감</code>이 한 줄로 정리되고, 방명록·모임이 같은 카드 디자인으로 피드에 섞여 보인다.</li>
+    <li>아래 오늘의 서가는 <b>① 인기 도서 (YES24 베스트셀러) → ② {테마 이름} → ③ 최근 대출 도서 (이 도서관 최근 30일)</b> 순으로 넘겨 본다.</li>
+    <li>우측 유리 원 <code>+</code> 버튼을 누르면 바로 위에 팝오버(게시물·방명록·모임)가 열리고, "모임 만들기"에서는 선형 아이콘을 눌러 작은 캘린더·시/분 스크롤 휠로 일정을 고르거나 직접 입력한다.</li>
+  </ol>
+</section>
+
+<!-- ===== 명세 패널 ===== -->
+<section id="spec">
+  <h2>명세</h2>
+  <div class="wide">
+    <table>
+      <tr>
+        <th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th>
+        <th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th>
+      </tr>
+      <tr data-el="el-datetime">
+        <td>1. 모임 날짜·시간 선택기</td>
+        <td>후보 A (칸 바로 아래 작은 팝오버 — 선형 아이콘 + 시/분 스크롤 휠)</td>
+        <td>후보 B</td><td>후보 C</td>
+        <td>1-A 채택, 아이콘은 디자인 기조에 맞춘 선형 아이콘, 시간은 길어지지 않는 시/분 스크롤 선택기</td>
+        <td>선형 SVG 14px(1.6px stroke), 캘린더 팝오버 / 시·분 2열 스크롤 휠(높이 112px, 5분 단위), 직접 입력 병행</td>
+        <td>칸·아이콘 누름 → 아래 작은 캘린더 / 시·분 스크롤 휠 → 반영 후 닫힘</td>
+        <td><span class="st ok">확인</span></td>
+      </tr>
+      <tr data-el="el-compose">
+        <td>2. SNS + 버튼 및 스탬프/방명록 통합</td>
+        <td>후보 A (+ 바로 위 2항목 팝오버 + 스탬프 ▾ 한마디 추가/수정 통합)</td>
+        <td>후보 B</td><td>후보 C</td>
+        <td>2-A 채택, 방명록-스탬프 동일 개념 통합(+에서 방명록 제거, 스탬프 ▾에서 글 추가/수정, 공개/비공개×본문 유/무 4상태)</td>
+        <td>유리 원 36~44, + 팝오버 2항목(게시물·모임), 스탬프 ▾ 메뉴(공개 전환 + 한마디 수정)</td>
+        <td>+ 누름 → 게시물/모임 이동 · 오늘 다녀감 ▾ → 공개 전환 / 한마디 작성·수정</td>
+        <td><span class="st ok">확인</span></td>
+      </tr>
+      <tr>
+        <td>전 페이지 헤더 정렬·영문 통일</td>
+        <td><code>H O M E</code> 스타일 영문 대문자 + <code>&lt;</code> 수직 중앙 정렬</td>
+        <td>—</td><td>—</td>
+        <td>사용자 요청 #1 (필·원 감싸기 자제)</td>
+        <td>자간 2.4px, <code>alignItems: center</code>, 아이콘 단독</td>
+        <td>전 화면 공통 헤더</td>
+        <td><span class="st">기본값(Claude)</span></td>
+      </tr>
+      <tr>
+        <td>SNS 모임 카드 디자인 통합</td>
+        <td>방명록 카드와 동일(<code>radii.infoCard</code>, <code>● 모임</code>)</td>
+        <td>—</td><td>—</td>
+        <td>사용자 요청 #2 (필 배지 제거)</td>
+        <td>바탕 <code>paper</code>, 테두리 <code>surface2</code>, 점+글자 태그</td>
+        <td>피드에서 눌러 모임 상세 이동</td>
+        <td><span class="st">기본값(Claude)</span></td>
+      </tr>
+      <tr>
+        <td>방문 화면 상단 압축</td>
+        <td><code>이 도서관 이야기</code> 제거, <code>오늘 다녀감</code> 메타 줄 우측 이동</td>
+        <td>—</td><td>—</td>
+        <td>사용자 요청 #3</td>
+        <td>상단 1줄 절감 → 피드 영역 확대</td>
+        <td>방문 화면 진입 시 바로 표시</td>
+        <td><span class="st">기본값(Claude)</span></td>
+      </tr>
+      <tr>
+        <td>웹 하단 모달 폭 전수 수정</td>
+        <td>웹에서도 모바일 프레임 최대 폭 내부 중앙 정렬</td>
+        <td>—</td><td>—</td>
+        <td>사용자 요청 #5 (100vw 깨짐 방지)</td>
+        <td><code>maxWidth</code> 컨테이너 기준, 여백 8~16</td>
+        <td>모든 하단 시트·확인창 공통</td>
+        <td><span class="st">기본값(Claude)</span></td>
+      </tr>
+      <tr>
+        <td>오늘의 서가 3장 체제</td>
+        <td>① 인기 도서 → ② {테마} → ③ 최근 대출 도서</td>
+        <td>—</td><td>—</td>
+        <td>사용자 요청 #6</td>
+        <td>① YES24 베스트셀러 / ③ 정보나루 최근 30일(만화·시리즈 제외), 각 최대 4권</td>
+        <td>좌우 스와이프·화살표·점으로 3장 이동</td>
+        <td><span class="st">기본값(Claude)</span></td>
+      </tr>
+    </table>
+  </div>
+</section>
+</main>
+
+<script>
+  function mark(el, id) {
+    el.querySelectorAll('.cand').forEach(function (c) {
+      c.classList.toggle('chosen', c.dataset.id === id);
+      var old = c.querySelector('.badge.adopted'); if (old) old.remove();
+      if (id && c.dataset.id === el.dataset.chosen) {
+        var s = document.createElement('span'); s.className = 'badge adopted'; s.textContent = '채택';
+        c.querySelector('h3').appendChild(s);
+      }
+    });
+    var sel = el.querySelector('select[data-for]'); if (sel && id) sel.value = id;
+  }
+  document.querySelectorAll('section.element').forEach(function (el) {
+    mark(el, el.dataset.chosen || '');
+    var sel = el.querySelector('select[data-for]');
+    if (sel) {
+      if (!el.dataset.chosen) sel.insertAdjacentHTML('afterbegin', '<option value="" selected>(아직 고르지 않음)</option>');
+      sel.addEventListener('change', function () { mark(el, sel.value || el.dataset.chosen); });
+    }
+  });
+
+  // 시/분 스크롤 휠 초기 위치(14:00) 및 선택 동작
+  var curH = '14', curM = '00';
+  var wh = document.getElementById('wheelHour');
+  if (wh) wh.scrollTop = 5 * 28;
+
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-pop],[data-toggle],[data-set],[data-close],[data-show],[data-toast],[data-wheel-h],[data-wheel-m],.switch');
+    if (!t) return;
+    if (t.classList.contains('switch')) t.classList.toggle('on');
+    if (t.dataset.wheelH) {
+      curH = t.dataset.wheelH;
+      document.querySelectorAll('[data-wheel-h]').forEach(function (b) { b.classList.toggle('sel', b === t); });
+      t.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      var outH = document.getElementById('valTimeA'); if (outH) outH.textContent = curH + ':' + curM;
+      return;
+    }
+    if (t.dataset.wheelM) {
+      curM = t.dataset.wheelM;
+      document.querySelectorAll('[data-wheel-m]').forEach(function (b) { b.classList.toggle('sel', b === t); });
+      t.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      var outM = document.getElementById('valTimeA'); if (outM) outM.textContent = curH + ':' + curM;
+      return;
+    }
+    if (t.dataset.pop) {
+      var target = document.getElementById(t.dataset.pop);
+      if (target) target.classList.toggle('hide');
+      if (t.dataset.peer) {
+        var peer = document.getElementById(t.dataset.peer);
+        if (peer) peer.classList.add('hide');
+      }
+      var row = t.closest('.input-row');
+      if (row) row.querySelectorAll('.input-btn').forEach(function (b) { b.classList.toggle('active', b === t && target && !target.classList.contains('hide')); });
+    }
+    if (t.dataset.toggle) {
+      var tg = document.getElementById(t.dataset.toggle);
+      if (tg) tg.classList.toggle('hide');
+    }
+    if (t.dataset.set) {
+      var parts = t.dataset.set.split(':');
+      var out = document.getElementById(parts[0]);
+      if (out) out.textContent = parts.slice(1).join(':');
+    }
+    if (t.dataset.show) {
+      var sh = document.getElementById(t.dataset.show);
+      if (sh) sh.classList.remove('hide');
+    }
+    if (t.dataset.close) {
+      var cl = document.getElementById(t.dataset.close);
+      if (cl) cl.classList.add('hide');
+    }
+    if (t.dataset.toast) {
+      var m = document.getElementById(t.dataset.toast);
+      if (m) { m.classList.add('on'); clearTimeout(m._t); m._t = setTimeout(function () { m.classList.remove('on'); }, 2000); }
+    }
+  });
+
+  var ex = [
+    '직접 입력한 날짜/시간 형식이 틀리면 입력 칸 아래에 "YYYY-MM-DD / HH:MM 형식으로 입력해 주세요" 안내가 뜨고 올리기가 막혀요.',
+    '예: 이 도서관의 최근 30일 대출 데이터가 없으면 "최근 대출 도서" 장만 빼고 인기 도서·테마 2장만 자연스럽게 보여 줘요.',
+    '캘린더·시간 선택기나 + 팝오버가 열린 상태에서 바깥 영역을 누르면 입력 값은 유지된 채 팝오버만 닫혀요.',
+    '비로그인 상태에서 + 메뉴의 방명록·게시물·모임을 고르면 기존처럼 해당 기능의 로그인 안내 창으로 이어져요.'
+  ];
+  var exMsg = document.querySelector('[data-exmsg]'); exMsg.textContent = ex[0];
+  document.querySelectorAll('#exTabs button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#exTabs button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      exMsg.textContent = ex[+b.dataset.ex];
+    });
+  });
+</script>
+</body>
+</html>

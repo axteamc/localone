@@ -104,13 +104,13 @@
 
 | # | 메서드·경로 | 인증 | 목적 | 요구사항 | 상태 |
 | --- | --- | --- | --- | --- | --- |
-| 31 | `GET /api/v1/libraries/{library_id}/shelf` | 없음 | 방문 페이지 하단 "오늘의 서가"(책장, D `M2-0-P3`): ① 요즘 읽은 책(`recent_reads`) ② 인기 도서(`popular`) ③ 테마(`theme`), 빈 페이지 제외, 페이지당 최대 4권, ② 만화·시리즈 제외 후 같은 도서관 순위로 채움, ③ 소장 조건과 전용 우선 적용 | VISIT-04 | `확정` (2026-11-23 D, 적용 전) · ① 기간·건수 Q-49 / ② API Q-42 / ③ 테마 Q-47 |
+| 31 | `GET /api/v1/libraries/{library_id}/shelf` | 없음 | 방문 페이지 하단 "오늘의 서가"(책장, 2026-11-25 C-92 3장 체제): ① 인기 도서(`popular`, YES24 베스트셀러 `basis_label` "YES24 베스트셀러") ② 테마(`theme`, 소장 조건·전용 우선) ③ 최근 대출 도서(`recent_reads`, 정보나루 도서관별 최근 30일 대출, 만화·시리즈 제외, `basis_label` "{도서관명} · 최근 30일 대출"), 빈 페이지 제외, 페이지당 최대 4권. 앱 반납 집계는 읽지 않음 | VISIT-04 | `확정` (2026-11-25 사용자, C-92, core SRV-0 C2 `#31`·M2-0 Z8) |
 | 32 | `GET /api/v1/libraries/{library_id}/feed?cursor=&limit=` | 선택 | 방문 페이지 혼합 피드(B `VISIT-3` `post`·`guestbook` → `VISIT-4` `stamp` → `CLUB-1` `club`), 정렬 `(published_at DESC, kind ASC, id DESC)` 복합 커서. `#26`은 홈 하단 창용으로 그대로 유지 | VISIT-03·05, LOCAL-03, CLUB-01 | `확정` (2026-11-19 D, C-75) |
-| 33 | `POST /api/v1/libraries/{library_id}/guestbook` | 필수 | 도서관 방명록 글 올리기(`client_request_id` 멱등, B `VISIT-3`) | VISIT-03 | `확정` (2026-11-19 D) |
+| 33 | ~~`POST /api/v1/libraries/{library_id}/guestbook`~~ | 필수 | **폐기(2026-11-25 C-92 후속, 사용자 "제거")** — 방명록은 스탬프 한마디(#36 `body`)로 합쳤다. 이미 있는 방명록은 피드에 보이고 #34로 지운다 | VISIT-03 | `폐기` (2026-11-25 사용자) |
 | 34 | `POST /api/v1/guestbook/{entry_id}/withdraw` | 필수(작성자만) | 내 방명록 글 철회(멱등, 남의 글·없는 글은 같은 `404 NOT_FOUND`, B `VISIT-3`) | VISIT-03, R10 | `확정` (2026-11-19 D) |
 | 35 | `GET /api/v1/libraries/{library_id}/stamps/today` | 필수 | 오늘(서울 날짜) 내 방문 스탬프 조회(B `VISIT-4`) | VISIT-05 | `확정` (2026-11-19 D) |
-| 36 | `PUT /api/v1/libraries/{library_id}/stamps/today` | 필수 | 오늘 방문 스탬프("다녀왔어요") 찍기·공개 여부(`private`/`public`) 바꾸기(멱등, 날짜는 서버 `today_kst()`, B `VISIT-4`) | VISIT-05, R11 | `확정` · 입장 조건·표시 이름 `미확인(임시)` Q-45 |
-| 37 | `POST /api/v1/reports` | 필수 | 게시물·방명록·모임·모임 댓글 신고(중복 신고 멱등, 내 글 신고 불가 `422`, 신고자 비공개, B `LOCAL-4`) | LOCAL-08, AC-MOD | `확정` (2026-11-19 D) |
+| 36 | `PUT /api/v1/libraries/{library_id}/stamps/today` | 필수 | 오늘 방문 스탬프("다녀왔어요") 찍기·공개 여부(`private`/`public`) 바꾸기(멱등, 날짜는 서버 `today_kst()`, B `VISIT-4`). **C-92**: 선택 `body`(한마디 1~140자, 키 없으면 그대로·null/빈 글자는 비움, 141자 이상 422 `body`) — 스탬프=방명록 통합, 응답 `MyStamp.body`·피드 `StampItem.body` | VISIT-05, R11 | `확정` · 입장 조건·표시 이름 `미확인(임시)` Q-45 |
+| 37 | `POST /api/v1/reports` | 필수 | 게시물·방명록·모임·모임 댓글·**공개 스탬프(한마디, `stamp`, C-92 후속)** 신고(중복 신고 멱등, 내 글 신고 불가 `422`, 신고자 비공개, B `LOCAL-4`) | LOCAL-08, AC-MOD | `확정` (2026-11-19 D) |
 | 69 | `PUT /api/v1/stamps/{stamp_id}/bookmark` · `DELETE …/bookmark` | 필수 | 공개 방문 스탬프 카드 북마크 저장·해제(멱등, 재저장 시 `saved_at` 갱신, 비공개·없는 스탬프 `PUT`은 `404`, B `VISIT-4`) | C-46 D3~D5 | `확정` (2026-11-19 D, C-75) |
 
 ### 2.7 내 정보 모음 (`my-collection`, A)
@@ -144,7 +144,7 @@
 | 48 | `GET /api/v1/me/inbox?cursor=&limit=` | 필수 | 내 알림함 목록(모임 확정·변경·취소·종료·다음 모임·운영 처리 안내; 읽을 때 지난 종료 안내 1회 생성, D `M2-0-P1` / B `CLUB-2`) | C-46 C5, C-47 G1, R19 | `확정` (2026-11-19 D, C-75) |
 | 49 | `POST /api/v1/me/inbox/read` | 필수 | 내 알림 읽음 처리(`{ "ids": [...] }` 또는 `{ "all": true }`, 멱등, D `M2-0-P1` / B `CLUB-2`) | C-47 G1, R19 | `확정` (2026-11-19 D) |
 | OPS-1 | `GET /api/v1/ops/reports?status=open` · `POST /api/v1/ops/reports/{id}/resolve` | 필수(운영자만, 비운영자 `404`) | 신고 목록 조회 및 처리(D `M2-0-P2`, 앱 `/ops`) | LOCAL-08, AC-MOD | `확정` (2026-11-19 D, C-75) |
-| OPS-2 | `POST /api/v1/ops/targets/{kind}/{id}/hide` · `POST …/restore` | 필수(운영자만, 비운영자 `404`) | 게시물·방명록·모임·댓글 운영 숨김 및 복구(사유 필수, `moderation_actions` 기록, 숨김 시 작성자 알림함 안내, D `M2-0-P2`) | LOCAL-08, R10·R19 | `확정` (2026-11-19 D) |
+| OPS-2 | `POST /api/v1/ops/targets/{kind}/{id}/hide` · `POST …/restore` | 필수(운영자만, 비운영자 `404`) | 게시물·방명록·모임·댓글·공개 스탬프(`stamp`, C-92 후속) 운영 숨김 및 복구(사유 필수, `moderation_actions` 기록, 숨김 시 작성자 알림함 안내, D `M2-0-P2`) | LOCAL-08, R10·R19 | `확정` (2026-11-19 D) |
 | OPS-3 | `POST /api/v1/ops/club-comment-requests/{id}/decide` | 필수(운영자만, 비운영자 `404`) | 모임 댓글 운영 요청 처리(삭제만 / 삭제와 참가 제한 / 기각, D `M2-0-P2`) | C-46 B1·B2·B6 | `확정` (2026-11-19 D) |
 | OPS-4 | `POST /api/v1/ops/restrictions` · `POST /api/v1/ops/restrictions/{id}/lift` | 필수(운영자만, 비운영자 `404`) | 참가·댓글 제한 생성 및 해제(사유 필수, 운영자만 해제 가능, D `M2-0-P2`) | C-46 B1~B5, R18 | `확정` (2026-11-19 D) |
 | OPS-5 | `PUT /api/v1/ops/libraries/{id}/look` | 필수(운영자만, 비운영자 `404`) | 도서관 룩(`modern` 등) 운영자 지정·재배정(D `M2-0-P3`) | VISIT-07 | `확정` (2026-11-19 D) |
