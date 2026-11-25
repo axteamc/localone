@@ -30,7 +30,7 @@ const BOOK_GAP = 16;
 const PAGE_TOP = 8; // page paddingTop
 const OPEN_LOCK_MS = 1000; // 책 연타: 책 화면은 한 번만(예외 #3)
 
-/** V3-O1 (2026-11-25 C-92 3장 체제): 인기 도서(YES24 베스트셀러) → {테마} → 최근 대출 도서(정보나루 최근 30일).
+/** V3-O1 (2026-11-25 C-92 3장 체제): 화제의 책(YES24 베스트셀러) → {테마} → 요즘 사람들이 읽고 간 책(정보나루 최근 30일).
  * 서버도 같은 순서로 주지만 앱이 한 번 더 맞춘다. 서버가 뺀 장은 건너뛴다(이전: recent_reads → theme → popular) */
 export const SHELF_ORDER: readonly ShelfKind[] = ["popular", "theme", "recent_reads"];
 

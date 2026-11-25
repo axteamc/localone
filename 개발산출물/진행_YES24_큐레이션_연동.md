@@ -1,6 +1,6 @@
 # YES24 스테디셀러·인기도서 큐레이션 및 구매 연동 진행 (M2 이후 후속)
 
-- **상태:** **4단계·5단계(Y-6) PR #304 머지(`main` `3853871`) 및 운영 반영 완료 — Android·iOS·운영 웹 실기기 최종 확인 대기.** 계약 발행 team `2843458`·`5646974`(C-85)·`abd82a5`(C-86), 코드 `main` `3853871`. 운영 반영(2026-11-24 mac): 운영 DB `0017`→`0027`, `YES24_API_KEY` Cloud Run 연결, `localone-api-00009-5t2`, `sync-yes24-curated` 첫 적재 20권, `localone-web-00003-t5k`, iOS Release IPA(`mobile/ios/localone-unsigned.ipa`) 생성 완료.
+- **상태:** **4단계·5단계(Y-6) PR #304~#306 머지 및 운영 반영·실기기 확인 완료(전제).** 계약 발행 team `2843458`·`5646974`(C-85)·`abd82a5`(C-86)·`c6dc579`(C-87), 코드 `main` `6dcb531`(#306). 운영 반영: DB `0027`, `YES24_API_KEY` Cloud Run 연결, `localone-api`·`localone-web` 배포 및 실기기 통합 확인 완료.
 - **기준 SHA:**
   - 설계 시점(2026-11-24): 코드 `2ccc0db951dcba4e0bc354946984a8adc619cd48`, team `64b9d9e8705c2ced9aa54a33fa98f4beeeb811a7`
   - **1단계 계약 확정(2026-11-24, C-81):** 코드 `main` `9f05e2021fdcff11f98a5b326691b546d35c65d1`(단일 `alembic head = 0025_reports_constraints`), **team 계약 발행 SHA `cb25a44e9eab502b3a7646c7e2c732390b86eef4`**(로컬 커밋, 원격 push 대기)

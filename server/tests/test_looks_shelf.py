@@ -223,12 +223,12 @@ def test_shelf_full_pages_order_and_shape(client, reference_db, seeded, ops, yes
     assert all(set(p) == PAGE_KEYS and 1 <= len(p["books"]) <= 4 for p in pages)
     assert all(set(b) == BOOK_KEYS for p in pages for b in p["books"])
     popular, theme, recent = pages
-    assert popular["title"] == "인기 도서" and popular["basis_label"] == "YES24 베스트셀러"
+    assert popular["title"] == "화제의 책" and popular["basis_label"] == "YES24 베스트셀러"
     assert [b["isbn13"] for b in popular["books"]] == [item.isbn13 for item in yes24.curated_page.items[:4]]
     assert theme == {"kind": "theme", "title": "겨울에 읽는 책", "basis_label": None,
                      "books": [{"isbn13": isbn(2), "title": "이식 도서 002", "author": None, "cover_url": None},
                                {"isbn13": isbn(0), "title": "이식 도서 000", "author": None, "cover_url": None}]}
-    assert recent["title"] == "최근 대출 도서" and recent["basis_label"] == "정독도서관 · 최근 30일 대출"
+    assert recent["title"] == "요즘 사람들이 읽고 간 책" and recent["basis_label"] == "정독도서관 · 최근 30일 대출"
     assert [b["isbn13"] for b in recent["books"]] == [isbn(0), isbn(1), isbn(2), isbn(3)]
     # 두 캐시 모두: 다시 읽어도 외부 조회 한 번(YES24 베스트셀러 목록 1회, 정보나루 도서관별 1회)
     assert shelf(client).json()["pages"] == pages and len(fake.calls) == 1
@@ -339,7 +339,7 @@ def test_shelf_filters_comics_and_series_before_slicing_and_preserves_recommenda
     expected = [isbn(i) for i in (1, 3, 4, 5)]
     for _ in range(2):
         page, = shelf(client).json()["pages"]
-        assert page["kind"] == "recent_reads" and page["title"] == "최근 대출 도서"
+        assert page["kind"] == "recent_reads" and page["title"] == "요즘 사람들이 읽고 간 책"
         assert [b["isbn13"] for b in page["books"]] == expected
     r = client.get("/api/v1/books/recommendations", params={"library_id": 101})
     assert [b["isbn13"] for b in r.json()["books"]] == [b.isbn13 for b in candidates]
@@ -378,7 +378,7 @@ def test_theme_create_is_idempotent_and_overlap_is_409(client, reference_db, see
     r = post(theme_body())
     assert r.status_code == 201
     created = r.json()
-    assert set(created) == {"id", "library_id", "title", "starts_on", "ends_on", "priority", "books"}
+    assert set(created) == {"id", "library_id", "title", "starts_on", "ends_on", "priority", "basis_label", "books"}
     assert created["priority"] == 1
     assert created["library_id"] is None and [b["isbn13"] for b in created["books"]] == [isbn(0), isbn(1)]
     r = post(theme_body())  # 연타
@@ -578,3 +578,20 @@ def test_new_tables_have_rls_and_look_check(db_engine):
         with db_engine.begin() as c, pytest.raises(IntegrityError):
             c.execute(text(f"UPDATE libraries SET {column} = :v WHERE id = 101"), {"v": value})
     # user_settings는 M2-0-P4 `0015`가 만든다 — 표 시험은 test_return_stats.py
+
+
+def test_theme_basis_label_is_saved_shown_and_kept_when_put_omits_it(client, reference_db, seeded, ops, db_engine, yes24_db):
+    """C-94: 테마 출처 문구(basis_label)를 올리고, 책장 둘째 장에 보이며, PUT에서 생략하면 보존된다."""
+    use_providers(client, reference_db, library=FakeLibraryData(popular={}), yes24=bestseller())
+    add_holdings(reference_db, 101, [seeded[0], seeded[1]])
+    created = client.post("/api/v1/ops/shelf-themes", json=theme_body(basis_label="  YES24 스테디셀러 "), headers=ops["A"])
+    assert created.status_code == 201 and created.json()["basis_label"] == "YES24 스테디셀러"
+    theme = [p for p in shelf(client).json()["pages"] if p["kind"] == "theme"][0]
+    assert theme["basis_label"] == "YES24 스테디셀러"
+    tid = created.json()["id"]
+    body = theme_body(title="바뀐 이름")  # basis_label 키 없음 → 보존
+    assert client.put(f"/api/v1/ops/shelf-themes/{tid}", json=body, headers=ops["A"]).json()["basis_label"] == "YES24 스테디셀러"
+    cleared = client.put(f"/api/v1/ops/shelf-themes/{tid}", json={**body, "basis_label": None}, headers=ops["A"])
+    assert cleared.json()["basis_label"] is None
+    for bad in ("", "   ", "가" * 41):
+        assert client.put(f"/api/v1/ops/shelf-themes/{tid}", json={**body, "basis_label": bad}, headers=ops["A"]).status_code == 422

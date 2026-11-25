@@ -23,8 +23,8 @@ AUTO_LOOKS: tuple[LookPreset, ...] = ("warm", "toffee", "oxford")
 LOOK_RADIUS_KM = 5.0  # Z6
 LOOK_LOCK_KEY = "libraries:look"
 
-TITLE_POPULAR = "인기 도서"  # ① YES24 베스트셀러(C-92)
-TITLE_RECENT_LOANS = "최근 대출 도서"  # ③ 정보나루 loanItemSrchByLib 최근 30일(C-92, 이전 ② "인기 도서")
+TITLE_POPULAR = "화제의 책"  # ① YES24 베스트셀러(C-92, C-94 이름 변경: 이전 "인기 도서")
+TITLE_RECENT_LOANS = "요즘 사람들이 읽고 간 책"  # ③ 정보나루 loanItemSrchByLib 최근 30일(C-92, C-94 이름 변경: 이전 "최근 대출 도서")
 SHELF_BESTSELLER_LABEL = "YES24 베스트셀러"
 
 
@@ -92,7 +92,7 @@ def shelf_book(row: Any) -> dict[str, Any]:
 def theme_page(conn: Connection, library_id: int, today: date) -> dict[str, Any] | None:
     rows = conn.execute(text("""
         WITH matched AS (
-            SELECT t.id AS theme_id, t.title AS theme_title, t.library_id, t.priority,
+            SELECT t.id AS theme_id, t.title AS theme_title, t.basis_label AS theme_basis, t.library_id, t.priority,
                    b.isbn13, b.title, b.author, b.cover_url, MIN(tb.position) AS position
             FROM libraries l
             JOIN library_holdings_cache h ON h.library_id = l.id AND h.region_code = l.region_code
@@ -112,7 +112,7 @@ def theme_page(conn: Connection, library_id: int, today: date) -> dict[str, Any]
             ORDER BY library_id IS NULL, priority, theme_id
             LIMIT 1
         )
-        SELECT m.theme_title, m.isbn13, m.title, m.author, m.cover_url
+        SELECT m.theme_title, m.theme_basis, m.isbn13, m.title, m.author, m.cover_url
         FROM matched m JOIN selected USING (theme_id)
         ORDER BY m.position LIMIT :limit
         """), {
@@ -122,7 +122,7 @@ def theme_page(conn: Connection, library_id: int, today: date) -> dict[str, Any]
         }).all()
     if not rows:
         return None
-    return {"kind": "theme", "title": rows[0].theme_title, "basis_label": None,
+    return {"kind": "theme", "title": rows[0].theme_title, "basis_label": rows[0].theme_basis,
             "books": [shelf_book(row) for row in rows]}
 
 
