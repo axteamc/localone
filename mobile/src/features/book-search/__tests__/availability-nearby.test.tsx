@@ -167,6 +167,19 @@ async function renderDetail(isbn13: string) {
   await fireEvent.press(await screen.findByTestId("find-libraries"));
 }
 
+test("P8 guest lookup uses device start and gives recovered GPS priority on reopen", async () => {
+  await AsyncStorage.setItem("localone:rough_start:v1", JSON.stringify({ lat: 35, lng: 127, area_label: "광주광역시 동구" }));
+  locate.mockResolvedValueOnce({ ok: false, reason: "denied" });
+  await renderDetail(BOY.isbn13);
+  expect(await screen.findByText("광주광역시 동구")).toBeTruthy();
+  expect(fetchAvailabilityNearby).toHaveBeenLastCalledWith(BOY.isbn13, 35, 127, 3, expect.anything());
+  await fireEvent.press(screen.getByTestId("library-sheet-close"));
+  await fireEvent.press(screen.getByTestId("find-libraries"));
+  await screen.findByText("정독도서관");
+  expect(fetchAvailabilityNearby).toHaveBeenLastCalledWith(BOY.isbn13, HERE.lat, HERE.lng, 3, expect.anything());
+  expect(screen.queryByText("광주광역시 동구")).toBeNull();
+});
+
 describe("내 주변 소장·대출 목록", () => {
   test("nearby list keeps server distance order", async () => {
     // 서버가 준 순서(가까운 순) 그대로. 이름순·id순으로 다시 정렬하면 순서가 바뀌도록 고른 값
@@ -491,18 +504,18 @@ describe("LIB-3b 도서 상세 조회 창(V2·V3·V5·V6·V7)", () => {
     fetchAvailabilityNearby.mockResolvedValueOnce(resp([lib1(1, "가", { live_check: live }), lib1(2, "나")]));
     await renderDetail(BOY.isbn13);
     await fireEvent.press(await screen.findByTestId("live-check-1"));
-    expect(screen.queryByText("선택됨")).toBeNull();
+    expect(screen.queryByText("✓")).toBeNull();
     // 웹 <button> 중첩 방지: 선택 레이어는 다른 버튼을 감싸지 않는다(2026-11-24 웹 확인)
     const layer = screen.getByTestId("select-library-1");
     expect(within(layer).queryByTestId("live-check-1")).toBeNull();
     expect(within(layer).queryByTestId("info-open-1")).toBeNull();
     await fireEvent.press(layer);
-    expect(within(screen.getByTestId("library-1")).getByText("선택됨")).toBeTruthy();
+    expect(within(screen.getByTestId("library-1")).getByText("✓")).toBeTruthy();
     await fireEvent.press(screen.getByTestId("select-library-2"));
-    expect(within(screen.getByTestId("library-2")).getByText("선택됨")).toBeTruthy();
-    expect(screen.getAllByText("선택됨")).toHaveLength(1);
+    expect(within(screen.getByTestId("library-2")).getByText("✓")).toBeTruthy();
+    expect(screen.getAllByText("✓")).toHaveLength(1);
     await fireEvent.press(screen.getByTestId("select-library-2"));
-    expect(screen.queryByText("선택됨")).toBeNull();
+    expect(screen.queryByText("✓")).toBeNull();
   });
 
   test("buy link only when every library is confirmed not held (V7)", async () => {

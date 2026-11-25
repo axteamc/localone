@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- 짝 문서: 세부/<STEP>.md 이면 이 줄을 지워도 된다(같은 이름으로 찾는다). 다른 곳이면 상대 경로를 적는다. -->
+<meta name="명세" content="../../specs/book-search/세부/P8_실기기_개선.md">
+<title>실기기 개선 P8 시안 — 조회 창 버튼·대략 위치</title>
+<!--
+  시안 템플릿 (코드 레포 CLAUDE.md "시안 규칙"). 복사해서 specs/<기능>/세부/<STEP>_시안.html 로 쓴다.
+  아래 내용은 "검색창을 누르면 보이는 화면"의 예시다. 내용은 전부 바꿔 쓰되 **부품(아래 목록)은 그대로 가져다 쓴다.**
+
+  검사: sh ../team/tools/check_mockup.sh <이 파일>   (직접 실행한다)
+
+  지킬 것 (검사기 번호)
+  - 정할 중심 요소 하나 = <section class="element" id="el-…"> 하나(M10·M11). 후보 화면 3개, 연속값이면 data-kind="continuous" + 기준·3단계 4개(M12).
+  - 후보 = <article class="cand" data-id="…">. 안에: 휴대폰 틀 .phone(M17), 눌러 볼 수 있는 것 하나 이상(M18),
+    "누르면 이렇게 이어져요"·"화면을 열어야 보이는 것"·"얻는 것 / 포기하는 것"·"표준 근거: P-번호"(M15·M16).
+  - 표준 근거는 ../team/docs/앱_표준_패턴.md 의 번호. 후보 3개는 서로 다른 패턴. 목록 밖은 "새 패턴 — 이유", 한 요소에 하나까지.
+  - 추천은 후보 하나에만 class="cand recommended" + "추천 이유"(M13).
+  - 채택 후: data-chosen="<후보 id>", 상태 "확인", 명세 패널 이유 칸에 사용자 말 그대로(M20·M32). 후보는 지우지 않는다 — 선택 상자로 다시 본다(M21).
+  - 명세 패널 #spec: 요소마다 <tr data-el="el-…">(M31), 머리 칸 채택안·차선·탈락안·이유·값·유저 플로우·상태(M30).
+  - 세부 시안은 #except(예외 4장면, M40)·#fullflow(M41). 명세서 확인 목록의 '확인' 행은 "시안 #el-…"를 적는다(X10).
+  - 색·곡률은 :root 토큰(var(--이름))만(M03). 외부 연결 없음(M02).
+
+  부품 목록 (class) — 휴대폰 화면은 이것만 조립해도 된다
+  - .phone 휴대폰 틀 240×430 · .scr 화면 한 장(data-screen="이름", 첫 장 말고는 class="scr hide")
+  - .search 맨 위 검색창 / .field 검색 화면의 입력 칸 / .tabbar 하단 탭 바 / .vhead + .back 머리와 "‹"
+  - .map·.pin·.me 지도·핀·내 위치 / .chip 떠 있는 작은 버튼 / .btn·.btn.ghost 버튼 / .switch 스위치 / .seg 세그먼트
+  - .sheet 아래에서 올라오는 카드 / .menu ⋯ 메뉴 / .toast 아래 한 줄 안내 / .note-card 버튼 없는 작은 카드
+  - .covers 책 표지 줄 / .li 목록 한 줄 / .two-col 두 칸 / .vbody 아직 안 그린 자리(점선)
+  동작 (data-…) — 스크립트를 새로 쓰지 않아도 된다
+  - data-open="화면이름"   같은 .phone 안의 그 화면만 보이기
+  - data-toast="id"        그 안내를 2초 보이기 / data-menu="id" 메뉴 열고 닫기 / data-close="id" 닫기 / data-show="id" 다시 띄우기
+  - data-swap="켜기 글자|끄기 글자"  누를 때마다 글자 바꾸기 / .switch 는 누르면 켜짐·꺼짐
+  - <select data-for="el-…"> 채택안·탈락안 다시 보기 (옵션 값 = 후보 data-id)
+-->
+<style>
+  :root {
+    /* 개발산출물/디자인_기준.md 토큰 (warm, M1 기본). 새 색이 필요하면 여기에 이름을 붙여 더한다 */
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+    --cream:#EFEFE7; --paper:#EFF1F1; --ink-strong:#2E333F; --text:#1D1D1F; --sub:#71716F;
+    --me-dot:#3B7BDB; --on-dark-sub:#CFD2D8;
+    --r-card:18px; --r-pill:18px;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; line-height:1.5; }
+  header.page, main { max-width:1280px; margin:0 auto; padding:0 16px; }
+  header.page { padding-top:20px; }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:17px; margin:0 0 4px; } h3 { font-size:15px; margin:0 0 8px; }
+  .how, .flow, .decided { background:var(--cream); border-radius:var(--r-card); padding:12px 16px; margin:10px 0 0; }
+  .decided { border-left:5px solid var(--ink-strong); }
+  section.element { margin-top:32px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:var(--r-pill); background:var(--surface2); margin-left:6px; font-weight:400; }
+  .pick { margin:8px 0 0; font-size:14px; }
+  .pick select { font:inherit; padding:4px 8px; border-radius:10px; border:1px solid var(--surface3); background:var(--paper); }
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-card); padding:14px; border:3px solid transparent; }
+  .cand.recommended { border-color:var(--fill1); } .cand.chosen { border-color:var(--ink-strong); }
+  .badge { display:inline-block; font-size:12px; font-weight:700; padding:1px 9px; border-radius:var(--r-pill); background:var(--fill1); margin-left:6px; }
+  .badge.adopted { background:var(--ink-strong); color:var(--paper); }
+  .cand p, .cand li { font-size:13.5px; margin:6px 0; } .cand ul { padding-left:18px; margin:4px 0; }
+  .lbl { font-weight:700; font-size:12.5px; color:var(--sub); margin-top:10px; display:block; }
+  /* ---- 휴대폰 부품 ---- */
+  .phone { width:240px; height:430px; margin:0 auto 10px; background:var(--bg); border-radius:26px; border:5px solid var(--ink-strong); position:relative; overflow:hidden; font-size:11px; }
+  .scr { position:absolute; inset:0; padding:12px 10px; background:var(--paper); overflow:hidden; }
+  .scr.dark { background:var(--ink-strong); color:var(--paper); }
+  .map { position:absolute; inset:0; background:
+      linear-gradient(115deg, transparent 47%, var(--cream) 47%, var(--cream) 51%, transparent 51%),
+      linear-gradient(20deg, transparent 60%, var(--cream) 60%, var(--cream) 63%, transparent 63%), var(--bg); }
+  .pin { position:absolute; display:flex; flex-direction:column; align-items:center; transform:translateX(-50%); cursor:pointer; background:none; border:0; padding:0; font:inherit; color:inherit; }
+  .pin i { width:16px; height:16px; border-radius:50% 50% 50% 0; background:var(--fill1); transform:rotate(-45deg); border:2px solid var(--ink-strong); display:block; }
+  .pin b { margin-top:5px; font-size:10px; } .pin span { font-size:9px; color:var(--sub); }
+  .me { position:absolute; width:12px; height:12px; border-radius:50%; background:var(--me-dot); border:2px solid var(--paper); }
+  .search { position:absolute; left:10px; right:10px; top:12px; height:34px; border-radius:var(--r-pill); background:var(--paper); display:flex; align-items:center; padding:0 12px; gap:6px; box-shadow:0 1px 4px rgba(0,0,0,.15); cursor:pointer; }
+  .search .ph { flex:1; color:var(--sub); }
+  .field { height:34px; border-radius:var(--r-pill); display:flex; align-items:center; padding:0 12px; gap:6px; background:var(--cream); color:var(--sub); }
+  .scr.dark .field { background:var(--paper); color:var(--text); }
+  .tabbar { position:absolute; left:0; right:0; bottom:0; height:38px; background:var(--paper); display:flex; justify-content:space-around; align-items:center; font-size:9px; color:var(--sub); }
+  .tabbar b { color:var(--text); }
+  .btn { border:0; font:inherit; cursor:pointer; border-radius:var(--r-pill); padding:4px 10px; background:var(--ink-strong); color:var(--paper); }
+  .btn.ghost { background:var(--surface2); color:var(--text); }
+  .chip { position:absolute; border:0; cursor:pointer; font:inherit; border-radius:var(--r-pill); padding:5px 10px; background:var(--paper); box-shadow:0 1px 4px rgba(0,0,0,.18); font-size:10px; }
+  .vhead { padding:4px 2px 8px; } .row { display:flex; align-items:center; gap:6px; }
+  .back { font-size:24px; font-weight:800; line-height:1; background:none; border:0; cursor:pointer; text-shadow:0 1px 3px rgba(0,0,0,.2); padding:0 6px 0 0; color:inherit; }
+  .vname { font-size:14px; font-weight:700; } .vsub { color:var(--sub); font-size:10px; }
+  .vbody { margin:8px 2px; height:200px; border-radius:var(--r-card); border:2px dashed var(--surface3); display:flex; align-items:center; justify-content:center; text-align:center; color:var(--sub); padding:10px; }
+  .sheet { position:absolute; left:8px; right:8px; bottom:46px; background:var(--paper); border-radius:16px; padding:10px 12px; box-shadow:0 2px 10px rgba(0,0,0,.2); }
+  .menu { position:absolute; right:10px; top:40px; background:var(--paper); border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.2); padding:4px 0; width:150px; display:none; z-index:2; }
+  .menu.on { display:block; } .menu div { padding:7px 12px; cursor:pointer; }
+  .toast { position:absolute; left:14px; right:14px; bottom:48px; background:var(--ink-strong); color:var(--paper); border-radius:12px; padding:7px 10px; font-size:10px; display:none; }
+  .toast.on { display:block; }
+  .note-card { position:absolute; left:50%; bottom:46px; transform:translate(-50%,6px); background:var(--paper); border-radius:14px; padding:6px 12px; box-shadow:0 2px 10px rgba(0,0,0,.2); font-size:10px; white-space:nowrap; pointer-events:none; opacity:0; transition:opacity .3s, transform .3s; }
+  .note-card.on { opacity:1; transform:translate(-50%,0); }
+  .switch { width:30px; height:17px; border-radius:9px; background:var(--surface3); position:relative; border:0; cursor:pointer; flex:none; }
+  .switch::after { content:""; position:absolute; left:2px; top:2px; width:13px; height:13px; border-radius:50%; background:var(--paper); transition:left .15s; }
+  .switch.on { background:var(--ink-strong); } .switch.on::after { left:15px; }
+  .seg { display:flex; background:var(--surface2); border-radius:var(--r-pill); padding:2px; width:max-content; }
+  .seg button { border:0; font:inherit; border-radius:var(--r-pill); padding:3px 9px; background:none; cursor:pointer; color:inherit; }
+  .seg button.on { background:var(--ink-strong); color:var(--paper); }
+  .covers { display:flex; gap:6px; margin-top:6px; overflow:hidden; }
+  .covers i { width:40px; height:56px; border-radius:5px 9px 9px 5px; background:var(--fill2); display:block; flex:none; }
+  .covers i:nth-child(3n+2){ background:var(--fill3); } .covers i:nth-child(3n){ background:var(--fill1); }
+  .li { padding:7px 2px; border-bottom:1px solid var(--surface2); } .scr.dark .li { border-color:rgba(255,255,255,.18); }
+  .two-col { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .sec { font-weight:700; font-size:10.5px; margin-top:10px; }
+  .hide { display:none !important; }
+  /* ---- 표 ---- */
+  table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-card); overflow:hidden; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--surface2); }
+  th { background:var(--surface2); }
+  .st { font-size:12px; padding:1px 8px; border-radius:var(--r-pill); background:var(--surface2); white-space:nowrap; }
+  #spec, #except, #fullflow { margin-top:32px; }
+  .state button { font:inherit; border:0; border-radius:var(--r-pill); padding:4px 12px; background:var(--surface2); cursor:pointer; margin:2px; }
+  .state button[aria-pressed="true"] { background:var(--ink-strong); color:var(--paper); }
+  .wide { overflow-x:auto; }
+
+  .bar { position:absolute; left:0; right:0; bottom:0; padding:8px 8px 10px; background:var(--paper); display:flex; gap:6px; border-top:1px solid var(--surface2); }
+  .bar .btn { flex:1; padding:8px 0; font-size:10.5px; }
+  .lsheet { position:absolute; left:0; right:0; top:120px; bottom:0; background:var(--paper); border-radius:16px 16px 0 0; box-shadow:0 -2px 10px rgba(0,0,0,.18); padding:10px 10px 60px; }
+  .card { border:1px solid var(--surface3); border-radius:12px; padding:6px 8px; margin-top:6px; display:flex; align-items:center; gap:6px; cursor:pointer; }
+  .card.sel { border:2px solid var(--ink-strong); background:var(--cream); }
+  .card .nm { font-weight:700; font-size:10.5px; } .card .st2 { font-size:9px; color:var(--sub); }
+  .card .grow { flex:1; }
+  .pill { border:1px solid var(--surface3); border-radius:var(--r-pill); padding:3px 7px; font-size:9px; background:var(--paper); cursor:pointer; font:inherit; font-size:9px; }
+  .snack { position:absolute; left:8px; right:8px; bottom:10px; background:var(--ink-strong); color:var(--paper); border-radius:12px; padding:8px 10px; font-size:10px; display:flex; align-items:center; gap:6px; }
+  .snack b { color:var(--fill1); cursor:pointer; margin-left:auto; white-space:nowrap; }
+  .cover { width:56px; height:80px; border-radius:4px 8px 8px 4px; background:var(--fill3); margin:4px auto 6px; }
+  .res { padding:6px 2px; border-bottom:1px solid var(--surface2); cursor:pointer; }
+  .res .a { font-size:9px; color:var(--sub); }
+  .grid { position:absolute; inset:0; background:
+    repeating-linear-gradient(0deg, transparent 0 31px, var(--surface2) 31px 32px),
+    repeating-linear-gradient(90deg, transparent 0 31px, var(--surface2) 31px 32px), var(--cream); }
+  .cube { position:absolute; width:70px; height:50px; background:var(--fill1); transform:skewY(-12deg); left:85px; top:120px; border:1px solid var(--ink-strong); font-size:12px; font-weight:700; display:flex; align-items:flex-end; padding:4px; }
+  .center-pin { position:absolute; left:50%; top:44%; transform:translate(-50%,-100%); font-size:22px; }
+</style>
+
+</head>
+<body>
+
+<header class="page">
+  <h1>실기기 개선 P8 시안 — 조회 창의 아래 버튼 · 위치를 못 받을 때 대략 위치</h1>
+  <div class="how"><b>보는 법.</b> 두 요소 모두 A를 채택했어요. 도서관 확인을 눌러 버튼 높이를 비교하고, 주소·장소로 시작을 눌러 검색 흐름을 볼 수 있어요.</div>
+</header>
+<main>
+
+<!-- ===== 중심 요소 1 ===== -->
+<section class="element" id="el-plan-cta" data-chosen="A">
+  <h2>1. `도서관 확인` 창이 열렸을 때 아래 버튼 <span class="status">확인</span></h2>
+  <div class="flow"><b>지금(문제).</b> 창이 열려도 아래에 <code>대출 예정 | 도서관 확인</code> 두 버튼이 그대로 있고, 카드를 눌러 "선택됨"이 돼도 <code>대출 예정</code>은 <b>도서관 없이</b> 저장돼요(선택이 아무 데도 안 쓰임). 창이 열리기 전 두 버튼은 그대로 둬요(사용자 결정). 정할 것은 <b>창이 열린 뒤</b> 무엇으로 담느냐예요.<br>
+  <b>모바일 기준 검토.</b> 아래에서 올라오는 창(M3 Bottom sheet, HIG Sheets)은 그 안의 일에만 집중하게 하고 주 행동은 하나로 둬요. 뒤 화면의 버튼 줄이 창과 함께 보이면 "어느 버튼이 창에 대한 것인지" 헷갈려요. 또 고른 것(카드 선택)과 버튼 결과가 따로 놀면 안 돼요. → 사용자 안(가로 필 하나)이 표준과 맞아요.</div>
+  <div class="pick">다시 보기: <select data-for="el-plan-cta">
+    <option value="A">후보 A — 기존 높이의 가로 필 하나(사용자 안)</option>
+    <option value="B">후보 B — 카드마다 담기</option>
+    <option value="C">후보 C — 고르면 아래 안내 띠</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 기존 높이의 가로 필 하나 <span class="badge">추천</span></h3>
+      <div class="phone">
+        <div class="scr" data-screen="a0"><div class="cover"></div><div class="vname">안녕이라 그랬어</div><div class="vsub">김애란 지음</div>
+          <div class="bar"><button class="btn ghost">대출 예정</button><button class="btn" data-open="a1">도서관 확인</button></div></div>
+        <div class="scr hide" data-screen="a1"><div class="cover"></div>
+          <div class="lsheet"><div class="row"><b style="flex:1">가까운 도서관</b><button class="back" data-open="a0" style="font-size:14px">✕</button></div>
+            <div class="card" data-open="a2"><div class="grow"><div class="nm">계림꿈나무도서관</div><div class="st2">● 어제(추정) · 대출 가능</div></div><span class="pill">실시간 ↗</span></div>
+            <div class="card"><div class="grow"><div class="nm">광주광역시립산수도서관</div><div class="st2">● 어제(추정) · 대출 가능</div></div><span class="pill">실시간 ↗</span></div>
+            <div class="bar"><button class="btn" data-toast="ta0">빌릴 예정에 추가</button></div>
+            <div class="toast" id="ta0">빌릴 예정에 담았어요 · 도서관 미정</div></div></div>
+        <div class="scr hide" data-screen="a2"><div class="cover"></div>
+          <div class="lsheet"><div class="row"><b style="flex:1">가까운 도서관</b><button class="back" data-open="a0" style="font-size:14px">✕</button></div>
+            <div class="card sel" data-open="a1"><div class="grow"><div class="nm">계림꿈나무도서관 ✓</div><div class="st2">● 어제(추정) · 대출 가능</div></div><span class="pill">실시간 ↗</span></div>
+            <div class="card"><div class="grow"><div class="nm">광주광역시립산수도서관</div><div class="st2">● 어제(추정) · 대출 가능</div></div><span class="pill">실시간 ↗</span></div>
+            <div class="bar"><button class="btn" data-toast="ta2">빌릴 예정에 추가</button></div>
+            <div class="toast" id="ta2">계림꿈나무도서관에서 빌릴 예정으로 담았어요</div></div></div>
+      </div>
+      <p>창이 열리면 아래 두 버튼이 사라지고 창 맨 아래에 기존 높이의 가로 필 하나만 남아요. 선택한 도서관은 카드의 테두리와 체크로 확인해요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>도서관 확인 → 창 → 카드 누름(고름, 다시 누르면 풀림) → 빌릴 예정에 추가 → 아래 안내 "○○도서관에서 빌릴 예정으로 담았어요" → 창은 열린 채. 안 고르고 누르면 도서관 미정으로 담김(LIB-3b U6 그대로).</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>도서관 선택 전후 모두 버튼에는 “빌릴 예정에 추가” 한 줄만 표시</li><li>이미 담은 책이면 "빌릴 예정에 있어요 · 도서관 바꾸기"</li><li>로그인 안 했으면 누를 때 로그인 안내(지금과 같음)</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>창 안 행동이 하나라 안 헷갈리고, 고른 도서관이 그대로 저장돼요. / 담기 전에는 버튼만 보고 미정 저장 여부를 알기 어려워요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-04 아래에서 올라오는 시트 + P-42 아래 고정 주 버튼 (배민 "담기")</p>
+      <p><b>추천 이유:</b> 사용자 안이 M3·HIG 시트 원칙(창 안 주 행동 하나)과 같고, 지금 "선택이 저장에 안 쓰이는" 결함도 같이 풀려요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 카드마다 담기</h3>
+      <div class="phone">
+        <div class="scr" data-screen="b1"><div class="cover"></div>
+          <div class="lsheet"><b>가까운 도서관</b>
+            <div class="card"><div class="grow"><div class="nm">계림꿈나무도서관</div><div class="st2">● 대출 가능</div></div><button class="pill" data-toast="tb">담기</button><span class="pill">↗</span></div>
+            <div class="card"><div class="grow"><div class="nm">광주광역시립산수도서관</div><div class="st2">● 대출 가능</div></div><button class="pill" data-toast="tb">담기</button><span class="pill">↗</span></div>
+            <div class="card"><div class="grow"><div class="nm">책정원도서관</div><div class="st2">● 대출 가능</div></div><button class="pill" data-toast="tb">담기</button><span class="pill">↗</span></div>
+            <div class="toast" id="tb">이 도서관에서 빌릴 예정으로 담았어요</div></div></div>
+      </div>
+      <p>창이 열리면 아래 버튼 줄은 사라지고, 도서관 줄마다 <code>담기</code>가 붙어요. 고르기 단계가 없어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>도서관 확인 → 창 → 원하는 줄의 담기 한 번 → 안내. 도서관 미정으로 담으려면 창을 닫고 아래 <code>대출 예정</code>.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>줄마다 작은 버튼 2개(담기·실시간 ↗)</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>한 번에 담겨요. / 줄마다 버튼이 2개라 좁고, 담기·실시간을 잘못 누르기 쉬워요. 미정 담기는 창 밖으로.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-32 줄 목록(줄마다 행동)</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 고르면 아래 안내 띠</h3>
+      <div class="phone">
+        <div class="scr" data-screen="c1"><div class="cover"></div>
+          <div class="lsheet"><b>가까운 도서관</b>
+            <div class="card" data-open="c2"><div class="grow"><div class="nm">계림꿈나무도서관</div><div class="st2">● 대출 가능</div></div><span class="pill">실시간 ↗</span></div>
+            <div class="card"><div class="grow"><div class="nm">광주광역시립산수도서관</div><div class="st2">● 대출 가능</div></div><span class="pill">실시간 ↗</span></div>
+            <p class="vsub" style="margin-top:10px">카드를 누르면 아래에 담기 띠가 나와요</p></div></div>
+        <div class="scr hide" data-screen="c2"><div class="cover"></div>
+          <div class="lsheet"><b>가까운 도서관</b>
+            <div class="card sel" data-open="c1"><div class="grow"><div class="nm">계림꿈나무도서관 ✓</div><div class="st2">● 대출 가능</div></div><span class="pill">실시간 ↗</span></div>
+            <div class="card"><div class="grow"><div class="nm">광주광역시립산수도서관</div><div class="st2">● 대출 가능</div></div><span class="pill">실시간 ↗</span></div>
+            <div class="snack">계림꿈나무도서관 선택됨 <b data-open="c1">빌릴 예정에 추가</b></div></div></div>
+      </div>
+      <p>창에는 버튼이 없다가, 카드를 고르면 아래에 검은 안내 띠와 <code>빌릴 예정에 추가</code>가 나와요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>도서관 확인 → 창 → 카드 고름 → 띠의 "빌릴 예정에 추가" → 담김. 미정 담기는 창 밖 <code>대출 예정</code>.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>고르기 전에는 담는 방법이 안 보임</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>화면이 가장 깔끔해요. / 고르기 전에는 담을 수 있다는 걸 몰라요. 띠는 원래 "방금 한 일" 안내용이라 주 행동을 두기엔 약해요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-50 아래 한 줄 안내(스낵바)에 행동 하나</p>
+    </article>
+  </div>
+</section>
+
+<!-- ===== 중심 요소 2 ===== -->
+<section class="element" id="el-rough-location" data-chosen="A">
+  <h2>2. 위치를 못 받을 때 대략적인 위치를 받는 법 <span class="status">확인</span></h2>
+  <div class="flow"><b>정해진 것.</b> 위치를 못 받으면 지금은 지역(시·도 → 시·군·구)만 고를 수 있어요(C-68). 사용자 안: <b>집 근처 큰 건물 아무거나</b>를 치면 그 자리를 시작점으로 쓰고, 화면에는 지금처럼 <code>광주광역시 동구</code>로만 보여요. 정할 것은 <b>어떻게 받느냐</b>예요.<br>
+  <b>공통(기본값(Claude)).</b> 장소 찾기는 카카오 로컬 "키워드로 장소 검색"(서버가 대신 호출, 키는 서버에만). 시작점 좌표는 <b>이 기기에만</b> 저장(서버 저장 없음, C-54의 "집을 저장하지 않는다"의 두 번째 예외 — C-68 지역 기억과 같은 자리). 위치를 다시 받으면 그쪽이 우선.</div>
+  <div class="pick">다시 보기: <select data-for="el-rough-location">
+    <option value="A">후보 A — 건물 이름 검색 → 고르기</option>
+    <option value="B">후보 B — 지역 먼저, 건물은 선택</option>
+    <option value="C">후보 C — 지도에서 핀 맞추기</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 건물 이름 검색 → 고르기 <span class="badge">추천</span></h3>
+      <div class="phone">
+        <div class="scr" data-screen="r0"><div class="grid"></div><div class="cube">서울</div>
+          <button class="chip" style="left:50%;transform:translateX(-50%);bottom:60px" data-open="r1">위치 허용하기</button>
+          <div class="sheet" style="bottom:8px"><b>위치를 못 받았어요</b><div class="vsub">집 근처 큰 건물로 대략 시작할 수 있어요</div>
+            <button class="btn" style="margin-top:6px;width:100%" data-open="r1">주소·장소로 시작</button></div></div>
+        <div class="scr hide" data-screen="r1"><div class="row"><button class="back" data-open="r0">‹</button><b>대략적인 위치</b></div>
+          <div class="field" style="color:var(--text);margin-top:6px">충장로 우체국|</div>
+          <div class="vsub" style="margin:4px 2px">집 근처 큰 건물·역·학교 이름. 주소는 저장하지 않아요.</div>
+          <div class="res" data-open="r2"><b>광주충장로우체국</b><div class="a">광주 동구 충장로 …</div></div>
+          <div class="res"><b>충장로 우체국 사거리</b><div class="a">광주 동구 충장로4가</div></div>
+          <div class="res"><b>충장로 우체국 버스정류장</b><div class="a">광주 동구 …</div></div></div>
+        <div class="scr hide" data-screen="r2"><div class="grid"></div><div class="cube" style="background:var(--fill3)">계림</div>
+          <div class="chip" style="left:10px;top:10px">시작점 · 광주광역시 동구</div>
+          <div class="toast on" style="bottom:14px">광주광역시 동구 근처로 시작해요</div></div>
+      </div>
+      <p>홈 아래에 "주소·장소로 시작"이 보이고, 누르면 검색 칸에 건물 이름을 쳐서 목록에서 하나 골라요. 화면에는 건물 이름 대신 <code>광주광역시 동구</code>만 보여요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>위치 실패 → 홈 "주소·장소로 시작" → 건물 이름 입력(2글자부터 목록) → 하나 고름 → 홈이 그 근처 도서관으로 바뀜, 시작점 칩 "광주광역시 동구". 책 상세 조회 창에서도 같은 시작점을 씀.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>목록 최대 5개(장소 이름 + 시·구·동까지만)</li><li>결과 없음: "다른 이름으로 찾아 주세요 · 지역으로 고르기"</li><li>설정 → 화면에 "대략적인 위치 지우기"</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>지역 고르기보다 정확해 거리·가까운 순이 맞아요. 한 번만 치면 돼요. / 서버 API·카카오 로컬 사용이 새로 필요해요(계약 06 새 경로).</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-63 권한 없이 임시 상태 + P-25 글자 치는 중 자동 완성</p>
+      <p><b>추천 이유:</b> 사용자 안 그대로이고, 위치 권한을 끈 지도 앱(카카오맵 "주소·장소로 시작")이 쓰는 방식이에요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 지역 먼저, 건물은 선택</h3>
+      <div class="phone">
+        <div class="scr" data-screen="s1"><div class="row"><b>어디서 시작할까요?</b></div>
+          <div class="li">광주광역시 ›</div><div class="li" style="font-weight:700">　동구 ✓</div><div class="li">　서구</div><div class="li">　남구</div>
+          <div class="li" style="color:var(--sub)" data-open="s2">+ 근처 건물로 더 정확히(선택)</div>
+          <button class="btn" style="margin-top:8px;width:100%">동구에서 시작</button></div>
+        <div class="scr hide" data-screen="s2"><div class="row"><button class="back" data-open="s1">‹</button><b>동구 안 건물</b></div>
+          <div class="field" style="color:var(--text);margin-top:6px">충장로|</div><div class="res" data-open="s1"><b>광주충장로우체국</b><div class="a">광주 동구</div></div></div>
+      </div>
+      <p>지금 있는 지역 고르기(C-68)를 그대로 두고, 그 아래 접힌 줄로 건물 이름을 더할 수 있어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>위치 실패 → 지역 고르기 → (선택) 건물 이름 → 시작. 건물을 안 쳐도 구 가운데에서 시작.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>건물 칸은 접혀 있어 대부분 안 씀</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>지금 흐름을 거의 안 바꿔요. / 단계가 2개라 길고, 건물 칸은 잘 안 쓰여 정확도가 안 올라요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-73 접힌 선택 칸</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 지도에서 핀 맞추기</h3>
+      <div class="phone">
+        <div class="scr" data-screen="m1"><div class="map"></div><div class="center-pin">📍</div>
+          <div class="chip" style="left:10px;top:10px">광주광역시 동구</div>
+          <div class="sheet" style="bottom:8px"><div class="vsub">지도를 끌어 집 근처에 핀을 맞춰 주세요</div><button class="btn" style="margin-top:6px;width:100%" data-toast="tm">여기서 시작</button></div>
+          <div class="toast" id="tm">광주광역시 동구 근처로 시작해요</div></div>
+      </div>
+      <p>카카오 지도를 띄우고 가운데 핀에 맞춰 끌어서 정해요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>위치 실패 → 지도 → 끌기·확대 → 여기서 시작.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>처음 지도 위치는 서울 기본값이라 광주까지 끌어야 함</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>글자를 안 쳐도 돼요. / 다른 도시면 한참 끌어야 하고, 홈에서 뺀 지도(C-65)를 다시 들여요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-82 지도 위 위치 + P-23 지도 위 떠 있는 버튼</p>
+    </article>
+  </div>
+</section>
+
+<section id="except">
+  <h2>잘 안 될 때 보이는 화면</h2>
+  <div class="state" id="exTabs">
+    <button aria-pressed="true" data-ex="0">인터넷이 끊김</button><button aria-pressed="false" data-ex="1">하나도 없음</button><button aria-pressed="false" data-ex="2">두 번 빠르게 누름</button><button aria-pressed="false" data-ex="3">로그인 안 함</button>
+  </div>
+  <div class="phone" style="margin:8px 0 0"><div class="scr"><b>가까운 도서관</b><p data-exmsg style="margin-top:14px"></p></div></div>
+</section>
+
+<section id="fullflow">
+  <h2>처음부터 끝까지 이렇게 써요 (채택안 기준)</h2>
+  <ol>
+    <li>책 상세에서 아래 <code>도서관 확인</code>을 누르면 가까운 도서관 창이 열리고, 아래 두 버튼 대신 <code>빌릴 예정에 추가</code> 하나가 보인다.</li>
+    <li>카드를 누르면 선택 표시가 생긴다. 빌릴 예정에 추가를 누르면 그 도서관으로 빌릴 예정에 담긴다(안 고르면 도서관 미정).</li>
+    <li>창을 닫으면 아래 버튼 줄이 <code>대출 예정 | 도서관 확인</code>으로 돌아온다.</li>
+    <li>위치를 못 받으면 홈 아래 "주소·장소로 시작"에서 건물 이름을 골라 시작점을 정하고, 홈·조회 창은 <code>광주광역시 동구</code>로 보여 준다.</li>
+  </ol>
+</section>
+
+<section id="spec">
+  <h2>명세</h2>
+  <div class="wide"><table>
+    <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
+    <tr data-el="el-plan-cta"><td>1. 조회 창 아래 버튼</td><td>A 가로 필 하나</td><td>지정 없음</td><td>B·C</td><td>“A지만 버튼이 너무 커. 기존 버튼이 길어져서 하나가 된 느낌이었으면 좋겠어. `빌릴 예정에 추가` 만으로 충분할 거 같아”</td><td>기존 높이 48, 글자 15, 가로 전체, 한 줄</td><td>도서관 확인 → 카드 고름 → 빌릴 예정에 추가</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-rough-location"><td>2. 대략 위치 받기</td><td>A 건물 이름 검색</td><td>지정 없음</td><td>B·C</td><td>“A - 필 버튼 내용 -> `주소·장소로 시작` 로 멘트만 수정”</td><td>목록 최대 5, 2글자부터, 표기 "시·도 시·군·구"</td><td>위치 실패 → 주소·장소로 시작 → 고름 → 홈</td><td><span class="st">확인</span></td></tr>
+    <tr><td>담은 뒤 안내</td><td>아래 한 줄 "○○도서관에서 빌릴 예정으로 담았어요"</td><td>—</td><td>—</td><td>묻지 않음</td><td>2초</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>시작점 저장</td><td>이 기기에만(좌표·표기 이름), 서버 저장 없음</td><td>—</td><td>—</td><td>묻지 않음</td><td>—</td><td>설정에서 지우기</td><td><span class="st">기본값(Claude)</span></td></tr>
+  </table></div>
+</section>
+</main>
+
+
+
+<script>
+  // 채택안 표시: section 의 data-chosen 에 후보 id → 검은 테두리 + "채택" 표시. 선택 상자로 탈락안을 다시 볼 수 있다.
+  function mark(el, id) {
+    el.querySelectorAll('.cand').forEach(function (c) {
+      c.classList.toggle('chosen', c.dataset.id === id);
+      var old = c.querySelector('.badge.adopted'); if (old) old.remove();
+      if (id && c.dataset.id === el.dataset.chosen) { var s = document.createElement('span'); s.className = 'badge adopted'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+    });
+    var sel = el.querySelector('select[data-for]'); if (sel && id) sel.value = id;
+  }
+  document.querySelectorAll('section.element').forEach(function (el) {
+    mark(el, el.dataset.chosen || '');
+    var sel = el.querySelector('select[data-for]');
+    if (sel) { if (!el.dataset.chosen) sel.insertAdjacentHTML('afterbegin', '<option value="" selected>(아직 고르지 않음)</option>');
+      sel.addEventListener('change', function () { mark(el, sel.value || el.dataset.chosen); }); }
+  });
+  // 휴대폰 부품 동작
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-open],[data-toast],[data-menu],[data-close],[data-show],[data-swap],.switch'); if (!t) return;
+    if (t.classList.contains('switch')) t.classList.toggle('on');
+    if (t.dataset.open) { var ph = t.closest('.phone'); ph.querySelectorAll('.scr[data-screen]').forEach(function (s) { s.classList.toggle('hide', s.dataset.screen !== t.dataset.open); }); }
+    if (t.dataset.menu) { document.getElementById(t.dataset.menu).classList.toggle('on'); return; }
+    if (t.dataset.show) { document.getElementById(t.dataset.show).classList.remove('hide'); }
+    if (t.dataset.swap) { var w = t.dataset.swap.split('|'); t.textContent = t.textContent === w[0] ? w[1] : w[0]; }
+    if (t.dataset.close) { var c = document.getElementById(t.dataset.close); c.classList.remove('on'); if (c.classList.contains('sheet')) c.classList.add('hide'); }
+    if (t.dataset.toast) { var m = document.getElementById(t.dataset.toast); m.classList.add('on'); clearTimeout(m._t); m._t = setTimeout(function () { m.classList.remove('on'); }, 2000); }
+  });
+  // 예외 화면 전환
+  var ex = ['창 안: "지금은 도서관을 찾을 수 없어요" + 다시 해 보기. 아래 필 버튼은 그대로(도서관 미정으로 담기 가능)',
+            '가까운 도서관 0곳: 지금처럼 "도시 전체 검색" 안내. 필 버튼은 "빌릴 예정에 추가", 저장할 도서관은 미정',
+            '필 버튼 두 번: 저장은 한 번(누르는 동안 버튼 잠김), 안내도 한 번',
+            '필 버튼 누름 → "로그인하면 빌릴 예정에 담을 수 있어요" + 로그인(지금과 같음)'];
+  var exMsg = document.querySelector('[data-exmsg]'); exMsg.textContent = ex[0];
+  document.querySelectorAll('#exTabs button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#exTabs button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      exMsg.textContent = ex[+b.dataset.ex];
+    });
+  });
+</script>
+</body>
+</html>

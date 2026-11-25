@@ -129,7 +129,7 @@ export function LibraryAvailabilityCard({
           <Text style={styles.name} numberOfLines={1}>{lib.name}</Text>
           {!!distance && <Text style={styles.sep}>·</Text>}
           {!!distance && <Text style={styles.name}>{distance}</Text>}
-          {selected && <Text style={styles.selectedTag}>{SELECTED_LABEL}</Text>}
+          {selected && <Text accessibilityLabel={SELECTED_LABEL} style={styles.selectedTag}>✓</Text>}
           {/* LIB-2 머리 줄(C-70): 오늘 운영은 이름 줄 오른쪽에 작게 */}
           {!!todayLabel && <Text style={[styles.meta, styles.todayRight]} numberOfLines={1}>{todayLabel}</Text>}
         </View>

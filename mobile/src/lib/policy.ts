@@ -9,6 +9,7 @@ export const DEFAULT_START = {
   lat: 37.5665, lng: 126.9780, dtlRegion: "11020", label: "서울 중구",
 } as const;
 export const STORAGE_KEYS = {
+  roughStart: "localone:rough_start:v1",
   recentBooks: (userId: string | null) => `recent_books:${userId ?? "guest"}`,
   visits: "localone:visits:v1",
   defaultLibrary: "localone:default_library:v1",

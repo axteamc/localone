@@ -1,6 +1,9 @@
 // VISIT-1-P1 필수 테스트 (계약서 library-visit.md VISIT-1 P5)
 import { beforeEach, describe, expect, jest, test } from "@jest/globals";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { searchPlaces, type Place } from "../../../lib/publicApi";
+import { writeRoughStart } from "../../../lib/roughStart";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import React from "react";
 import * as api from "../deps";
 import { HomeScreen } from "../HomeScreen";
@@ -13,6 +16,7 @@ const fs = require("fs") as {
 };
 const path = require("path") as { resolve(...p: string[]): string; join(...p: string[]): string };
 
+jest.mock("../../../lib/publicApi", () => ({ searchPlaces: jest.fn() }));
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
   useRouter: () => ({ push: mockPush, replace: jest.fn(), back: jest.fn() }),
@@ -68,6 +72,61 @@ beforeEach(() => {
   m.fetchLibrariesNearby.mockImplementation(actual.fetchLibrariesNearby);
   m.fetchLibrariesInRegion.mockImplementation(actual.fetchLibrariesInRegion);
   m.requestLocationPermission.mockResolvedValue("granted");
+});
+
+test("P8 guest discards stale candidates, persists only selection and returns to default after deletion", async () => {
+  const key = "localone:rough_start:v1";
+  const place = { id: "7", name: "우체국", area_label: "광주광역시 동구", lat: 35, lng: 127 };
+  let finish!: (r: { items: Place[] }) => void;
+  const search = jest.mocked(searchPlaces);
+  search.mockReturnValueOnce(new Promise(resolve => { finish = resolve; }));
+  search.mockResolvedValue({ items: [place] });
+  m.locate.mockResolvedValue({ ok: false, reason: "denied" });
+  m.getDefaultLibrary.mockResolvedValue(101);
+  await AsyncStorage.setItem(key, "damaged");
+  await render(<HomeScreen />);
+  await fireEvent.press(await screen.findByText("주소·장소로 시작"));
+  const field = screen.getByLabelText("건물 이름 검색");
+  await fireEvent.changeText(field, "우");
+  expect(search).not.toHaveBeenCalled();
+  await fireEvent.changeText(field, "학교");
+  await fireEvent.changeText(field, "우체국");
+  await act(async () => finish({ items: [{ ...place, name: "늦은 학교" }] }));
+  expect(screen.queryByText(/늦은 학교/)).toBeNull();
+  await fireEvent.press(screen.getByText("닫기"));
+  expect(await AsyncStorage.getItem(key)).toBe("damaged");
+  await fireEvent.press(screen.getByText("주소·장소로 시작"));
+  await fireEvent.changeText(screen.getByLabelText("건물 이름 검색"), "우체국");
+  await fireEvent.press(await screen.findByText("우체국 · 광주광역시 동구"));
+  expect(JSON.parse((await AsyncStorage.getItem(key))!)).toEqual({ lat: 35, lng: 127, area_label: place.area_label });
+  await waitFor(() => expect(m.fetchLibrariesNearby).toHaveBeenLastCalledWith(35, 127, 3, expect.anything()));
+  await act(async () => writeRoughStart(null));
+  await waitFor(() => expect(m.fetchLibrariesNearby).toHaveBeenLastCalledWith(37.5815, 126.9831, 3, expect.anything()));
+  expect(await AsyncStorage.getItem(key)).toBeNull();
+});
+
+test("P8 empty and failed searches keep region selection, failed storage can be retried", async () => {
+  m.locate.mockResolvedValue({ ok: false, reason: "denied" });
+  const place = { id: "3", name: "도서관", lat: 36, lng: 127, area_label: "세종특별자치시" };
+  jest.mocked(searchPlaces).mockResolvedValueOnce({ items: [] })
+    .mockRejectedValueOnce(new Error("503")).mockResolvedValueOnce({ items: [place] });
+  await render(<HomeScreen />);
+  await fireEvent.press(await screen.findByText("주소·장소로 시작"));
+  const input = screen.getByLabelText("건물 이름 검색");
+  await fireEvent.changeText(input, "없는곳");
+  expect(await screen.findByText(/검색 결과가 없어요/)).toBeTruthy();
+  await fireEvent.changeText(input, "도서관");
+  expect(await screen.findByText("지역 선택")).toBeTruthy();
+  await fireEvent.press(screen.getByText("다시 시도"));
+  const row = await screen.findByText("도서관 · 세종특별자치시");
+  jest.spyOn(AsyncStorage, "setItem").mockRejectedValueOnce(new Error("storage"));
+  await fireEvent.press(row);
+  expect(await screen.findByText(/위치를 저장하지 못했어요/)).toBeTruthy();
+  expect(m.fetchLibrariesNearby).not.toHaveBeenCalledWith(36, 127, 3, expect.anything());
+  await fireEvent.press(row);
+  await waitFor(() => expect(m.fetchLibrariesNearby).toHaveBeenLastCalledWith(36, 127, 3, expect.anything()));
+  await screen.unmount();
+  await writeRoughStart(null);
 });
 
 describe("VISIT-1-P1 home list", () => {

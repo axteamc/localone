@@ -48,6 +48,9 @@ SHELF_HOLDINGS_PAGE_SIZE = 100
 SHELF_POPULAR_COMIC_CLASSES = frozenset({"만화", "만화책", "학습만화", "웹툰"})
 SHELF_POPULAR_EXCLUDED_ISBNS: frozenset[str] = frozenset()
 SHELF_POPULAR_EXCLUDED_SERIES = ("빨간내복야코", "빨간 내복 야코", "백앤아")
+# 제목이 이 말로 시작하면 모두 뺀다(파생 제목 "흔한남매의 흔한 호기심"까지). 정보나루 분류가
+# "문학 > 한국문학"으로 와서 분류로는 못 거르는 만화 시리즈(2026-11-25 실기기 P8, 사용자 지시)
+SHELF_POPULAR_EXCLUDED_TITLE_PREFIXES = ("흔한남매",)
 
 # ── 도서관 목록·소장 조회(06 #10·#12·#13) ──
 NEARBY_RADII_KM = (3, 5)  # 02 LIB-02 `확정`(O-39)

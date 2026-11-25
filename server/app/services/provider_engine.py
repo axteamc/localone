@@ -39,6 +39,56 @@ class ProviderError(Exception):
     """제공자 오류·시간 초과·형식 불일치. 호출자는 unknown/캐시로 바꾼다."""
 
 
+_PROVINCES = {
+    "서울": "서울특별시", "부산": "부산광역시", "대구": "대구광역시", "인천": "인천광역시",
+    "광주": "광주광역시", "대전": "대전광역시", "울산": "울산광역시", "세종": "세종특별자치시",
+    "경기": "경기도", "강원": "강원특별자치도", "충북": "충청북도", "충남": "충청남도",
+    "전북": "전북특별자치도", "전남": "전라남도", "경북": "경상북도", "경남": "경상남도",
+    "제주": "제주특별자치도", "강원도": "강원특별자치도", "전라북도": "전북특별자치도",
+}
+
+
+def search_places(query: str, key: str) -> list[dict]:
+    unavailable = ApiError(503, "PROVIDER_UNAVAILABLE", MSG_PROVIDER_UNAVAILABLE)
+    if not key:
+        raise unavailable
+    url = "https://dapi.kakao.com/v2/local/search/keyword.json?" + urlencode({"query": query, "size": 5})
+    try:
+        body = _http_get_json(url, {"Authorization": f"KakaoAK {key}"}, policy.PROVIDER_TIMEOUT_SECONDS)
+        docs = body["documents"]
+        if not isinstance(docs, list):
+            raise ValueError
+        items = []
+        for doc in docs[:5]:
+            place_id, name = doc["id"], doc["place_name"]
+            address = doc["address_name"]
+            if not all(isinstance(v, str) and v.strip() for v in (place_id, name, address)):
+                raise ValueError
+            province, *parts = address.split()
+            area = _PROVINCES.get(province, province)
+            if area not in _PROVINCES.values():
+                raise ValueError
+            if area != "세종특별자치시":
+                if not parts or not parts[0].endswith(("시", "군", "구")):
+                    raise ValueError
+                area += " " + parts[0]
+                if parts[0].endswith("시") and len(parts) > 1 and parts[1].endswith("구"):
+                    area += " " + parts[1]
+            if isinstance(doc["y"], bool) or isinstance(doc["x"], bool):
+                raise ValueError
+            lat, lng = float(doc["y"]), float(doc["x"])
+            if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+                raise ValueError
+            items.append(dict(id=place_id.strip(), name=name.strip(), area_label=area, lat=lat, lng=lng))
+        return items
+    except ProviderError as exc:
+        if isinstance(exc.__cause__, urllib.error.HTTPError) and exc.__cause__.code == 429:
+            raise ApiError(429, "PROVIDER_LIMIT", MSG_PROVIDER_LIMIT) from None
+        raise unavailable from None
+    except (TypeError, KeyError, ValueError, OverflowError):
+        raise unavailable from None
+
+
 class ProviderLimitReached(Exception):
     """오늘(서울) 호출 상한에 걸려 호출하지 않았다."""
 

@@ -35,6 +35,7 @@ jest.mock("../api", () => ({
   ...jest.requireActual<object>("../api"),
   createClub: jest.fn(),
   fetchClub: jest.fn(),
+  fetchMyRestrictions: jest.fn(),
   updateClub: jest.fn(),
   closeClub: jest.fn(),
   cancelClub: jest.fn(),
@@ -97,6 +98,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   signed("signedIn");
   m.fetchClub.mockResolvedValue(club());
+  jest.mocked(api.fetchMyRestrictions).mockResolvedValue([]);
   m.fetchClubComments.mockResolvedValue({ items: [comment()], next_cursor: null });
 });
 

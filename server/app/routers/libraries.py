@@ -12,6 +12,7 @@ from sqlalchemy.engine import Connection
 from app import policy
 from app.common import ApiError, today_kst
 from app.db import run_db
+from app.services.hours import today_hours
 from app.services.looks import TITLE_POPULAR, assign_look, recent_reads_page, shelf_popular_books, theme_page
 from app.services.provider_engine import (
     LibraryRow, ProviderEngine, get_library, libraries_by_name, libraries_in_region, libraries_nearby,
@@ -27,7 +28,6 @@ _MONTHLY = re.compile(
     r"매월\s*((?:첫째|둘째|셋째|넷째|다섯째|마지막)(?:\s*[·,]\s*(?:첫째|둘째|셋째|넷째|다섯째|마지막))*)"
     r"\s*(?:주\s*)?([월화수목금토일])\s*요일"
 )
-_HOURS = re.compile(r"(.*?)\s*(\d{1,2}:\d{2})\s*[~–-]\s*(\d{1,2}:\d{2})")
 
 
 def validation_error(*fields: str) -> ApiError:
@@ -47,41 +47,6 @@ def area_label_of(address: str | None) -> str | None:
     normalized = re.sub(r"[()]", " ", address or "")
     match = re.search(r"\S+(?:동|읍|면|가)(?=\s|$)", normalized)
     return match.group() if match else None
-
-
-def _parse_days(spec: str) -> set[int] | None:
-    spec = spec.replace("요일", "").replace(" ", "")
-    if spec in {"", "매일"}:
-        return set(range(7))
-    days = set()
-    for part in re.split(r"[·,]", spec):
-        if part == "평일":
-            days.update(range(5))
-        elif part == "주말":
-            days.update({5, 6})
-        elif re.fullmatch(r"[월화수목금토일]~[월화수목금토일]", part):
-            start, end = WEEKDAYS.index(part[0]), WEEKDAYS.index(part[2])
-            days.update(range(start, end + 1))
-        elif len(part) == 1 and part in WEEKDAYS:
-            days.add(WEEKDAYS.index(part))
-        else:
-            return None
-    return days or None
-
-
-def today_hours(operating_time_text: str | None, today: date) -> str | None:
-    for segment in re.split(r"[/\n]", operating_time_text or ""):
-        match = _HOURS.fullmatch(segment.strip())
-        if not match:
-            continue
-        days = _parse_days(match[1])
-        if days is None or today.weekday() not in days:
-            continue
-        times = [tuple(map(int, value.split(":"))) for value in (match[2], match[3])]
-        if any(hour > 23 or minute > 59 for hour, minute in times):
-            continue
-        return f"{match[2]}~{match[3]}"
-    return None
 
 
 def closed_today(closed_text: str | None, today: date) -> tuple[bool | None, bool]:

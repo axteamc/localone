@@ -10,6 +10,26 @@ import { NotificationSettings } from "../src/features/settings/NotificationSetti
 import { useAccountActions, useAuth } from "../src/auth/AuthProvider";
 import { actionColors, cardSurface, panel, theme, type as T } from "../src/theme";
 
+import { writeRoughStart } from "../src/lib/roughStart";
+
+function ClearRoughStart() {
+  const [message, setMessage] = useState("");
+  const clear = async () => {
+    try {
+      await writeRoughStart(null);
+      setMessage("대략적인 위치를 지웠어요.");
+    } catch {
+      setMessage("위치를 지우지 못했어요. 다시 시도해 주세요.");
+    }
+  };
+  return <View>
+    <Pressable accessibilityRole="button" onPress={() => void clear()} style={styles.row}>
+      <Text style={styles.rowText}>대략적인 위치 지우기</Text>
+    </Pressable>
+    {!!message && <Text accessibilityLiveRegion="polite" style={styles.rowText}>{message}</Text>}
+  </View>;
+}
+
 export default function SettingsScreen() {
   const router = useRouter();
   const { status } = useAuth();
@@ -69,6 +89,7 @@ export default function SettingsScreen() {
   if (status !== "signedIn" && !busy) {
     return (
       <View style={styles.container}>
+        <ClearRoughStart />
         <Text style={styles.notice}>로그인하면 설정을 볼 수 있어요</Text>
         <Pressable
           accessibilityRole="button"
@@ -165,6 +186,7 @@ export default function SettingsScreen() {
             {heroRule === null ? "" : `${heroRule === "recent" ? HERO_MENU_TEXT.recent : HERO_MENU_TEXT.nearest} ›`}
           </Text>
         </Pressable>
+        <ClearRoughStart />
         <View style={styles.row} testID="settings-dark-mode">
           <Text style={[styles.rowText, styles.dim]}>다크 모드</Text>
           <Text style={styles.rowValue}>준비 중</Text>

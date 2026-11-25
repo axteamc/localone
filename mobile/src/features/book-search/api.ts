@@ -18,7 +18,7 @@ export type LoanPlan = {
 
 export type LoanPlanPage = { items: LoanPlan[]; next_cursor: string | null };
 
-async function send<T>(path: string, init: RequestInit, signal?: AbortSignal): Promise<T> {
+async function sendRequest(path: string, init: RequestInit, signal?: AbortSignal): Promise<Response> {
   let response: Response;
   try {
     response = await apiFetch(`/api/v1/${path}`, { ...init, signal });
@@ -40,6 +40,11 @@ async function send<T>(path: string, init: RequestInit, signal?: AbortSignal): P
       body?.error?.detail ?? ""
     );
   }
+  return response;
+}
+
+async function send<T>(path: string, init: RequestInit, signal?: AbortSignal): Promise<T> {
+  const response = await sendRequest(path, init, signal);
   return response.json() as Promise<T>;
 }
 
@@ -57,12 +62,17 @@ export function listLoanPlans(
 }
 
 /** #17 `POST /api/v1/me/loan-plans` — 새로 201, 이미 있으면 200(같은 예정). `libraryId = null`이면 미지정 예정(U4·U6) */
-export function saveLoanPlan(isbn13: string, libraryId: number | null): Promise<LoanPlan> {
-  return send<LoanPlan>("me/loan-plans", {
+export async function saveLoanPlan(isbn13: string, libraryId: number | null): Promise<LoanPlan & { alreadySaved?: boolean }> {
+  const response = await sendRequest("me/loan-plans", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ isbn13, library_id: libraryId }),
   });
+  if (response.status !== 200 && response.status !== 201) {
+    throw new ApiCallError(response.status, "UNEXPECTED_STATUS", "저장 결과를 확인하지 못했어요.", "");
+  }
+  const plan: LoanPlan = await response.json();
+  return { ...plan, alreadySaved: response.status === 200 };
 }
 
 /** #18 `DELETE /api/v1/me/loan-plans/{plan_id}` — 두 번째도 200 */

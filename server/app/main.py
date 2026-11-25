@@ -100,6 +100,8 @@ def create_app(
 
     @app.exception_handler(RequestValidationError)
     async def _validation_error(request: Request, exc: RequestValidationError):
+        if request.url.path == "/api/v1/places/search":
+            return error_response(422, "VALIDATION_ERROR", "요청 형식이 올바르지 않아요.", "query")
         fields = sorted({str(e["loc"][-1]) if e.get("loc") else "body" for e in exc.errors()})
         return error_response(422, "VALIDATION_ERROR", "요청 형식이 올바르지 않아요.", ",".join(fields))
 
@@ -117,6 +119,9 @@ def create_app(
     install_coordinate_privacy_filter()
     app.state.provider_engine = ProviderEngine(engine, build_providers(settings))
     app.include_router(libraries_router)
+    from app.routers.places import router as places_router
+
+    app.include_router(places_router)
     app.include_router(books_router)
 
     # ── [/lib-D] ──
