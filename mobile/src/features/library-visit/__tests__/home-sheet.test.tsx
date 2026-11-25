@@ -78,11 +78,11 @@ function popular() {
 }
 
 describe("VISIT-1b-P1 home sheet", () => {
-  test("short screens keep books and the news entrance visible without exceeding the available area", () => {
-    expect(495 - snapOffsets(495).half).toBe(275);
-    expect(snapOffsets(600).half).toBe(280); // 책·소식에 320, 지도에 280
-    expect(snapOffsets(400).half).toBe(200); // 지도 네 블록이 겹치지 않을 공간
-    expect(snapOffsets(200)).toEqual({ full: 0, half: 100, peek: 144 });
+  test("short screens keep books peekable while leaving most of the facade open", () => {
+    expect(495 - snapOffsets(495).half).toBe(156); // 하단 창은 156px, 파사드 339px 확보
+    expect(snapOffsets(600).half).toBe(432); // 파사드 72%(432px), 하단 창 168px
+    expect(snapOffsets(400).half).toBe(244); // 하단 창 156px, 파사드 244px
+    expect(snapOffsets(200)).toEqual({ full: 0, half: 144, peek: 144 });
     expect(snapOffsets(0)).toEqual({ full: 0, half: 0, peek: 0 });
   });
 
@@ -108,8 +108,8 @@ describe("VISIT-1b-P1 home sheet", () => {
       });
     };
 
-    expect(result.current.snap).toBe("half"); // 결정 2: 평소 반쯤
-    expect(o.half).toBe(AREA / 2); // 지도와 창이 반반(사용자 확인 2026-11-17)
+    expect(result.current.snap).toBe("half"); // 결정 2: 평소 절반 높이
+    expect(o.half).toBe(Math.round(AREA * 0.72)); // 파사드 72% · 하단 창 28%(모바일 확대 조정)
     expect(o.full).toBeLessThan(o.half);
     expect(o.half).toBeLessThan(o.peek);
     expect(o.peek).toBe(AREA - 56); // 내림 = 제목 한 줄 56px

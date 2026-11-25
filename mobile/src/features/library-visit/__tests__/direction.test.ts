@@ -174,24 +174,24 @@ describe("cube layout", () => {
     expect(s.origin.y + 22).toBeLessThanOrEqual(H);
   });
 
-  test("E2-2 at 390x325: scale 1.36, 299px wide (77% of the board)", () => {
-    const hero = heroOf(heroScene(around(), 1, 390, 325));
-    expect(hero.scale).toBeCloseTo(1.365, 2);
-    expect(Math.round(CUBE_W * hero.scale)).toBe(300);
+  test("E2-2 at 390x400: scale 1.52, 335px wide (86% of the board)", () => {
+    const hero = heroOf(heroScene(around(), 1, 390, 400));
+    expect(hero.scale).toBeCloseTo((390 * HERO_W_F) / CUBE_W, 2);
+    expect(Math.round(CUBE_W * hero.scale)).toBe(335);
     expect(heroOf(heroScene(around(), 1, 375, 220)).scale).toBeCloseTo((220 * 0.94) / CUBE_H);
   });
 
   test("hero leans toward its direction and the origin sits in the opposite corner", () => {
-    const north = heroScene(around(), 1, 390, 325);
+    const north = heroScene(around(), 1, 390, 400);
     expect(north.origin.y).toBeGreaterThan(heroOf(north).cy);
-    expect(north.origin.y).toBeCloseTo(325 * 0.92 - 4);
-    const east = heroScene(around(), 2, 390, 325);
-    expect(east.origin.x).toBeCloseTo(390 * 0.08 + 16);
+    expect(north.origin.y).toBeCloseTo(400 * 0.94 - 6);
+    const east = heroScene(around(), 2, 390, 400);
+    expect(east.origin.x).toBeCloseTo(390 * 0.06 + 12);
     expect(heroOf(east).cx).toBeGreaterThan(195);
-    const west = heroScene(around(), 4, 390, 325);
-    expect(west.origin.x).toBeCloseTo(390 * 0.92 - 16);
+    const west = heroScene(around(), 4, 390, 400);
+    expect(west.origin.x).toBeCloseTo(390 * 0.94 - 12);
     expect(heroOf(west).cx).toBeLessThan(195);
-    const south = heroScene(around(), 3, 390, 325);
+    const south = heroScene(around(), 3, 390, 400);
     expect(south.origin.y).toBeLessThan(heroOf(south).cy);
   });
 

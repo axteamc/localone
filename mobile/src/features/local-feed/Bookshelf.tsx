@@ -12,7 +12,6 @@ import {
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { createLatestRunner } from "../../lib/latest";
 import { GlassArrows } from "../../lib/HorizontalArrows";
 import { type Theme } from "../../theme";
@@ -61,7 +60,6 @@ export type BookshelfProps = {
 
 export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf, onHeight, onWriteRecord }: BookshelfProps) {
   const { styles } = useLook(makeStyles);
-  const insets = useSafeAreaInsets();
   const runner = useRef(createLatestRunner()).current;
   const [state, setState] = useState<ShelfState>({ kind: "loading" });
   const [index, setIndex] = useState(0);
@@ -137,15 +135,14 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf, onHeight, 
 
   return (
     <View
-      // 높이를 고정하지 않는다: 선반이 화면 맨 아래(안전 영역 위)에 붙고, 책장은 내용만큼만 차지한다
-      style={[styles.wrap, { minHeight: SHELF_MIN_HEIGHT + insets.bottom, paddingBottom: insets.bottom }]}
+      // 인라인 서가 섹션: 피드 스크롤 흐름 안에서 내용만큼 차지한다(하단 고정 해제)
+      style={[styles.wrap, { minHeight: SHELF_MIN_HEIGHT }]}
       testID="bookshelf"
       onLayout={(e: LayoutChangeEvent) => {
         setWidth(e.nativeEvent.layout.width);
-        onHeight?.(Math.round(e.nativeEvent.layout.height - insets.bottom));
+        onHeight?.(Math.round(e.nativeEvent.layout.height));
       }}
     >
-      <ShelfFade />
       {state.kind === "error" ? (
         <View style={styles.message} testID="shelf-error">
           <Text style={styles.messageTitle}>{SHELF_TEXT.failed}</Text>
@@ -289,7 +286,16 @@ const makeStyles = (theme: Theme) => {
     borderBottomLeftRadius: bBL,
   };
   return StyleSheet.create({
-  wrap: { position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: C.surface2, justifyContent: "flex-end" },
+  wrap: {
+    marginVertical: 14,
+    marginHorizontal: -12,
+    paddingBottom: 6,
+    backgroundColor: C.surface2,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: C.seamHairline,
+    justifyContent: "flex-end",
+  },
   fade: { position: "absolute", left: 0, right: 0, top: -SHELF_FADE_HEIGHT, height: SHELF_FADE_HEIGHT },
   top: {
     flexDirection: "row",

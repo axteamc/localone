@@ -140,14 +140,19 @@ function FeedItemGrid({
   );
 }
 
+export const INLINE_SHELF_AFTER = 4; // 첫 2행(4개 카드) 아래에 오늘의 서가 인라인 삽입
+
 export type LibraryFeedProps = {
   items: FeedItem[];
   onNotice(text: string): void;
   /** 이미 사라진 방명록을 지우려 했을 때 첫 묶음을 다시 받는다(C6 타인·없는 글) */
   onReload?(): void;
+  /** 피드 중간(INLINE_SHELF_AFTER개 뒤)에 끼워 넣는 인라인 섹션(오늘의 서가) */
+  inlineSlot?: React.ReactNode;
+  inlineAfter?: number;
 };
 
-export function LibraryFeed({ items, onNotice, onReload }: LibraryFeedProps) {
+export function LibraryFeed({ items, onNotice, onReload, inlineSlot, inlineAfter = INLINE_SHELF_AFTER }: LibraryFeedProps) {
   const router = useRouter();
   const { status, userId } = useAuth();
   const reportOwner = JSON.stringify([status, userId]);
@@ -283,24 +288,29 @@ export function LibraryFeed({ items, onNotice, onReload }: LibraryFeedProps) {
     }
   };
 
+  const firstSlice = inlineSlot && shown.length > inlineAfter ? shown.slice(0, inlineAfter) : shown;
+  const restSlice = inlineSlot && shown.length > inlineAfter ? shown.slice(inlineAfter) : [];
+
+  const gridHandlers = {
+    onOpenPost: (id: string) =>
+      router.push({
+        pathname: "/posts/[postId]",
+        params: { postId: id, libraryId: String(posts.find((p) => p.id === id)?.library_id ?? "") },
+      }),
+    onMenu: (item: FeedItem) => {
+      if (isPostItem(item)) setMenuFor(item.post.id);
+      else if (isGuestbookItem(item)) setGbMenu(item.guestbook);
+      // C-92: 남의 공개 스탬프(한마디)는 ⋯ → 바로 신고 창(로그인 확인은 신고 창이 한다)
+      else if (isStampItem(item)) setReport({ kind: "stamp", id: item.stamp.id, owner: reportOwner });
+    },
+    onToggleStampBookmark: (id: string, next: boolean) => void toggleStampBookmark(id, next),
+  };
+
   return (
     <View testID="library-feed">
-      <FeedItemGrid
-        items={shown}
-        onOpenPost={(id) =>
-          router.push({
-            pathname: "/posts/[postId]",
-            params: { postId: id, libraryId: String(posts.find((p) => p.id === id)?.library_id ?? "") },
-          })
-        }
-        onMenu={(item) => {
-          if (isPostItem(item)) setMenuFor(item.post.id);
-          else if (isGuestbookItem(item)) setGbMenu(item.guestbook);
-          // C-92: 남의 공개 스탬프(한마디)는 ⋯ → 바로 신고 창(로그인 확인은 신고 창이 한다)
-          else if (isStampItem(item)) setReport({ kind: "stamp", id: item.stamp.id, owner: reportOwner });
-        }}
-        onToggleStampBookmark={(id, next) => void toggleStampBookmark(id, next)}
-      />
+      <FeedItemGrid items={firstSlice} {...gridHandlers} />
+      {inlineSlot ?? null}
+      {restSlice.length > 0 ? <FeedItemGrid items={restSlice} {...gridHandlers} /> : null}
       {menuPost ? (
         <PostMenu
           post={menuPost}

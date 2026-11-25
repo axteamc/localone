@@ -204,14 +204,14 @@ function pickSpot(c: Cands, s: number, W: number, H: number, taken: Rect[], dRef
   return [px, py];
 }
 
-// ── 주인공 모드(2026-11-19 홈 큐브 개편 H1, D 채택 E1-A · E2-2) ──────────────
-/** E2-2: 주인공 폭 = 판 폭의 77%, 높이는 판의 94% 안, 최소 0.55배·최대 1.7배 */
-export const HERO_W_F = 0.77;
+// ── 주인공 모드(2026-11-19 홈 큐브 개편 H1 · 2026-11-25 모바일 확대 조정) ──────────────
+/** 주인공 폭 = 판 폭의 86%, 높이는 판의 94% 안, 최소 0.55배·최대 1.7배 */
+export const HERO_W_F = 0.86;
 const HERO_H_F = 0.94;
 const HERO_MIN = 0.55;
 const HERO_MAX = 1.7;
-/** E2-2: 기점은 주인공 반대쪽 모서리 8% 안쪽(주인공 바닥·모퉁이와 조금 겹쳐도 된다, 기점이 위) */
-const ORIGIN_F = 0.08;
+/** 기점은 커진 주인공 반대쪽 모서리 6% 안쪽(주인공 바닥·모퉁이와 겹침 최소화, 기점이 위) */
+const ORIGIN_F = 0.06;
 /** E1-A: 이웃 = 주인공의 0.88배, 판 네 모서리 중 3곳에 크게 잘려 걸친다 */
 export const PEEK_RATIO = 0.88;
 export const PEEK_MAX = 3;
@@ -245,10 +245,10 @@ export function heroScene(items: FacadeItem[], heroId: number, W: number, H: num
   const ch = CUBE_H * s;
   const shiftX = sec === "E" ? 1 : sec === "W" ? -1 : hdx >= 0 ? 0.3 : -0.3;
   const shiftY = sec === "S" ? 1 : sec === "N" ? -1 : hdy >= 0 ? 0.2 : -0.2;
-  const hx = W / 2 + shiftX * Math.min(24, Math.max(0, (W - cw) * 0.35));
-  const hy = H / 2 + shiftY * Math.min(14, Math.max(0, (H - ch) * 0.4));
-  const ox = sec === "E" ? W * ORIGIN_F + 16 : sec === "W" ? W * (1 - ORIGIN_F) - 16 : hdx >= 0 ? W * 0.18 : W * 0.82;
-  const oy = sec === "S" ? H * ORIGIN_F + 12 : sec === "N" ? H * (1 - ORIGIN_F) - 4 : H * (1 - ORIGIN_F);
+  const hx = W / 2 + shiftX * Math.min(20, Math.max(0, (W - cw) * 0.35));
+  const hy = H / 2 + shiftY * Math.min(14, Math.max(0, (H - ch) * 0.38));
+  const ox = sec === "E" ? W * ORIGIN_F + 12 : sec === "W" ? W * (1 - ORIGIN_F) - 12 : hdx >= 0 ? W * 0.14 : W * 0.86;
+  const oy = sec === "S" ? H * ORIGIN_F + 10 : sec === "N" ? H * (1 - ORIGIN_F) - 6 : H * (1 - ORIGIN_F) - 4;
   // 기점 받침(58×44)이 판 안에 다 보이게
   const O = {
     x: Math.min(W - PLINTH_HW - 5, Math.max(PLINTH_HW + 5, ox)),
