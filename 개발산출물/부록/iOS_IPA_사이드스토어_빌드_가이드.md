@@ -2,7 +2,7 @@
 
 > 작성일: 2026-11-23  
 > 목적: Windows 환경에서 Mac 없이 GitHub Actions(`macos` 러너)로 서명 없는(Unsigned) `.ipa`를 생성해 SideStore + LiveContainer로 실기기 테스트를 진행할 때 참고할 정리·검토 문서.  
-> 상태: **참고 가이드(워크플로우 미적용)** — 실제 `.github/workflows/` 추가·수정은 필요 시 별도 작업으로 진행한다.
+> 상태: **적용(2026-11-25 win)** — [`.github/workflows/device-builds.yml`](../../.github/workflows/device-builds.yml)(수동 실행 `실기기 빌드`, iOS 서명 없는 IPA + Android Release APK, 값은 레포의 `mobile/.env.production`). 아래 §4 골격은 처음 검토본이다.
 
 ---
 
