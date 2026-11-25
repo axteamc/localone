@@ -52,7 +52,7 @@ function cachedFor(owner: string | null, logId: string): ReadingLog | undefined 
   return s.owner === owner ? s.items?.find((l) => l.id === logId) : undefined;
 }
 
-export function ReadingLogDetail({ logId }: { logId: string }) {
+export function ReadingLogDetail({ logId, initialEdit = false }: { logId: string; initialEdit?: boolean }) {
   const router = useRouter();
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
@@ -65,7 +65,7 @@ export function ReadingLogDetail({ logId }: { logId: string }) {
   const [reload, setReload] = useState(0);
   const [refreshFailed, setRefreshFailed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [editing, setEditing] = useState(false);
+  const [editing, setEditing] = useState(initialEdit);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const deleting = useRef(false);
@@ -93,7 +93,7 @@ export function ReadingLogDetail({ logId }: { logId: string }) {
 
   useEffect(() => {
     setMenuOpen(false);
-    setEditing(false);
+    setEditing(initialEdit);
     setConfirmDelete(false);
     setRefreshFailed(false);
     if (!activeOwner) {

@@ -384,7 +384,7 @@ function TemplateComposer({ logId }: { logId: string }) {
   const [requestId] = useState(() => Crypto.randomUUID());
   const [log, setLog] = useState<ReadingLog | null>(null);
   const [library, setLibrary] = useState<ReadingLog["library"]>(null);
-  const [template, setTemplate] = useState<TemplateKey>("minimal");
+  const [template, setTemplate] = useState<"cover" | TemplateKey>("minimal");
   const [sentence, setSentence] = useState("");
   const [includeBook, setIncludeBook] = useState(true);
   const [editingLibrary, setEditingLibrary] = useState(false);
@@ -454,13 +454,14 @@ function TemplateComposer({ logId }: { logId: string }) {
     try {
       if (!checking) {
         try {
+          const useCover = template === "cover" && Boolean(log.book.cover_url);
           const post = await createPost({
             client_request_id: requestId,
             reading_log_id: logId,
             library_id: library.id,
-            isbn13: includeBook ? log.book.isbn13 : null,
-            image_kind: "template",
-            image_value: template,
+            isbn13: useCover || includeBook ? log.book.isbn13 : null,
+            image_kind: useCover ? "cover" : "template",
+            image_value: useCover ? undefined : (template === "cover" ? "minimal" : template),
             image_path: null,
             image_color: null,
             overlay_text: nullIfBlank(sentence),
@@ -521,12 +522,23 @@ function TemplateComposer({ logId }: { logId: string }) {
           <Text style={T.title}>{TEXT.posted}</Text>
           <PostMoreMenu post={posted} onWithdrawn={leave} />
         </View>
-        <TemplateCard
-          template={posted.image_value ?? template}
-          overlayText={posted.overlay_text}
-          book={posted.book}
-          width={previewWidth}
-        />
+        {posted.image_kind === "cover" ? (
+          <PostImage
+            kind="cover"
+            imageUrl={posted.image_url ?? log.book.cover_url}
+            color={null}
+            text={posted.overlay_text}
+            pos="mid"
+            testID="template-cover-posted"
+          />
+        ) : (
+          <TemplateCard
+            template={posted.image_value ?? (template === "cover" ? "minimal" : template)}
+            overlayText={posted.overlay_text}
+            book={posted.book}
+            width={previewWidth}
+          />
+        )}
         <Pressable accessibilityRole="button" style={styles.secondaryBtn} onPress={leave}>
           <Text style={styles.secondaryBtnText}>기록으로 돌아가기</Text>
         </Pressable>
@@ -534,25 +546,65 @@ function TemplateComposer({ logId }: { logId: string }) {
     );
   }
 
-  const selectedBook = includeBook ? log.book : null;
+  const hasCover = Boolean(log.book.cover_url);
+  const usingCover = template === "cover" && hasCover;
+  const selectedBook = usingCover || includeBook ? log.book : null;
   return (
     <ScrollView style={styles.screen} contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
       <Text style={T.title}>게시할 내용 미리보기</Text>
-      <TemplateCard template={template} overlayText={nullIfBlank(sentence)} book={selectedBook} width={previewWidth} />
-      <View style={styles.choiceRow}>
-        {(Object.keys(TEMPLATE_LABELS) as TemplateKey[]).map((key) => (
+      {usingCover ? (
+        <PostImage
+          kind="cover"
+          imageUrl={log.book.cover_url}
+          color={null}
+          text={nullIfBlank(sentence)}
+          pos="mid"
+          testID="template-cover-preview"
+        />
+      ) : (
+        <TemplateCard
+          template={template === "cover" ? "minimal" : template}
+          overlayText={nullIfBlank(sentence)}
+          book={selectedBook}
+          width={previewWidth}
+        />
+      )}
+      <View style={styles.templateGrid}>
+        {hasCover ? (
           <Pressable
-            key={key}
             accessibilityRole="button"
-            accessibilityLabel={TEMPLATE_LABELS[key]}
-            accessibilityState={{ selected: template === key }}
-            onPress={() => setTemplate(key)}
-            style={[styles.pill, template === key && styles.pillOn]}
+            accessibilityLabel="책 표지"
+            accessibilityState={{ selected: usingCover }}
+            onPress={() => {
+              setTemplate("cover");
+              setIncludeBook(true);
+            }}
+            style={[styles.templateOption, usingCover && styles.templateOptionOn]}
           >
-            <TemplateCard template={key} overlayText="좋았던 문장" book={null} width={82} />
-            <Text style={styles.pillText}>{TEMPLATE_LABELS[key]}</Text>
+            <Image
+              source={{ uri: log.book.cover_url! }}
+              style={styles.templateThumbCover}
+              resizeMode="cover"
+            />
+            <Text style={[styles.templateOptionLabel, usingCover && styles.templateOptionLabelOn]}>책 표지</Text>
           </Pressable>
-        ))}
+        ) : null}
+        {(Object.keys(TEMPLATE_LABELS) as TemplateKey[]).map((key) => {
+          const on = template === key;
+          return (
+            <Pressable
+              key={key}
+              accessibilityRole="button"
+              accessibilityLabel={TEMPLATE_LABELS[key]}
+              accessibilityState={{ selected: on }}
+              onPress={() => setTemplate(key)}
+              style={[styles.templateOption, on && styles.templateOptionOn]}
+            >
+              <TemplateCard template={key} overlayText="좋았던 문장" book={null} width={76} />
+              <Text style={[styles.templateOptionLabel, on && styles.templateOptionLabelOn]}>{TEMPLATE_LABELS[key]}</Text>
+            </Pressable>
+          );
+        })}
       </View>
       <Text style={T.name}>공개할 문장</Text>
       <TextInput
@@ -571,11 +623,14 @@ function TemplateComposer({ logId }: { logId: string }) {
       ) : null}
       <Pressable
         accessibilityRole="checkbox"
-        accessibilityState={{ checked: includeBook }}
+        accessibilityState={{ checked: usingCover || includeBook, disabled: usingCover }}
+        disabled={usingCover}
         onPress={() => setIncludeBook((value) => !value)}
-        style={styles.pill}
+        style={[styles.toggleChip, (usingCover || includeBook) && styles.toggleChipOn]}
       >
-        <Text style={styles.pillText}>{includeBook ? "✓ " : ""}책 정보 함께 올리기</Text>
+        <Text style={[styles.toggleChipText, (usingCover || includeBook) && styles.toggleChipTextOn]}>
+          책 정보 함께 올리기
+        </Text>
       </Pressable>
       <Text style={T.name}>게시할 도서관</Text>
       {library ? <Text style={styles.sub}>{library.name}</Text> : null}
@@ -1472,6 +1527,46 @@ const styles = StyleSheet.create({
   pillOn: { backgroundColor: C.panelLit, borderColor: C.inkStrong },
   pillText: { color: C.inkMuted, fontSize: 13, fontWeight: "500" },
   pillTextOn: { color: C.inkStrong },
+  templateGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10 },
+  templateOption: {
+    backgroundColor: C.panelFrosted,
+    borderWidth: 1,
+    borderColor: C.seamHairline,
+    borderRadius: theme.radii.infoCard,
+    padding: 8,
+    alignItems: "center",
+    gap: 6,
+    width: 96,
+  },
+  templateOptionOn: {
+    backgroundColor: C.panelLit,
+    borderWidth: 2,
+    borderColor: C.inkStrong,
+    padding: 7,
+  },
+  templateThumbCover: {
+    width: 76,
+    height: 76,
+    borderRadius: theme.radii.inner,
+    backgroundColor: C.surface2,
+  },
+  templateOptionLabel: { color: C.inkMuted, fontSize: 12, fontWeight: "500" },
+  templateOptionLabelOn: { color: C.inkStrong, fontWeight: "600" },
+  toggleChip: {
+    alignSelf: "flex-start",
+    backgroundColor: C.panelFrosted,
+    borderWidth: 1,
+    borderColor: C.seamHairline,
+    borderRadius: theme.radii.control,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  toggleChipOn: {
+    backgroundColor: C.inkStrong,
+    borderColor: C.inkStrong,
+  },
+  toggleChipText: { color: C.inkMuted, fontSize: 13, fontWeight: "500" },
+  toggleChipTextOn: { color: ON_FILL_LIGHT, fontWeight: "600" },
   smallSecondary: {
     ...ACT.secondary,
     borderRadius: theme.radii.control,

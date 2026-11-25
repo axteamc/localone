@@ -101,6 +101,7 @@ def theme_page(conn: Connection, library_id: int, today: date) -> dict[str, Any]
             JOIN shelf_themes t ON t.id = tb.theme_id AND (t.library_id = l.id OR t.library_id IS NULL)
             JOIN books b ON b.id = h.book_id
             WHERE l.id = :library_id AND :today BETWEEN t.starts_on AND t.ends_on
+              AND t.title NOT ILIKE '%베스트셀러%'
               AND s.fetched_at > statement_timestamp() - :ttl AND b.isbn13 IS NOT NULL
             GROUP BY t.id, b.id
         ), selected AS (

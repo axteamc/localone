@@ -67,6 +67,7 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf, onHeight, 
   const [index, setIndex] = useState(0);
   const pageIndex = useRef(0);
   const [width, setWidth] = useState(0);
+  const [pagesHeight, setPagesHeight] = useState(0);
   const scroller = useRef<React.ComponentRef<typeof ScrollView>>(null);
   const opening = useRef(false);
   const openTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -193,7 +194,12 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf, onHeight, 
               ))}
             </View>
           ) : null}
-          <View>
+          <View
+            onLayout={(e: LayoutChangeEvent) => {
+              const h = e.nativeEvent.layout.height;
+              if (h > 0) setPagesHeight(h);
+            }}
+          >
           <ScrollView
             ref={scroller}
             horizontal
@@ -221,7 +227,7 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf, onHeight, 
             label="오늘의 서가"
             canGoBack={width > 0 && index > 0}
             canGoForward={width > 0 && index < lastIndex}
-            centerY={PAGE_TOP + currentCoverHeight / 2}
+            centerY={pagesHeight > PAGE_TOP ? PAGE_TOP + (pagesHeight - PAGE_TOP) / 2 : PAGE_TOP + currentCoverHeight / 2}
             onMove={(direction) => goTo(pageIndex.current + direction)}
           />
           </View>

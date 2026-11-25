@@ -391,7 +391,7 @@ describe("LOAN-3 full-list sync (PR #172 review)", () => {
       const more = deferredPage();
       moreGate = more;
       await fireEvent.press(screen.getByText("더 보기"));
-      await fireEvent.press(screen.getAllByText("수정")[0]!);
+      await fireEvent.press(screen.getAllByText("기한 수정")[0]!);
       await fireEvent.changeText(screen.getByTestId("due-input"), "2026-11-25");
       const patch = deferredPage() as unknown as { promise: Promise<Loan>; resolve(l: Loan): void };
       jest.mocked(api.changeDueDate).mockReturnValueOnce(patch.promise);

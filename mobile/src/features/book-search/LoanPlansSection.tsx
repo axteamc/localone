@@ -6,6 +6,7 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import { createLatestRunner } from "../../lib/latest";
 import { actionColors, cardSurface, theme, type as T } from "../../theme";
 import type { Loan } from "../loan-assistant/api";
@@ -420,7 +421,17 @@ export function LoanPlansSection({ onLoanStarted }: { onLoanStarted?: () => void
 function CheckBox({ on }: { on: boolean }) {
   return (
     <View style={[styles.box16, on && styles.box16On]}>
-      {on && <Text style={styles.tick}>✓</Text>}
+      {on && (
+        <Svg width={12} height={12} viewBox="0 0 12 12" fill="none">
+          <Path
+            d="M2.5 6.2 L4.8 8.5 L9.5 3.6"
+            stroke={c.panelLit}
+            strokeWidth={1.8}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </Svg>
+      )}
     </View>
   );
 }
@@ -439,14 +450,14 @@ const styles = StyleSheet.create({
   box16: {
     width: 20,
     height: 20,
-    borderRadius: theme.radii.block,
+    borderRadius: theme.radii.control,
     borderWidth: 1.5,
-    borderColor: c.inkMuted,
+    borderColor: c.seamHairline,
+    backgroundColor: c.panelLit,
     alignItems: "center",
     justifyContent: "center",
   },
   box16On: { backgroundColor: c.inkStrong, borderColor: c.inkStrong },
-  tick: { color: c.panelLit, fontSize: 13, fontWeight: "700", lineHeight: 15 },
   actions: { flexDirection: "row", gap: 8 },
   actionBtn: {
     flex: 1,

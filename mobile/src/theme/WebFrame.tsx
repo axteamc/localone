@@ -21,8 +21,16 @@ function useWebFont() {
     document.head.appendChild(link);
     const style = document.createElement("style");
     style.id = "app-font-face";
-    // RN 웹의 기본 글꼴 지정을 덮는다(입력 칸 포함)
-    style.textContent = `div, span, input, textarea, button { font-family: "Noto Sans KR", system-ui, sans-serif !important; }`;
+    // RN 웹의 기본 글꼴 지정 덮기 + iOS 스타일 얇은 반투명 스크롤바(화살표 버튼 제거)
+    style.textContent = `
+      div, span, input, textarea, button { font-family: "Noto Sans KR", system-ui, sans-serif !important; }
+      ::-webkit-scrollbar { width: 4px; height: 4px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: rgba(46, 51, 63, 0.22); border-radius: 9999px; }
+      ::-webkit-scrollbar-thumb:hover { background: rgba(46, 51, 63, 0.42); }
+      ::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+      * { scrollbar-width: thin; scrollbar-color: rgba(46, 51, 63, 0.22) transparent; }
+    `;
     document.head.appendChild(style);
   }, []);
 }

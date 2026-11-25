@@ -4,28 +4,33 @@
 // READ-2: 머리(고정) "독서 기록" · "전체 ⇄"/"도서관별 ⇄". 숫자 줄은 책장과 같이 스크롤.
 // 도서관별 보기 = 도서관마다 한 줄(이름표 + 최근 9권 가로 줄, 바닥선 = 도서관 색). 이름표 › → 그 도서관 책장.
 // 설정 버튼 순서 메뉴·꾹 눌러 자리 바꾸기는 별도 계약 승인 대기(READ-2 계약 머리말) — 그리지 않는다.
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useNavigation, useRouter } from "expo-router";
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
   useWindowDimensions,
+  type GestureResponderEvent,
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
+import Svg, { Circle, Path } from "react-native-svg";
 import { useAuth } from "../../auth/AuthProvider";
 import { GlassArrows, useHorizontalScroll } from "../../lib/HorizontalArrows";
 import { actionColors, cardSurface, theme, type as T } from "../../theme";
 import { CUBE_PALETTE } from "../../theme/tokens";
 import { APP_MAX_WIDTH, isDesktopPointer } from "../../theme/WebFrame";
 import { paletteIndexOf } from "../library-visit/direction";
-import { fetchReadingLogs, shelfDate, shelfStore, type ReadingLog, type ReadingStats, type ReadingStatsLibrary } from "./api";
-import { Cover, TEXT as EDITOR_TEXT, Toast, monthDay, styles as base } from "./ReadingLogEditor";
+import { ApiCallError, deleteReadingLog, fetchReadingLogs, shelfDate, shelfStore, type ReadingLog, type ReadingStats, type ReadingStatsLibrary } from "./api";
+import { ConfirmDialog, Cover, TEXT as EDITOR_TEXT, Toast, monthDay, styles as base } from "./ReadingLogEditor";
 import { useReadingLogs } from "./useReadingLogs";
 import { BackChevron } from "../../theme/ScreenHeader";
 
@@ -37,6 +42,17 @@ export const TEXT = {
   loadFailed: "기록을 불러오지 못했어요.",
   retry: "다시 해 보기",
   open: "기록 자세히 보기",
+  publish: "게시물로 올리기",
+  viewPost: "올린 게시물 보기",
+  edit: "수정",
+  post: "게시",
+  remove: "삭제",
+  deleteTitle: "이 기록을 지울까요?",
+  deleteBody: "지우면 되돌릴 수 없어요.",
+  deleteKeepsPost: "올린 게시물은 그대로 남아요.",
+  cancel: "취소",
+  deleted: "기록을 지웠어요",
+  deleteFailed: "지우지 못했어요. 다시 해 주세요.",
   close: "닫기",
   readOn: "읽은 날",
   library: "어디서",
@@ -66,7 +82,7 @@ export const libraryTagText = (lib: ReadingStatsLibrary, first: boolean) =>
 export const libraryColor = (libraryId: number) =>
   CUBE_PALETTE[paletteIndexOf(libraryId, CUBE_PALETTE.length)] ?? CUBE_PALETTE[0]!;
 
-const PER_ROW = 3;
+const PER_ROW = 4;
 const ROW_MAX = 9; // R2-O1 도서관 한 줄 최대 9권
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -94,6 +110,174 @@ function chunk<T>(list: T[], size: number): T[][] {
 }
 
 type ShelfView = "all" | "libraries" | { libraryId: number; name: string; count: number };
+
+const orderStorageKey = (owner: string) => `reading_log_order:${owner}`;
+
+function applyOrder(items: ReadingLog[], orderIds: string[]): ReadingLog[] {
+  if (orderIds.length === 0) return items;
+  const rank = new Map(orderIds.map((id, i) => [id, i]));
+  return [...items].sort((a, b) => {
+    const ra = rank.get(a.id);
+    const rb = rank.get(b.id);
+    if (ra !== undefined && rb !== undefined) return ra - rb;
+    if (ra !== undefined) return -1;
+    if (rb !== undefined) return 1;
+    return 0;
+  });
+}
+
+type MenuAnchor = { x: number; y: number };
+
+type BookTileProps = {
+  log: ReadingLog;
+  size: number;
+  draggable?: boolean;
+  isDragging?: boolean;
+  isDropTarget?: boolean;
+  onPress: () => void;
+  onMenu?: (anchor: MenuAnchor) => void;
+  onDragStart?: (id: string) => void;
+  onDragOver?: (id: string) => void;
+  onDrop?: (id: string) => void;
+  onDragEnd?: () => void;
+};
+
+function anchorFromEvent(e: GestureResponderEvent): MenuAnchor {
+  const native = e.nativeEvent as { pageX?: number; pageY?: number; clientX?: number; clientY?: number };
+  return {
+    x: native.clientX ?? native.pageX ?? 200,
+    y: native.clientY ?? native.pageY ?? 200,
+  };
+}
+
+function BookTile({
+  log,
+  size,
+  draggable,
+  isDragging,
+  isDropTarget,
+  onPress,
+  onMenu,
+  onDragStart,
+  onDragOver,
+  onDrop,
+  onDragEnd,
+}: BookTileProps) {
+  const [hovered, setHovered] = useState(false);
+  const wrapRef = useRef<React.ComponentRef<typeof View>>(null);
+  const moreRef = useRef<React.ComponentRef<typeof View>>(null);
+  const web = Platform.OS === "web";
+
+  useEffect(() => {
+    if (!web) return;
+    const node = wrapRef.current as unknown as HTMLElement | null;
+    if (!node || typeof node.addEventListener !== "function") return;
+    const handleEnter = () => setHovered(true);
+    const handleLeave = () => setHovered(false);
+    node.addEventListener("mouseenter", handleEnter);
+    node.addEventListener("mouseleave", handleLeave);
+    if (!draggable) {
+      return () => {
+        node.removeEventListener("mouseenter", handleEnter);
+        node.removeEventListener("mouseleave", handleLeave);
+      };
+    }
+    node.draggable = true;
+    const handleStart = (e: DragEvent) => {
+      e.dataTransfer?.setData("text/plain", log.id);
+      if (e.dataTransfer) e.dataTransfer.effectAllowed = "move";
+      onDragStart?.(log.id);
+    };
+    const handleOver = (e: DragEvent) => {
+      e.preventDefault();
+      if (e.dataTransfer) e.dataTransfer.dropEffect = "move";
+      onDragOver?.(log.id);
+    };
+    const handleDrop = (e: DragEvent) => {
+      e.preventDefault();
+      onDrop?.(log.id);
+    };
+    const handleEnd = () => onDragEnd?.();
+    node.addEventListener("dragstart", handleStart);
+    node.addEventListener("dragover", handleOver);
+    node.addEventListener("drop", handleDrop);
+    node.addEventListener("dragend", handleEnd);
+    return () => {
+      node.draggable = false;
+      node.removeEventListener("mouseenter", handleEnter);
+      node.removeEventListener("mouseleave", handleLeave);
+      node.removeEventListener("dragstart", handleStart);
+      node.removeEventListener("dragover", handleOver);
+      node.removeEventListener("drop", handleDrop);
+      node.removeEventListener("dragend", handleEnd);
+    };
+  }, [web, draggable, log.id, onDragStart, onDragOver, onDrop, onDragEnd]);
+
+  const openFromMore = (e: GestureResponderEvent) => {
+    if (!onMenu) return;
+    if (web) {
+      const el = moreRef.current as unknown as HTMLElement | null;
+      if (el && typeof el.getBoundingClientRect === "function") {
+        const rect = el.getBoundingClientRect();
+        onMenu({ x: rect.right, y: rect.bottom + 4 });
+        return;
+      }
+    }
+    onMenu(anchorFromEvent(e));
+  };
+
+  return (
+    <View
+      ref={wrapRef}
+      style={[
+        styles.tile,
+        { width: size },
+        isDragging && styles.tileDragging,
+        isDropTarget && styles.tileDropTarget,
+      ]}
+    >
+      <Pressable
+        testID={`shelf-book-${log.id}`}
+        accessibilityRole="button"
+        accessibilityLabel={log.book.title}
+        onPress={onPress}
+        onLongPress={onMenu ? (e) => onMenu(anchorFromEvent(e)) : undefined}
+        delayLongPress={320}
+        style={({ pressed }) => [styles.slot, pressed && styles.slotPressed]}
+      >
+        <View style={styles.tileCoverWrap}>
+          <Cover book={log.book} size={size} />
+        </View>
+        <Text style={styles.tileTitle} numberOfLines={2}>
+          {log.book.title}
+        </Text>
+        {log.book.author ? (
+          <Text style={styles.tileAuthor} numberOfLines={1}>
+            {log.book.author}
+          </Text>
+        ) : null}
+      </Pressable>
+      {web && hovered && onMenu ? (
+        <View ref={moreRef} style={styles.tileMoreWrap}>
+          <Pressable
+            testID={`shelf-more-${log.id}`}
+            accessibilityRole="button"
+            accessibilityLabel={`${log.book.title} 메뉴`}
+            onPress={openFromMore}
+            hitSlop={6}
+            style={({ pressed }) => [styles.tileMoreBtn, pressed && styles.tileMorePressed]}
+          >
+            <Svg width={16} height={16} viewBox="0 0 16 16" fill="none">
+              <Circle cx={8} cy={3.5} r={1.6} fill={C.inkStrong} stroke={C.panelLit} strokeWidth={0.7} />
+              <Circle cx={8} cy={8} r={1.6} fill={C.inkStrong} stroke={C.panelLit} strokeWidth={0.7} />
+              <Circle cx={8} cy={12.5} r={1.6} fill={C.inkStrong} stroke={C.panelLit} strokeWidth={0.7} />
+            </Svg>
+          </Pressable>
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 function StatsLine({ stats, failed, onRefresh }: { stats: ReadingStats | null; failed: boolean; onRefresh: () => void }) {
   if (stats) {
@@ -130,8 +314,8 @@ function RefreshButton({ onPress }: { onPress: () => void }) {
   );
 }
 
-/** 도서관 줄 하나의 콘텐츠 높이(이름표 32 + 간격 8 + 표지 + 간격 8 + 바닥선 6). onLayout 전 폴백 계산에 쓴다 */
-const libRowContentHeight = (coverSize: number) => 32 + 8 + Math.round(coverSize * 1.45) + 8 + 6;
+/** 도서관 줄 하나의 콘텐츠 높이(이름표 32 + 간격 8 + 표지 + 제목/저자 36 + 구분선 2). onLayout 전 폴백 계산에 쓴다 */
+const libRowContentHeight = (coverSize: number) => 32 + 8 + Math.round(coverSize * 1.45) + 36 + 2;
 /** 조회 실패한 도서관 줄의 콘텐츠 높이(이름표 32 + 간격 8 + 실패 영역 60 + 간격 8 + 바닥선 6) */
 const LIB_ROW_FAIL_HEIGHT = 32 + 8 + 60 + 8 + 6;
 /** 도서관 줄 사이 간격(styles.shelfPad.gap) */
@@ -232,16 +416,12 @@ function LibraryRow({
         <View>
         <ScrollView {...scroll.scrollProps} horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hRow}>
           {rows.items.map((log) => (
-            <Pressable
+            <BookTile
               key={log.id}
-              testID={`shelf-book-${log.id}`}
-              accessibilityRole="button"
-              accessibilityLabel={log.book.title}
+              log={log}
+              size={coverSize}
               onPress={() => onPick(log)}
-              style={({ pressed }) => [styles.slot, pressed && styles.slotPressed]}
-            >
-              <Cover book={log.book} size={coverSize} />
-            </Pressable>
+            />
           ))}
         </ScrollView>
         <GlassArrows
@@ -252,7 +432,7 @@ function LibraryRow({
         />
         </View>
       )}
-      <View testID={`lib-plank-${lib.library_id}`} style={[styles.plank, styles.libPlank, { backgroundColor: color.hex }]} />
+      <View testID={`lib-plank-${lib.library_id}`} style={[styles.libDivider, { backgroundColor: color.hex }]} />
     </View>
   );
 }
@@ -275,6 +455,7 @@ export function ReadingLogScreen() {
     };
   }, [navigation]);
   // 도서관별 보기의 현재 스크롤 영역과 각 줄의 실제 배치(헤더·탭 바 제외, 실패로 줄어든 높이 반영, 최대 스크롤 범위 누적 금지)
+  const [screenWidth, setScreenWidth] = useState<number | null>(null);
   const [screenHeight, setScreenHeight] = useState<number | null>(null);
   const [headHeight, setHeadHeight] = useState<number | null>(null);
   const [libViewport, setLibViewport] = useState<{ top: number; height: number | null }>({ top: 0, height: null });
@@ -284,7 +465,8 @@ export function ReadingLogScreen() {
   statsRef.current = logs.stats;
 
   const onScreenLayout = useCallback((e: LayoutChangeEvent) => {
-    const h = e.nativeEvent.layout.height;
+    const { width: w, height: h } = e.nativeEvent.layout;
+    if (w > 0) setScreenWidth((prev) => (prev === w ? prev : w));
     if (h > 0) setScreenHeight((prev) => (prev === h ? prev : h));
   }, []);
   const onHeadLayout = useCallback((e: LayoutChangeEvent) => {
@@ -314,17 +496,93 @@ export function ReadingLogScreen() {
   const [viewState, setViewState] = useState<{ owner: string | null; view: ShelfView }>({ owner: null, view: "all" });
   const view: ShelfView = viewState.owner === owner ? viewState.view : "all";
   const [picked, setPicked] = useState<{ owner: string; log: ReadingLog } | null>(null);
+  const [collapsedMonths, setCollapsedMonths] = useState<Record<string, boolean>>({});
+  const [zoneWidth, setZoneWidth] = useState<number | null>(null);
+  const [orderIds, setOrderIds] = useState<string[]>([]);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dropTargetId, setDropTargetId] = useState<string | null>(null);
+  const [menuState, setMenuState] = useState<{ log: ReadingLog; anchor: MenuAnchor } | null>(null);
+  const [confirmDeleteLog, setConfirmDeleteLog] = useState<ReadingLog | null>(null);
+  const [deletingBusy, setDeletingBusy] = useState(false);
+  const deletingRef = useRef(false);
   const [toast, setToast] = useState<string | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const shelfNotice = shelfStore.get().notice;
 
-  // 계정이 바뀌면 고른 카드·보기·스크롤 측정을 초기화한다(C6 계정 바뀜)
+  const showToast = useCallback((text: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(text);
+    toastTimer.current = setTimeout(() => setToast(null), 2200);
+  }, []);
+
+  // 계정이 바뀌면 고른 카드·보기·스크롤 측정·순서를 초기화한다(C6 계정 바뀜)
   useEffect(() => {
     setPicked(null);
+    setCollapsedMonths({});
+    setMenuState(null);
+    setConfirmDeleteLog(null);
+    setDraggingId(null);
+    setDropTargetId(null);
     setLibViewport({ top: 0, height: null });
     setRowLayouts({ stamp: null, map: {} });
     setFailedRows({});
+    if (!owner) {
+      setOrderIds([]);
+      return;
+    }
+    let alive = true;
+    AsyncStorage.getItem(orderStorageKey(owner))
+      .then((raw) => {
+        if (!alive || !raw) return;
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) setOrderIds(parsed.filter((x): x is string => typeof x === "string"));
+      })
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
   }, [owner]);
+
+  const orderedItems = useMemo(() => applyOrder(logs.items, orderIds), [logs.items, orderIds]);
+
+  const persistReorder = useCallback(
+    (fromId: string, toId: string) => {
+      if (!owner || fromId === toId) return;
+      const baseIds = orderedItems.map((l) => l.id);
+      const fromIdx = baseIds.indexOf(fromId);
+      const toIdx = baseIds.indexOf(toId);
+      if (fromIdx < 0 || toIdx < 0) return;
+      const next = [...baseIds];
+      const [moved] = next.splice(fromIdx, 1);
+      if (!moved) return;
+      next.splice(toIdx, 0, moved);
+      setOrderIds(next);
+      void AsyncStorage.setItem(orderStorageKey(owner), JSON.stringify(next)).catch(() => undefined);
+    },
+    [owner, orderedItems]
+  );
+
+  const handleDeleteLog = async (target: ReadingLog) => {
+    if (deletingRef.current || !owner) return;
+    deletingRef.current = true;
+    setDeletingBusy(true);
+    try {
+      await deleteReadingLog(target.id);
+      setConfirmDeleteLog(null);
+      shelfStore.remove(owner, target.id, TEXT.deleted);
+      if (picked?.log.id === target.id) setPicked(null);
+    } catch (err) {
+      setConfirmDeleteLog(null);
+      if (err instanceof ApiCallError && err.status === 404) {
+        shelfStore.remove(owner, target.id, TEXT.deleted);
+      } else {
+        showToast(TEXT.deleteFailed);
+      }
+    } finally {
+      deletingRef.current = false;
+      setDeletingBusy(false);
+    }
+  };
 
   // 쓰기·지우기 뒤 책장으로 돌아오면 안내 한 번("저장했어요"·"기록을 지웠어요")
   useEffect(() => {
@@ -387,37 +645,98 @@ export function ReadingLogScreen() {
   const statsLine = <StatsLine stats={logs.stats} failed={logs.statsFailed} onRefresh={logs.retryStats} />;
   const thisYear = new Date().getFullYear().toString();
   // 가로 줄: 3권 + 다음 표지 약 10%가 화면 오른쪽 끝에 보이는 폭(R2-O1). 넓은 웹은 앱 칼럼 폭(480, WebFrame)으로 잰다
-  const frameWidth = isDesktopPointer() ? Math.min(windowWidth, APP_MAX_WIDTH) : windowWidth;
-  const rowCover = Math.max(72, Math.min(140, Math.floor((frameWidth - 16 - 3 * GAP) / 3.1)));
+  const frameWidth = screenWidth ?? (isDesktopPointer() ? Math.min(windowWidth, APP_MAX_WIDTH) : windowWidth);
+  const rowCover = Math.max(72, Math.min(132, Math.floor((frameWidth - 48 - 3 * GAP) / 3.1)));
+  // 도서 영역(bookZone) 실제 측정 폭(스크롤바 폭 제외)으로 4권 폭을 계산해 1px도 벗어나지 않게 고정
+  const innerZoneWidth = zoneWidth !== null ? Math.max(180, zoneWidth - 28 - 2) : Math.max(200, frameWidth - 32 - 28 - 20);
+  const shelfCover = Math.max(52, Math.min(112, Math.floor((innerZoneWidth - (PER_ROW - 1) * GAP) / PER_ROW)));
 
-  const monthShelf = (items: ReadingLog[], withStats: boolean) => (
-    <ScrollView testID="shelf" contentContainerStyle={styles.shelfPad} onScroll={onScroll} scrollEventThrottle={200}>
-      {withStats ? statsLine : null}
-      {groupByMonth(items, thisYear).map((group) => (
-        <View key={group.key} style={styles.month}>
-          <Text style={styles.monthLabel}>{group.label}</Text>
-          {chunk(group.logs, PER_ROW).map((row, i) => (
-            <View key={`${group.key}-${i}`} style={styles.shelfRow}>
-              {row.map((log) => (
-                <Pressable
-                  key={log.id}
-                  testID={`shelf-book-${log.id}`}
-                  accessibilityRole="button"
-                  accessibilityLabel={log.book.title}
-                  onPress={() => pick(log)}
-                  style={({ pressed }) => [styles.slot, pressed && styles.slotPressed]}
-                >
-                  <Cover book={log.book} size={COVER} />
-                </Pressable>
-              ))}
+  const toggleMonth = (key: string) =>
+    setCollapsedMonths((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  const monthShelf = (items: ReadingLog[], withStats: boolean) => {
+    const groups = groupByMonth(items, thisYear);
+    return (
+      <ScrollView testID="shelf" contentContainerStyle={styles.shelfPad} onScroll={onScroll} scrollEventThrottle={200}>
+        {withStats ? statsLine : null}
+        {groups.map((group) => {
+          const collapsed = Boolean(collapsedMonths[group.key]);
+          const rows = chunk(group.logs, PER_ROW);
+          return (
+            <View
+              key={group.key}
+              style={[styles.bookZone, collapsed && styles.bookZoneCollapsed]}
+              onLayout={(e) => {
+                const w = Math.floor(e.nativeEvent.layout.width);
+                if (w > 0) setZoneWidth((prev) => (prev === w ? prev : w));
+              }}
+            >
+              <Pressable
+                testID={`month-head-${group.key}`}
+                accessibilityRole="button"
+                accessibilityState={{ expanded: !collapsed }}
+                onPress={() => toggleMonth(group.key)}
+                style={styles.monthHead}
+              >
+                <View style={styles.monthHeadLeft}>
+                  <Text style={styles.monthLabel}>{group.label}</Text>
+                  <Text style={styles.monthDot}>·</Text>
+                  <Text style={styles.monthCount}>{group.logs.length}</Text>
+                </View>
+                <Svg width={14} height={14} viewBox="0 0 14 14" fill="none">
+                  <Path
+                    d={collapsed ? "M3.5 5.5 L7 9 L10.5 5.5" : "M3.5 8.5 L7 5 L10.5 8.5"}
+                    stroke={C.inkMuted}
+                    strokeWidth={1.6}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </Svg>
+              </Pressable>
+              {!collapsed ? (
+                <View style={styles.monthBody}>
+                  {rows.map((row, ri) => {
+                    const isLastRow = ri === rows.length - 1;
+                    return (
+                      <View key={`${group.key}-${ri}`} style={styles.shelfTier}>
+                        <View style={styles.shelfRow}>
+                          {row.map((log) => (
+                            <BookTile
+                              key={log.id}
+                              log={log}
+                              size={shelfCover}
+                              draggable
+                              isDragging={draggingId === log.id}
+                              isDropTarget={dropTargetId === log.id && draggingId !== log.id}
+                              onPress={() => pick(log)}
+                              onMenu={(anchor) => setMenuState({ log, anchor })}
+                              onDragStart={(id) => setDraggingId(id)}
+                              onDragOver={(id) => setDropTargetId(id)}
+                              onDrop={(targetId) => {
+                                if (draggingId) persistReorder(draggingId, targetId);
+                                setDraggingId(null);
+                                setDropTargetId(null);
+                              }}
+                              onDragEnd={() => {
+                                setDraggingId(null);
+                                setDropTargetId(null);
+                              }}
+                            />
+                          ))}
+                        </View>
+                        {!isLastRow ? <View style={styles.rowDivider} /> : null}
+                      </View>
+                    );
+                  })}
+                </View>
+              ) : null}
             </View>
-          ))}
-          <View style={styles.plank} />
-        </View>
-      ))}
-      {logs.moreLoading ? <ActivityIndicator accessibilityLabel="더 불러오는 중" /> : null}
-    </ScrollView>
-  );
+          );
+        })}
+        {logs.moreLoading ? <ActivityIndicator accessibilityLabel="더 불러오는 중" /> : null}
+      </ScrollView>
+    );
+  };
 
   const loadError = (
     <View style={[base.flex, base.center]}>
@@ -459,7 +778,7 @@ export function ReadingLogScreen() {
                 <Text style={base.sub}>{TEXT.libEmptyTitle}</Text>
               </View>
             )
-            : monthShelf(logs.items, false);
+            : monthShelf(orderedItems, false);
   } else {
     const isAll = view === "all";
     head = (
@@ -489,7 +808,7 @@ export function ReadingLogScreen() {
             </View>
           </ScrollView>
         );
-      } else content = monthShelf(logs.items, true);
+      } else content = monthShelf(orderedItems, true);
     } else {
       const libs = logs.stats?.libraries ?? null;
       const estimatedScrollHeight =
@@ -590,17 +909,34 @@ export function ReadingLogScreen() {
           </View>
           <Text style={base.sub}>{`${TEXT.readOn} · ${activePicked.read_on ? monthDay(activePicked.read_on) : TEXT.noDate}`}</Text>
           <Text style={base.sub}>{`${TEXT.library} · ${activePicked.library?.name ?? TEXT.noLibrary}`}</Text>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => {
-              const id = activePicked.id;
-              setPicked(null);
-              router.push({ pathname: "/reading/[logId]", params: { logId: id } });
-            }}
-            style={({ pressed }) => [base.secondaryBtn, styles.cardBtn, pressed && ACT.secondaryPressed]}
-          >
-            <Text style={base.secondaryText}>{TEXT.open}</Text>
-          </Pressable>
+          <View style={styles.cardActions}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                const id = activePicked.id;
+                setPicked(null);
+                router.push({ pathname: "/reading/[logId]", params: { logId: id } });
+              }}
+              style={({ pressed }) => [base.secondaryBtn, styles.cardBtn, pressed && ACT.secondaryPressed]}
+            >
+              <Text style={[base.secondaryText, styles.cardBtnText]}>{TEXT.open}</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                const { id, published_post_id: postId } = activePicked;
+                setPicked(null);
+                if (postId) {
+                  router.push({ pathname: "/posts/[postId]", params: { postId } });
+                } else {
+                  router.push({ pathname: "/posts/new", params: { fromLog: id } });
+                }
+              }}
+              style={({ pressed }) => [base.primaryBtn, styles.cardBtn, pressed && ACT.primaryPressed]}
+            >
+              <Text style={[base.primaryText, styles.cardBtnText]}>{activePicked.published_post_id ? TEXT.viewPost : TEXT.publish}</Text>
+            </Pressable>
+          </View>
         </View>
       ) : null}
 
@@ -613,13 +949,79 @@ export function ReadingLogScreen() {
       >
         <Text style={styles.fabText}>+</Text>
       </Pressable>
+
+      {menuState ? (
+        <Modal transparent animationType="fade" onRequestClose={() => setMenuState(null)}>
+          <Pressable style={styles.popoverScrim} onPress={() => setMenuState(null)}>
+            <View
+              testID="book-action-sheet"
+              style={[
+                styles.popoverMenu,
+                {
+                  top: Math.min(Math.max(12, menuState.anchor.y), Math.max(12, windowHeight - 150)),
+                  left: Math.min(Math.max(12, menuState.anchor.x - POPOVER_W), Math.max(12, windowWidth - POPOVER_W - 12)),
+                },
+              ]}
+            >
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  const id = menuState.log.id;
+                  setMenuState(null);
+                  router.push({ pathname: "/reading/[logId]", params: { logId: id, edit: "1" } });
+                }}
+                style={({ pressed }) => [styles.popoverRow, styles.popoverLine, pressed && ACT.secondaryPressed]}
+              >
+                <Text style={styles.popoverText}>{TEXT.edit}</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  const { id, published_post_id: postId } = menuState.log;
+                  setMenuState(null);
+                  if (postId) router.push({ pathname: "/posts/[postId]", params: { postId } });
+                  else router.push({ pathname: "/posts/new", params: { fromLog: id } });
+                }}
+                style={({ pressed }) => [styles.popoverRow, styles.popoverLine, pressed && ACT.secondaryPressed]}
+              >
+                <Text style={styles.popoverText}>{menuState.log.published_post_id ? TEXT.viewPost : TEXT.post}</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  const target = menuState.log;
+                  setMenuState(null);
+                  setConfirmDeleteLog(target);
+                }}
+                style={({ pressed }) => [styles.popoverRow, pressed && ACT.secondaryPressed]}
+              >
+                <Text style={[styles.popoverText, base.dangerText]}>{TEXT.remove}</Text>
+              </Pressable>
+            </View>
+          </Pressable>
+        </Modal>
+      ) : null}
+
+      {confirmDeleteLog ? (
+        <ConfirmDialog
+          title={TEXT.deleteTitle}
+          body={TEXT.deleteBody}
+          extra={confirmDeleteLog.published_post_id ? TEXT.deleteKeepsPost : null}
+          cancel={TEXT.cancel}
+          confirm={deletingBusy ? "지우는 중…" : TEXT.remove}
+          onCancel={() => setConfirmDeleteLog(null)}
+          onConfirm={() => void handleDeleteLog(confirmDeleteLog)}
+          danger
+        />
+      ) : null}
+
       <Toast text={toast} />
     </View>
   );
 }
 
-const COVER = 84;
-const GAP = 14;
+const GAP = 10;
+const POPOVER_W = 128;
 const C = theme.colors;
 const ACT = actionColors(theme.colors);
 const styles = StyleSheet.create({
@@ -638,18 +1040,87 @@ const styles = StyleSheet.create({
   refreshText: { fontSize: 13 },
   emptyTitle: { fontSize: 16, color: C.text, fontWeight: "500" },
   grow: { flexGrow: 1 },
-  shelfPad: { padding: 16, paddingBottom: 96, gap: 18 },
+  shelfPad: { padding: 16, paddingBottom: 96, gap: 16 },
   libPad: { paddingRight: 0 },
-  month: { gap: 8 },
+  bookZone: {
+    backgroundColor: C.panelLit,
+    borderRadius: theme.radii.card,
+    borderWidth: 1,
+    borderColor: C.seamHairline,
+    padding: 14,
+    gap: 12,
+  },
+  bookZoneCollapsed: {
+    borderRadius: theme.radii.control,
+    paddingVertical: 12,
+    paddingHorizontal: 18,
+  },
+  monthHead: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    minHeight: 24,
+  },
+  monthHeadLeft: { flexDirection: "row", alignItems: "center", gap: 6 },
   monthLabel: { ...T.gauge },
-  shelfRow: { flexDirection: "row", gap: GAP, alignItems: "flex-end" },
+  monthDot: { ...T.gauge },
+  monthCount: { ...T.gauge, fontWeight: "400", color: C.inkMuted },
+  monthBody: { gap: 14 },
+  shelfTier: { gap: 14 },
+  shelfRow: { flexDirection: "row", gap: GAP, alignItems: "flex-start" },
   slot: { borderRadius: theme.radii.block },
-  slotPressed: { opacity: 0.8, transform: [{ translateY: 1 }] },
-  plank: { height: 6, borderRadius: theme.radii.block, backgroundColor: C.surface3, boxShadow: `0 2px 0 0 ${C.reliefSideDark}` },
-  libRow: { gap: 8 },
+  slotPressed: { opacity: 0.85, transform: [{ translateY: 1 }] },
+  tile: { position: "relative", gap: 0 },
+  tileDragging: { opacity: 0.45 },
+  tileDropTarget: {
+    borderRadius: theme.radii.infoCard,
+    outlineWidth: 2,
+    outlineColor: C.inkStrong,
+    outlineStyle: "dashed",
+  } as object,
+  tileCoverWrap: {
+    position: "relative",
+    borderTopLeftRadius: theme.radii.bookCover[0],
+    borderTopRightRadius: theme.radii.bookCover[1],
+    borderBottomRightRadius: theme.radii.bookCover[2],
+    borderBottomLeftRadius: theme.radii.bookCover[3],
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: C.seamHairline,
+    overflow: "hidden",
+    boxShadow: `0 2px 6px 0 ${C.shadowAmbient}`,
+  },
+  tileMoreWrap: {
+    position: "absolute",
+    top: 4,
+    right: 2,
+    zIndex: 4,
+  },
+  tileMoreBtn: {
+    width: 24,
+    height: 24,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tileMorePressed: { opacity: 0.55 },
+  tileTitle: { fontSize: 12, lineHeight: 16, fontWeight: "600", color: C.text, marginTop: 7 },
+  tileAuthor: { fontSize: 11, lineHeight: 14, color: C.inkMuted, marginTop: 2 },
+  rowDivider: { height: 1, backgroundColor: C.seamHairline },
+  libDivider: { height: 1.5, marginRight: 16, opacity: 0.7 },
+  popoverScrim: { flex: 1 },
+  popoverMenu: {
+    ...cardSurface(theme, { onPanel: true }),
+    position: "absolute",
+    width: POPOVER_W,
+    overflow: "hidden",
+    boxShadow: `0 6px 18px 0 ${C.shadowCast}`,
+  },
+  popoverRow: { minHeight: 38, justifyContent: "center", paddingHorizontal: 14 },
+  popoverLine: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.seamHairline },
+  popoverText: { fontSize: 13.5, fontWeight: "500", color: C.text },
+  libRow: { gap: 10 },
   libTag: { alignSelf: "flex-start", maxWidth: "92%", minHeight: 32, justifyContent: "center", paddingHorizontal: 12, borderRadius: theme.radii.pill },
   libTagText: { fontSize: 13, fontWeight: "500" },
-  hRow: { gap: GAP, paddingRight: 16, alignItems: "flex-end" },
+  hRow: { gap: GAP, paddingRight: 16, alignItems: "flex-start" },
   rowPending: { alignItems: "center", justifyContent: "center", marginRight: 16 },
   rowFail: { minHeight: 60, marginRight: 16 },
   libPlank: { marginRight: 16 },
@@ -666,7 +1137,9 @@ const styles = StyleSheet.create({
   cardClose: { position: "absolute", right: 6, top: 6, minWidth: 40, minHeight: 40, alignItems: "center", justifyContent: "center", zIndex: 1 },
   cardRow: { flexDirection: "row", gap: 12, paddingRight: 32 },
   noteLine: { fontSize: 14, color: C.inkSoft, marginTop: 4 },
-  cardBtn: { marginTop: 6, alignSelf: "flex-start" },
+  cardActions: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 6, flexWrap: "wrap" },
+  cardBtn: { alignSelf: "flex-start", minHeight: 38, height: 38, paddingVertical: 0, paddingHorizontal: 14 },
+  cardBtnText: { fontSize: 14 },
   fab: {
     ...ACT.primary,
     position: "absolute",
