@@ -556,11 +556,33 @@ def build_providers(settings: Settings) -> Providers:
 
 
 
+def _like_escape(s: str) -> str:
+    return s.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+
+
 def libraries_by_name(conn: Connection, q: str, limit: int) -> list[LibraryRow]:
-    escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    rows = conn.execute(text(f"SELECT {LIBRARY_COLUMNS} FROM libraries "
-                             'WHERE name ILIKE :q ORDER BY name COLLATE "C", id LIMIT :limit'),
-                        {"q": f"%{escaped}%", "limit": limit}).all()
+    """이름 검색(2026-11-26 개선, contracts/core.md #10).
+
+    - 검색어를 공백으로 나눠 단어마다 이름 또는 주소에 들어 있으면 맞는다(AND). "광주 중앙" → 이름·주소에 광주와 중앙이 모두.
+    - 순서: 공백 뺀 검색어로 이름이 시작 → 이름에 들어 있음 → 그 밖, 이름에 맞은 단어 수 많은 순, 이름 짧은 순, 이름·id.
+      (이전: 검색어 전체를 이름에서만 부분 일치, 바이트 이름순 — 공백 있는 검색어는 0건, 흔한 단어는 20곳 상한에 잘림)
+    """
+    words = q.split()
+    if not words:
+        return []
+    params: dict[str, Any] = {"limit": limit, "whole": _like_escape("".join(words)) + "%",
+                              "whole_in": "%" + _like_escape("".join(words)) + "%"}
+    where, name_hits = [], []
+    for i, word in enumerate(words):
+        params[f"w{i}"] = "%" + _like_escape(word) + "%"
+        where.append(f"(name ILIKE :w{i} OR COALESCE(address, '') ILIKE :w{i})")
+        name_hits.append(f"(name ILIKE :w{i})::int")
+    compact = "REPLACE(name, ' ', '')"
+    rows = conn.execute(text(
+        f"SELECT {LIBRARY_COLUMNS} FROM libraries WHERE {' AND '.join(where)} "
+        f"ORDER BY CASE WHEN {compact} ILIKE :whole THEN 0 WHEN {compact} ILIKE :whole_in THEN 1 ELSE 2 END, "
+        f"({' + '.join(name_hits)}) DESC, char_length(name), name COLLATE \"C\", id LIMIT :limit"
+    ), params).all()
     return [_library_row(row) for row in rows]
 
 
