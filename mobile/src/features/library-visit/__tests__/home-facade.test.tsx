@@ -377,9 +377,12 @@ describe("cube lid text", () => {
       ["porcelain", "#505052"],
       ["eggshell", "#504D4C"],
       ["vanillaCanvas", "#4E4D4A"],
+      ["warmAlabaster", "#514F4B"],
+      ["oatmealPaper", "#51504B"],
+      ["parchmentCream", "#51504B"],
     ]);
-    expect(CUBE_PALETTE).toHaveLength(20);
-    expect(CUBE_PALETTE.filter(({ name }) => darkInks.has(name))).toHaveLength(5);
+    expect(CUBE_PALETTE).toHaveLength(99);
+    expect(CUBE_PALETTE.filter(({ name }) => darkInks.has(name))).toHaveLength(8);
     CUBE_PALETTE.forEach(({ name, hex }, index) => {
       expect(cubeLidColors(index)).toEqual({ fill: hex, ink: darkInks.get(name) ?? "#FFFFFF" });
     });

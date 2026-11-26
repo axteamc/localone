@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>큐브 뚜껑 100+색 확장 시안 — 기존 20 + 신규 12 + OKLCH 확장</title>
+<style>
+  :root {
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --cream:#EFEFE7; --paper:#EFF1F1; --ink-strong:#2E333F; --text:#1D1D1F; --sub:#71716F;
+    --r-card:18px; --r-pill:18px;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; line-height:1.5; }
+  header.page, main { max-width:1360px; margin:0 auto; padding:0 16px; }
+  header.page { padding-top:20px; }
+  h1 { font-size:20px; margin:0 0 4px; }
+  h2 { font-size:17px; margin:24px 0 8px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .box { background:var(--cream); border-radius:var(--r-card); padding:12px 16px; margin-top:10px; font-size:13.5px; }
+  .box.decided { border-left:5px solid var(--ink-strong); }
+  .toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-top:12px; }
+  .btn { font:inherit; font-size:13px; border:0; border-radius:var(--r-pill); padding:6px 14px; background:var(--surface2); color:var(--text); cursor:pointer; }
+  .btn.primary { background:var(--ink-strong); color:var(--paper); }
+  .btn[aria-pressed="true"] { background:var(--ink-strong); color:var(--paper); }
+  .pill { display:inline-block; font-size:11px; padding:1px 8px; border-radius:999px; background:var(--surface2); font-weight:600; }
+  .pill.existing { background:#D6D6D2; color:#2E333F; }
+  .pill.user12 { background:#E9C970; color:#1D1D1F; }
+  .pill.generated { background:#D9E2EC; color:#26577C; }
+
+  /* 홈 큐브 랜덤 미리보기 */
+  .stage-wrap { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:16px; margin-top:12px; }
+  .stage { background:var(--paper); border-radius:var(--r-card); padding:14px; }
+  .board { width:100%; height:240px; border-radius:10px; background:#E4E4E1; border:2px solid var(--ink-strong); position:relative; overflow:hidden; }
+  .board.map { background:#EFF1F1; }
+
+  /* 스와치 그리드 */
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(148px,1fr)); gap:10px; }
+  .card { background:var(--paper); border-radius:14px; padding:10px; border:2px solid transparent; cursor:pointer; transition:opacity .15s, border-color .15s; user-select:none; }
+  .card:hover { border-color:var(--ink-strong); }
+  .card.excluded { opacity:0.28; border-color:#D83A2E; border-style:dashed; }
+  .cube-box { display:flex; justify-content:center; align-items:center; height:84px; background:#E4E4E1; border-radius:10px; margin-bottom:8px; }
+  .meta { font-size:11.5px; line-height:1.35; }
+  .meta .hex { font-family:ui-monospace,Consolas,monospace; font-weight:700; font-size:12px; }
+  .meta .sub { color:var(--sub); font-size:10.5px; }
+  .row-top { display:flex; justify-content:space-between; align-items:center; gap:4px; margin-bottom:2px; }
+
+  table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-card); overflow:hidden; margin-bottom:40px; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--surface2); }
+  th { background:var(--surface2); }
+  #toast { position:fixed; bottom:18px; right:18px; background:var(--ink-strong); color:var(--paper); padding:8px 14px; border-radius:12px; font-size:13px; display:none; z-index:99; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>큐브 뚜껑 100+색 확장 시안 — 기존 20 + 신규 12 + OKLCH 확장</h1>
+  <div class="box decided">
+    <b>구성 요약:</b> 기존 <code>CUBE_PALETTE</code> <b>20색</b>(0~19번 유지) + 사용자 추가 <b>12색</b>(20~31번) + OKLCH 톤 매트릭스 확장 <b><span id="cnt-gen"></span>색</b> = <b>총 <span id="cnt-total"></span>색</b> (활성 <span id="cnt-active"></span>색).
+    <br>배경 판 색(<code>#E1E1DE</code>·<code>#EFF1F1</code>)과 휴관 색(<code>#78736C</code>)에서 지각 거리(<code>ΔE_OK ≥ 0.038</code>)를 띄웠고, 색끼리도 <code>ΔE_OK ≥ 0.044</code> 이상 떨어뜨려 중복을 막았습니다.
+    <br><b>보는 법:</b> 마음에 들지 않는 색 카드를 클릭하면 <b>제외(흐리게)</b> 표시됩니다. 위쪽 버튼으로 실제 홈 큐브·지도 모드 조합을 랜덤으로 섞어 보고, 확정할 목록을 복사할 수 있습니다.
+  </div>
+  <div class="toolbar">
+    <button class="btn primary" id="btn-shuffle">랜덤 큐브 배치 다시 뽑기</button>
+    <button class="btn" data-filter="all" aria-pressed="true">전체</button>
+    <button class="btn" data-filter="existing" aria-pressed="false">기존 20</button>
+    <button class="btn" data-filter="user12" aria-pressed="false">신규 12</button>
+    <button class="btn" data-filter="generated" aria-pressed="false">OKLCH 확장</button>
+    <button class="btn" id="btn-copy">활성 팔레트 TS 복사</button>
+    <button class="btn" id="btn-reset">제외 초기화</button>
+  </div>
+</header>
+
+<main>
+  <h2>실제 홈 · 지도 모드 조합 미리보기 <span class="pill" id="preview-info"></span></h2>
+  <div class="stage-wrap">
+    <div class="stage">
+      <div class="board" id="stage-hero"></div>
+      <div style="font-size:12px;color:var(--sub);margin-top:6px;">주인공 보기 느낌 (격자 판 #E4E4E1 위, 4개 동시 노출)</div>
+    </div>
+    <div class="stage">
+      <div class="board map" id="stage-map"></div>
+      <div style="font-size:12px;color:var(--sub);margin-top:6px;">지도 모드 v2 느낌 (paper #EFF1F1 고리 위, 4개 동시 노출)</div>
+    </div>
+  </div>
+
+  <div id="sections"></div>
+
+  <h2>명세</h2>
+  <table>
+    <tr><th>요소</th><th>내용</th><th>값 / 규칙</th><th>상태</th></tr>
+    <tr><td>기본 시드</td><td>기존 20색 + 사용자 신규 12색</td><td>0~19번 기존 <code>CUBE_PALETTE</code> 순서 유지, 20~31번 신규 12색(<code>#D83A2E</code>, <code>#2F6DB5</code>, <code>#F2C230</code>, <code>#111111</code>, <code>#F7F2E8</code>, <code>#88A170</code>, <code>#F0E9D3</code>, <code>#7A9E55</code>, <code>#B5C98A</code>, <code>#F3E8CF</code>, <code>#D2C7FF</code>, <code>#D35B2F</code>)</td><td>결정 전</td></tr>
+    <tr><td>OKLCH 확장</td><td>16 색상축 × 9 톤 + 뉴트럴 8종</td><td><code>ΔE_OK ≥ 0.044</code> 중복 제거, 판 색(<code>#E1E1DE</code>·<code>#EFF1F1</code>) 및 휴관 색(<code>#78736C</code>)과 <code>ΔE_OK ≥ 0.038</code> 이격</td><td>결정 전</td></tr>
+    <tr><td>뚜껑 글자색(<code>ink</code>)</td><td>기존 D안 규칙 자동 적용</td><td><code>OKLCH L ≥ 0.89</code>이면 해당 색상 기운을 띤 짙은 회색(<code>L=0.43, C=0.007</code>, <code>#504D4C</code> 계열), <code>L &lt; 0.89</code>이면 <code>#FFFFFF</code></td><td>기본값(Claude)</td></tr>
+    <tr><td>영향 범위</td><td><code>mobile/src/theme/tokens.ts</code> <code>CUBE_PALETTE</code>만 확장</td><td>피드 단색(8~9색)·서버·DB 변경 없음. <code>CUBE_PALETTE.length</code> 증가로 도서관별 색이 한 번 재배치된 뒤 id 기준 고정 유지</td><td>확인 필요</td></tr>
+  </table>
+</main>
+<div id="toast"></div>
+
+<script>
+const COLORS = [{"idx":0,"name":"bold","hex":"#EB5324","ink":"#FFFFFF","source":"existing","tone":"vivid","L":0.64,"C":0.196,"H":37},{"idx":1,"name":"coral","hex":"#FF7850","ink":"#FFFFFF","source":"existing","tone":"vivid","L":0.72,"C":0.174,"H":37},{"idx":2,"name":"marshmallow","hex":"#F4F1DE","ink":"#51504D","source":"existing","tone":"paper","L":0.96,"C":0.025,"H":100},{"idx":3,"name":"neutral","hex":"#FFF6EE","ink":"#535151","source":"existing","tone":"paper","L":0.98,"C":0.014,"H":64},{"idx":4,"name":"porcelain","hex":"#F0F0F5","ink":"#505052","source":"existing","tone":"paper","L":0.96,"C":0.007,"H":286},{"idx":5,"name":"eggshell","hex":"#F0E6DC","ink":"#504D4C","source":"existing","tone":"paper","L":0.93,"C":0.017,"H":68},{"idx":6,"name":"vanillaCanvas","hex":"#EBE4D1","ink":"#4E4D4A","source":"existing","tone":"paper","L":0.92,"C":0.026,"H":90},{"idx":7,"name":"vanilla","hex":"#CDBEA0","ink":"#FFFFFF","source":"existing","tone":"soft","L":0.81,"C":0.044,"H":85},{"idx":8,"name":"indigoDrift","hex":"#232747","ink":"#FFFFFF","source":"existing","tone":"deep","L":0.29,"C":0.059,"H":277},{"idx":9,"name":"dark","hex":"#27324A","ink":"#FFFFFF","source":"existing","tone":"deep","L":0.32,"C":0.046,"H":265},{"idx":10,"name":"darkNavy","hex":"#001428","ink":"#FFFFFF","source":"existing","tone":"deep","L":0.19,"C":0.05,"H":248},{"idx":11,"name":"atlanticBlue","hex":"#26577C","ink":"#FFFFFF","source":"existing","tone":"muted","L":0.44,"C":0.081,"H":244},{"idx":12,"name":"ultramarine","hex":"#3778FF","ink":"#FFFFFF","source":"existing","tone":"vivid","L":0.61,"C":0.212,"H":263},{"idx":13,"name":"light","hex":"#59BABD","ink":"#FFFFFF","source":"existing","tone":"muted","L":0.73,"C":0.091,"H":198},{"idx":14,"name":"complementary","hex":"#BFDAD3","ink":"#FFFFFF","source":"existing","tone":"soft","L":0.87,"C":0.03,"H":178},{"idx":15,"name":"lemonZest","hex":"#F5AF3D","ink":"#FFFFFF","source":"existing","tone":"vivid","L":0.8,"C":0.148,"H":75},{"idx":16,"name":"citrusYellow","hex":"#FFC300","ink":"#FFFFFF","source":"existing","tone":"vivid","L":0.85,"C":0.174,"H":86},{"idx":17,"name":"crimsonWhisper","hex":"#6B0A00","ink":"#FFFFFF","source":"existing","tone":"deep","L":0.34,"C":0.13,"H":31},{"idx":18,"name":"shuttleGray","hex":"#646E7D","ink":"#FFFFFF","source":"existing","tone":"muted","L":0.54,"C":0.027,"H":258},{"idx":19,"name":"ghostGray","hex":"#C8C8D2","ink":"#FFFFFF","source":"existing","tone":"soft","L":0.84,"C":0.014,"H":286},{"idx":20,"name":"vermilionRed","hex":"#D83A2E","ink":"#FFFFFF","source":"user12","tone":"vivid","L":0.59,"C":0.197,"H":29},{"idx":21,"name":"cobaltBlue","hex":"#2F6DB5","ink":"#FFFFFF","source":"user12","tone":"vivid","L":0.53,"C":0.13,"H":254},{"idx":22,"name":"sunflowerGold","hex":"#F2C230","ink":"#FFFFFF","source":"user12","tone":"vivid","L":0.83,"C":0.158,"H":89},{"idx":23,"name":"obsidianBlack","hex":"#111111","ink":"#FFFFFF","source":"user12","tone":"deep","L":0.18,"C":0,"H":90},{"idx":24,"name":"warmAlabaster","hex":"#F7F2E8","ink":"#514F4B","source":"user12","tone":"paper","L":0.96,"C":0.014,"H":85},{"idx":25,"name":"sageLeaf","hex":"#88A170","ink":"#FFFFFF","source":"user12","tone":"muted","L":0.68,"C":0.075,"H":130},{"idx":26,"name":"oatmealPaper","hex":"#F0E9D3","ink":"#51504B","source":"user12","tone":"paper","L":0.93,"C":0.03,"H":92},{"idx":27,"name":"mossGreen","hex":"#7A9E55","ink":"#FFFFFF","source":"user12","tone":"muted","L":0.65,"C":0.108,"H":130},{"idx":28,"name":"pistachioSoft","hex":"#B5C98A","ink":"#FFFFFF","source":"user12","tone":"soft","L":0.81,"C":0.087,"H":123},{"idx":29,"name":"parchmentCream","hex":"#F3E8CF","ink":"#51504B","source":"user12","tone":"soft","L":0.93,"C":0.035,"H":87},{"idx":30,"name":"softPeriwinkle","hex":"#D2C7FF","ink":"#FFFFFF","source":"user12","tone":"soft","L":0.86,"C":0.078,"H":294},{"idx":31,"name":"terracottaClay","hex":"#D35B2F","ink":"#FFFFFF","source":"user12","tone":"vivid","L":0.62,"C":0.162,"H":40},{"idx":32,"name":"warmCharcoal","hex":"#221E1C","ink":"#FFFFFF","source":"generated","tone":"deep","L":0.24,"C":0.007,"H":48},{"idx":33,"name":"espressoInk","hex":"#34251E","ink":"#FFFFFF","source":"generated","tone":"deep","L":0.28,"C":0.026,"H":46},{"idx":34,"name":"warmUmber","hex":"#5F4F40","ink":"#FFFFFF","source":"generated","tone":"deep","L":0.44,"C":0.032,"H":65},{"idx":35,"name":"pewterGray","hex":"#7F8790","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.62,"C":0.017,"H":251},{"idx":36,"name":"warmSand","hex":"#B7A992","ink":"#FFFFFF","source":"generated","tone":"soft","L":0.74,"C":0.036,"H":80},{"idx":37,"name":"silverMist","hex":"#AFB9BF","ink":"#FFFFFF","source":"generated","tone":"soft","L":0.78,"C":0.014,"H":234},{"idx":38,"name":"crimson_ink","hex":"#3A1317","ink":"#FFFFFF","source":"generated","tone":"deep","L":0.25,"C":0.062,"H":17},{"idx":39,"name":"mustard_ink","hex":"#2D1F00","ink":"#FFFFFF","source":"generated","tone":"deep","L":0.25,"C":0.051,"H":84},{"idx":40,"name":"moss_ink","hex":"#162704","ink":"#FFFFFF","source":"generated","tone":"deep","L":0.25,"C":0.061,"H":132},{"idx":41,"name":"teal_ink","hex":"#002924","ink":"#FFFFFF","source":"generated","tone":"deep","L":0.25,"C":0.045,"H":183},{"idx":42,"name":"cobalt_ink","hex":"#01243D","ink":"#FFFFFF","source":"generated","tone":"deep","L":0.25,"C":0.061,"H":245},{"idx":43,"name":"plum_ink","hex":"#2E1735","ink":"#FFFFFF","source":"generated","tone":"deep","L":0.25,"C":0.062,"H":318},{"idx":44,"name":"crimson_deep","hex":"#62272E","ink":"#FFFFFF","source":"generated","tone":"deep","L":0.36,"C":0.086,"H":15},{"idx":45,"name":"terracotta_deep","hex":"#602C11","ink":"#FFFFFF","source":"generated","tone":"deep","L":0.36,"C":0.085,"H":46},{"idx":46,"name":"mustard_deep","hex":"#4D3A00","ink":"#FFFFFF","source":"generated","tone":"deep","L":0.36,"C":0.073,"H":88},{"idx":47,"name":"moss_deep","hex":"#2C4610","ink":"#FFFFFF","source":"generated","tone":"deep","L":0.36,"C":0.085,"H":132},{"idx":48,"name":"teal_deep","hex":"#004841","ink":"#FFFFFF","source":"generated","tone":"deep","L":0.36,"C":0.064,"H":184},{"idx":49,"name":"cobalt_deep","hex":"#084066","ink":"#FFFFFF","source":"generated","tone":"deep","L":0.36,"C":0.085,"H":245},{"idx":50,"name":"periwinkle_deep","hex":"#3D3466","ink":"#FFFFFF","source":"generated","tone":"deep","L":0.36,"C":0.084,"H":290},{"idx":51,"name":"mauve_deep","hex":"#5A2949","ink":"#FFFFFF","source":"generated","tone":"deep","L":0.36,"C":0.084,"H":342},{"idx":52,"name":"crimson_rich","hex":"#933E47","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.48,"C":0.115,"H":16},{"idx":53,"name":"terracotta_rich","hex":"#91451C","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.48,"C":0.116,"H":46},{"idx":54,"name":"mustard_rich","hex":"#745A07","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.48,"C":0.096,"H":88},{"idx":55,"name":"moss_rich","hex":"#446A1C","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.48,"C":0.115,"H":132},{"idx":56,"name":"forest_rich","hex":"#047041","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.48,"C":0.115,"H":156},{"idx":57,"name":"teal_rich","hex":"#036D63","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.48,"C":0.084,"H":184},{"idx":58,"name":"cerulean_rich","hex":"#02697B","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.48,"C":0.084,"H":215},{"idx":59,"name":"cobalt_rich","hex":"#0E629A","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.48,"C":0.116,"H":245},{"idx":60,"name":"indigo_rich","hex":"#42599E","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.48,"C":0.115,"H":268},{"idx":61,"name":"periwinkle_rich","hex":"#5E5099","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.48,"C":0.115,"H":290},{"idx":62,"name":"plum_rich","hex":"#784687","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.48,"C":0.115,"H":318},{"idx":63,"name":"mauve_rich","hex":"#884070","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.48,"C":0.115,"H":342},{"idx":64,"name":"crimson_muted","hex":"#976567","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.56,"C":0.065,"H":17},{"idx":65,"name":"amber_muted","hex":"#8E6D4A","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.56,"C":0.065,"H":67},{"idx":66,"name":"olive_muted","hex":"#75794B","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.56,"C":0.066,"H":113},{"idx":67,"name":"forest_muted","hex":"#548064","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.56,"C":0.065,"H":156},{"idx":68,"name":"cerulean_muted","hex":"#437E8C","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.56,"C":0.065,"H":215},{"idx":69,"name":"indigo_muted","hex":"#64739B","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.56,"C":0.065,"H":268},{"idx":70,"name":"plum_muted","hex":"#85698D","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.56,"C":0.064,"H":319},{"idx":71,"name":"crimson_mid","hex":"#C77E82","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.67,"C":0.091,"H":16},{"idx":72,"name":"terracotta_mid","hex":"#C48364","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.67,"C":0.092,"H":46},{"idx":73,"name":"mustard_mid","hex":"#AD924F","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.67,"C":0.092,"H":88},{"idx":74,"name":"teal_mid","hex":"#48A89C","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.67,"C":0.092,"H":184},{"idx":75,"name":"cerulean_mid","hex":"#47A4B9","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.67,"C":0.092,"H":215},{"idx":76,"name":"cobalt_mid","hex":"#639BCA","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.67,"C":0.092,"H":245},{"idx":77,"name":"periwinkle_mid","hex":"#948CCA","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.67,"C":0.091,"H":290},{"idx":78,"name":"plum_mid","hex":"#AD83BA","ink":"#FFFFFF","source":"generated","tone":"muted","L":0.67,"C":0.092,"H":318},{"idx":79,"name":"crimson_vivid","hex":"#DF5869","ink":"#FFFFFF","source":"generated","tone":"vivid","L":0.64,"C":0.169,"H":16},{"idx":80,"name":"amber_vivid","hex":"#C37904","ink":"#FFFFFF","source":"generated","tone":"vivid","L":0.64,"C":0.14,"H":68},{"idx":81,"name":"olive_vivid","hex":"#BAC044","ink":"#FFFFFF","source":"generated","tone":"vivid","L":0.78,"C":0.145,"H":112},{"idx":82,"name":"moss_vivid","hex":"#5E8934","ink":"#FFFFFF","source":"generated","tone":"vivid","L":0.58,"C":0.125,"H":132},{"idx":83,"name":"forest_vivid","hex":"#27905A","ink":"#FFFFFF","source":"generated","tone":"vivid","L":0.58,"C":0.126,"H":156},{"idx":84,"name":"cobalt_vivid","hex":"#0E93E5","ink":"#FFFFFF","source":"generated","tone":"vivid","L":0.64,"C":0.158,"H":245},{"idx":85,"name":"indigo_vivid","hex":"#6184F1","ink":"#FFFFFF","source":"generated","tone":"vivid","L":0.64,"C":0.167,"H":268},{"idx":86,"name":"periwinkle_vivid","hex":"#7562C2","ink":"#FFFFFF","source":"generated","tone":"vivid","L":0.56,"C":0.144,"H":290},{"idx":87,"name":"plum_vivid","hex":"#9755AB","ink":"#FFFFFF","source":"generated","tone":"vivid","L":0.56,"C":0.145,"H":318},{"idx":88,"name":"mauve_vivid","hex":"#CE5CA8","ink":"#FFFFFF","source":"generated","tone":"vivid","L":0.64,"C":0.168,"H":342},{"idx":89,"name":"burgundy_vivid","hex":"#D8588C","ink":"#FFFFFF","source":"generated","tone":"vivid","L":0.64,"C":0.168,"H":358},{"idx":90,"name":"crimson_pastel","hex":"#E79DA1","ink":"#FFFFFF","source":"generated","tone":"soft","L":0.77,"C":0.089,"H":16},{"idx":91,"name":"terracotta_pastel","hex":"#E4A385","ink":"#FFFFFF","source":"generated","tone":"soft","L":0.77,"C":0.088,"H":46},{"idx":92,"name":"mustard_pastel","hex":"#CCB171","ink":"#FFFFFF","source":"generated","tone":"soft","L":0.77,"C":0.088,"H":87},{"idx":93,"name":"forest_pastel","hex":"#85C59D","ink":"#FFFFFF","source":"generated","tone":"soft","L":0.77,"C":0.087,"H":156},{"idx":94,"name":"cerulean_pastel","hex":"#6DC3D7","ink":"#FFFFFF","source":"generated","tone":"soft","L":0.77,"C":0.088,"H":215},{"idx":95,"name":"cobalt_pastel","hex":"#84BBE9","ink":"#FFFFFF","source":"generated","tone":"soft","L":0.77,"C":0.088,"H":245},{"idx":96,"name":"periwinkle_pastel","hex":"#B3ABE9","ink":"#FFFFFF","source":"generated","tone":"soft","L":0.77,"C":0.088,"H":290},{"idx":97,"name":"mauve_pastel","hex":"#DC9EC4","ink":"#FFFFFF","source":"generated","tone":"soft","L":0.77,"C":0.088,"H":342},{"idx":98,"name":"crimson_soft","hex":"#EBBDBF","ink":"#FFFFFF","source":"generated","tone":"soft","L":0.84,"C":0.053,"H":15},{"idx":99,"name":"moss_soft","hex":"#BED2AF","ink":"#FFFFFF","source":"generated","tone":"soft","L":0.84,"C":0.052,"H":132}];
+const excluded = new Set();
+let activeFilter = 'all';
+
+const TONE_META = [
+  { key: 'paper', title: '1. 종이·미색·파스텔 뉴트럴 (Tinted Paper)', desc: 'L ≥ 0.88 저채도. 어두운 톤 글자(#504D4C 계열) 사용' },
+  { key: 'soft',  title: '2. 소프트 파스텔·클레이 (Soft Pastel / Clay)', desc: 'L 0.74~0.88, 부드러운 중간 채도 (피스타치오·페리윙클·민트·베이지)' },
+  { key: 'muted', title: '3. 차분한 미드톤 (Muted Mid)', desc: 'L 0.45~0.73, 건축 외벽·세이지·슬레이트·테라코타' },
+  { key: 'vivid', title: '4. 선명한 포인트 (Vivid Accent)', desc: 'C ≥ 0.125, 형광기 없는 책 표지 포인트' },
+  { key: 'deep',  title: '5. 깊은 잉크·네이비·양장본 (Deep Ink)', desc: 'L ≤ 0.44, 묵직하고 깊이 있는 어두운 톤' },
+];
+
+const SAMPLE_NAMES = [
+  ['중앙','광주'],['산수','시립'],['계림','꿈나무'],['사직','시립'],
+  ['정독','서울'],['남산','서울'],['종로','구립'],['삼청','숲속'],
+  ['무등','시립'],['일곡','북구'],['상무','서구'],['첨단','광산']
+];
+
+function cubeSvg(hex, ink, big, small, w = 110, h = 76) {
+  return `<svg width="${w}" height="${h}" viewBox="0 0 120 84" aria-hidden="true">
+    <polygon points="60,6 112,32 60,58 8,32" fill="${hex}" stroke="#2E333F" stroke-width="1.3" stroke-linejoin="round"/>
+    <polygon points="8,32 60,58 60,80 8,54" fill="#EAEAE7" stroke="#2E333F" stroke-width="1.3" stroke-linejoin="round"/>
+    <polygon points="112,32 60,58 60,80 112,54" fill="#D5D4CF" stroke="#2E333F" stroke-width="1.3" stroke-linejoin="round"/>
+    <g transform="translate(60,32) rotate(-26.5) skewX(26.5)">
+      <text x="-18" y="-5" font-size="8" font-weight="600" fill="${ink}" opacity="0.88">${small}</text>
+      <text x="0" y="9" text-anchor="middle" font-size="14" font-weight="700" fill="${ink}">${big}</text>
+    </g>
+  </svg>`;
+}
+
+function activeColors() {
+  return COLORS.filter(c => !excluded.has(c.idx));
+}
+
+function updateCounts() {
+  document.getElementById('cnt-total').textContent = COLORS.length;
+  document.getElementById('cnt-gen').textContent = COLORS.filter(c => c.source === 'generated').length;
+  document.getElementById('cnt-active').textContent = activeColors().length;
+}
+
+function renderStages() {
+  const pool = activeColors();
+  const pick = [];
+  const copy = [...pool];
+  for (let i = 0; i < 4 && copy.length; i++) {
+    const k = Math.floor(Math.random() * copy.length);
+    pick.push(copy.splice(k, 1)[0]);
+  }
+  document.getElementById('preview-info').textContent = pick.map(p => p.hex).join(' · ');
+
+  // Hero board
+  const hb = document.getElementById('stage-hero');
+  const gridLines = [];
+  for (let x = 40; x < 640; x += 56) gridLines.push(`<line x1="${x}" y1="0" x2="${x}" y2="240" stroke="#D1D1CD" stroke-width="1"/>`);
+  for (let y = 30; y < 240; y += 48) gridLines.push(`<line x1="0" y1="${y}" x2="640" y2="${y}" stroke="#D1D1CD" stroke-width="1"/>`);
+  const heroPos = [
+    { x: 145, y: 55, sc: 1.45, n: ['중앙','광주'] },
+    { x: 18,  y: 12, sc: 0.78, n: ['계림','꿈나무'] },
+    { x: 275, y: 14, sc: 0.78, n: ['산수','시립'] },
+    { x: 270, y: 150, sc: 0.78, n: ['사직','시립'] },
+  ];
+  hb.innerHTML = `<svg width="100%" height="100%" viewBox="0 0 380 240" preserveAspectRatio="xMidYMid slice">
+    ${gridLines.join('')}
+    ${pick.map((c, i) => {
+      const p = heroPos[i];
+      return `<g transform="translate(${p.x},${p.y}) scale(${p.sc})">
+        <polygon points="60,6 112,32 60,58 8,32" fill="${c.hex}" stroke="#2E333F" stroke-width="1.2" stroke-linejoin="round"/>
+        <polygon points="8,32 60,58 60,80 8,54" fill="#EFEFE7" stroke="#2E333F" stroke-width="1.2" stroke-linejoin="round"/>
+        <polygon points="112,32 60,58 60,80 112,54" fill="#DCDCD6" stroke="#2E333F" stroke-width="1.2" stroke-linejoin="round"/>
+        <g transform="translate(60,32) rotate(-26.5) skewX(26.5)">
+          <text x="-16" y="-4" font-size="8" font-weight="600" fill="${c.ink}" opacity="0.88">${p.n[1]}</text>
+          <text x="0" y="9" text-anchor="middle" font-size="14" font-weight="700" fill="${c.ink}">${p.n[0]}</text>
+        </g>
+      </g>`;
+    }).join('')}
+    <rect x="20" y="178" width="52" height="40" rx="3" fill="#2E333F"/>
+    <text x="46" y="196" text-anchor="middle" fill="#EFF1F1" font-size="13" font-weight="600">+</text>
+    <text x="46" y="210" text-anchor="middle" fill="#EFF1F1" font-size="9">지도 보기</text>
+  </svg>`;
+
+  // Map board
+  const mb = document.getElementById('stage-map');
+  const mapPos = [
+    { x: 225, y: 76, label: '중앙도서관', dist: '721M' },
+    { x: 120, y: 50, label: '계림꿈나무', dist: '1.0KM' },
+    { x: 265, y: 126, label: '산수도서관', dist: '1.1KM' },
+    { x: 96,  y: 168, label: '사직도서관', dist: '1.2KM' },
+  ];
+  mb.innerHTML = `<svg width="100%" height="100%" viewBox="0 0 380 240">
+    <ellipse cx="190" cy="120" rx="85" ry="51" fill="none" stroke="#2E333F" stroke-opacity="0.32" stroke-dasharray="4 4"/>
+    <ellipse cx="190" cy="120" rx="138" ry="83" fill="none" stroke="#2E333F" stroke-opacity="0.32" stroke-dasharray="4 4"/>
+    <text x="360" y="20" text-anchor="middle" font-size="11" font-weight="600" fill="#2E333F">N</text>
+    <path d="M360 23 l-4 7 h8 z" fill="#2E333F"/>
+    ${pick.map((c, i) => {
+      const p = mapPos[i];
+      return `<g transform="translate(${p.x-20},${p.y-20})">
+        <polygon points="20,2 38,11 20,20 2,11" fill="${c.hex}" stroke="#2E333F" stroke-width="1.1" stroke-linejoin="round"/>
+        <polygon points="2,11 20,20 20,38 2,29" fill="#E4E4E0" stroke="#2E333F" stroke-width="1.1" stroke-linejoin="round"/>
+        <polygon points="38,11 20,20 20,38 38,29" fill="#D2D0CA" stroke="#2E333F" stroke-width="1.1" stroke-linejoin="round"/>
+        <text x="0" y="-12" font-size="10.5" font-weight="500" fill="#1D1D1F">${p.label}</text>
+        <text x="0" y="-2" font-size="8.5" fill="#71716F" letter-spacing="0.8">${p.dist}</text>
+      </g>`;
+    }).join('')}
+    <rect x="162" y="100" width="56" height="40" rx="3" fill="#2E333F"/>
+    <text x="190" y="117" text-anchor="middle" fill="#EFF1F1" font-size="13">+</text>
+    <text x="190" y="131" text-anchor="middle" fill="#EFF1F1" font-size="9">현위치</text>
+    <text x="12" y="228" font-size="10" fill="#71716F">가까운 4곳</text>
+  </svg>`;
+}
+
+function renderGrid() {
+  const root = document.getElementById('sections');
+  root.innerHTML = '';
+  for (const tm of TONE_META) {
+    const items = COLORS.filter(c => c.tone === tm.key && (activeFilter === 'all' || c.source === activeFilter));
+    if (!items.length) continue;
+    const h2 = document.createElement('h2');
+    h2.innerHTML = `${tm.title} <span class="pill">${items.length}색</span> <span style="font-size:12px;font-weight:400;color:var(--sub)">${tm.desc}</span>`;
+    root.appendChild(h2);
+
+    const grid = document.createElement('div');
+    grid.className = 'grid';
+    for (const c of items) {
+      const card = document.createElement('div');
+      card.className = 'card' + (excluded.has(c.idx) ? ' excluded' : '');
+      const sample = SAMPLE_NAMES[c.idx % SAMPLE_NAMES.length];
+      const badgeText = c.source === 'existing' ? '기존 20' : (c.source === 'user12' ? '신규 12' : '확장');
+      card.innerHTML = `
+        <div class="cube-box">${cubeSvg(c.hex, c.ink, sample[0], sample[1])}</div>
+        <div class="meta">
+          <div class="row-top">
+            <span class="hex">${c.hex}</span>
+            <span class="pill ${c.source}">${badgeText}</span>
+          </div>
+          <div>#${c.idx} ${c.name}</div>
+          <div class="sub">L ${c.L} · C ${c.C} · H ${c.H}° · ink ${c.ink}</div>
+        </div>`;
+      card.onclick = () => {
+        if (excluded.has(c.idx)) excluded.delete(c.idx);
+        else excluded.add(c.idx);
+        card.classList.toggle('excluded');
+        updateCounts();
+      };
+      grid.appendChild(card);
+    }
+    root.appendChild(grid);
+  }
+}
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(t._tid);
+  t._tid = setTimeout(() => { t.style.display = 'none'; }, 2400);
+}
+
+document.getElementById('btn-shuffle').onclick = renderStages;
+document.getElementById('btn-reset').onclick = () => { excluded.clear(); updateCounts(); renderGrid(); renderStages(); };
+document.getElementById('btn-copy').onclick = async () => {
+  const list = activeColors().map(c => `  { name: "${c.name}", hex: "${c.hex}", ink: ${c.ink === '#FFFFFF' ? 'ON_FILL_LIGHT' : `"${c.ink}"`} },`).join('\n');
+  const out = `export const CUBE_PALETTE = [\n${list}\n] as const;`;
+  try { await navigator.clipboard.writeText(out); toast(`활성 ${activeColors().length}색 TS 코드 복사 완료`); }
+  catch { console.log(out); toast('클립보드 권한 없음 — 콘솔에 출력됨'); }
+};
+document.querySelectorAll('[data-filter]').forEach(btn => {
+  btn.onclick = () => {
+    activeFilter = btn.dataset.filter;
+    document.querySelectorAll('[data-filter]').forEach(b => b.setAttribute('aria-pressed', b === btn));
+    renderGrid();
+  };
+});
+
+updateCounts();
+renderStages();
+renderGrid();
+</script>
+</body>
+</html>
