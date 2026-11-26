@@ -1,0 +1,414 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="명세" content="../진행_홈_지도모드.md">
+<title>홈 지도 모드 v2 시안 — 바닥·배치</title>
+<!--
+  C-96 지도 모드 2차(2026-11-26 사용자 지시):
+  1차 질문: ① 바닥이 지도로 안 읽힌다 ② 큐브·현위치 받침이 겹치면 반경을 줄여라.
+  → ① 후보 A(현위치 거리 고리 + N) 채택.
+  → ② 실제 비례 + 반경 줄이기는 광주 캡처에서 1곳까지 줄어서, 사용자가 "방향과 거리감을 추상화"(지도처럼 100%가 아니라
+    방향과 멀다/가깝다만)로 방향을 바꿈. 이 시안의 정할 것 2가 그 배치 방안 3개.
+  최대 4곳(5 → 4, 사용자 "4개로 줄이기"). 계산은 앱에 옮길 식 그대로(판 크기만 시안 240×262, 길이 값은 390 기준 × 0.615).
+  예시 데이터: 광주는 실기기 캡처(2026-11-26)의 거리·방향 근사, 도심·시골은 예시.
+-->
+<style>
+  :root {
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --cream:#EFEFE7; --paper:#EFF1F1; --ink-strong:#2E333F; --text:#1D1D1F; --sub:#71716F;
+    --r-card:18px; --r-pill:18px;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; line-height:1.5; }
+  header.page, main { max-width:1280px; margin:0 auto; padding:0 16px; }
+  header.page { padding-top:20px; }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:17px; margin:0 0 4px; } h3 { font-size:15px; margin:0 0 8px; }
+  .how, .flow, .decided { background:var(--cream); border-radius:var(--r-card); padding:12px 16px; margin:10px 0 0; font-size:14px; }
+  .decided { border-left:5px solid var(--ink-strong); }
+  .decided ul { margin:4px 0; padding-left:18px; }
+  section.element { margin-top:32px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:var(--r-pill); background:var(--surface2); margin-left:6px; font-weight:400; }
+  .pick { margin:8px 0 0; font-size:14px; }
+  .pick select { font:inherit; padding:4px 8px; border-radius:10px; border:1px solid var(--surface3); background:var(--paper); }
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-card); padding:14px; border:3px solid transparent; }
+  .cand.recommended { border-color:var(--fill1); } .cand.chosen { border-color:var(--ink-strong); }
+  .badge { display:inline-block; font-size:12px; font-weight:700; padding:1px 9px; border-radius:var(--r-pill); background:var(--fill1); margin-left:6px; }
+  .badge.adopted { background:var(--ink-strong); color:var(--paper); }
+  .cand p, .cand li { font-size:13.5px; margin:6px 0; } .cand ul { padding-left:18px; margin:4px 0; }
+  .lbl { font-weight:700; font-size:12.5px; color:var(--sub); margin-top:10px; display:block; }
+  .phone { width:240px; height:262px; margin:0 auto 10px; border-radius:6px; border:4px solid var(--ink-strong); position:relative; overflow:hidden; background:#E4E4E1; }
+  .phone svg { display:block; }
+  .cap { text-align:center; font-size:12.5px; color:var(--sub); margin:-4px 0 8px; }
+  .compare { display:flex; flex-wrap:wrap; gap:20px; justify-content:center; margin-top:12px; }
+  .compare > div { background:var(--paper); border-radius:var(--r-card); padding:12px 14px; width:290px; }
+  .state button { font:inherit; font-size:13px; border:0; border-radius:var(--r-pill); padding:4px 12px; background:var(--surface2); cursor:pointer; margin:2px; }
+  .state button[aria-pressed="true"] { background:var(--ink-strong); color:var(--paper); }
+  .steps { font-size:13px; margin:6px 0 0; padding-left:18px; }
+  .steps li.ok { font-weight:700; }
+  table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-card); overflow:hidden; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--surface2); }
+  th { background:var(--surface2); }
+  .st { font-size:12px; padding:1px 8px; border-radius:var(--r-pill); background:var(--surface2); white-space:nowrap; }
+  #spec { margin:32px 0 40px; }
+  .wide { overflow-x:auto; }
+  details.ref { margin-top:32px; background:var(--paper); border-radius:var(--r-card); padding:12px 16px; }
+  details.ref summary { cursor:pointer; font-weight:700; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>홈 지도 모드 v2 시안 — 방향은 그대로, 거리는 "가깝다·멀다"로</h1>
+  <div class="how"><b>보는 법.</b> 고를 것은 <b>정할 것 2. 배치 방안 하나</b>예요(노란 테두리가 추천). 위쪽 단추로 예시 동네를 바꿔 세 방안을 비교해 보세요. 휴대폰 아래 회색 글은 밀어낸 곳·방향을 튼 곳 수예요.
+    <div class="state" id="scen" style="margin-top:6px">예시 동네:
+      <button data-s="gj" aria-pressed="true">광주(캡처 재현)</button><button data-s="city" aria-pressed="false">도심 밀집(예시)</button><button data-s="rural" aria-pressed="false">시골(예시)</button>
+    </div>
+  </div>
+  <div class="decided"><b>정한 것(2026-11-26).</b>
+    <ul>
+      <li>바닥은 <b>A 현위치 기준 거리 고리 + 북쪽 표시</b>(정할 것 1).</li>
+      <li>그리는 도서관은 <b>최대 4곳</b>(5 → 4).</li>
+      <li>실제 비례로 그리고 겹치면 반경을 줄이는 1차 규칙은 1곳까지 줄어들어서, <b>지도와 100% 같지는 않게 하고 방향과 가깝다·멀다만 살려 겹치지 않게 놓는</b> 쪽으로 바꿔요(정할 것 2). 1차 규칙은 맨 아래 "참고"에 있어요.</li>
+      <li>세 방안 모두 <b>4곳이 늘 다 보이고</b>, 이름표의 거리 글자(<code>841M</code>)는 실제 값 그대로예요.</li>
+    </ul>
+  </div>
+</header>
+<main>
+
+<section class="element" id="el-layout" data-chosen="S">
+  <h2>정할 것 2. 방향·거리를 어떻게 줄여서 놓을까 <span class="status">확인</span></h2>
+  <div class="flow">2026-11-26 사용자 "S. 거리를 눌러 담기 (추천)", "고리의 거리 표기에 복잡하게 적지 말고 단순하게 1.5KM 이런식으로만" → 고리는 둥근 값(0.1·0.2·0.3·0.5·1·1.5·2·3·5·10…km)에만 그리고 그 값만 적어요. 왼쪽 아래도 <code>가까운 4곳</code>만.</div>
+  <div class="flow"><b>세 방안의 공통 규칙.</b> 방향은 현위치에서 본 <b>실제 방위</b>로 둬요. 가까운 순서로 하나씩 놓고, 앞서 놓은 큐브나 현위치 받침과 겹치면 <b>같은 방향으로 바깥쪽으로 밀어요</b>. 판 끝까지 밀어도 겹치면 방향을 10°씩(최대 30°) 틀어요. 그래서 가까운 곳이 먼저 자리를 잡고, 같은 방향에서는 가까운 곳이 늘 안쪽에 있어요. 바깥 고리는 넷째(가장 먼 곳)예요.</div>
+  <div class="pick">다시 보기: <select data-for="el-layout">
+    <option value="S">방안 S — 거리를 눌러 담기(제곱근, 채택)</option>
+    <option value="P">방안 P — 순서대로 고리 칸</option>
+    <option value="Q">방안 Q — 8방위 × 가까이·멀리 두 칸</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended chosen" data-id="S">
+      <h3>방안 S — 거리를 눌러 담기 <span class="badge adopted">채택</span> <span class="badge">추천</span></h3>
+      <div class="phone" data-layout="S"></div><p class="cap" data-stat="S"></p>
+      <p>판 위 거리 = 안쪽 여백 + 남은 폭 × √(거리 ÷ 가장 먼 곳 거리)예요. 가까운 곳은 넓게 벌리고 먼 곳은 좁게 눌러 담아요. 거리 순서와 "꽤 가깝다, 꽤 멀다"의 정도가 남아요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>+ 지도 보기 → 고리 2개(둥근 거리 <code>500M</code>·<code>1.5KM</code>) 위에 4곳 → 끌기 → 손을 떼면 그 자리 기준 4곳을 다시 놓음 → 큐브를 누르면 방문 화면.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>고리 사이 간격이 같지 않아요(안쪽 고리가 판 가운데보다 바깥에 있음). 축척 막대는 없애요</li><li>현위치 바로 옆 도서관은 받침 밖으로 밀려나 실제보다 멀어 보여요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>지도 느낌과 거리의 정도가 가장 많이 남아요. / 같은 방향에 몰리면 밀어내기가 생겨 위치가 조금 어긋나요.</p>
+      <span class="lbl">표준 근거</span><p>지도 시각화의 제곱근·로그 거리 축(어안 지도, 레이더형 주변 보기). 앱 지도 표준은 아님</p>
+      <p><b>추천 이유:</b> 방향은 정확하고, 순서와 거리의 정도를 셋 중 가장 많이 남기면서 겹침이 풀려요. 바닥 A의 거리 고리와도 맞아요.</p>
+    </article>
+    <article class="cand" data-id="P">
+      <h3>방안 P — 순서대로 고리 칸</h3>
+      <div class="phone" data-layout="P"></div><p class="cap" data-stat="P"></p>
+      <p>거리값은 버리고 <b>순서</b>만 써요. 첫째는 안쪽 여백, 넷째는 판 끝, 그 사이는 같은 간격이에요. 250M와 1.5KM 차이도, 1.4KM와 1.5KM 차이도 같은 간격으로 보여요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>+ 지도 보기 → 고리 2개(첫째·넷째 거리) 위에 4곳이 고르게 → 끌기 → 다시 놓음 → 큐브를 누르면 방문 화면.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>판이 늘 고르게 퍼져 보여요</li><li>"얼마나 먼지"는 이름표 숫자로만 알아요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>가장 깔끔하고 몰림이 적어요. / 거리의 정도가 사라져요(한 곳만 가깝고 셋이 멀어도 똑같이 보임).</p>
+      <span class="lbl">표준 근거</span><p>새 패턴(순위 동심원)</p>
+    </article>
+    <article class="cand" data-id="Q">
+      <h3>방안 Q — 8방위 × 가까이·멀리 두 칸</h3>
+      <div class="phone" data-layout="Q"></div><p class="cap" data-stat="Q"></p>
+      <p>방향을 8방위(북·북동·동…)로, 거리를 두 단계(가장 먼 곳의 60% 안이면 안쪽 고리, 아니면 바깥 고리)로 줄여 정해진 16칸에 놓아요. 칸이 차 있으면 옆 방위, 그다음 다른 고리로 가요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>+ 지도 보기 → 고리 2개(<code>~900M</code>·<code>~1.5KM</code>) 칸에 4곳 → 끌기 → 다시 놓음 → 큐브를 누르면 방문 화면.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>방향이 최대 22.5°(칸이 차면 45°)까지 어긋나요</li><li>"가깝다·멀다" 두 단계만 보여요</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>말씀하신 "방향과 멀다·가깝다만"에 가장 그대로 맞고, 배치가 늘 정돈돼요. / 방향·거리 정보가 셋 중 가장 많이 줄어요.</p>
+      <span class="lbl">표준 근거</span><p>새 패턴(나침반 칸). 주인공 보기의 이웃 모서리 배치(V3)와 비슷한 사고방식</p>
+    </article>
+  </div>
+</section>
+
+<section class="element" id="el-floor" data-chosen="A">
+  <h2>정할 것 1. 지도 모드 바닥 <span class="status">확인</span></h2>
+  <div class="flow">2026-11-26 사용자 "1 - a 적용". 아래 화면은 정할 것 2에서 고른 방안으로 그려요.</div>
+  <div class="pick">다시 보기: <select data-for="el-floor">
+    <option value="A">후보 A — 현위치 기준 거리 고리 + 북쪽 표시(채택)</option>
+    <option value="B">후보 B — 원근 바닥</option>
+    <option value="C">후보 C — 실제 지도를 흐리게 깔기</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand chosen" data-id="A">
+      <h3>후보 A — 현위치 기준 거리 고리 + 북쪽 표시 <span class="badge adopted">채택</span></h3>
+      <div class="phone" data-floor="A"></div>
+      <p>격자를 없애고 현위치 중심 점선 고리 2개(기울인 평면이라 타원)와 고리 끝 거리 글자, 오른쪽 위 <code>N</code>. 판 색은 주인공 보기보다 한 단계 밝게.</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>"내 주변"과 거리가 바로 읽혀요. / 길·건물 같은 실제 지형은 없어요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 원근 바닥</h3>
+      <div class="phone" data-floor="B"></div>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>땅 위에 선 건물 느낌. / 거리를 못 읽고, 큐브 크기와 원근이 어긋나요.</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 실제 지도를 흐리게 깔기</h3>
+      <div class="phone" data-floor="C"></div>
+      <span class="lbl">얻는 것 / 포기하는 것</span><p>가장 지도다워요. / 외부 지도 서비스·WebView가 필요하고, 추상 배치(정할 것 2)와는 함께 쓸 수 없어요(바닥 지도와 큐브 자리가 어긋남).</p>
+    </article>
+  </div>
+</section>
+
+<details class="ref">
+  <summary>참고 — 지금 화면 / 1차 규칙(실제 비례 + 겹치면 반경 줄이기)</summary>
+  <div class="compare">
+    <div><div class="phone" id="before"></div><p class="cap">지금: 5곳, 실제 비례, 겹쳐도 그대로</p></div>
+    <div><div class="phone" id="after"></div><p class="cap">1차 규칙: 최대 4곳, 겹치면 먼 곳부터 빼며 확대</p><ol class="steps" id="steps"></ol></div>
+  </div>
+</details>
+
+<section id="spec">
+  <h2>명세</h2>
+  <div class="wide"><table>
+    <tr><th>요소</th><th>채택안</th><th>차선</th><th>탈락안</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
+    <tr data-el="el-layout"><td>2. 배치(방향·거리 줄이기)</td><td class="adopted">S 거리를 눌러 담기(√)</td><td>P 순서대로 고리 칸</td><td>Q 8방위 × 가까이·멀리, 1차 규칙: 실제 비례 + 반경 줄이기(광주 1곳까지 줄어 방향 바꿈)</td><td>판 위 반지름(기울이기 전) = 안쪽 여백 40·390 기준 65 ~ 판 끝 min(판 폭/2 − 28, (판 높이/2 − 40)/0.6). S: 여백 + (끝 − 여백)×√(d/d최대) / P: 여백 + (끝 − 여백)×순서/(곳 수−1) / Q: 8방위 × 반지름 100·끝(390 기준), 거리 ≤ d최대×0.6이면 안쪽. 겹치면 3px씩 바깥으로, 끝에서도 겹치면 ±10·20·30° 틀기. 화면 좌표 = 가운데 + (r·sin θ, −r·cos θ·0.6)</td><td>+ 지도 보기 → 4곳 → 끌기 → 다시 놓기 → 큐브 → 방문</td><td><span class="st">확인</span></td></tr>
+    <tr data-el="el-floor"><td>1. 지도 모드 바닥</td><td>A 현위치 거리 고리 + N</td><td>C 실제 지도 흐리게</td><td>B 원근 바닥</td><td>격자 없앰, 판 색 <code>paper #EFF1F1</code>, 현위치 중심 타원 고리 2개(세로 = 가로×0.6), 1px 점선 <code>inkStrong</code> 0.35, 고리 동쪽 끝 거리 글자 10 계기판 목소리, 오른쪽 위 <code>N</code>. 고리 = 둥근 값만: 바깥 = d최대×1.05 이하 가장 큰 값, 안쪽 = 그 절반 이하 가장 큰 값(0.1·0.2·0.3·0.5·1·1.5·2·3·5·10·15·20·30·50km), 반지름은 S 식, 글자는 그 값만(<code>1.5KM</code>·<code>500M</code>). 고리 가운데 = 화면 가운데(끌면 같이 움직임)</td><td>+ 지도 보기 → 바닥</td><td><span class="st">확인</span></td></tr>
+    <tr><td>3. 최대 곳 수</td><td>4곳(<code>MAP_NEAREST_COUNT = 4</code>, <code>nearest=4</code>)</td><td>5곳(지금)</td><td>—</td><td>4</td><td>—</td><td><span class="st">확인</span></td></tr>
+    <tr><td>4. 왼쪽 아래 글자</td><td>축척 막대를 없애고 <code>가까운 4곳</code>만</td><td><code>가까운 4곳 · 가장 먼 곳 1.5KM</code></td><td>축척 막대(추상 배치에서는 맞지 않음)</td><td>10 계기판 목소리</td><td>—</td><td><span class="st">확인</span>("단순하게")</td></tr>
+    <tr><td>5. 끌기</td><td>끄는 동안 판 전체를 그대로 옮기고, 손을 떼면 끈 길이 ÷ 판 끝 반지름 × d최대만큼 옮긴 자리 기준으로 4곳을 다시 받아 같은 방식으로 놓음. 현위치 받침도 그 자리에서 본 방향으로, 판 위 반지름 = 판 끝 × √(거리/d최대)(안쪽 여백 없이 가운데에서 이어지게)로 놓고, d최대보다 멀면 받침을 그리지 않고 현위치 버튼</td><td>지도 모드에서 끌기 없앰</td><td>—</td><td>—</td><td>끌기 → 손 뗌 → 다시 놓기</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>6. 이름표</td><td>지금처럼 위 → 아래 → 오른쪽 → 왼쪽 빈 자리(겹침 판정에는 안 넣음). 거리 글자는 실제 직선거리</td><td>—</td><td>—</td><td>이름 12/500, 거리 10 계기판 목소리</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>7. 받침 크기</td><td>그대로 58×44</td><td>지도 모드만 작게</td><td>—</td><td>58×44</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+  </table></div>
+</section>
+</main>
+
+<script>
+// ---- 공통 값(앱 값 × 0.615) ----
+const W = 240, H = 262, S = 240 / 390, TILT = 0.6;
+const EX = 28 * S, EY = 40 * S, CW = Math.round(W * 0.11), CH = Math.round(CW * 28 / 26);
+const PW = 58 * S, PH = 44 * S, GAP = 2;
+const CX = W / 2, CY = H / 2;
+const RMAX = Math.min(W / 2 - EX, (H / 2 - EY) / TILT);
+const R0 = 65 * S, RN = 100 * S;
+const RADII_NOW = [0.2,0.3,0.5,0.75,1,1.5,2,3,5,7.5,10,15,20,30,50];
+const RADII_NEW = [0.1,0.15, ...RADII_NOW];
+const BAR = [0.05,0.1,0.2,0.25,0.5,1,2,2.5,5,10,20,25,50];
+const nice = (far, list) => list.find(r => r >= far) ?? far;
+const ppkOf = r => Math.max(1, Math.min((W/2 - EX) / r, (H/2 - EY) / (r * TILT)));
+const scr = (p, ppk) => ({ x: CX + p.x * ppk, y: CY - p.y * ppk * TILT });
+const polar = (r, deg) => ({ x: CX + r * Math.sin(deg * Math.PI / 180), y: CY - r * Math.cos(deg * Math.PI / 180) * TILT });
+const body = q => [q.x - CW/2, q.y - CH*0.75, q.x + CW/2, q.y + CH*0.25];
+const plinth = () => [CX - PW/2, CY - PH/2, CX + PW/2, CY + PH/2];
+const hit = (a, b) => a[0] < b[2] + GAP && b[0] < a[2] + GAP && a[1] < b[3] + GAP && b[1] < a[3] + GAP;
+const area = (a, b) => Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0])) * Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1]));
+const dist = p => Math.hypot(p.x, p.y);
+const bearing = p => (Math.atan2(p.x, p.y) * 180 / Math.PI + 360) % 360;
+const gauge = km => km < 1 ? `${Math.round(km*1000)}M` : (km < 10 && km % 1 ? `${km.toFixed(1)}KM` : `${Math.round(km)}KM`);
+const nearest4 = all => [...all].sort((a, b) => dist(a.at) - dist(b.at)).slice(0, 4);
+
+// ---- 정할 것 2: 추상 배치 ----
+/** 후보 자리(r, 각도) 목록 중 앞서 놓은 것과 안 겹치는 첫 자리. 없으면 겹친 넓이가 가장 작은 자리 */
+function firstFree(cands, taken) {
+  let best = null;
+  for (const c of cands) {
+    const b = body(polar(c.r, c.deg));
+    const cost = taken.reduce((s, t) => s + (hit(b, t) ? area(b, t) + 1 : 0), 0);
+    if (cost === 0) return { ...c, b };
+    if (!best || cost < best.cost) best = { ...c, b, cost };
+  }
+  return best;
+}
+/** S·P: 시작 반지름에서 같은 방향으로 바깥 밀기 → 끝에서도 겹치면 ±10·20·30° */
+function radial(items, startOf) {
+  const taken = [plinth()];
+  return items.map((it, i) => {
+    const deg0 = bearing(it.at), r0 = Math.min(startOf(it, i), RMAX), rs = [];
+    for (let r = r0; r < RMAX; r += 3) rs.push(r);
+    rs.push(RMAX);
+    const cands = [];
+    for (const off of [0, 10, -10, 20, -20, 30, -30]) for (const r of rs) cands.push({ r, deg: deg0 + off, off, pushed: r > r0 + 0.5 });
+    const c = firstFree(cands, taken);
+    taken.push(c.b);
+    return { it, q: polar(c.r, c.deg), pushed: c.pushed, off: c.off };
+  });
+}
+const RING_KM = [0.1,0.2,0.3,0.5,1,1.5,2,3,5,10,15,20,30,50];
+/** 고리: 바깥 = 가장 먼 곳(5% 여유) 이하 가장 큰 둥근 값, 안쪽 = 그 절반 이하 가장 큰 둥근 값 */
+function roundRings(dmax) {
+  const outer = [...RING_KM].reverse().find(k => k <= dmax * 1.05);
+  if (outer === undefined) return [];
+  const inner = [...RING_KM].reverse().find(k => k <= outer / 2);
+  return inner === undefined ? [outer] : [outer, inner];
+}
+function layoutS(all) {
+  const items = nearest4(all), dmax = dist(items[items.length - 1].at);
+  const f = d => R0 + (RMAX - R0) * Math.sqrt(Math.min(1, d / dmax));
+  return { placed: radial(items, it => f(dist(it.at))), rings: roundRings(dmax).map(km => ({ r: f(Math.min(km, dmax)), label: gauge(km) })), dmax, n: items.length };
+}
+function layoutP(all) {
+  const items = nearest4(all), n = items.length, dmax = dist(items[n - 1].at);
+  const f = i => n === 1 ? R0 : R0 + (RMAX - R0) * i / (n - 1);
+  return { placed: radial(items, (it, i) => f(i)), rings: [{ r: R0, label: gauge(dist(items[0].at)) }, { r: RMAX, label: gauge(dmax) }], dmax, n };
+}
+function layoutQ(all) {
+  const items = nearest4(all), dmax = dist(items[items.length - 1].at), taken = [plinth()], used = new Set();
+  const placed = items.map(it => {
+    const deg = bearing(it.at), a = Math.round(deg / 45) * 45 % 360, sign = ((deg - a + 540) % 360 - 180) >= 0 ? 1 : -1;
+    const band = dist(it.at) <= dmax * 0.6 ? 0 : 1, rad = [RN, RMAX];
+    const order = [[band, 0], [band, 45 * sign], [band, -45 * sign], [1 - band, 0], [1 - band, 45 * sign], [1 - band, -45 * sign],
+                   [band, 90 * sign], [band, -90 * sign], [1 - band, 90 * sign], [1 - band, -90 * sign]];
+    const cands = order.map(([b, d]) => ({ r: rad[b], deg: (a + d + 360) % 360, off: Math.round(((a + d - deg + 540) % 360) - 180), key: `${b}:${(a + d + 360) % 360}` }))
+      .filter(c => !used.has(c.key));
+    const c = firstFree(cands, taken);
+    taken.push(c.b); used.add(c.key);
+    return { it, q: polar(c.r, c.deg), pushed: false, off: c.off };
+  });
+  return { placed, rings: [{ r: RN, label: `~${gauge(dmax * 0.6)}` }, { r: RMAX, label: `~${gauge(dmax)}` }], dmax, n: items.length };
+}
+const LAYOUTS = { S: layoutS, P: layoutP, Q: layoutQ };
+const absView = L => ({ placed: L.placed, rings: L.rings, bottom: `가까운 ${L.n}곳` });
+function stat(L, kind) {
+  const pushed = L.placed.filter(p => p.pushed).length;
+  const turned = L.placed.filter(p => Math.abs(p.off) >= 1);
+  const maxOff = Math.max(0, ...turned.map(p => Math.abs(p.off)));
+  return kind === "Q"
+    ? `방향 어긋남 최대 ${maxOff}° · ${L.n}곳 다 보임`
+    : `밀어낸 곳 ${pushed} · 방향 튼 곳 ${turned.length}${turned.length ? `(최대 ${maxOff}°)` : ""} · ${L.n}곳 다 보임`;
+}
+
+// ---- 참고: 지금 / 1차 규칙(실제 비례) ----
+function clashes(items, ppk) {
+  const rects = [plinth(), ...items.map(it => body(scr(it.at, ppk)))];
+  for (let i = 0; i < rects.length; i++) for (let j = i + 1; j < rects.length; j++) if (hit(rects[i], rects[j])) return true;
+  return false;
+}
+function fitView(all, maxN) {
+  const sorted = [...all].sort((a, b) => dist(a.at) - dist(b.at)), log = [];
+  for (let k = Math.min(sorted.length, maxN); k >= 1; k--) {
+    const items = sorted.slice(0, k), radius = nice(dist(items[k-1].at), RADII_NEW), ppk = ppkOf(radius), bad = clashes(items, ppk);
+    log.push({ k, radius, bad });
+    if (!bad || k === 1) return { items, radius, ppk, log };
+  }
+}
+function propView(items, radius, ppk) {
+  const bar = [...BAR].reverse().find(k => k * ppk <= 70 * S) ?? BAR[0];
+  return { placed: items.map(it => ({ it, q: scr(it.at, ppk) })), rings: [{ r: radius * 0.5 * ppk, label: gauge(radius / 2) }, { r: radius * ppk, label: gauge(radius) }],
+           bar: { km: bar, px: bar * ppk }, bottom: `반경 ${gauge(radius)} · ${items.length}곳` };
+}
+function nowView(all) {
+  const items = [...all].sort((a, b) => dist(a.at) - dist(b.at)).slice(0, 5);
+  const radius = nice(Math.max(...items.map(it => dist(it.at))), RADII_NOW);
+  return propView(items, radius, ppkOf(radius));
+}
+
+// ---- 예시 동네(km, 동 +x, 북 +y) ----
+const SCEN = {
+  gj: [["전남광주통합특별시교육청중앙도서관",0.12,0.22,0],["광주광역시립산수도서관",0.30,0.78,1],["계림꿈나무도서관",-0.55,1.38,2],["광주광역시립사직도서관",-0.95,-1.12,3],["학생교육문화회관(예시)",-1.50,0.05,4]],
+  city: [["정독도서관",0.38,0.25,0],["종로도서관",-0.45,0.30,1],["삼청공원숲속도서관",0.10,0.90,2],["서울도서관",-0.20,-1.10,3],["남산도서관",0.10,-1.90,4]],
+  rural: [["읍내도서관",1.2,0.8,0],["면작은도서관",-2.5,1.0,1],["군립도서관",0.5,-3.1,2],["마을작은도서관",3.8,-0.6,3],["바다작은도서관",-4.2,-3.0,4]],
+};
+const LIDS = ["#E9C970","#8AA3BF","#D98B7A","#7E8C7D","#C88A56"];
+const toItems = s => SCEN[s].map(([name, x, y, c]) => ({ name, at: { x, y }, lid: LIDS[c] }));
+
+// ---- 그리기 ----
+const NS = "http://www.w3.org/2000/svg";
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); parent && parent.appendChild(e); return e; }
+function text(parent, x, y, s, size, fill, opts = {}) {
+  const t = el("text", { x, y, "font-size": size, fill, "font-weight": 500, "text-anchor": opts.anchor || "start", "letter-spacing": opts.ls || 0, "paint-order": "stroke", stroke: opts.halo || "none", "stroke-width": opts.halo ? 3 : 0, "stroke-linejoin": "round" }, parent);
+  t.textContent = s; return t;
+}
+function north(svg) { text(svg, W - 12, 14, "N", 9, "#2E333F", { anchor: "middle" }); el("path", { d: `M${W-12} 17 l-3 6 h6 z`, fill: "#2E333F" }, svg); }
+function floor(svg, kind, view) {
+  if (kind === "now") {
+    el("rect", { width: W, height: H, fill: "#E4E4E1" }, svg);
+    const sx = 96 * S, sy = sx * TILT;
+    for (let v = CX % sx; v <= W; v += sx) el("line", { x1: v, y1: 0, x2: v, y2: H, stroke: "#C9C9C5" }, svg);
+    for (let v = CY % sy; v <= H; v += sy) el("line", { x1: 0, y1: v, x2: W, y2: v, stroke: "#C9C9C5" }, svg);
+    return "#E4E4E1";
+  }
+  if (kind === "A") {
+    el("rect", { width: W, height: H, fill: "#EFF1F1" }, svg);
+    for (const g of view.rings) {
+      el("ellipse", { cx: CX, cy: CY, rx: g.r, ry: g.r * TILT, fill: "none", stroke: "#2E333F", "stroke-opacity": 0.35, "stroke-dasharray": "3 3" }, svg);
+      text(svg, CX + g.r + 3, CY + 3, g.label, 6.5, "#71716F", { ls: 0.8, halo: "#EFF1F1" });
+    }
+    north(svg); return "#EFF1F1";
+  }
+  if (kind === "B") {
+    el("rect", { width: W, height: H, fill: "#E9EAE8" }, svg);
+    const vy = -H * 0.8;
+    for (let i = -10; i <= 10; i++) el("line", { x1: CX, y1: vy, x2: CX + i * 34, y2: H, stroke: "#C2C2BD" }, svg);
+    for (let i = 0; i < 14; i++) { const t = i / 13, y = H - 1.8 * H * (1 - 1 / (1 + t * 1.6)); if (y > 0) el("line", { x1: 0, y1: y, x2: W, y2: y, stroke: "#C2C2BD" }, svg); }
+    const g = el("linearGradient", { id: "fadeB", x1: 0, y1: 0, x2: 0, y2: 1 }, el("defs", {}, svg));
+    el("stop", { offset: 0, "stop-color": "#E9EAE8", "stop-opacity": 1 }, g); el("stop", { offset: 0.35, "stop-color": "#E9EAE8", "stop-opacity": 0 }, g);
+    el("rect", { width: W, height: H, fill: "url(#fadeB)" }, svg);
+    north(svg); return "#E9EAE8";
+  }
+  el("rect", { width: W, height: H, fill: "#EDEDEA" }, svg);
+  el("path", { d: `M-10 ${H*0.72} C 60 ${H*0.62}, 140 ${H*0.82}, 260 ${H*0.68}`, stroke: "#CFD6DA", "stroke-width": 16, fill: "none" }, svg);
+  el("rect", { x: 150, y: 20, width: 60, height: 40, rx: 4, fill: "#DDE3D8" }, svg);
+  for (const [x1,y1,x2,y2,w] of [[0,70,240,95,6],[0,180,240,150,4],[60,0,85,262,6],[170,0,150,262,4],[0,120,240,128,2],[110,0,118,262,2]])
+    el("line", { x1, y1, x2, y2, stroke: "#FFFFFF", "stroke-width": w }, svg);
+  text(svg, 8, 16, "예시 그림 — 실제 지도 타일 자리", 7, "#71716F");
+  north(svg); return "#EDEDEA";
+}
+function placeLabel(b, w, h, taken) {
+  const [l, t, r, bt] = b, mid = (t + bt) / 2;
+  const opts = [[l, t - h - 2, l + w, t - 2, "start"], [l, bt + 2, l + w, bt + h + 2, "start"], [r + 4, mid - h/2, r + 4 + w, mid + h/2, "start"], [l - 4 - w, mid - h/2, l - 4, mid + h/2, "end"]];
+  const cost = o => taken.reduce((s, q) => s + area(o, q), 0);
+  const pick = opts.find(o => cost(o) === 0) ?? opts.reduce((a, o) => cost(o) < cost(a) ? o : a);
+  taken.push(pick); return pick;
+}
+function draw(box, kind, view) {
+  box.innerHTML = "";
+  const svg = el("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}` }, box);
+  const halo = floor(svg, kind, view);
+  const placed = view.placed.map(p => ({ ...p, b: body(p.q) }));
+  const taken = [plinth(), ...placed.map(p => p.b)];
+  for (const { it, b } of placed) {
+    const g = el("g", { transform: `translate(${b[0]},${b[1]}) scale(${CW/26},${CH/28})` }, svg);
+    const st = { stroke: "#2E333F", "stroke-width": 0.7, "stroke-linejoin": "round" };
+    el("polygon", { points: "13,1 25,7 13,13 1,7", fill: it.lid, ...st }, g);
+    el("polygon", { points: "1,7 13,13 13,27 1,21", fill: "#D6D6D2", ...st }, g);
+    el("polygon", { points: "25,7 13,13 13,27 25,21", fill: "#D0CEC8", ...st }, g);
+    const L = placeLabel(b, Math.max(it.name.length * 6.6, 26), 18, taken), x = L[4] === "end" ? L[2] : L[0];
+    text(svg, x, L[1] + 8, it.name, 7.2, "#1D1D1F", { anchor: L[4], halo });
+    text(svg, x, L[1] + 16, gauge(dist(it.at)), 5.8, "#71716F", { anchor: L[4], ls: 0.8, halo });
+  }
+  const p = plinth();
+  el("rect", { x: p[0] + 2, y: p[1] + 2, width: PW, height: PH, rx: 2, fill: "#BFBCB5" }, svg);
+  el("rect", { x: p[0], y: p[1], width: PW, height: PH, rx: 2, fill: "#2E333F" }, svg);
+  text(svg, CX, CY - 1, "+", 9, "#EFF1F1", { anchor: "middle" });
+  text(svg, CX, CY + 8, "현위치", 6, "#EFF1F1", { anchor: "middle" });
+  if (view.bar) {
+    el("path", { d: `M8 ${H-22} v3 h${view.bar.px} v-3`, stroke: "#2E333F", fill: "none" }, svg);
+    text(svg, 8, H - 12, gauge(view.bar.km), 6, "#71716F", { ls: 0.8, halo });
+  }
+  text(svg, 8, H - 4, view.bottom, 6, "#71716F", { ls: 0.4, halo });
+}
+
+let scen = "gj";
+function render() {
+  const items = toItems(scen);
+  const chosen = document.getElementById("el-layout").dataset.chosen || "S";
+  const lay = {};
+  for (const k of Object.keys(LAYOUTS)) {
+    lay[k] = LAYOUTS[k](items);
+    draw(document.querySelector(`[data-layout=${k}]`), "A", absView(lay[k]));
+    document.querySelector(`[data-stat=${k}]`).textContent = stat(lay[k], k);
+  }
+  document.querySelectorAll("[data-floor]").forEach(b => draw(b, b.dataset.floor, absView(lay[chosen])));
+  draw(document.getElementById("before"), "now", nowView(items));
+  const f = fitView(items, 4);
+  draw(document.getElementById("after"), "A", propView(f.items, f.radius, f.ppk));
+  document.getElementById("steps").innerHTML = f.log.map(s =>
+    `<li class="${s.bad ? "" : "ok"}">${s.k}곳 · 반경 ${gauge(s.radius)} → ${s.bad ? (s.k === 1 ? "겹치지만 1곳이라 그대로" : "겹침, 가장 먼 곳 뺌") : "겹침 없음, 이걸로"}</li>`).join("");
+}
+document.querySelectorAll("#scen button").forEach(b => b.onclick = () => {
+  scen = b.dataset.s; document.querySelectorAll("#scen button").forEach(x => x.setAttribute("aria-pressed", x === b)); render();
+});
+for (const id of ["el-layout", "el-floor"]) {
+  const sel = document.querySelector(`select[data-for=${id}]`), sec = document.getElementById(id);
+  sel.onchange = () => { sec.dataset.chosen = sel.value; sec.querySelectorAll(".cand").forEach(c => c.classList.toggle("chosen", c.dataset.id === sel.value)); render(); };
+}
+document.querySelector("select[data-for=el-layout]").value = "S";
+render();
+</script>
+</body>
+</html>

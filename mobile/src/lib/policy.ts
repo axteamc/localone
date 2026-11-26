@@ -11,7 +11,7 @@ export const NEARBY_DEFAULT_RADIUS_KM = 3;
 /** 홈 큐브(주인공 보기) 반경 — 설정과 상관없이 늘 2km(C-96) */
 export const HOME_RADIUS_KM = 2;
 /** 홈 지도 모드: 화면 가운데에서 가까운 몇 곳(C-96) */
-export const MAP_NEAREST_COUNT = 5;
+export const MAP_NEAREST_COUNT = 4;
 // core K18 / official data4library manual v20260620 p.63.
 export const DEFAULT_START = {
   lat: 37.5665, lng: 126.9780, dtlRegion: "11020", label: "서울 중구",
