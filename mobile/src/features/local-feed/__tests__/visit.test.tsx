@@ -13,8 +13,7 @@ import type { LibraryDetail, Today } from "../../../lib/publicApi";
 import * as visits from "../../../lib/visits";
 import type { VisitRecord, VisitResult } from "../../../lib/visits";
 import { formatDistance, parseDistanceM } from "../VisitHeader";
-import { VISIT_TEXT, VisitScreen } from "../VisitScreen";
-import { SHELF_HEIGHT } from "../Bookshelf";
+import { FAB_BOTTOM, VISIT_TEXT, VisitScreen } from "../VisitScreen";
 import { COMPOSE_TEXT } from "../ComposeChooser";
 import { pickVisitMent } from "../visitMent";
 
@@ -187,7 +186,7 @@ describe("들어올 때", () => {
     });
     expect(screen.getAllByTestId("visit-ment")).toHaveLength(1);
     const style = Object.assign({}, ...[screen.getByTestId("visit-ment").props.style].flat());
-    expect(style).toEqual(expect.objectContaining({ position: "absolute", bottom: SHELF_HEIGHT + 12 + 52 + 24, alignSelf: "center" }));
+    expect(style).toEqual(expect.objectContaining({ position: "absolute", bottom: FAB_BOTTOM + 52 + 16, alignSelf: "center" }));
     expect(screen.getByTestId("visit-ment").props.pointerEvents).toBe("none");
     await act(async () => {
       jest.advanceTimersByTime(2500);
@@ -610,7 +609,7 @@ describe("L4 디자인 반영", () => {
         width: 52,
         height: 52,
         right: 16,
-        bottom: SHELF_HEIGHT + 12, // VISIT-3 V3-O3: 책장 바로 위 오른쪽(이전 LOCAL-1 F13 아래 24)
+        bottom: 24, // 2026-11-25 mac: 서가가 피드 안으로 들어가 화면 오른쪽 아래 고정(이전: 책장 위 12)
       }),
     );
     expect(fabStyle.backgroundColor).not.toBe(theme.colors.fill1);

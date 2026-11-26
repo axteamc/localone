@@ -6,7 +6,7 @@ import { resolvePostColor, type Theme } from "../../theme";
 import { lookKit, useLook } from "./useLibraryLook";
 import type { FeedPost } from "./api";
 import { TemplateCard } from "./templates";
-import { overlayColorOf, overlayPosOf, PostImageFill } from "./postLook";
+import { COVER_MAT, overlayColorOf, overlayPosOf, PostImageFill } from "./postLook";
 
 
 /** 너비 대비 높이. 응답에 사진 크기가 없어 고정 비율로 엇갈리게 쌓는다(세부 명세 0절 기본값) */
@@ -29,7 +29,7 @@ export function PostCard({ post, onPress, onMenu, width, showLibraryName }: Post
   const [hover, setHover] = useState(false);
   const template = post.image_kind === "template" ? post.image_value : null;
   const isColor = post.image_kind === "color";
-  const bg = isColor ? resolvePostColor(post.image_color, C) : C.surface3;
+  const bg = isColor ? resolvePostColor(post.image_color, C) : COVER_MAT; // 표지 여백은 흰색(2026-11-26)
   // LOCAL-1b P1b-3·P1b-4·P1b-6: 저장된 자리·색(null = 옛 모양: 사진·표지 아래, 자동)
   const ink = overlayColorOf(post.image_kind, post.image_color, post.overlay_tone, C);
   const place = overlayPosOf(post.image_kind, post.overlay_pos);

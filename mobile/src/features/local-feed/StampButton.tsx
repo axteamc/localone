@@ -28,7 +28,7 @@ import { ModalFrame } from "../../theme/WebFrame";
 const PRIVATE_NOTICE_MS = 5000; // V4-O1 안내 5초
 
 export const STAMP_TEXT = {
-  button: "다녀왔어요",
+  button: "방문", // 2026-11-26: "다녀왔어요" → "방문"
   privateNotice: "나만 보기로 남겼어요",
   toPublic: "피드에도 남기기",
   savedPublic: "피드에 남겼어요",
@@ -386,19 +386,17 @@ const makeStyles = (theme: Theme) => {
   const { C, T, ACT } = lookKit(theme);
   return StyleSheet.create({
   wrap: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", minHeight: 44, gap: 2, flexShrink: 1 },
-  // V4-1: 무광 판 + 아래 받침, 완전한 필(9999)
+  // V4-1: 무광 판, 완전한 필(9999). 2026-11-26 아래 검은 받침 제거·글자 2자로 줄어 폭·높이도 줄임(16→12, 40→36)
   button: {
     backgroundColor: C.paper,
     borderWidth: 1,
     borderColor: C.surface3,
-    borderBottomWidth: 2,
-    borderBottomColor: C.inkStrong,
     borderRadius: theme.radii.control,
-    paddingHorizontal: 16,
-    minHeight: 40,
+    paddingHorizontal: 12,
+    minHeight: 36,
     justifyContent: "center",
   },
-  buttonPressed: { transform: [{ translateY: 1 }], borderBottomWidth: 1 },
+  buttonPressed: { transform: [{ translateY: 1 }] },
   buttonText: { fontSize: 14, fontWeight: "500", color: C.text },
   label: { fontSize: 12, color: C.inkMuted, flexShrink: 1 },
   pullDown: { flexDirection: "row", alignItems: "center", gap: 4, minHeight: 44, flexShrink: 1 },

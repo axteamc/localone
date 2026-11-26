@@ -50,7 +50,7 @@ const PLINTH_W = 58;
 const PLINTH_H = 44;
 /** 재기 전(시험·첫 그리기) 판 크기: 390×844 웹에서 하단 창 위로 보이는 판 */
 const FALLBACK_W = 390;
-const FALLBACK_H = 325;
+const FALLBACK_H = 400; // 창이 28%로 줄어 판이 커짐(2026-11-25 mac, 이전 325)
 
 export type FacadeHomeProps = {
   center: LatLng;

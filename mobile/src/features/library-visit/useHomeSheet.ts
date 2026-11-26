@@ -7,10 +7,10 @@ export type SheetSnap = "half" | "full" | "peek";
 
 /** 내렸을 때 남는 높이(제목 한 줄) */
 export const PEEK_HEIGHT = 56;
-/** 평소 높이: 기본은 지도와 창이 반반. 작은 화면에서는 아래 최소 높이를 우선한다. */
-export const HALF_RATIO = 0.5;
-/** 큰 표지·두 줄 제목과 소식 진입부의 목표 높이. 지도 블록 자리도 함께 보장한다. */
-const MIN_HALF_HEIGHT = 320;
+/** 평소 높이: 위 72%는 큐브 판, 아래 28%는 창(2026-11-25 mac, 이전 반반). 작은 화면에서는 아래 최소 높이를 우선한다. */
+export const HALF_RATIO = 0.72;
+/** 창 평소 높이의 최소(이전 320). 지도 블록 자리도 함께 보장한다. */
+const MIN_HALF_HEIGHT = 156;
 const MIN_MAP_HEIGHT = 220;
 /** 손을 뗄 때 이 속도(px/ms) 이상이면 그 방향 다음 자리로 */
 export const FLING_VELOCITY = 0.5;
