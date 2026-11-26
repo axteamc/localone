@@ -128,6 +128,25 @@ describe("VISIT-1b-P1 home sheet", () => {
     spy.mockRestore();
   });
 
+  test("app does not grab the touch on press, so the list keeps scrolling from any spot (2026-11-26 device)", async () => {
+    let config: PanResponderCallbacks = {};
+    const create = PanResponder.create.bind(PanResponder);
+    const spy = jest.spyOn(PanResponder, "create").mockImplementation((c) => {
+      config = c;
+      return create(c);
+    });
+    const AREA = 700;
+    await renderHook(() => useHomeSheet(AREA, () => false));
+    const e = {} as never;
+    const g = (dx: number, dy: number) => ({ dx, dy, vx: 0, vy: 0 }) as PanResponderGestureState;
+    // 시험 환경은 iOS: 누르는 순간에는 창이 받지 않는다(받으면 iOS가 안쪽 스크롤을 끈다)
+    expect(config.onStartShouldSetPanResponder!(e, g(0, 0))).toBe(false);
+    // 반쯤: 세로로 움직이면 창이 받는다
+    expect(config.onMoveShouldSetPanResponderCapture!(e, g(0, 20))).toBe(true);
+    expect(config.onMoveShouldSetPanResponderCapture!(e, g(20, 5))).toBe(false); // 가로는 책 줄에 맡긴다
+    spy.mockRestore();
+  });
+
   test("popular asks national (YES24) regardless of frequent or nearest library (P2, Y-4 A안)", async () => {
     await openHome();
     await popular().findByText("소년이 온다");

@@ -152,6 +152,37 @@ describe("숫자 줄 (R2-O2, 예외 #1·#2)", () => {
     expect(screen.getByTestId("shelf-book-1")).toBeTruthy();
   });
 
+  test("touch: long press lifts the book, releasing in place opens the menu (2026-11-26 device)", async () => {
+    await render(<ReadingLogScreen />);
+    const book = await screen.findByTestId("shelf-book-1");
+    const ev = { nativeEvent: { pageX: 40, pageY: 60 } };
+    expect(screen.queryByText(TEXT.edit)).toBeNull();
+    await fireEvent(book, "longPress", ev);
+    expect(screen.getByTestId("shelf").props.scrollEnabled).toBe(false); // 든 동안 스크롤 멈춤
+    await fireEvent(book, "pressOut", ev);
+    expect(await screen.findByText(TEXT.edit)).toBeTruthy();
+    expect(screen.getByTestId("shelf").props.scrollEnabled).toBe(true);
+    // 터치 방식에서는 데스크톱용 ⋯를 그리지 않는다
+    expect(screen.queryByTestId("shelf-more-1")).toBeNull();
+  });
+
+  test("touch: moving the lifted book does not open the menu", async () => {
+    await render(<ReadingLogScreen />);
+    const book = await screen.findByTestId("shelf-book-1");
+    const tile = screen.getByTestId("shelf-tile-1");
+    await fireEvent(book, "longPress", { nativeEvent: { pageX: 40, pageY: 60 } });
+    // 들고 움직임: 책 칸이 터치를 넘겨받는다(옮기기)
+    await fireEvent(tile, "responderGrant", { nativeEvent: { pageX: 90, pageY: 60 } });
+    await fireEvent(tile, "responderMove", { nativeEvent: { pageX: 120, pageY: 60 } });
+    await fireEvent(book, "pressOut", { nativeEvent: { pageX: 120, pageY: 60 } });
+    await fireEvent(tile, "responderRelease", { nativeEvent: { pageX: 120, pageY: 60 } });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+    expect(screen.queryByText(TEXT.edit)).toBeNull();
+    expect(screen.getByTestId("shelf").props.scrollEnabled).toBe(true);
+  });
+
   test("stats retry leaves a failed shelf request alone", async () => {
     fetchReadingStats.mockRejectedValueOnce(new Error("stats unavailable"));
     fetchReadingLogs.mockRejectedValueOnce(new Error("shelf unavailable"));
