@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="명세" content="../진행_홈_지도모드.md">
+<title>홈 지도 모드(현위치 전체 보기) 시안</title>
+<!--
+  홈 큐브 "전체 보기"(현위치 + 기점 누르기)를 지도처럼 바꾸는 시안. 주인공 모드(확대)는 그대로.
+  2026-11-26 사용자 결정: 주인공 모드 그대로 / 전체 보기만 지도 모드 / A 등각(기울인) 평면 + 처음 시안의 자 / 작은 큐브·글자 빼고 위에 이름 /
+  빈 판 끌기 = 지도 이동(전체 보기에서만) / 자유 이동 + 다시 받기 / 반경 안 전부 / 홈 2km 기본, 검색 기본 3km, 설정 2·3·5 / 더 넓게 2→5.
+  정할 것: 거리 표시(자) 모양 하나. 나머지는 명세 패널의 기본값(Claude).
+  예시 데이터: 광주 동구 기준(앞 3곳은 처음 시안과 같은 이름·방위·거리, 뒤 2곳은 예시 이름).
+-->
+<style>
+  :root {
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+    --cream:#EFEFE7; --paper:#EFF1F1; --ink-strong:#2E333F; --text:#1D1D1F; --sub:#71716F;
+    --me-dot:#3B7BDB; --on-dark-sub:#CFD2D8;
+    --seam:#C9C9C5; --board:#E4E4E1; --cube-left:#D6D6D2; --cube-right:#C4C4BF;
+    --c1:#E9C970; --c2:#7E8C7D; --c3:#C88A56; --c4:#8AA3BF; --c5:#D98B7A;
+    --r-card:18px; --r-pill:18px; --r-block:3px;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; line-height:1.5; }
+  header.page, main { max-width:1280px; margin:0 auto; padding:0 16px; }
+  header.page { padding-top:20px; }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:17px; margin:0 0 4px; } h3 { font-size:15px; margin:0 0 8px; }
+  .how, .flow, .decided { background:var(--cream); border-radius:var(--r-card); padding:12px 16px; margin:10px 0 0; }
+  .decided { border-left:5px solid var(--ink-strong); }
+  .decided ul { margin:4px 0; padding-left:18px; } .decided li { font-size:14px; }
+  section.element { margin-top:32px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:var(--r-pill); background:var(--surface2); margin-left:6px; font-weight:400; }
+  .pick { margin:8px 0 0; font-size:14px; }
+  .pick select { font:inherit; padding:4px 8px; border-radius:10px; border:1px solid var(--surface3); background:var(--paper); }
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(270px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-card); padding:14px; border:3px solid transparent; }
+  .cand.recommended { border-color:var(--fill1); } .cand.chosen { border-color:var(--ink-strong); }
+  .badge { display:inline-block; font-size:12px; font-weight:700; padding:1px 9px; border-radius:var(--r-pill); background:var(--fill1); margin-left:6px; }
+  .badge.adopted { background:var(--ink-strong); color:var(--paper); }
+  .cand p, .cand li { font-size:13.5px; margin:6px 0; } .cand ul { padding-left:18px; margin:4px 0; }
+  .lbl { font-weight:700; font-size:12.5px; color:var(--sub); margin-top:10px; display:block; }
+  /* ---- 휴대폰 ---- */
+  .phone { width:240px; height:430px; margin:0 auto 10px; background:var(--bg); border-radius:26px; border:5px solid var(--ink-strong); position:relative; overflow:hidden; font-size:11px; }
+  .scr { position:absolute; inset:0; background:var(--paper); overflow:hidden; }
+  .search { position:absolute; left:8px; right:8px; top:10px; height:30px; border-radius:var(--r-block); background:var(--paper); border:1px solid var(--seam); display:flex; align-items:center; padding:0 10px; color:var(--sub); font-size:10px; z-index:6; }
+  .board { position:absolute; left:0; right:0; top:46px; height:262px; background:var(--board); overflow:hidden; cursor:grab; touch-action:none; user-select:none; }
+  .board.dragging { cursor:grabbing; }
+  .grid { position:absolute; inset:-400px; background:
+      repeating-linear-gradient(0deg, var(--seam) 0 1px, transparent 1px 29px),
+      repeating-linear-gradient(90deg, var(--seam) 0 1px, transparent 1px 48px); opacity:.55; }
+  .layer { position:absolute; left:0; top:0; width:100%; height:100%; }
+  .north { position:absolute; right:8px; top:8px; font-size:9px; letter-spacing:.12em; color:var(--sub); z-index:5; text-align:center; line-height:1; }
+  .north b { display:block; font-size:12px; color:var(--ink-strong); }
+  /* 작은 큐브(글자 없음) + 위 이름표 */
+  .cube { position:absolute; width:26px; height:28px; margin-left:-13px; margin-top:-20px; cursor:pointer; background:none; border:0; padding:0; z-index:5; }
+  .cube svg { display:block; overflow:visible; }
+  .name { position:absolute; left:50%; bottom:30px; transform:translateX(-50%); white-space:nowrap; font-size:9px; font-weight:600; background:var(--paper); border:1px solid var(--seam); border-radius:var(--r-block); padding:0 4px; line-height:14px; color:var(--text); }
+  .name.below { bottom:auto; top:30px; }
+  .name.right { left:28px; bottom:auto; top:2px; transform:none; }
+  .name.left { left:auto; right:28px; bottom:auto; top:2px; transform:none; }
+  .lead { position:absolute; height:0; border-top:1px dashed var(--ink-strong); opacity:.55; transform-origin:0 0; z-index:4; pointer-events:none; }
+  .truedot { position:absolute; width:5px; height:5px; margin:-2.5px 0 0 -2.5px; border-radius:50%; background:var(--ink-strong); opacity:.6; z-index:4; pointer-events:none; }
+  .edge { position:absolute; z-index:6; display:flex; align-items:center; gap:3px; font-size:9px; font-weight:600; background:var(--paper); border:1px solid var(--ink-strong); border-radius:var(--r-block); padding:1px 5px; white-space:nowrap; transform:translate(-50%,-50%); pointer-events:none; }
+  .edge small { font-weight:400; color:var(--sub); }
+  .name small { font-weight:400; color:var(--sub); margin-left:3px; }
+  .plinth { position:absolute; width:34px; height:24px; margin-left:-17px; margin-top:-12px; background:var(--ink-strong); color:var(--paper); border-radius:var(--r-block); display:flex; flex-direction:column; align-items:center; justify-content:center; font-size:7px; line-height:1.05; box-shadow:2px 3px 0 var(--surface3); z-index:6; }
+  .plinth b { font-size:12px; font-weight:300; }
+  /* A: 처음 시안의 자(룰러) — 화면 가운데 가로 띠 */
+  .ruler { position:absolute; left:0; right:0; height:22px; background:var(--paper); border-top:1px solid var(--surface3); border-bottom:1px solid var(--surface3); z-index:2; opacity:.94; pointer-events:none; }
+  .tk { position:absolute; top:0; width:1px; height:6px; background:var(--sub); opacity:.6; }
+  .tk.major { height:10px; background:var(--ink-strong); opacity:.7; }
+  .rl { position:absolute; top:11px; transform:translateX(-50%); font-size:7.5px; letter-spacing:.06em; color:var(--sub); white-space:nowrap; }
+  .ring { position:absolute; border:1px dashed var(--ink-strong); border-radius:50%; opacity:.45; pointer-events:none; z-index:1; }
+  .ring.soft { opacity:.28; }
+  .ringlab { position:absolute; font-size:7.5px; color:var(--sub); letter-spacing:.06em; pointer-events:none; z-index:1; }
+  .scalebar { position:absolute; left:8px; bottom:8px; font-size:7.5px; color:var(--sub); z-index:5; }
+  .tag { position:absolute; left:0; bottom:31px; display:flex; flex-direction:column; align-items:flex-start; white-space:nowrap; pointer-events:none;
+    text-shadow:0 0 2px var(--board), 0 0 2px var(--board), 0 0 3px var(--board), 0 0 4px var(--board); }
+  .tag.below { bottom:auto; top:30px; }
+  .tag.right { left:28px; bottom:auto; top:-1px; }
+  .tag.left { left:auto; right:28px; bottom:auto; top:-1px; align-items:flex-end; }
+  .tag .tn { font-size:9.5px; font-weight:500; line-height:12px; color:var(--text); }
+  .tag .td { font-size:7px; font-weight:500; line-height:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--sub); }
+  .scalebar b { font-weight:500; color:var(--sub); letter-spacing:.14em; }
+  .locate { position:absolute; right:10px; top:262px; width:32px; height:32px; border-radius:50%; border:1px solid var(--seam); background:var(--paper); box-shadow:0 1px 5px rgba(0,0,0,.2); display:flex; align-items:center; justify-content:center; cursor:pointer; z-index:8; padding:0; }
+  .scalebar i { display:block; width:48px; height:4px; border:1px solid var(--ink-strong); border-top:0; margin-bottom:2px; }
+  .sheetpeek { position:absolute; left:0; right:0; top:308px; bottom:38px; background:var(--paper); border-top:1px solid var(--seam); padding:8px 10px; font-size:10px; z-index:6; }
+  .sheetpeek .grab { width:28px; height:3px; border-radius:2px; background:var(--surface3); margin:0 auto 6px; }
+  .tabbar { position:absolute; left:0; right:0; bottom:0; height:38px; background:var(--paper); border-top:1px solid var(--seam); display:flex; justify-content:space-around; align-items:center; font-size:9px; color:var(--sub); z-index:7; }
+  .tabbar b { color:var(--text); }
+  .chip { position:absolute; border:1px solid var(--seam); cursor:pointer; font:inherit; border-radius:var(--r-block); padding:4px 8px; background:var(--paper); box-shadow:0 1px 4px rgba(0,0,0,.15); font-size:9.5px; z-index:8; }
+  .chip.hide { display:none; }
+  .toast { position:absolute; left:12px; right:12px; top:54px; background:var(--ink-strong); color:var(--paper); border-radius:6px; padding:6px 9px; font-size:9.5px; display:none; z-index:9; }
+  .toast.on { display:block; }
+  .hide { display:none !important; }
+  table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-card); overflow:hidden; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--surface2); }
+  th { background:var(--surface2); }
+  .st { font-size:12px; padding:1px 8px; border-radius:var(--r-pill); background:var(--surface2); white-space:nowrap; }
+  #spec, #except, #fullflow { margin-top:32px; }
+  .state button { font:inherit; border:0; border-radius:var(--r-pill); padding:4px 12px; background:var(--surface2); cursor:pointer; margin:2px; }
+  .state button[aria-pressed="true"] { background:var(--ink-strong); color:var(--paper); }
+  .wide { overflow-x:auto; }
+  .btn-plain { font:inherit; font-size:13px; border:1px solid var(--surface3); background:var(--paper); border-radius:var(--r-pill); padding:1px 10px; cursor:pointer; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>홈 지도 모드 시안 — 현위치(+)를 눌렀을 때 전체 보기</h1>
+  <div class="how"><b>보는 법.</b> 휴대폰 안의 판을 <b>마우스로 끌어</b> 지도를 옮겨 보세요. 손을 떼면 가운데 기준으로 다시 받는다는 안내와 "현위치로" 버튼이 떠요. 큐브를 누르면 그 도서관으로 간다는 안내가 나와요. 노란 테두리가 <b>추천</b>이에요. 고를 것은 <b>거리 표시(자) 모양 하나</b>예요.</div>
+  <div class="decided"><b>이미 정한 것(2026-11-26).</b>
+    <ul>
+      <li>주인공 보기(확대)는 지금 그대로. 이 시안은 <b>현위치(+)를 눌렀을 때의 전체 보기만</b> 바꿔요. 단 주인공 보기의 받침 글자는 <b>"+ 지도 보기"</b>(반경 글자 2KM는 뺌), 지도 모드에서는 "+ 현위치".</li>
+      <li>바닥은 북쪽이 위인 <b>기울인 평면</b>(세로를 0.6배로 눕힘), 방향·거리는 실제 비례(2km = 판 가로 반쯤).</li>
+      <li>큐브는 작게, <b>면의 글자는 빼고 큐브 위에 이름표</b>. 2km 안 도서관은 <b>전부</b> 그려요.</li>
+      <li>빈 판 끌기 = 지도 이동(전체 보기에서만). 어디든 끌 수 있고, 손을 떼면 <b>화면 가운데 기준 2km</b>를 다시 받아요.</li>
+      <li>홈 큐브는 늘 2km. "더 넓게 찾기"는 2→5km. 책 "주변 찾기" 기본 3km, 설정에서 2·3·5km.</li>
+    </ul>
+  </div>
+</header>
+<main>
+
+<section class="element" id="el-mapruler" data-chosen="C">
+  <h2>정할 것 1. 지도 모드에서 거리를 어떻게 보여 줄까 <span class="status">확인</span></h2>
+  <div class="flow"><b>정해진 것.</b> 홈에서 현위치(+)를 누르면 판이 지도 모드로 바뀌고, 큐브가 실제 방향·거리 비례 자리에 작게 놓여요. 정할 것은 <b>"얼마나 먼지"를 읽게 해 주는 표시</b>예요.</div>
+  <div class="flow"><b>2026-11-26 2차(채택안 C 화면에 반영).</b> ① 2km 안 전부가 아니라 <b>화면 가운데에서 가까운 5곳</b>만 그리고, 다섯째가 판에 들어오게 <b>반경을 자동으로</b>(0.2·0.3·0.5·0.75·1·1.5·2·3·5km…) 맞춰 축척이 바뀐다. 왼쪽 아래에 "가까운 5곳 · 반경 1.5km"와 축척 막대. 도심은 확대돼 겹침이 풀린다(점선으로 밀어내는 방식은 없앰). ② 끌어서 현위치가 판 밖으로 나가면 <b>오른쪽 아래 현위치 버튼</b>(지도 앱 표준). ③ 판 왼쪽 위 칩으로 예시 바꾸기: 광주 동구 → 도심 → 시골. A·B 화면은 처음 비교 그대로 둔다.</div>
+  <div class="pick">다시 보기: <select data-for="el-mapruler">
+    <option value="A">후보 A — 처음 시안의 자 + 2km 범위</option>
+    <option value="B">후보 B — 현위치 기준 거리 고리</option>
+    <option value="C">후보 C — 이름표에 거리 + 축척 막대</option>
+  </select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 처음 시안의 자 + 2km 범위 <span class="badge">추천</span></h3>
+      <div class="phone"><div class="scr" data-map="A"></div></div>
+      <p>화면 가운데를 지나는 가로 자(처음 큐브 시안의 룰러)에 0.25km 눈금, 1km마다 굵은 눈금과 <code>W 2KM · 1 · 0 · 1 · E 2KM</code>. 바닥에는 현위치 기준 2km 범위를 점선 타원 하나로.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>주인공 화면에서 + 누름 → 지도 모드(자·범위가 나타남) → 빈 판 끌기 → 자는 화면에 남고 지도만 움직임 → 손 떼면 가운데 기준 다시 받기 + "현위치로" → 큐브 누르면 그 도서관 방문 화면.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>자는 화면 가운데 기준 거리(옮기면 "여기서 얼마나"를 읽음)</li><li>점선 범위는 현위치에 붙어 같이 움직임 — 2km 밖은 다시 받기 뒤에 보임</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>처음 시안의 계기판 느낌이 돌아오고 가로 거리는 바로 읽혀요. / 자가 판 가운데를 가로질러 그 줄의 큐브를 살짝 가려요(이름표는 자 위로).</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: 새 패턴 — 사용자가 직접 "처음 큐브 디자인 때 본 자"를 요청(홈_파사드_공통화_시안 .ruler), 지도 앱 표준에는 띠 모양 자가 없음</p>
+      <p><b>추천 이유:</b> 사용자가 말한 모양 그대로이고, 기울인 평면에서도 가로(동서)는 축척이 그대로라 자의 눈금이 정확해요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 현위치 기준 거리 고리</h3>
+      <div class="phone"><div class="scr" data-map="B"></div></div>
+      <p>현위치를 가운데로 0.5·1·2km 점선 고리(기울인 평면이라 타원). 고리 오른쪽 끝에 작은 거리 글자.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>+ 누름 → 지도 모드(고리 3개) → 끌면 고리도 현위치와 같이 움직임 → 손 떼면 다시 받기 + "현위치로" → 큐브 누르면 방문 화면.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>어느 방향이든 "몇 번째 고리 안"으로 거리를 읽음</li><li>지도를 옮겨 현위치가 화면 밖으로 가면 고리도 사라짐</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>모든 방향의 거리가 한눈에 보여요. / 처음 시안의 자 모양은 아니고, 옮긴 자리에서는 거리 기준이 없어요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-82 내 위치 점 + "현재 위치로" 버튼 (모든 지도 앱 — 내 위치 기준 정확도·거리 원)</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 이름표에 거리 + 축척 막대</h3>
+      <div class="phone"><div class="scr" data-map="C"></div></div>
+      <p>자·고리 없이 이름표에 거리를 함께(<code>산수 841m</code>), 왼쪽 아래에 축척 막대와 "가까운 5곳 · 반경". <b>2차:</b> 가까운 5곳 + 반경 자동, 현위치 버튼 — 판을 끌고 칩으로 예시를 바꿔 보세요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>+ 누름 → 지도 모드(이름표에 거리) → 끌기 → 손 떼면 다시 받기 + "현위치로"(거리는 늘 현위치 기준) → 큐브 누르면 방문 화면.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span>
+      <ul><li>도서관마다 정확한 거리 숫자</li><li>판이 가장 깨끗하지만 이름표가 길어져 도심에서 겹치기 쉬움</li></ul>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>숫자로 정확해요. / "거리감"은 숫자를 읽어야 생기고, 자 디자인은 들어가지 않아요.</p>
+      <span class="lbl">표준 근거</span><p>표준 근거: P-80 핀 + 이름 글자 (카카오맵 장소 핀)</p>
+    </article>
+  </div>
+</section>
+
+<section id="except">
+  <h2>잘 안 될 때 보이는 화면</h2>
+  <div class="state" id="exTabs">
+    <button aria-pressed="true" data-ex="0">인터넷이 끊김</button><button aria-pressed="false" data-ex="1">2km 안에 없음</button><button aria-pressed="false" data-ex="2">빠르게 여러 번 끌기</button><button aria-pressed="false" data-ex="3">위치 권한 없음</button>
+  </div>
+  <div class="phone" style="margin:8px 0 0"><div class="scr" style="padding:56px 12px 0"><p data-exmsg></p></div></div>
+</section>
+
+<section id="fullflow">
+  <h2>처음부터 끝까지 이렇게 써요</h2>
+  <ol>
+    <li>사용자가 홈을 열면 동네한권이 2km 안 도서관으로 주인공 보기(지금과 같음)를 보여 준다.</li>
+    <li>사용자가 현위치(+)를 누르면 판이 지도 모드로 바뀐다: 가까운 5곳이 다 들어오게 축척을 맞추고, 작은 큐브를 실제 방향·거리 비례 자리에, 큐브 위에 이름표 + 거리, 왼쪽 아래 "가까운 5곳 · 반경 ○".</li>
+    <li>사용자가 빈 판을 끌면 지도가 손을 따라 움직인다. 손을 떼면 화면 가운데 기준 가까운 5곳을 다시 받는다(축척은 그대로 — 다시 맞추면 화면이 튀고 현위치가 되돌아옴). 현위치가 판 밖으로 나가면 오른쪽 아래 현위치 버튼이 뜬다.</li>
+    <li>현위치 버튼을 누르면 현위치가 가운데로 돌아오고 가까운 5곳을 다시 보여 준다.</li>
+    <li>큐브를 누르면 그 도서관 방문 화면으로 간다. "원래 도서관 크게 보기"(지금 메뉴)를 누르면 주인공 보기로 돌아간다.</li>
+  </ol>
+</section>
+
+<section id="spec">
+  <h2>명세</h2>
+  <div class="wide"><table>
+    <tr><th>요소</th><th>채택안(기본 선택)</th><th>차선</th><th>탈락안</th><th>이유(사용자 말)</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
+    <tr data-el="el-mapruler"><td>1. 지도 모드 거리 표시</td><td>C 이름표에 거리 + 축척 막대</td><td>B 현위치 기준 거리 고리</td><td>A 처음 시안의 자 + 2km 범위(추천했으나 탈락)</td><td>"자도 기울기에 맞게 기울지는 걸로 생각했는데 저건 너무 별로인 거 같아. 그냥 C"</td><td>이름표는 아래 이름표 모양 행, 축척 막대는 70px 안 둥근 길이 + 반경 1.5KM · 5곳(계기판 목소리), 왼쪽 아래</td><td>+ → 지도 모드 → 끌기 → 다시 받기</td><td><span class="st">확인</span></td></tr>
+    <tr><td>표시 수·축척</td><td>화면 가운데에서 가까운 5곳, 다섯째가 들어오게 반경 자동(둥근 값), 축척이 그에 맞춰 바뀜. 왼쪽 아래 "가까운 5곳 · 반경 ○"</td><td>받침에 겹치는 큐브를 밀고 점선(1차 검토안)</td><td>2km 고정 축척 + 반경 안 전부</td><td>"거리 순으로 5개만 보이게 하고 반경 얼마나 보여주고 있는지로 바꿀 수 있나? … 지금 방식은 직관성이 떨어져보여서 접근 방식을 바꿔야 할 거 같거든"</td><td>반경 단계 0.2·0.3·0.5·0.75·1·1.5·2·3·5·7.5·10·15·20·30·50km(다섯째 거리 × 1.08 이상 중 가장 작은 값), 축척 막대 70px 안 둥근 길이, 현위치 받침 맨 위(큐브가 받침 아래로 들어가도 됨 = 그 자리에 도서관이 있음)</td><td>+ → 지도 모드(가까운 5곳에 맞춘 축척) → 끌기 → 손 떼면 가운데 기준 5곳 다시(축척은 그대로) → 현위치 버튼 누르면 현위치 기준 5곳 + 축척 다시</td><td><span class="st">확인</span></td></tr>
+    <tr><td>가까운 5곳의 범위</td><td>2km와 상관없이 가까운 5곳(시골은 반경 15km처럼 넓어짐)</td><td>2km 안에서만 최대 5곳</td><td>—</td><td>"둘 다 추천대로"</td><td>서버 #10에 가까운 N곳 방식 추가(`?lat=&lng=&nearest=5`)</td><td>—</td><td><span class="st">확인</span></td></tr>
+    <tr><td>끈 뒤 축척</td><td>들어올 때·현위치 버튼 누를 때만 축척을 정하고, 끈 뒤에는 축척 그대로 가운데 기준 5곳만 다시</td><td>손 뗄 때마다 축척 다시</td><td>—</td><td>"둘 다 추천대로"</td><td>—</td><td>끌기 → 손 뗌 → 5곳 다시(축척 그대로)</td><td><span class="st">확인</span></td></tr>
+    <tr><td>받침 글자</td><td>주인공 보기 "+ 지도 보기"(반경 글자 뺌) / 지도 모드 "+ 현위치"</td><td>—</td><td>지금 "+ 현위치 2KM"(두 보기 같음)</td><td>"주인공 상태에서는 `현위치` -> 지도 보기 로 수정하자"</td><td>제목 글자 그대로(지금 `plinthTitle`), 반경 줄은 주인공 보기에서 뺌</td><td>+ 지도 보기 누름 → 지도 모드</td><td><span class="st">확인</span></td></tr>
+    <tr><td>이름표 모양</td><td>배경 없음, 두 줄 왼쪽 정렬(큐브 왼쪽 끝): 이름 = 사람 목소리, 거리 = 계기판 목소리. 판 색으로 가는 번짐만</td><td>—</td><td>상자 + 한 줄(이름 굵게·거리), 가운데 정렬(1차 시안 — DESIGN 규칙 1·3·4와 어긋남)</td><td>"이름표 디자인은 저대로 가는건 아니지? 디자인 기조와 너무 안맞는데 다시 확인해줘" → 다시 그린 안에 "진행하자"</td><td>이름 `type.name` 계열 500·본문색, 거리 `type.gauge` 계열 500·자간 1.4·대문자·inkMuted, 앱에서는 이름 12/거리 10(휴대폰 시안은 축소 9.5/7), 번짐 = 판 색 2~4px</td><td>—</td><td><span class="st">확인</span></td></tr>
+    <tr><td>현위치 버튼</td><td>현위치 받침이 판 안쪽 20px 밖으로 나가면 오른쪽 아래 둥근 현위치 버튼(조준 아이콘)</td><td>—</td><td>끌면 늘 "현위치로" 글자 칩</td><td>"현위치에서 어느정도 화면이 벗어나면 일반적인 지도 앱 UI의 현위치 버튼을 오른쪽 하단에 표시"</td><td>지름 32, 테두리 1px, 그림자 0 1 5, 아이콘 16</td><td>누르면 현위치 가운데 + 가까운 5곳 다시</td><td><span class="st">확인</span></td></tr>
+    <tr><td>반경 안에 없을 때(홈)</td><td>안내 없이 가장 가까운 도서관을 주인공으로, 홈 "더 넓게 찾기" 없앰</td><td>안내 + 더 넓게 찾기(2→5km)</td><td>—</td><td>"가장 가까운 곳을 주인공으로 + 더 넓게 찾기 없앰으로 확정"</td><td>서버 #10 nearby 응답에 반경 안이 비면 nearest(가장 가까운 1곳)</td><td>홈 열기 → 2km 비면 가장 가까운 곳이 주인공</td><td><span class="st">확인</span></td></tr>
+    <tr><td>적용 범위</td><td>전체 보기(현위치 +)만, 주인공 보기는 그대로</td><td>—</td><td>주인공 보기 배치 개선</td><td>"주인공 보여줄 때는 그냥 기존과 동일하게 동작"</td><td>—</td><td>—</td><td><span class="st">확인</span></td></tr>
+    <tr><td>바닥 평면</td><td>A 등각(기울인) 평면 + 처음 시안의 자</td><td>—</td><td>위에서 본 평면, 지금 전체 보기에 축척만</td><td>"지도 디자인은 A. 최초 큐브 디자인 도입할 때 봤던 자 디자인이 다시 들어가서 거리감을 알기 편하게"</td><td>북쪽 위, 세로 0.6배</td><td>—</td><td><span class="st">확인</span></td></tr>
+    <tr><td>큐브·이름</td><td>작은 큐브, 면 글자 없음, 위에 이름표</td><td>—</td><td>지금 큐브(판 폭 46%, 면에 이름·주소·시간)</td><td>"전체 보기에서는 큐브 자체에선 글자 빼고, 큐브 상단에 이름"</td><td>큐브 폭 26(휴대폰 240 기준, 실제 판 폭의 약 11%), 이름표 9 굵게, 곡률 3</td><td>큐브 누르면 방문 화면</td><td><span class="st">확인</span></td></tr>
+    <tr><td>빈 판 끌기</td><td>전체 보기에서만 지도 이동, 자유 이동 + 손 떼면 다시 받기</td><td>—</td><td>현위치 주변 5km 안에서만</td><td>"빈 판 끌기는 현위치 클릭했을 때 전체를 볼 때만" / 질문 답 "자유 이동 + 다시 받기"</td><td>다시 받기 = 화면 가운데 좌표로 가까운 5곳(위 "표시 수·축척"), 끌기 10px 넘을 때만</td><td>끌기 → 손 뗌 → 다시 받기 → "현위치로"</td><td><span class="st">확인</span></td></tr>
+    <tr><td>반경</td><td>홈 큐브 2km 고정, 더 넓게 2→5km / 검색 기본 3km, 설정 2·3·5km</td><td>—</td><td>2→3→5, 검색도 2km</td><td>"2km 서버에 추가 … 설정에서 2 3 5km … 큐브는 2km 기본" / 질문 답 "3km", "2→5km"</td><td>서버 NEARBY_RADII_KM (2, 3, 5), user_settings CHECK (2, 3, 5)</td><td>—</td><td><span class="st">확인</span></td></tr>
+    <tr><td>북쪽 표시</td><td>판 오른쪽 위 작은 "N ↑"</td><td>—</td><td>—</td><td>묻지 않음</td><td>9, 자간 +12%</td><td>—</td><td><span class="st">기본값(Claude)</span></td></tr>
+  </table></div>
+</section>
+</main>
+
+<script>
+  // 예시 데이터: 방위(°), 거리(km), 이름, 큐브 색
+  var LIBS = [
+    { b: 311, d: 0.276, n: '교육청중앙', c: 'var(--c1)' },
+    { b: 5, d: 0.841, n: '산수', c: 'var(--c2)' },
+    { b: 237, d: 1.5, n: '사직', c: 'var(--c3)' },
+    { b: 140, d: 1.2, n: '학동 작은도서관', c: 'var(--c4)' },
+    { b: 62, d: 1.8, n: '계림 작은도서관', c: 'var(--c5)' },
+    { b: 150, d: 0.06, n: '예시 작은도서관', c: 'var(--c2)' }, // 받침과 겹치는 예
+  ];
+  var NEAREST = { b: 237, d: 12.4, n: '사직' }; // 2km 안에 없을 때 예시
+  var OVERLAP_RULE = true;
+  var MORE = [ // 옮긴 뒤 다시 받으면 더해지는 곳(예시)
+    { b: 300, d: 2.6, n: '서구 예시도서관', c: 'var(--c2)' },
+    { b: 20, d: 2.9, n: '북구 예시도서관', c: 'var(--c4)' },
+  ];
+  var KM = 54, TILT = 0.6;
+  function fmt(d) { return d < 1 ? Math.round(d * 1000) + 'm' : (d >= 10 || d % 1 === 0 ? Math.round(d) : d.toFixed(1)) + 'km'; }
+  function cubeSvg(color) {
+    return '<svg width="26" height="28" viewBox="0 0 26 28"><polygon points="13,1 25,7 13,13 1,7" fill="' + color + '" stroke="#2E333F" stroke-width=".6"/>' +
+      '<polygon points="1,7 13,13 13,27 1,21" fill="var(--cube-left)" stroke="#2E333F" stroke-width=".6"/>' +
+      '<polygon points="25,7 13,13 13,27 25,21" fill="var(--cube-right)" stroke="#2E333F" stroke-width=".6"/></svg>';
+  }
+  function build(scr) {
+    var kind = scr.dataset.map;
+    scr.innerHTML = '<div class="search">책 제목·저자를 검색</div>' +
+      '<div class="board"><div class="grid"></div><div class="north"><b>↑</b>N</div><div class="layer"></div></div>' +
+      '<button class="chip hide" data-home style="right:8px;top:278px">◎ 현위치로</button>' +
+      '<button class="chip" data-empty style="left:8px;top:54px">2km 안에 없음 예시</button>' +
+      '<div class="toast"></div>' +
+      '<div class="sheetpeek"><div class="grab"></div><b>요즘 많이 읽는 책</b><div style="color:var(--sub)">아래 창은 그대로</div></div>' +
+      '<div class="tabbar"><b>홈</b><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>';
+    var board = scr.querySelector('.board'), layer = scr.querySelector('.layer');
+    var W = 230, H = 262, cx = W / 2, cy = H / 2 + 6;
+    var off = { x: 0, y: 0 }, extra = [];
+    if (kind === 'A') {
+      // 자: 화면 가운데(cx) 기준. 0.25km 눈금, 1km 굵은 눈금, 숫자는 굵은 눈금 바로 아래
+      var r = document.createElement('div'); r.className = 'ruler'; r.style.top = (cy + 16) + 'px';
+      var rh = '';
+      for (var k = -8; k <= 8; k++) {
+        var x = cx + k * KM / 4; if (x < 2 || x > W - 2) continue;
+        rh += '<i class="tk' + (k % 4 === 0 ? ' major' : '') + '" style="left:' + x + 'px"></i>';
+        if (k % 4 === 0) rh += '<span class="rl" style="left:' + x + 'px">' + (k === 0 ? '0' : (k < 0 ? 'W ' : 'E ') + Math.abs(k / 4) + 'KM') + '</span>';
+      }
+      r.innerHTML = rh; board.appendChild(r);
+    }
+    if (kind === 'C') { var sb = document.createElement('div'); sb.className = 'scalebar'; sb.innerHTML = '<i></i>1KM'; board.appendChild(sb); }
+    var empty = false;
+    function hit(a, b) { return a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]; }
+    function draw() {
+      var h = '';
+      var ox = cx + off.x, oy = cy + off.y;
+      if (kind === 'A') h += ring(ox, oy, 2, '');
+      if (kind === 'B') { h += ring(ox, oy, 0.5, ' soft', '500M') + ring(ox, oy, 1, ' soft', '1KM') + ring(ox, oy, 2, '', '2KM'); }
+      var plinth = [ox - 21, oy - 16, ox + 21, oy + 16]; // 받침 34×24 + 둘레 4
+      var labels = [plinth];
+      var list = empty ? [] : LIBS.concat(extra);
+      list.forEach(function (l) {
+        var ux = Math.sin(l.b * Math.PI / 180), uy = -Math.cos(l.b * Math.PI / 180) * TILT;
+        var tx = ox + ux * l.d * KM, ty = oy + uy * l.d * KM;
+        var x = tx, y = ty;
+        var body = function (x, y) { return [x - 13, y - 20, x + 13, y + 8]; };
+        if (OVERLAP_RULE && hit(body(x, y), plinth)) {
+          // 실제 방향 그대로 받침 밖까지 민다
+          var n = Math.hypot(ux, uy) || 1, vx = ux / n, vy = uy / n, t = 0;
+          while (hit(body(ox + vx * t, oy + vy * t), plinth) && t < 80) t += 2;
+          x = ox + vx * t; y = oy + vy * t;
+          var len = Math.hypot(x - tx, y - ty), ang = Math.atan2(y - ty, x - tx) * 180 / Math.PI;
+          h += '<i class="truedot" style="left:' + tx + 'px;top:' + ty + 'px"></i><i class="lead" style="left:' + tx + 'px;top:' + ty + 'px;width:' + len + 'px;transform:rotate(' + ang + 'deg)"></i>';
+        }
+        var text = l.n + (kind === 'C' ? ' ' + fmt(l.d) : '');
+        var w = text.length * 7 + 10, pos = '';
+        if (OVERLAP_RULE) {
+          var opts = [['', [x - w / 2, y - 36, x + w / 2, y - 21]], ['below', [x - w / 2, y + 10, x + w / 2, y + 25]],
+                      ['right', [x + 15, y - 18, x + 15 + w, y - 3]], ['left', [x - 15 - w, y - 18, x - 15, y - 3]]];
+          var pick = opts.find(function (o) { return !labels.some(function (r) { return hit(o[1], r); }); }) || opts[0];
+          pos = pick[0]; labels.push(pick[1]);
+        }
+        h += '<button class="cube" style="left:' + x + 'px;top:' + y + 'px" data-lib="' + l.n + '">' + cubeSvg(l.c) +
+          '<span class="name ' + pos + '">' + l.n + (kind === 'C' ? '<small>' + fmt(l.d) + '</small>' : '') + '</span></button>';
+      });
+      if (empty) {
+        // 가장 가까운 곳이 판 밖: 그 방향 판 가장자리에 이름·거리
+        var ex = Math.sin(NEAREST.b * Math.PI / 180), ey = -Math.cos(NEAREST.b * Math.PI / 180) * TILT;
+        var tt = Math.min((ex > 0 ? (W - 44 - ox) : (44 - ox)) / (ex || 1e-9), (ey > 0 ? (H - 16 - oy) : (16 - oy)) / (ey || 1e-9));
+        h += '<span class="edge" style="left:' + (ox + ex * tt) + 'px;top:' + (oy + ey * tt) + 'px">' + (ex < 0 ? '← ' : '') + NEAREST.n + '<small>' + fmt(NEAREST.d) + '</small>' + (ex >= 0 ? ' →' : '') + '</span>';
+      }
+      h += '<div class="plinth" style="left:' + ox + 'px;top:' + oy + 'px"><b>+</b>현위치</div>';
+      layer.innerHTML = h;
+    }
+    function ring(x, y, km, cls, lab) {
+      var rx = km * KM, ry = km * KM * TILT;
+      return '<div class="ring' + cls + '" style="left:' + (x - rx) + 'px;top:' + (y - ry) + 'px;width:' + 2 * rx + 'px;height:' + 2 * ry + 'px"></div>' +
+        (lab ? '<span class="ringlab" style="left:' + (x + rx + 2) + 'px;top:' + (y - 6) + 'px">' + lab + '</span>' : '');
+    }
+    var toast = scr.querySelector('.toast'), home = scr.querySelector('[data-home]');
+    function say(t) { toast.textContent = t; toast.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(function () { toast.classList.remove('on'); }, 2000); }
+    var start = null, moved = false;
+    board.addEventListener('pointerdown', function (e) { start = { x: e.clientX, y: e.clientY, ox: off.x, oy: off.y }; moved = false; board.setPointerCapture(e.pointerId); });
+    board.addEventListener('pointermove', function (e) {
+      if (!start) return;
+      var dx = e.clientX - start.x, dy = e.clientY - start.y;
+      if (!moved && Math.hypot(dx, dy) < 10) return;
+      moved = true; board.classList.add('dragging');
+      off.x = start.ox + dx; off.y = start.oy + dy;
+      scr.querySelector('.grid').style.transform = 'translate(' + (off.x % 48) + 'px,' + (off.y % 29) + 'px)';
+      draw();
+    });
+    board.addEventListener('pointerup', function (e) {
+      board.classList.remove('dragging');
+      if (!start) return;
+      var wasMoved = moved; start = null;
+      if (wasMoved) {
+        extra = MORE; draw();
+        home.classList.remove('hide');
+        say('화면 가운데 기준 2km 도서관을 다시 받았어요');
+      } else {
+        var t = document.elementFromPoint(e.clientX, e.clientY);
+        var c = t && t.closest('.cube');
+        if (c) say(c.dataset.lib + ' 방문 화면으로 가요');
+      }
+    });
+    home.addEventListener('click', function () {
+      off = { x: 0, y: 0 }; extra = []; scr.querySelector('.grid').style.transform = ''; draw();
+      home.classList.add('hide'); say('현위치 기준으로 돌아왔어요');
+    });
+    var emptyChip = scr.querySelector('[data-empty]');
+    emptyChip.addEventListener('click', function () {
+      empty = !empty; emptyChip.textContent = empty ? '원래대로' : '2km 안에 없음 예시'; draw();
+    });
+    scr._draw = draw;
+    draw();
+  }
+  // ── 채택안 C (2026-11-26 2차): 가까운 5곳 + 반경 자동 축척, 현위치가 화면 밖이면 오른쪽 아래 현위치 버튼 ──
+  // 좌표는 현위치 기준 km(동 +x, 북 +y). 예시 세트 3개: 광주 동구 / 도심 / 시골
+  function km(b, d) { return { x: Math.sin(b * Math.PI / 180) * d, y: Math.cos(b * Math.PI / 180) * d }; }
+  var SETS = {
+    '광주 동구': LIBS.concat(MORE),
+    '도심': [
+      { b: 20, d: 0.013, n: '시청 예시도서관', c: 'var(--c1)' }, { b: 110, d: 0.21, n: '예시 작은도서관', c: 'var(--c2)' },
+      { b: 200, d: 0.33, n: '예시 구립도서관', c: 'var(--c3)' }, { b: 290, d: 0.41, n: '예시 어린이도서관', c: 'var(--c4)' },
+      { b: 60, d: 0.52, n: '예시 정독도서관', c: 'var(--c5)' }, { b: 160, d: 0.9, n: '예시 남산도서관', c: 'var(--c2)' },
+      { b: 330, d: 1.3, n: '예시 종로도서관', c: 'var(--c3)' },
+    ],
+    '시골': [
+      { b: 237, d: 3.2, n: '예시 면도서관', c: 'var(--c3)' }, { b: 80, d: 5.8, n: '예시 군립도서관', c: 'var(--c1)' },
+      { b: 300, d: 8.1, n: '예시 작은도서관', c: 'var(--c2)' }, { b: 160, d: 12.4, n: '예시 읍도서관', c: 'var(--c4)' },
+      { b: 20, d: 15.0, n: '예시 교육도서관', c: 'var(--c5)' }, { b: 120, d: 21.0, n: '예시 시립도서관', c: 'var(--c2)' },
+    ],
+  };
+  var SET_ORDER = ['광주 동구', '도심', '시골'];
+  var NICE = [0.2, 0.3, 0.5, 0.75, 1, 1.5, 2, 3, 5, 7.5, 10, 15, 20, 30, 50];
+  var BAR = [0.05, 0.1, 0.2, 0.25, 0.5, 1, 2, 2.5, 5, 10, 20];
+  function buildC(scr) {
+    scr.innerHTML = '<div class="search">책 제목·저자를 검색</div>' +
+      '<div class="board"><div class="grid"></div><div class="north"><b>↑</b>N</div><div class="layer"></div>' +
+      '<div class="scalebar"><i></i><span data-bar></span><br><b data-radius></b></div></div>' +
+      '<button class="locate hide" data-locate aria-label="현위치로"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="4.2" stroke="#2E333F" stroke-width="1.4"/><circle cx="8" cy="8" r="1.6" fill="#2E333F"/><path d="M8 0.8v2.6M8 12.6v2.6M0.8 8h2.6M12.6 8h2.6" stroke="#2E333F" stroke-width="1.4" stroke-linecap="round"/></svg></button>' +
+      '<button class="chip" data-set style="left:8px;top:54px">예시: 광주 동구</button>' +
+      '<div class="toast"></div>' +
+      '<div class="sheetpeek"><div class="grab"></div><b>요즘 많이 읽는 책</b><div style="color:var(--sub)">아래 창은 그대로</div></div>' +
+      '<div class="tabbar"><b>홈</b><span>독서 기록</span><span>대출·반납</span><span>내 정보</span></div>';
+    var board = scr.querySelector('.board'), layer = scr.querySelector('.layer');
+    var W = 230, H = 262, cx = W / 2, cy = H / 2 + 6;
+    var setIdx = 0, center = { x: 0, y: 0 }, shown = [], radius = 1, ppk = 50, drag = { x: 0, y: 0 };
+    // 화면 가운데 기준 가까운 5곳을 고르고, 다섯째가 판에 들어오게 반경을 둥근 값으로 올린 뒤 축척을 맞춘다
+    function refit(keepScale) {
+      var all = SETS[SET_ORDER[setIdx]].map(function (l) { var p = km(l.b, l.d); return { l: l, p: p, dc: Math.hypot(p.x - center.x, p.y - center.y) }; });
+      all.sort(function (a, b) { return a.dc - b.dc; });
+      shown = all.slice(0, 5);
+      if (keepScale) { scr.querySelector('[data-radius]').textContent = '반경 ' + fmt(radius).toUpperCase() + ' · ' + shown.length + '곳'; return; }
+      var far = shown.length ? shown[shown.length - 1].dc : 1;
+      radius = NICE.find(function (r) { return r >= far; }) || far;
+      // 가로 반폭 − 28, 세로는 기울기(0.6)만큼 눌려 있으니 그만큼 나눈다. 위쪽 이름표 자리 22
+      ppk = Math.min((W / 2 - 28) / radius, (H / 2 - 30) / (radius * TILT));
+      var bar = BAR.filter(function (b) { return b * ppk <= 70; }).pop() || BAR[0];
+      scr.querySelector('.scalebar i').style.width = bar * ppk + 'px';
+      scr.querySelector('[data-bar]').textContent = fmt(bar).toUpperCase();
+      scr.querySelector('[data-radius]').textContent = '반경 ' + fmt(radius).toUpperCase() + ' · ' + shown.length + '곳';
+    }
+    function scr2(p) { return { x: cx + (p.x - center.x) * ppk + drag.x, y: cy - (p.y - center.y) * ppk * TILT + drag.y }; }
+    function hit(a, b) { return a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3]; }
+    function draw() {
+      var h = '', o = scr2({ x: 0, y: 0 });
+      // 이름표가 피할 것: 받침과 모든 큐브 몸통
+      var labels = [[o.x - 19, o.y - 14, o.x + 19, o.y + 14]].concat(shown.map(function (t) { var c = scr2(t.p); return [c.x - 13, c.y - 20, c.x + 13, c.y + 8]; }));
+      shown.forEach(function (s) {
+        var q = scr2(s.p), w = Math.max(s.l.n.length * 9.5, 30);
+        // 두 줄(약 22px), 큐브 왼쪽 끝(q.x - 13)에 맞춰 왼쪽 정렬
+        var opts = [['', [q.x - 13, q.y - 43, q.x - 13 + w, q.y - 21]], ['below', [q.x - 13, q.y + 10, q.x - 13 + w, q.y + 32]],
+                    ['right', [q.x + 15, q.y - 21, q.x + 15 + w, q.y + 1]], ['left', [q.x - 15 - w, q.y - 21, q.x - 15, q.y + 1]]];
+        // 빈 곳이 없으면 겹치는 넓이가 가장 작은 자리
+        var area = function (a, b) { return Math.max(0, Math.min(a[2], b[2]) - Math.max(a[0], b[0])) * Math.max(0, Math.min(a[3], b[3]) - Math.max(a[1], b[1])); };
+        var pick = opts.slice().sort(function (m, n) { return labels.reduce(function (t, r) { return t + area(m[1], r); }, 0) - labels.reduce(function (t, r) { return t + area(n[1], r); }, 0); })[0];
+        labels.push(pick[1]);
+        h += '<button class="cube" style="left:' + q.x + 'px;top:' + q.y + 'px" data-lib="' + s.l.n + '">' + cubeSvg(s.l.c) +
+          '<span class="tag ' + pick[0] + '"><span class="tn">' + s.l.n + '</span><span class="td">' + fmt(s.l.d) + '</span></span></button>';
+      });
+      h += '<div class="plinth" style="left:' + o.x + 'px;top:' + o.y + 'px"><b>+</b>현위치</div>';
+      layer.innerHTML = h;
+      // 현위치 받침이 판 안쪽 20px 밖으로 나가면 오른쪽 아래 현위치 버튼
+      var off = o.x < 20 || o.x > W - 20 || o.y < 20 || o.y > H - 20;
+      scr.querySelector('[data-locate]').classList.toggle('hide', !off);
+      scr.querySelector('.grid').style.transform = 'translate(' + ((-(center.x) * ppk + drag.x) % 48) + 'px,' + (((center.y) * ppk * TILT + drag.y) % 29) + 'px)';
+    }
+    var toast = scr.querySelector('.toast');
+    function say(t) { toast.textContent = t; toast.classList.add('on'); clearTimeout(toast._t); toast._t = setTimeout(function () { toast.classList.remove('on'); }, 2000); }
+    var start = null, moved = false;
+    board.addEventListener('pointerdown', function (e) { start = { x: e.clientX, y: e.clientY }; moved = false; board.setPointerCapture(e.pointerId); });
+    board.addEventListener('pointermove', function (e) {
+      if (!start) return;
+      var dx = e.clientX - start.x, dy = e.clientY - start.y;
+      if (!moved && Math.hypot(dx, dy) < 10) return;
+      moved = true; board.classList.add('dragging');
+      drag = { x: dx, y: dy }; draw(); // 끄는 동안은 축척 그대로
+    });
+    board.addEventListener('pointerup', function (e) {
+      board.classList.remove('dragging');
+      if (!start) return;
+      start = null;
+      if (moved) {
+        // 손을 떼면 화면 가운데 기준 가까운 5곳을 다시 받아 축척을 다시 맞춘다
+        center = { x: center.x - drag.x / ppk, y: center.y + drag.y / (ppk * TILT) };
+        drag = { x: 0, y: 0 }; refit(true); draw(); // 축척은 그대로, 가운데 기준 5곳만 다시
+      } else {
+        var t = document.elementFromPoint(e.clientX, e.clientY), c = t && t.closest('.cube');
+        if (c) say(c.dataset.lib + ' 방문 화면으로 가요');
+      }
+    });
+    scr.querySelector('[data-locate]').addEventListener('click', function () { center = { x: 0, y: 0 }; refit(); draw(); });
+    var setChip = scr.querySelector('[data-set]');
+    setChip.addEventListener('click', function () {
+      setIdx = (setIdx + 1) % SET_ORDER.length; setChip.textContent = '예시: ' + SET_ORDER[setIdx];
+      center = { x: 0, y: 0 }; refit(); draw();
+    });
+    scr._draw = draw;
+    refit(); draw();
+  }
+
+  document.querySelectorAll('[data-map]').forEach(function (m) { (m.dataset.map === 'C' ? buildC : build)(m); });
+  var ovBtn = document.querySelector('[data-overlap]'); if (ovBtn) ovBtn.addEventListener('click', function (e) {
+    OVERLAP_RULE = !OVERLAP_RULE; e.target.textContent = OVERLAP_RULE ? '겹침 규칙 끄고 보기' : '겹침 규칙 켜고 보기';
+    document.querySelectorAll('[data-map]').forEach(function (m) { m._draw(); });
+  });
+
+  function mark(el, id) {
+    el.querySelectorAll('.cand').forEach(function (c) {
+      c.classList.toggle('chosen', c.dataset.id === id);
+      var old = c.querySelector('.badge.adopted'); if (old) old.remove();
+      if (id && c.dataset.id === el.dataset.chosen) { var s = document.createElement('span'); s.className = 'badge adopted'; s.textContent = '채택'; c.querySelector('h3').appendChild(s); }
+    });
+    var sel = el.querySelector('select[data-for]'); if (sel && id) sel.value = id;
+  }
+  document.querySelectorAll('section.element').forEach(function (el) {
+    mark(el, el.dataset.chosen || '');
+    var sel = el.querySelector('select[data-for]');
+    if (sel) { if (!el.dataset.chosen) sel.insertAdjacentHTML('afterbegin', '<option value="" selected>(아직 고르지 않음)</option>');
+      sel.addEventListener('change', function () { mark(el, sel.value || el.dataset.chosen); }); }
+  });
+  var ex = ['판은 마지막으로 받은 그대로 두고 "지금은 도서관을 불러올 수 없어요" 한 줄 + 다시 해 보기. 옮긴 자리에서 실패하면 "현위치로"는 그대로 보임',
+            '홈(주인공 보기)은 2km 안에 없으면 안내 없이 가장 가까운 도서관을 주인공으로. 지도 모드는 늘 가까운 5곳이라 빈 판이 없음(시골은 반경이 넓어짐 — 채택안 C의 칩을 "시골"로 바꿔 보세요)',
+            '빠르게 여러 번 끌어도 마지막으로 손을 뗀 자리의 결과만 그림(앞선 요청은 버림)',
+            '위치 권한이 없으면 지금처럼 지역 가운데에서 시작하고 + 자리에 "지역 가운데" 표시. 지도 모드·끌기는 똑같이 됨'];
+  var exMsg = document.querySelector('[data-exmsg]'); exMsg.textContent = ex[0];
+  document.querySelectorAll('#exTabs button').forEach(function (b) {
+    b.addEventListener('click', function () {
+      document.querySelectorAll('#exTabs button').forEach(function (x) { x.setAttribute('aria-pressed', x === b); });
+      exMsg.textContent = ex[+b.dataset.ex];
+    });
+  });
+</script>
+</body>
+</html>
