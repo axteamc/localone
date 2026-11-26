@@ -12,10 +12,9 @@ import {
   Text,
   View,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { createLatestRunner } from "../../lib/latest";
 import { GlassArrows } from "../../lib/HorizontalArrows";
-import { type Theme } from "../../theme";
+import { mix, type Theme } from "../../theme";
 import { lookKit, useLook } from "./useLibraryLook";
 import { fetchShelf, type ShelfBook, type ShelfKind, type ShelfPage, type ShelfResponse } from "./api";
 
@@ -61,7 +60,6 @@ export type BookshelfProps = {
 
 export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf, onHeight, onWriteRecord }: BookshelfProps) {
   const { styles } = useLook(makeStyles);
-  const insets = useSafeAreaInsets();
   const runner = useRef(createLatestRunner()).current;
   const [state, setState] = useState<ShelfState>({ kind: "loading" });
   const [index, setIndex] = useState(0);
@@ -137,15 +135,14 @@ export function Bookshelf({ libraryId, onOpenBook, load = fetchShelf, onHeight, 
 
   return (
     <View
-      // 높이를 고정하지 않는다: 선반이 화면 맨 아래(안전 영역 위)에 붙고, 책장은 내용만큼만 차지한다
-      style={[styles.wrap, { minHeight: SHELF_MIN_HEIGHT + insets.bottom, paddingBottom: insets.bottom }]}
+      // 2026-11-25 mac: 화면 아래 고정을 풀고 피드 안에 끼운다(높이는 내용만큼)
+      style={[styles.wrap, { minHeight: SHELF_MIN_HEIGHT }]}
       testID="bookshelf"
       onLayout={(e: LayoutChangeEvent) => {
         setWidth(e.nativeEvent.layout.width);
-        onHeight?.(Math.round(e.nativeEvent.layout.height - insets.bottom));
+        onHeight?.(Math.round(e.nativeEvent.layout.height));
       }}
     >
-      <ShelfFade />
       {state.kind === "error" ? (
         <View style={styles.message} testID="shelf-error">
           <Text style={styles.messageTitle}>{SHELF_TEXT.failed}</Text>
@@ -265,19 +262,8 @@ function BookCover({ book, width, onPress }: { book: ShelfBook; width: number; o
   );
 }
 
-// V3-1 피드-책장 사이 띠: 블러 라이브러리 없이(P3 승인 전) 그라데이션 페이드만 — 아래로 갈수록 선반색으로 녹는다
-const FADE_STEPS = ["00", "1a", "36", "57", "7a", "a0", "c4", "d9"];
-function ShelfFade() {
-  const { C, styles } = useLook(makeStyles);
-  const step = SHELF_FADE_HEIGHT / FADE_STEPS.length;
-  return (
-    <View pointerEvents="none" style={styles.fade} testID="shelf-fade">
-      {FADE_STEPS.map((a) => (
-        <View key={a} style={{ height: step, backgroundColor: `${C.surface2}${a}` }} />
-      ))}
-    </View>
-  );
-}
+/** 서가 바탕: 룩의 surface2에 흰색 10%를 섞어 살짝 밝게(2026-11-26) */
+const shelfBg = (surface2: string) => mix("#FFFFFF", surface2, 0.1);
 
 const makeStyles = (theme: Theme) => {
   const { C } = lookKit(theme);
@@ -289,8 +275,17 @@ const makeStyles = (theme: Theme) => {
     borderBottomLeftRadius: bBL,
   };
   return StyleSheet.create({
-  wrap: { position: "absolute", left: 0, right: 0, bottom: 0, backgroundColor: C.surface2, justifyContent: "flex-end" },
-  fade: { position: "absolute", left: 0, right: 0, top: -SHELF_FADE_HEIGHT, height: SHELF_FADE_HEIGHT },
+  // 피드 안 띠: 피드 좌우 여백(12)을 넘어 화면 폭 끝까지, 위아래 가는 선(2026-11-25 mac)
+  wrap: {
+    marginVertical: 14,
+    marginHorizontal: -12,
+    paddingBottom: 6,
+    backgroundColor: shelfBg(C.surface2),
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: C.seamHairline,
+    justifyContent: "flex-end",
+  },
   top: {
     flexDirection: "row",
     alignItems: "baseline",

@@ -39,7 +39,7 @@ import {
 } from "./api";
 import { TemplateCard, TEMPLATE_LABELS, type TemplateKey } from "./templates";
 import { canUseCamera, pickPostImage, type PickSource } from "./imagePicker";
-import { overlayColorOf, overlayPosOf, PostImageFill } from "./postLook";
+import { COVER_MAT, overlayColorOf, overlayPosOf, PostImageFill } from "./postLook";
 
 export type { ImageFit, OverlayPos, OverlayTone } from "./api";
 
@@ -139,7 +139,7 @@ type PreviewProps = {
 };
 
 export function PostImage({ kind, imageUrl, color, text, pos, tone, fit, testID }: PreviewProps) {
-  const bg = kind === "color" ? resolvePostColor(color, C) : C.surface3;
+  const bg = kind === "color" ? resolvePostColor(color, C) : COVER_MAT; // 표지 여백은 흰색(2026-11-26)
   const ink = overlayColorOf(kind, color, tone, C);
   const place = overlayPosOf(kind, pos);
   return (

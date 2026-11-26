@@ -38,6 +38,9 @@ export function imageFitOf(kind: ImageKind, fit: ImageFit | null | undefined): I
 
 export const BLUR_RADIUS = 18;
 
+/** 사진·표지 칸 바탕: 표지를 여백(contain)으로 둘 때 남는 자리를 흰색으로 채운다(2026-11-26, 이전 surface3 회색) */
+export const COVER_MAT = ON_FILL_LIGHT;
+
 /** 이미지 칸을 채우는 그림(부모가 크기·곡률·바탕을 정한다) */
 export function PostImageFill({
   uri,

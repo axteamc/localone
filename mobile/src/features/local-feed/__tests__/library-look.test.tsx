@@ -8,7 +8,7 @@ import { useAuth } from "../../../auth/AuthProvider";
 import * as publicApi from "../../../lib/publicApi";
 import type { LibraryDetail } from "../../../lib/publicApi";
 import * as visits from "../../../lib/visits";
-import { contrastRatio, getTheme, theme, type LookPreset } from "../../../theme";
+import { contrastRatio, getTheme, mix, theme, type LookPreset } from "../../../theme";
 import * as api from "../api";
 import type { FeedItem, FeedPost, Post } from "../api";
 import { PostCard } from "../PostCard";
@@ -182,7 +182,7 @@ describe("VISIT-4-P3 도서관 룩", () => {
     expect(stamp.borderRadius).toBe(m.radii.infoCard);
     expect(stamp.backgroundColor).toBe(m.colors.paper);
     expect(flat(screen.getByTestId("stamp-seal")).borderColor).toBe(m.colors.inkStrong);
-    expect(flat(screen.getByTestId("bookshelf")).backgroundColor).toBe(m.colors.surface2);
+    expect(flat(screen.getByTestId("bookshelf")).backgroundColor).toBe(mix("#FFFFFF", m.colors.surface2, 0.1)); // 서가는 흰색 10% 섞음(2026-11-26)
     expect(flat(screen.getByTestId("stamp-button")).backgroundColor).toBe(m.colors.panelLit);
     // 기본 룩과 실제로 다른 값인지(일부만 바꾸면 실패)
     expect(m.colors.inkStrong).not.toBe(theme.colors.inkStrong);
