@@ -128,6 +128,25 @@ function applyOrder(items: ReadingLog[], orderIds: string[]): ReadingLog[] {
 
 type MenuAnchor = { x: number; y: number };
 
+/** 터치 옮기기(2026-11-26 실기기): 꾹 눌러 든 뒤 이만큼 움직이면 옮기기, 덜 움직이고 떼면 메뉴 */
+const TOUCH_DRAG_SLOP = 8;
+
+/** 앱·모바일 웹 = 터치 방식(꾹 눌러 들기). 데스크톱 웹(마우스) = 올리면 ⋯ + 브라우저 끌어 놓기 */
+export function usesTouchShelf(): boolean {
+  return Platform.OS !== "web" || !isDesktopPointer();
+}
+
+type TouchDrag = {
+  /** 꾹 눌러 들었다: 스크롤을 멈추고 칸 위치를 잰다 */
+  lift(id: string): void;
+  /** 든 채 움직임: 손가락 위치(창 기준)와 처음 자리에서 움직인 양 */
+  move(id: string, x: number, y: number, dx: number, dy: number): void;
+  /** 손을 뗌(moved = 옮기기였나) */
+  end(moved: boolean): void;
+  register(id: string, node: React.ComponentRef<typeof View> | null): void;
+  offset: { dx: number; dy: number } | null;
+};
+
 type BookTileProps = {
   log: ReadingLog;
   size: number;
@@ -140,6 +159,8 @@ type BookTileProps = {
   onDragOver?: (id: string) => void;
   onDrop?: (id: string) => void;
   onDragEnd?: () => void;
+  /** 터치 방식이면 주어진다(앱·모바일 웹) */
+  touch?: TouchDrag;
 };
 
 function anchorFromEvent(e: GestureResponderEvent): MenuAnchor {
@@ -162,14 +183,27 @@ function BookTile({
   onDragOver,
   onDrop,
   onDragEnd,
+  touch,
 }: BookTileProps) {
   const [hovered, setHovered] = useState(false);
   const wrapRef = useRef<React.ComponentRef<typeof View>>(null);
   const moreRef = useRef<React.ComponentRef<typeof View>>(null);
   const web = Platform.OS === "web";
+  // 데스크톱 웹만 브라우저 끌어 놓기·⋯. 모바일 웹에서 draggable이면 iOS가 꾹 누르기를 자기 끌기·이미지 미리보기로 가져가
+  // 메뉴가 안 뜨고, 터치가 마우스 올림을 흉내 내 ⋯가 떴다(2026-11-26 실기기)
+  const desktopWeb = web && !touch;
+  // 터치 옮기기 상태: 든 자리(창 기준)와 메뉴 위치, 옮기기로 넘어갔는지
+  const lift = useRef<{ x: number; y: number; anchor: MenuAnchor; moved: boolean } | null>(null);
+
+  const register = touch?.register;
+  useEffect(() => {
+    if (!register) return;
+    register(log.id, wrapRef.current);
+    return () => register(log.id, null);
+  }, [register, log.id]);
 
   useEffect(() => {
-    if (!web) return;
+    if (!desktopWeb) return;
     const node = wrapRef.current as unknown as HTMLElement | null;
     if (!node || typeof node.addEventListener !== "function") return;
     const handleEnter = () => setHovered(true);
@@ -211,7 +245,7 @@ function BookTile({
       node.removeEventListener("drop", handleDrop);
       node.removeEventListener("dragend", handleEnd);
     };
-  }, [web, draggable, log.id, onDragStart, onDragOver, onDrop, onDragEnd]);
+  }, [desktopWeb, draggable, log.id, onDragStart, onDragOver, onDrop, onDragEnd]);
 
   const openFromMore = (e: GestureResponderEvent) => {
     if (!onMenu) return;
@@ -226,22 +260,81 @@ function BookTile({
     onMenu(anchorFromEvent(e));
   };
 
+  const pointOf = (e: GestureResponderEvent) => anchorFromEvent(e);
+  const lifted = Boolean(touch && isDragging);
+  const offset = lifted ? touch?.offset : null;
+
   return (
     <View
       ref={wrapRef}
+      testID={`shelf-tile-${log.id}`}
       style={[
         styles.tile,
         { width: size },
-        isDragging && styles.tileDragging,
-        isDropTarget && styles.tileDropTarget,
+        web && styles.noCallout,
+        isDragging && !touch && styles.tileDragging,
+        lifted && styles.tileLifted,
+        offset && { transform: [{ translateX: offset.dx }, { translateY: offset.dy }, { scale: 1.06 }] },
+        isDropTarget && !touch && styles.tileDropTarget,
       ]}
+      // 터치: 든 뒤 TOUCH_DRAG_SLOP 넘게 움직이면 책(Pressable)에게서 터치를 넘겨받아 옮긴다
+      onMoveShouldSetResponderCapture={(e) => {
+        const l = lift.current;
+        if (!touch || !l) return false;
+        const p = pointOf(e);
+        return Math.hypot(p.x - l.x, p.y - l.y) > TOUCH_DRAG_SLOP;
+      }}
+      onResponderGrant={() => {
+        if (lift.current) lift.current.moved = true;
+      }}
+      onResponderMove={(e) => {
+        const l = lift.current;
+        if (!touch || !l) return;
+        const p = pointOf(e);
+        touch.move(log.id, p.x, p.y, p.x - l.x, p.y - l.y);
+      }}
+      onResponderRelease={() => {
+        lift.current = null;
+        touch?.end(true);
+      }}
+      onResponderTerminate={() => {
+        lift.current = null;
+        touch?.end(false);
+      }}
+      onResponderTerminationRequest={() => false}
     >
+      {isDropTarget && touch ? <View pointerEvents="none" style={styles.tileDropMark} testID={`shelf-drop-${log.id}`} /> : null}
       <Pressable
         testID={`shelf-book-${log.id}`}
         accessibilityRole="button"
         accessibilityLabel={log.book.title}
         onPress={onPress}
-        onLongPress={onMenu ? (e) => onMenu(anchorFromEvent(e)) : undefined}
+        onLongPress={
+          touch
+            ? (e) => {
+                // 꾹 누름: 책을 든다. 움직이면 옮기기(위), 그대로 떼면 메뉴(onPressOut)
+                const p = pointOf(e);
+                lift.current = { x: p.x, y: p.y, anchor: p, moved: false };
+                touch.lift(log.id);
+              }
+            : onMenu
+              ? (e) => onMenu(anchorFromEvent(e))
+              : undefined
+        }
+        onPressOut={
+          touch
+            ? () => {
+                // 옮기기로 넘어가면 책 누름은 끝나도(넘겨줌) 메뉴를 열지 않는다. 넘겨받기와 끝남 순서가 플랫폼마다 달라 한 박자 뒤에 본다
+                setTimeout(() => {
+                  const l = lift.current;
+                  if (!l || l.moved) return;
+                  lift.current = null;
+                  touch.end(false);
+                  onMenu?.(l.anchor);
+                }, 0);
+              }
+            : undefined
+        }
         delayLongPress={320}
         style={({ pressed }) => [styles.slot, pressed && styles.slotPressed]}
       >
@@ -257,7 +350,7 @@ function BookTile({
           </Text>
         ) : null}
       </Pressable>
-      {web && hovered && onMenu ? (
+      {desktopWeb && hovered && onMenu ? (
         <View ref={moreRef} style={styles.tileMoreWrap}>
           <Pressable
             testID={`shelf-more-${log.id}`}
@@ -562,6 +655,57 @@ export function ReadingLogScreen() {
     [owner, orderedItems]
   );
 
+  // 터치 옮기기(앱·모바일 웹, 2026-11-26): 꾹 눌러 든 책을 손가락 아래 책 자리로 옮긴다
+  const touchShelf = useMemo(() => usesTouchShelf(), []);
+  const tileNodes = useRef(new Map<string, React.ComponentRef<typeof View>>());
+  const tileRects = useRef(new Map<string, { x: number; y: number; w: number; h: number }>());
+  const dragRef = useRef<{ id: string; target: string | null } | null>(null);
+  const [dragOffset, setDragOffset] = useState<{ dx: number; dy: number } | null>(null);
+  const register = useCallback((id: string, node: React.ComponentRef<typeof View> | null) => {
+    if (node) tileNodes.current.set(id, node);
+    else tileNodes.current.delete(id);
+  }, []);
+  const touchDrag = useMemo<Omit<TouchDrag, "offset">>(
+    () => ({
+      register,
+      lift(id) {
+        dragRef.current = { id, target: null };
+        setDraggingId(id);
+        setDropTargetId(null);
+        setDragOffset({ dx: 0, dy: 0 });
+        tileRects.current.clear();
+        tileNodes.current.forEach((node, key) => {
+          node.measureInWindow?.((x, y, w, h) => {
+            if (w > 0) tileRects.current.set(key, { x, y, w, h });
+          });
+        });
+      },
+      move(id, x, y, dx, dy) {
+        const drag = dragRef.current;
+        if (!drag || drag.id !== id) return;
+        setDragOffset({ dx, dy });
+        let target: string | null = null;
+        tileRects.current.forEach((r, key) => {
+          if (key !== id && x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) target = key;
+        });
+        if (target !== drag.target) {
+          drag.target = target;
+          setDropTargetId(target);
+        }
+      },
+      end(moved) {
+        const drag = dragRef.current;
+        dragRef.current = null;
+        if (moved && drag?.target) persistReorder(drag.id, drag.target);
+        setDraggingId(null);
+        setDropTargetId(null);
+        setDragOffset(null);
+      },
+    }),
+    [register, persistReorder]
+  );
+  const touch: TouchDrag | undefined = touchShelf ? { ...touchDrag, offset: dragOffset } : undefined;
+
   const handleDeleteLog = async (target: ReadingLog) => {
     if (deletingRef.current || !owner) return;
     deletingRef.current = true;
@@ -657,7 +801,7 @@ export function ReadingLogScreen() {
   const monthShelf = (items: ReadingLog[], withStats: boolean) => {
     const groups = groupByMonth(items, thisYear);
     return (
-      <ScrollView testID="shelf" contentContainerStyle={styles.shelfPad} onScroll={onScroll} scrollEventThrottle={200}>
+      <ScrollView testID="shelf" contentContainerStyle={styles.shelfPad} onScroll={onScroll} scrollEventThrottle={200} scrollEnabled={!(touch && draggingId)}>
         {withStats ? statsLine : null}
         {groups.map((group) => {
           const collapsed = Boolean(collapsedMonths[group.key]);
@@ -665,7 +809,11 @@ export function ReadingLogScreen() {
           return (
             <View
               key={group.key}
-              style={[styles.bookZone, collapsed && styles.bookZoneCollapsed]}
+              style={[
+                styles.bookZone,
+                collapsed && styles.bookZoneCollapsed,
+                touch && draggingId && group.logs.some((l) => l.id === draggingId) && styles.tierLifted,
+              ]}
               onLayout={(e) => {
                 const w = Math.floor(e.nativeEvent.layout.width);
                 if (w > 0) setZoneWidth((prev) => (prev === w ? prev : w));
@@ -698,7 +846,10 @@ export function ReadingLogScreen() {
                   {rows.map((row, ri) => {
                     const isLastRow = ri === rows.length - 1;
                     return (
-                      <View key={`${group.key}-${ri}`} style={styles.shelfTier}>
+                      <View
+                        key={`${group.key}-${ri}`}
+                        style={[styles.shelfTier, touch && draggingId && row.some((l) => l.id === draggingId) && styles.tierLifted]}
+                      >
                         <View style={styles.shelfRow}>
                           {row.map((log) => (
                             <BookTile
@@ -721,6 +872,7 @@ export function ReadingLogScreen() {
                                 setDraggingId(null);
                                 setDropTargetId(null);
                               }}
+                              touch={touch}
                             />
                           ))}
                         </View>
@@ -1067,11 +1219,27 @@ const styles = StyleSheet.create({
   monthCount: { ...T.gauge, fontWeight: "400", color: C.inkMuted },
   monthBody: { gap: 14 },
   shelfTier: { gap: 14 },
+  tierLifted: { zIndex: 20, elevation: 8 },
   shelfRow: { flexDirection: "row", gap: GAP, alignItems: "flex-start" },
   slot: { borderRadius: theme.radii.block },
   slotPressed: { opacity: 0.85, transform: [{ translateY: 1 }] },
   tile: { position: "relative", gap: 0 },
   tileDragging: { opacity: 0.45 },
+  // 터치로 든 책: 위로 떠 보이게(다른 줄보다 위)
+  tileLifted: { zIndex: 20, elevation: 8, shadowColor: "#000", shadowOpacity: 0.22, shadowRadius: 10, shadowOffset: { width: 0, height: 6 } },
+  tileDropMark: {
+    position: "absolute",
+    top: -4,
+    left: -4,
+    right: -4,
+    bottom: -4,
+    borderRadius: theme.radii.infoCard,
+    borderWidth: 2,
+    borderStyle: "dashed",
+    borderColor: C.inkStrong,
+  },
+  // 모바일 웹: 꾹 누르면 표지 이미지 미리보기·글자 고르기가 뜨지 않게
+  noCallout: { WebkitTouchCallout: "none", userSelect: "none" } as object,
   tileDropTarget: {
     borderRadius: theme.radii.infoCard,
     outlineWidth: 2,

@@ -1,7 +1,7 @@
 // 홈 하단 창 높이·끌기 (계약서 library-visit.md VISIT-1b W3·C4, 결정 2)
 // 세 플랫폼 같은 코드: React Native 기본 PanResponder + Animated(useNativeDriver: false — 웹과 같게). 제스처 라이브러리 없음.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Animated, PanResponder, useWindowDimensions, type GestureResponderHandlers } from "react-native";
+import { Animated, PanResponder, Platform, useWindowDimensions, type GestureResponderHandlers } from "react-native";
 
 export type SheetSnap = "half" | "full" | "peek";
 
@@ -83,10 +83,11 @@ export function useHomeSheet(areaHeight?: number, isListAtTop?: () => boolean): 
   const pan = useMemo(
     () =>
       PanResponder.create({
-        // 웹 마우스는 움직임만으로는 끌기를 넘겨받지 못한다(react-native-web). 창 빈 곳·손잡이를 누르면 창이 받는다.
-        // 책·버튼처럼 누를 수 있는 것은 더 안쪽이라 먼저 받는다(누름 그대로). 휴대폰에서 안쪽 목록이 스크롤을 시작하면
-        // 스크롤이 이 끌기를 넘겨받는다(아래 onPanResponderTerminate)
-        onStartShouldSetPanResponder: () => true,
+        // 웹 마우스는 움직임만으로는 끌기를 넘겨받지 못한다(react-native-web). 그래서 웹에서만 창 빈 곳·손잡이를 누르면 창이 받는다.
+        // 앱(iOS·Android)에서는 누르는 순간 받지 않는다: 스크롤 목록의 조상이 터치를 쥐면 네이티브 스크롤이 꺼져
+        // 빈 곳에서 시작한 스크롤이 안 먹고, 펼친 창에서 아래로 쓸면 목록 대신 창이 내려갔다(2026-11-26 실기기).
+        // 앱은 움직임이 생긴 뒤 아래 Capture 조건으로만 넘겨받는다.
+        onStartShouldSetPanResponder: () => Platform.OS === "web",
         // C4: full이 아니면 끌기가 먼저(안쪽 스크롤보다). full이면 안쪽 스크롤에 맡기고, 목록이 맨 위에서 아래로 끌 때만 창을 내린다
         onMoveShouldSetPanResponderCapture: (_e, g) => {
           if (Math.abs(g.dy) <= DRAG_SLOP || Math.abs(g.dy) <= Math.abs(g.dx)) return false;
