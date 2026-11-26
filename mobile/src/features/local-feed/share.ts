@@ -16,12 +16,21 @@ type WebNavigator = {
 
 /** 공유할 주소. 웹 기준 주소(EXPO_PUBLIC_WEB_URL, 웹에서는 지금 주소)가 있으면 `<기준>/posts/<id>`, 없으면 앱 딥링크 */
 export function postShareUrl(postId: string): string {
-  const id = encodeURIComponent(postId);
+  return shareUrl("posts", postId);
+}
+
+/** C-97 MY-4 M4-10: 프로필 주소 `<기준>/users/<profile_id>`, 없으면 `localone://users/<profile_id>` */
+export function profileShareUrl(profileId: string): string {
+  return shareUrl("users", profileId);
+}
+
+function shareUrl(path: "posts" | "users", rawId: string): string {
+  const id = encodeURIComponent(rawId);
   const configured = process.env.EXPO_PUBLIC_WEB_URL?.trim().replace(/\/+$/, "");
   const origin =
     configured ||
     (Platform.OS === "web" && typeof window !== "undefined" && window.location?.origin ? window.location.origin : "");
-  return origin ? `${origin}/posts/${id}` : `localone://posts/${id}`;
+  return origin ? `${origin}/${path}/${id}` : `localone://${path}/${id}`;
 }
 
 async function shareOnWeb(url: string): Promise<ShareOutcome> {
@@ -45,7 +54,14 @@ async function shareOnWeb(url: string): Promise<ShareOutcome> {
 }
 
 export async function sharePost(postId: string): Promise<ShareOutcome> {
-  const url = postShareUrl(postId);
+  return shareLink(postShareUrl(postId));
+}
+
+export async function shareProfile(profileId: string): Promise<ShareOutcome> {
+  return shareLink(profileShareUrl(profileId));
+}
+
+async function shareLink(url: string): Promise<ShareOutcome> {
   if (Platform.OS === "web") return shareOnWeb(url);
   try {
     const result = await Share.share({ url, message: url });

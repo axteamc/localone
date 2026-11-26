@@ -1,0 +1,423 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>게시물 작성자 줄 · 남의 프로필 시안</title>
+<!--
+  2026-11-26 사용자 요청: 게시물 상세에 작성자(사진+이름) 줄(핀터레스트 상세 하단처럼), 그 줄에서 프로필 이동·신고.
+  남의 프로필: 그 사람이 올린 공개 게시물·공개 독서 기록 모아 보기, 오른쪽 위 ⋯ → 공유·신고. 나머지는 인스타그램·핀터레스트 일반 UX.
+  정할 것 3개(작성자 줄 누르기 / 프로필 머리 / 게시물·독서 기록 나누기). 나머지는 명세 패널의 기본값(Claude).
+  예시 데이터: 가상의 닉네임·도서관.
+-->
+<style>
+  :root {
+    --bg:#E1E1DE; --surface2:#D0CEC8; --surface3:#BFBCB5;
+    --fill1:#E9C970; --fill2:#EDC9A9; --fill3:#B3BFB5;
+    --cream:#EFEFE7; --paper:#EFF1F1; --ink-strong:#2E333F; --text:#1D1D1F; --sub:#71716F;
+    --seam:#C9C9C5; --danger:#B4443A;
+    --t1:#C88A56; --t2:#7E8C7D; --t3:#8AA3BF; --t4:#D98B7A; --t5:#E9C970; --t6:#A99BB8;
+    --r-card:18px; --r-pill:18px; --r-block:3px; --r-ctl:10px;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,"Apple SD Gothic Neo","Malgun Gothic",sans-serif; line-height:1.5; }
+  header.page, main { max-width:1280px; margin:0 auto; padding:0 16px; }
+  header.page { padding-top:20px; }
+  h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:17px; margin:0 0 4px; } h3 { font-size:15px; margin:0 0 8px; }
+  .how, .flow, .decided { background:var(--cream); border-radius:var(--r-card); padding:12px 16px; margin:10px 0 0; font-size:14px; }
+  .decided { border-left:5px solid var(--ink-strong); }
+  .decided ul, .how ul { margin:4px 0; padding-left:18px; }
+  section.element { margin-top:32px; }
+  .status { display:inline-block; font-size:12px; padding:2px 10px; border-radius:var(--r-pill); background:var(--surface2); margin-left:6px; font-weight:400; }
+  .pick { margin:8px 0 0; font-size:14px; }
+  .pick select { font:inherit; padding:4px 8px; border-radius:10px; border:1px solid var(--surface3); background:var(--paper); }
+  .cands { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:16px; margin-top:12px; }
+  .cand { background:var(--paper); border-radius:var(--r-card); padding:14px; border:3px solid transparent; }
+  .cand.recommended { border-color:var(--fill1); } .cand.chosen { border-color:var(--ink-strong); }
+  .badge { display:inline-block; font-size:12px; font-weight:700; padding:1px 9px; border-radius:var(--r-pill); background:var(--fill1); margin-left:6px; }
+  .cand p, .cand li { font-size:13.5px; margin:6px 0; } .cand ul { padding-left:18px; margin:4px 0; }
+  .lbl { font-weight:700; font-size:12.5px; color:var(--sub); margin-top:10px; display:block; }
+  .reset { font:inherit; font-size:12px; border:1px solid var(--surface3); background:var(--paper); border-radius:var(--r-pill); padding:1px 10px; cursor:pointer; display:block; margin:0 auto 8px; }
+
+  /* ---- 휴대폰 ---- */
+  .phone { width:250px; height:470px; margin:0 auto 8px; border-radius:26px; border:5px solid var(--ink-strong); position:relative; overflow:hidden; font-size:11px; background:var(--paper); }
+  .view { position:absolute; inset:0; overflow:hidden; background:var(--paper); }
+  .view.off { display:none; }
+  .img { height:200px; position:relative; background:linear-gradient(160deg,var(--t4),var(--t1)); display:flex; align-items:flex-end; padding:12px; color:#fff; font-size:15px; font-weight:600; }
+  .back { position:absolute; left:8px; top:8px; width:26px; height:26px; border-radius:8px; background:var(--paper); color:var(--ink-strong); display:flex; align-items:center; justify-content:center; font-size:14px; cursor:pointer; border:0; }
+  .actbar { display:flex; align-items:center; justify-content:space-between; padding:8px 10px 2px; }
+  .actbar .l { display:flex; gap:12px; align-items:center; font-size:14px; }
+  .save { background:var(--ink-strong); color:var(--paper); border-radius:var(--r-pill); padding:4px 11px; font-size:10.5px; font-weight:600; }
+  .arow { display:flex; align-items:center; gap:8px; margin:6px 10px 0; padding:5px 4px; border-radius:var(--r-ctl); position:relative; }
+  .arow.tap { cursor:pointer; }
+  .arow.tap:hover { background:var(--cream); }
+  .av { width:28px; height:28px; border-radius:50%; flex:none; background:var(--t2); color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
+  .av.big { width:56px; height:56px; font-size:20px; }
+  .av.huge { width:72px; height:72px; font-size:26px; }
+  .an { flex:1; min-width:0; line-height:1.25; }
+  .an b { font-size:12px; display:block; }
+  .an small { font-size:9.5px; color:var(--sub); }
+  .dots { width:24px; height:24px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:14px; border:0; background:none; color:var(--ink-strong); }
+  .dots:hover { background:var(--surface2); }
+  .chev { color:var(--sub); font-size:12px; }
+  .body { margin:6px 14px; font-size:11px; }
+  .bookbox { margin:6px 10px; border:1px solid var(--seam); border-radius:var(--r-ctl); padding:7px 9px; display:flex; justify-content:space-between; gap:6px; font-size:10px; }
+  .bookbox .pill { border:1px solid var(--surface3); border-radius:var(--r-pill); padding:1px 8px; white-space:nowrap; align-self:center; }
+  .pop { position:absolute; z-index:20; background:var(--paper); border:1px solid var(--seam); border-radius:12px; box-shadow:0 4px 16px rgba(0,0,0,.18); min-width:128px; padding:4px; display:none; }
+  .pop.on { display:block; }
+  .pop button { display:block; width:100%; text-align:left; border:0; background:none; font:inherit; font-size:11px; padding:7px 10px; border-radius:8px; cursor:pointer; color:var(--text); }
+  .pop button:hover { background:var(--cream); }
+  .pop button.warn { color:var(--danger); }
+  .toast { position:absolute; left:12px; right:12px; bottom:14px; background:var(--ink-strong); color:var(--paper); border-radius:8px; padding:7px 10px; font-size:10px; display:none; z-index:30; }
+  .toast.on { display:block; }
+  /* 프로필 */
+  .phead { height:38px; display:flex; align-items:center; justify-content:space-between; padding:0 8px; border-bottom:1px solid var(--seam); position:relative; }
+  .phead .t { font-weight:700; font-size:12px; }
+  .phead .back { position:static; background:none; }
+  .prow { display:flex; gap:12px; align-items:center; padding:12px; }
+  .pinfo { min-width:0; line-height:1.35; }
+  .pinfo .g { font-size:8px; letter-spacing:.14em; color:var(--sub); }
+  .pinfo b { font-size:14px; display:block; }
+  .pinfo small { font-size:10px; color:var(--sub); display:block; }
+  .pcenter { text-align:center; padding:12px 12px 6px; }
+  .pcenter .av { margin:0 auto 6px; }
+  .pcenter b { font-size:15px; display:block; }
+  .pcenter small { font-size:10px; color:var(--sub); display:block; }
+  .counts { display:flex; justify-content:center; gap:14px; margin-top:6px; font-size:10px; color:var(--sub); }
+  .counts b { color:var(--text); font-size:11px; display:inline; }
+  .tabs { display:flex; border-bottom:1px solid var(--seam); }
+  .tabs button { flex:1; border:0; background:none; font:inherit; font-size:11px; padding:7px 0 5px; color:var(--sub); cursor:pointer; border-bottom:2px solid transparent; }
+  .tabs button.on { color:var(--text); font-weight:700; border-bottom-color:var(--ink-strong); }
+  .chips { display:flex; gap:5px; padding:8px 10px 2px; }
+  .chips button { border:1px solid var(--surface3); background:var(--paper); border-radius:var(--r-pill); font:inherit; font-size:10px; padding:2px 10px; cursor:pointer; }
+  .chips button.on { background:var(--ink-strong); color:var(--paper); border-color:var(--ink-strong); }
+  .grid { columns:2; column-gap:6px; padding:8px; }
+  .tile { break-inside:avoid; margin-bottom:6px; border-radius:10px; position:relative; color:#fff; font-size:9px; padding:6px; display:flex; align-items:flex-end; }
+  .tile .mark { position:absolute; left:5px; top:5px; background:rgba(255,255,255,.88); color:var(--ink-strong); border-radius:var(--r-pill); font-size:8px; padding:0 6px; font-weight:600; }
+  .tile.log { background:var(--cream) !important; color:var(--ink-strong); border:1px solid var(--seam); font-family:"Nanum Pen Script","Gaegu",cursive,serif; font-size:11px; align-items:flex-start; padding-top:20px; }
+  .empty { text-align:center; color:var(--sub); padding:30px 10px; font-size:10.5px; }
+  .sheet { position:absolute; left:0; right:0; bottom:0; background:var(--paper); border-top-left-radius:16px; border-top-right-radius:16px; box-shadow:0 -4px 16px rgba(0,0,0,.2); padding:10px 12px 14px; z-index:25; display:none; }
+  .sheet.on { display:block; }
+  .sheet .grab { width:30px; height:3px; border-radius:2px; background:var(--surface3); margin:0 auto 8px; }
+  .sheet h4 { margin:0 0 6px; font-size:12px; }
+  .sheet label { display:block; font-size:10.5px; padding:4px 0; }
+  .sheet .send { margin-top:6px; width:100%; border:0; border-radius:var(--r-ctl); background:var(--danger); color:#fff; font:inherit; font-size:11px; padding:6px; cursor:pointer; }
+  .dim { position:absolute; inset:0; background:rgba(0,0,0,.25); z-index:24; display:none; }
+  .dim.on { display:block; }
+
+  table { border-collapse:collapse; width:100%; font-size:13px; background:var(--paper); border-radius:var(--r-card); overflow:hidden; }
+  th, td { text-align:left; vertical-align:top; padding:8px 10px; border-bottom:1px solid var(--surface2); }
+  th { background:var(--surface2); }
+  .st { font-size:12px; padding:1px 8px; border-radius:var(--r-pill); background:var(--surface2); white-space:nowrap; }
+  #spec, #defaults { margin-top:32px; }
+  .wide { overflow-x:auto; }
+</style>
+</head>
+<body>
+<header class="page">
+  <h1>게시물 작성자 줄 · 남의 프로필 시안</h1>
+  <div class="how"><b>보는 법.</b> 휴대폰 안을 <b>직접 눌러 보세요.</b> 작성자 줄·⋯·탭·뒤로(‹)가 움직여요. 노란 테두리가 <b>추천</b>이에요. 각 후보 아래 "처음으로"로 되돌릴 수 있어요.
+    <ul><li>고를 것은 <b>3개</b>: ① 작성자 줄을 눌렀을 때 ② 남의 프로필 위쪽 모양 ③ 게시물·독서 기록을 나누는 방식.</li>
+    <li>나머지(내 글일 때, 탈퇴한 사람, 공유 문구, 빈 화면 등)는 맨 아래 <b>기본값(Claude)</b> 표에 있어요. 걸리는 것만 말해 주세요.</li></ul></div>
+  <div class="decided"><b>요청에서 정해진 것.</b>
+    <ul>
+      <li>게시물 상세에서 지금의 글자 한 줄(<code>닉네임 · 도서관</code>) 자리를 <b>사진 + 닉네임 줄</b>로 바꿔요(핀터레스트 상세 하단처럼).</li>
+      <li>그 줄에서 <b>프로필 보기</b>와 <b>신고</b>를 할 수 있어요.</li>
+      <li>남의 프로필 = 그 사람의 <b>공개 게시물 + 공개 독서 기록</b> 모아 보기, 오른쪽 위 <b>⋯ → 공유 · 신고</b>.</li>
+      <li><b>주의:</b> 독서 기록 자체는 "본인만 본다"가 이미 확정이에요(READ-1 R1-1). 그래서 여기서 "공개 독서 기록"은 <b>독서 기록에서 「게시물로 올리기」한 것</b>(잉크 손글씨·미니멀 템플릿 게시물)이에요. 비공개 기록은 프로필에 나오지 않아요.</li>
+    </ul>
+  </div>
+</header>
+<main>
+<div class="decided" style="border-left-color:var(--fill1)"><b>2026-11-26 사용자 결정.</b>
+  <ul>
+    <li>1-<b>B</b>: 사진·이름 = 바로 프로필, 줄 끝 ⋯ = 프로필 보기·사용자 신고. · 2-<b>B</b>: 가운데 큰 사진 + 개수. · 3-<b>A</b>: 밑줄 탭 2개(게시물 / 독서 기록).</li>
+    <li><b>게시물이 0개인 사람은 독서 기록 탭을 먼저 연다</b>(3-A 화면 아래 "예시 사람" 단추로 확인).</li>
+    <li><b>같은 게시물이 두 탭에 겹쳐 나오지 않는다.</b> 독서 기록에서 올린 게시물은 <b>독서 기록 탭에만</b>, 나머지는 <b>게시물 탭에만</b>. 개수도 따로 센다(예: 게시물 4 · 독서 기록 3 = 전체 7개).</li>
+    <li><b>독서 기록 게시물 구분 기준</b> = 올릴 때 독서 기록에서 올렸는지를 게시물에 남긴 값(새 칸 <code>origin</code>: <code>post</code> / <code>reading_log</code>, 올릴 때 정해지고 바뀌지 않음). 생김새(손글씨 템플릿인지)나 <code>reading_log_id</code>로는 가르지 않는다. 독서 기록에서도 사진으로 올릴 수 있고, 원본 기록을 지우면 <code>reading_log_id</code>가 비어 게시물 탭으로 넘어가 버리기 때문이다. 기존 게시물은 <code>reading_log_id</code>가 있거나 템플릿이면 <code>reading_log</code>로 채운다.</li>
+    <li>화면에서도 구분: 게시물 상세의 작성자 줄 날짜 옆에 작은 표찰 <code>독서 기록</code>. 3-A 화면에서 사진으로 올린 독서 기록 카드도 독서 기록 탭에만 있는 것을 확인할 수 있다.</li>
+  </ul>
+</div>
+
+<!-- ========== 정할 것 1 ========== -->
+<section class="element" id="el-row" data-chosen="">
+  <h2>정할 것 1. 작성자 줄을 누르면 <span class="status">확인 — B (2026-11-26)</span></h2>
+  <div class="flow"><b>정해진 것.</b> 좋아요·공유·⋯·저장 줄 바로 아래에 <b>사진(28px 원) + 닉네임</b>, 그 아래 작게 <code>도서관 · 날짜</code>. 정할 것은 <b>이 줄을 눌렀을 때 무엇이 일어나느냐</b>예요. (위 ⋯ 메뉴의 "게시물 신고"는 지금처럼 그대로 있어요 — 이건 <b>게시물</b> 신고, 작성자 줄의 신고는 <b>사람</b> 신고.)</div>
+  <div class="pick">다시 보기: <select data-for="el-row"><option value="">(아직 안 고름)</option><option value="A">후보 A</option><option value="B" selected>후보 B</option><option value="C">후보 C</option></select></div>
+  <div class="cands">
+    <article class="cand" data-id="A">
+      <h3>후보 A — 누르면 작은 메뉴(프로필 보기 / 신고)</h3>
+      <div class="phone" data-demo="row-A"></div>
+      <button class="reset" data-reset="row-A">처음으로</button>
+      <p>줄 전체가 버튼 하나. 누르면 줄 바로 아래 작은 메뉴에 <b>프로필 보기 · 사용자 신고</b> 두 개.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>작성자 줄 → 메뉴 → 「프로필 보기」 → 남의 프로필 / 「사용자 신고」 → 신고 사유 창.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span><p>메뉴 두 줄(줄 오른쪽에 › 표시로 눌린다는 것만 알려 줌).</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>요청 문장 그대로("클릭하면 프로필 이동 | 신고"). / 프로필 보러 갈 때마다 <b>한 번 더</b> 눌러야 하고, 인스타·핀터레스트와 달라요.</p>
+    </article>
+    <article class="cand recommended" data-id="B">
+      <h3>후보 B — 사진·이름은 바로 프로필, 줄 끝 ⋯ 은 신고 <span class="badge">추천</span></h3>
+      <div class="phone" data-demo="row-B"></div>
+      <button class="reset" data-reset="row-B">처음으로</button>
+      <div style="text-align:center;font-size:12px;margin-bottom:6px">예시 게시물: <button class="reset" style="display:inline-block;margin:0" data-logpost="0">일반 게시물</button> <button class="reset" style="display:inline-block;margin:0" data-logpost="1">독서 기록에서 올림</button></div>
+      <p>사진·닉네임을 누르면 <b>바로</b> 프로필로. 줄 오른쪽 끝의 작은 <b>⋯</b>에 <b>프로필 보기 · 사용자 신고</b>.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>사진·이름 → 남의 프로필(한 번에) / 줄 끝 ⋯ → 「사용자 신고」 → 신고 사유 창.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span><p>⋯ 안의 신고 메뉴.</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>자주 하는 일(프로필 보기)은 한 번, 드문 일(신고)은 숨김 — 인스타그램 게시물 머리와 같은 방식. 두 기능이 모두 "그 줄에" 있어요. / 위 액션 줄의 ⋯ 와 합쳐 ⋯ 가 두 개 보여요(위 = 게시물, 아래 = 사람).</p>
+      <p><b>추천 이유:</b> 프로필 이동이 한 번에 되면서, 요청한 "그 부분에서 신고"도 지켜요.</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 줄은 바로 프로필, 신고는 프로필 안 ⋯ 에서만</h3>
+      <div class="phone" data-demo="row-C"></div>
+      <button class="reset" data-reset="row-C">처음으로</button>
+      <p>줄 전체 = 프로필로 가는 버튼(오른쪽 ›). 사람 신고는 <b>프로필 화면 오른쪽 위 ⋯</b>에서만. (핀터레스트 방식)</p>
+      <span class="lbl">누르면 이렇게 이어져요</span>
+      <p>작성자 줄 → 남의 프로필 → ⋯ → 「사용자 신고」.</p>
+      <span class="lbl">화면을 열어야 보이는 것</span><p>없음(상세 화면이 가장 깔끔).</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>상세가 가장 단순하고 ⋯ 가 하나만. / 작성자 줄 자체에는 신고가 <b>없어요</b>(요청과 다름).</p>
+    </article>
+  </div>
+</section>
+
+<!-- ========== 정할 것 2 ========== -->
+<section class="element" id="el-head" data-chosen="">
+  <h2>정할 것 2. 남의 프로필 위쪽 모양 <span class="status">확인 — B (2026-11-26)</span></h2>
+  <div class="flow"><b>정해진 것.</b> 머리 줄 = 왼쪽 ‹(뒤로) · 가운데 닉네임 · 오른쪽 <b>⋯(프로필 공유 · 사용자 신고)</b>. 팔로우 버튼·팔로워 수는 넣지 않아요(아래 기본값 표). 정할 것은 <b>사진·이름·소개를 놓는 모양</b>이에요. 이 줄의 화면들은 아래쪽을 탭 2개로 같게 두었어요.</div>
+  <div class="pick">다시 보기: <select data-for="el-head"><option value="">(아직 안 고름)</option><option value="A">후보 A</option><option value="B" selected>후보 B</option><option value="C">후보 C</option></select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 내 정보와 같은 모양(왼쪽 사진 + 옆 이름) <span class="badge">추천</span></h3>
+      <div class="phone" data-demo="head-A"></div>
+      <button class="reset" data-reset="head-A">처음으로</button>
+      <p>지금 "내 정보" 탭 머리와 똑같은 자리(사진 64px 왼쪽, 옆에 닉네임·한 줄 소개). "프로필 수정" 버튼 자리는 비워요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>⋯ → 프로필 공유 / 사용자 신고. 게시물 누르면 그 게시물 상세.</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>내 프로필과 남의 프로필이 같은 화면처럼 읽혀요. 높이가 낮아 게시물이 빨리 보여요. / 개성이 덜해요.</p>
+      <p><b>추천 이유:</b> 이미 있는 내 정보 화면과 같은 부품이라 헷갈리지 않고, 게시물이 먼저 눈에 들어와요.</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 가운데 큰 사진 + 개수(핀터레스트)</h3>
+      <div class="phone" data-demo="head-B"></div>
+      <button class="reset" data-reset="head-B">처음으로</button>
+      <p>가운데 큰 사진(72px), 아래 닉네임·소개, 그 아래 <code>게시물 12 · 독서 기록 4</code> 개수.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>A와 같음. 개수를 누르면 그 탭으로.</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>"사람 페이지"라는 느낌이 강해요. / 머리가 높아 첫 화면에 게시물이 한 줄 정도만 보여요. 내 정보 화면과 모양이 달라요.</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 머리 줄에 작게 합치기</h3>
+      <div class="phone" data-demo="head-C"></div>
+      <button class="reset" data-reset="head-C">처음으로</button>
+      <p>머리 줄 안에 작은 사진(28px) + 닉네임, 소개는 아래 한 줄만. 나머지는 전부 게시물.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>A와 같음.</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>게시물이 가장 많이 보여요. / 사람이 잘 안 보이고, 사진이 작아 "누구 프로필인지"가 약해요.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ========== 정할 것 3 ========== -->
+<section class="element" id="el-split" data-chosen="">
+  <h2>정할 것 3. 게시물과 독서 기록을 나누는 방식 <span class="status">확인 — A (2026-11-26)</span></h2>
+  <div class="flow"><b>정해진 것.</b> 카드는 지금 피드와 같은 2열 핀터레스트 카드. 독서 기록 게시물은 템플릿 모양(손글씨·미니멀)이라 원래 구별돼요. 정할 것은 <b>둘을 따로 보여 줄지, 섞을지</b>예요. 이 줄의 화면들은 머리를 채택안(정할 것 2-B)으로 두었어요.</div>
+  <div class="pick">다시 보기: <select data-for="el-split"><option value="">(아직 안 고름)</option><option value="A" selected>후보 A</option><option value="B">후보 B</option><option value="C">후보 C</option></select></div>
+  <div class="cands">
+    <article class="cand recommended" data-id="A">
+      <h3>후보 A — 밑줄 탭 2개(게시물 / 독서 기록) <span class="badge">추천</span></h3>
+      <div class="phone" data-demo="split-A"></div>
+      <button class="reset" data-reset="split-A">처음으로</button>
+      <div style="text-align:center;font-size:12px;margin-bottom:6px">예시 사람: <button class="reset" style="display:inline-block;margin:0" data-person="both">둘 다 있음</button> <button class="reset" style="display:inline-block;margin:0" data-person="nopost">게시물 0개</button></div>
+      <p>내 정보의 3탭과 같은 밑줄 탭. 처음엔 <b>게시물</b>. 내리면 탭이 맨 위에 붙어요.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>탭 → 목록 바뀜 → 카드 → 게시물 상세.</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>요청("게시물, 독서 기록 모아서")과 같은 두 묶음, 인스타그램 프로필 탭과 같은 방식. / 독서 기록만 하는 사람은 첫 탭이 비어 보일 수 있어요(→ 게시물 0개면 독서 기록 탭을 먼저 열기, 기본값).</p>
+    </article>
+    <article class="cand" data-id="B">
+      <h3>후보 B — 한 목록에 섞고 독서 기록에 표시</h3>
+      <div class="phone" data-demo="split-B"></div>
+      <button class="reset" data-reset="split-B">처음으로</button>
+      <p>탭 없이 최신순 한 목록. 독서 기록에서 올린 카드 왼쪽 위에 <code>독서 기록</code> 표찰.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>카드 → 게시물 상세.</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>가장 단순, 그 사람의 활동이 시간순으로 다 보여요. / 독서 기록만 골라 보기는 안 돼요.</p>
+    </article>
+    <article class="cand" data-id="C">
+      <h3>후보 C — 섞어 보여 주고 위에 칩 거르기</h3>
+      <div class="phone" data-demo="split-C"></div>
+      <button class="reset" data-reset="split-C">처음으로</button>
+      <p>처음엔 <b>전체</b>(B처럼 섞임), 위 칩 <code>전체 · 게시물 · 독서 기록</code>으로 거르기.</p>
+      <span class="lbl">누르면 이렇게 이어져요</span><p>칩 → 목록 걸러짐 → 카드 → 게시물 상세.</p>
+      <span class="lbl">얻는 것 / 포기하는 것</span>
+      <p>섞어 보기와 골라 보기 둘 다. / 칩 줄 하나가 더 생기고, 내 정보(탭)와 방식이 달라요.</p>
+    </article>
+  </div>
+</section>
+
+<!-- ========== 명세 ========== -->
+<section id="spec">
+  <h2>명세 — 정할 것</h2>
+  <div class="wide"><table>
+    <tr><th>요소</th><th>채택안</th><th>차선</th><th>탈락안</th><th>값</th><th>유저 플로우</th><th>상태</th></tr>
+    <tr><td>1. 작성자 줄 누르기</td><td id="sp-row">—</td><td>A 작은 메뉴</td><td>C 신고는 프로필 ⋯ 에서만</td><td>사진 28px 원 · 닉네임 12~14px 600 · 아래 <code>도서관 · YYYY.MM.DD</code> 작은 회색 · 줄 높이 44px(누르기 영역) · 줄 끝 ⋯ 24px · 독서 기록 게시물이면 날짜 옆 <code>독서 기록</code> 표찰</td><td>상세 → 사진·이름 → 프로필 / 줄 끝 ⋯ → 프로필 보기·사용자 신고</td><td><span class="st" id="st-row">결정 전</span></td></tr>
+    <tr><td>2. 프로필 머리</td><td id="sp-head">—</td><td>A 내 정보와 같은 모양</td><td>C 머리 줄에 합치기</td><td>사진 72px 가운데 · 닉네임 15px 700 · 소개 회색 2줄까지 · 개수 <code>N 게시물 · N 독서 기록</code>(누르면 그 탭, 겹침 없이 따로 셈)</td><td>‹ · 닉네임 · ⋯(공유/신고)</td><td><span class="st" id="st-head">결정 전</span></td></tr>
+    <tr><td>3. 게시물/독서 기록 나누기</td><td id="sp-split">—</td><td>C 섞고 칩 거르기</td><td>B 섞고 표찰</td><td>2열 카드 간격 6px(피드와 같음) · 탭은 내 정보 탭 부품 · 처음 탭 = 게시물(게시물 0개이고 독서 기록이 있으면 독서 기록) · <code>origin</code>으로 나눠 두 탭에 겹침 없음</td><td>탭(또는 칩) → 카드 → 상세</td><td><span class="st" id="st-split">결정 전</span></td></tr>
+  </table></div>
+</section>
+
+<section id="defaults">
+  <h2>기본값(Claude) — 인스타그램·핀터레스트 일반 UX를 따라 넣은 것</h2>
+  <div class="wide"><table>
+    <tr><th>상황</th><th>이렇게 할게요</th><th>상태</th></tr>
+    <tr><td>내 게시물의 작성자 줄</td><td>눌러도 남의 프로필이 아니라 <b>내 정보 탭</b>으로. ⋯·신고는 안 보임.</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>내 프로필 주소로 들어옴</td><td>공유 링크 등으로 내 프로필이 열리면 내 정보 탭으로 바꿔 보여 줌.</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>프로필 ⋯ 메뉴</td><td><b>프로필 공유</b>(게시물 공유와 같은 시스템 공유 창, 웹 링크 <code>/users/&lt;id&gt;</code>) · <b>사용자 신고</b>(빨간 글자). 작은 메뉴(지금 게시물 ⋯ 와 같은 모양).</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>사용자 신고 창</td><td>지금 게시물 신고 창을 그대로 쓰고 사유만 사람용으로(스팸·홍보 / 욕설·괴롭힘 / 사칭 / 부적절한 사진 / 기타). 보내면 "신고했어요". 같은 사람은 한 번만 신고되고, 다시 열면 "이미 신고했어요". 신고해도 화면은 그대로(가리기는 운영자 숨김으로).</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>로그인 안 한 사람</td><td>프로필 보기는 됨. 신고를 누르면 지금처럼 로그인 안내.</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>보이는 게시물 범위</td><td><b>공개 중</b>인 것만(내가 내린 것·운영자가 숨긴 것 제외), 최신순, 20개씩 이어 불러오기. 모든 도서관 것을 모음(도서관 구분 없음).</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>독서 기록 묶음</td><td>독서 기록에서 「게시물로 올리기」한 게시물만(<code>origin = reading_log</code>, 사진으로 올린 것 포함). 이 게시물은 게시물 탭에는 안 나옴. 비공개 독서 기록·통계는 안 나옴(R1-1).</td><td><span class="st">확인</span></td></tr>
+    <tr><td>도서관 피드 카드의 독서 기록 표시</td><td>피드 카드에는 표찰을 달지 않음(지금 그대로). 구분은 상세 표찰과 프로필 탭에서.</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>빈 화면</td><td>"아직 올린 게시물이 없어요" / "아직 공개한 독서 기록이 없어요". 게시물 0개·독서 기록 1개 이상이면 독서 기록 탭을 먼저.</td><td><span class="st">확인</span></td></tr>
+    <tr><td>탈퇴했거나 운영자가 막은 사람</td><td>작성자 줄은 회색 사진 + "알 수 없는 사용자", 눌러도 안 열림. 프로필 주소로 오면 "찾을 수 없는 사용자예요".</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>사진이 없는 사람</td><td>내 정보와 같은 기본 사람 아이콘.</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>피드 카드(목록)의 작성자</td><td>바꾸지 않음. 카드를 누르면 지금처럼 상세로(카드에서 바로 프로필로 가지 않음).</td><td><span class="st">기본값(Claude)</span></td></tr>
+    <tr><td>팔로우 버튼·팔로워 수</td><td><b>넣지 않음.</b> 팔로우의 대상·효과가 아직 미결(C-46 §8-5)이고, 팔로워 수·목록은 안 만들기로 확정(F1). 원하시면 따로 정해요.</td><td><span class="st">제안(안 넣음)</span></td></tr>
+    <tr><td>차단</td><td>인스타에는 ⋯ 에 "차단"이 있지만 요청 밖이라 <b>넣지 않음</b>. 00 §5에 제안으로만 적어 둘게요.</td><td><span class="st">제안(안 넣음)</span></td></tr>
+    <tr><td>방문 스탬프·방명록·모임</td><td>프로필에 넣지 않음(요청은 게시물·독서 기록). 원하시면 탭을 하나 더.</td><td><span class="st">제안(안 넣음)</span></td></tr>
+  </table></div>
+</section>
+<p style="font-size:12px;color:var(--sub);margin:24px 0 40px">이 시안은 화면 모양만 보여 줘요. 고르신 뒤에 계약서(사용자 공개 프로필 API·사용자 신고 대상 추가)와 구현을 시작해요.</p>
+</main>
+
+<script>
+const POSTS = [
+  { h:120, c:'--t1', t:'가을 창가에서', log:false },
+  { h:150, c:'--t3', t:'', log:true, q:'"문장은 오래 남는다"' },
+  { h:90,  c:'--t2', t:'오늘의 서가', log:false },
+  { h:130, c:'--t4', t:'', log:false },
+  { h:110, c:'--t6', t:'', log:true, q:'다 읽고 나서 한참 앉아 있었다' },
+  { h:100, c:'--t5', t:'동네 작은도서관', log:false },
+  { h:115, c:'--t2', t:'완독! (사진으로 올린 독서 기록)', log:true, photo:true },
+];
+const NOPOST = new WeakMap(), LOGPOST = new WeakMap();
+function grid(filter, marks, noPost) {
+  const list = POSTS.filter(p => !(noPost && !p.log)).filter(p => filter === 'all' || (filter === 'log') === p.log);
+  if (!list.length) return `<div class="empty">${filter==='log'?'아직 공개한 독서 기록이 없어요':'아직 올린 게시물이 없어요'}</div>`;
+  return '<div class="grid">' + list.map(p => p.photo
+    ? `<div class="tile" style="height:${p.h}px;background:var(${p.c})">${marks?'<span class="mark">독서 기록</span>':''}${p.t}</div>`
+    : p.log
+    ? `<div class="tile log" style="height:${p.h}px">${marks?'<span class="mark">독서 기록</span>':''}${p.q}</div>`
+    : `<div class="tile" style="height:${p.h}px;background:var(${p.c})">${p.t}</div>`).join('') + '</div>';
+}
+const AV = (cls='') => `<div class="av ${cls}">여</div>`;
+
+function detailHTML(kind, logPost) {
+  let row;
+  if (kind === 'A') row = `<div class="arow tap" data-act="menuA">${AV()}<div class="an"><b>책읽는여우</b><small>동구 작은도서관 · 2026.11.24</small></div><span class="chev">›</span>
+      <div class="pop" data-pop="menuA" style="left:30px;top:40px"><button data-act="profile">프로필 보기</button><button class="warn" data-act="report">사용자 신고</button></div></div>`;
+  if (kind === 'B') row = `<div class="arow"><span class="tap" data-act="profile" style="display:flex;gap:8px;align-items:center;flex:1;cursor:pointer">${AV()}<span class="an"><b>책읽는여우</b><small>동구 작은도서관 · 2026.11.24${logPost ? ' <span style="border:1px solid var(--surface3);border-radius:9px;padding:0 5px;color:var(--ink-strong)">독서 기록</span>' : ''}</small></span></span><button class="dots" data-act="menuB">⋯</button>
+      <div class="pop" data-pop="menuB" style="right:0;top:34px"><button data-act="profile">프로필 보기</button><button class="warn" data-act="report">사용자 신고</button></div></div>`;
+  if (kind === 'C') row = `<div class="arow tap" data-act="profile">${AV()}<div class="an"><b>책읽는여우</b><small>동구 작은도서관 · 2026.11.24</small></div><span class="chev">›</span></div>`;
+  return `<div class="view" data-view="detail">
+    <div class="img"><button class="back">‹</button>가을 창가에서</div>
+    <div class="actbar"><div class="l"><span>♡ <small>12</small></span><span>↑</span><span>⋯</span></div><span class="save">저장</span></div>
+    ${row}
+    <div class="body">창가 자리에서 한 권을 끝냈어요. 마지막 장이 오래 남네요.</div>
+    <div class="bookbox"><span><b>작은 것들의 신</b><br><small style="color:#5B8A5B">● 동구 작은도서관 대출 가능</small></span><span class="pill">도서관 확인</span></div>
+  </div>`;
+}
+function profileHTML(head, split, backable, noPost) {
+  const nPost = noPost ? 0 : POSTS.filter(p => !p.log).length, nLog = POSTS.filter(p => p.log).length;
+  const menu = `<div class="pop" data-pop="pmenu" style="right:6px;top:34px"><button data-act="share">프로필 공유</button><button class="warn" data-act="report">사용자 신고</button></div>`;
+  const backBtn = `<button class="back" ${backable?'data-act="toDetail"':''}>‹</button>`;
+  let top;
+  if (head === 'A') top = `<div class="phead">${backBtn}<span class="t">책읽는여우</span><button class="dots" data-act="pmenu">⋯</button>${menu}</div>
+    <div class="prow">${AV('big')}<div class="pinfo"><span class="g">MEMBER · PROFILE</span><b>책읽는여우</b><small>동구에서 소설 위주로 읽어요 📚</small></div></div>`;
+  if (head === 'B') top = `<div class="phead">${backBtn}<span class="t">책읽는여우</span><button class="dots" data-act="pmenu">⋯</button>${menu}</div>
+    <div class="pcenter">${AV('huge')}<b>책읽는여우</b><small>동구에서 소설 위주로 읽어요 📚</small>
+    <div class="counts"><span data-tab="post" style="cursor:pointer"><b>${nPost}</b> 게시물</span><span data-tab="log" style="cursor:pointer"><b>${nLog}</b> 독서 기록</span></div></div>`;
+  if (head === 'C') top = `<div class="phead">${backBtn}<span style="display:flex;gap:6px;align-items:center;flex:1;margin-left:4px">${AV()}<span class="t">책읽는여우</span></span><button class="dots" data-act="pmenu">⋯</button>${menu}</div>
+    <div style="padding:6px 12px;font-size:10px;color:var(--sub)">동구에서 소설 위주로 읽어요 📚</div>`;
+  let mid;
+  if (split === 'A') {
+    const first = nPost === 0 && nLog > 0 ? 'log' : 'post'; // 게시물 0개면 독서 기록 탭을 먼저
+    mid = `<div class="tabs"><button class="${first==='post'?'on':''}" data-tab="post">게시물</button><button class="${first==='log'?'on':''}" data-tab="log">독서 기록</button></div><div data-list>${grid(first, false, noPost)}</div>`;
+  }
+  if (split === 'B') mid = `<div data-list style="border-top:1px solid var(--seam)">${grid('all', true)}</div>`;
+  if (split === 'C') mid = `<div class="chips"><button class="on" data-chip="all">전체</button><button data-chip="post">게시물</button><button data-chip="log">독서 기록</button></div><div data-list>${grid('all', true)}</div>`;
+  return `<div class="view" data-view="profile" style="overflow:auto">${top}${mid}</div>`;
+}
+const SHEET = `<div class="dim" data-dim></div><div class="sheet" data-sheet><div class="grab"></div><h4>책읽는여우 님을 신고할까요?</h4>
+  <label><input type="radio" name="r" checked> 스팸·홍보</label><label><input type="radio" name="r"> 욕설·괴롭힘</label><label><input type="radio" name="r"> 다른 사람 사칭</label><label><input type="radio" name="r"> 부적절한 사진</label><label><input type="radio" name="r"> 기타</label>
+  <button class="send" data-act="sendReport">신고하기</button></div><div class="toast" data-toast></div>`;
+
+function build(phone) {
+  const [kind, v] = phone.dataset.demo.split('-');
+  if (kind === 'row') {
+    phone.innerHTML = detailHTML(v, LOGPOST.get(phone)) + profileHTML('B', 'A', true) + SHEET;
+    phone.querySelector('[data-view="profile"]').classList.add('off');
+  } else if (kind === 'head') {
+    phone.innerHTML = profileHTML(v, 'A', false) + SHEET;
+  } else {
+    phone.innerHTML = profileHTML('B', v, false, NOPOST.get(phone)) + SHEET;
+  }
+}
+function toast(phone, text) {
+  const t = phone.querySelector('[data-toast]'); t.textContent = text; t.classList.add('on');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('on'), 1800);
+}
+function closePops(phone) { phone.querySelectorAll('.pop.on').forEach(p => p.classList.remove('on')); }
+document.querySelectorAll('.phone').forEach(phone => {
+  build(phone);
+  phone.addEventListener('click', e => {
+    const el = e.target.closest('[data-act],[data-tab],[data-chip],[data-dim]');
+    if (!el) { closePops(phone); return; }
+    e.stopPropagation();
+    if (el.dataset.dim !== undefined) { phone.querySelector('[data-sheet]').classList.remove('on'); el.classList.remove('on'); return; }
+    if (el.dataset.tab) {
+      phone.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === el.dataset.tab));
+      phone.querySelector('[data-list]').innerHTML = grid(el.dataset.tab, false, NOPOST.get(phone)); return;
+    }
+    if (el.dataset.chip) {
+      el.parentNode.querySelectorAll('button').forEach(b => b.classList.toggle('on', b === el));
+      phone.querySelector('[data-list]').innerHTML = grid(el.dataset.chip, true); return;
+    }
+    const act = el.dataset.act;
+    if (['menuA','menuB','pmenu'].includes(act)) {
+      const pop = phone.querySelector(`[data-pop="${act}"]`); const was = pop.classList.contains('on'); closePops(phone); pop.classList.toggle('on', !was); return;
+    }
+    closePops(phone);
+    if (act === 'profile') { phone.querySelector('[data-view="detail"]').classList.add('off'); phone.querySelector('[data-view="profile"]').classList.remove('off'); }
+    if (act === 'toDetail') { phone.querySelector('[data-view="profile"]').classList.add('off'); phone.querySelector('[data-view="detail"]').classList.remove('off'); }
+    if (act === 'report') { phone.querySelector('[data-sheet]').classList.add('on'); phone.querySelector('[data-dim]').classList.add('on'); }
+    if (act === 'sendReport') { phone.querySelector('[data-sheet]').classList.remove('on'); phone.querySelector('[data-dim]').classList.remove('on'); toast(phone, '신고했어요. 운영자가 확인할게요.'); }
+    if (act === 'share') toast(phone, '공유 창이 열려요 (프로필 링크)');
+  });
+});
+document.querySelectorAll('[data-logpost]').forEach(b => b.addEventListener('click', () => {
+  const ph = document.querySelector('[data-demo="row-B"]'); LOGPOST.set(ph, b.dataset.logpost === '1'); build(ph);
+}));
+document.querySelectorAll('[data-person]').forEach(b => b.addEventListener('click', () => {
+  const ph = document.querySelector('[data-demo="split-A"]'); NOPOST.set(ph, b.dataset.person === 'nopost'); build(ph);
+}));
+document.querySelectorAll('[data-reset]').forEach(b => b.addEventListener('click', () => build(document.querySelector(`[data-demo="${b.dataset.reset}"]`))));
+
+const NAMES = {
+  'el-row': { A:'A 작은 메뉴', B:'B 바로 프로필 + 줄 끝 ⋯ 신고', C:'C 바로 프로필, 신고는 프로필 ⋯' },
+  'el-head': { A:'A 내 정보와 같은 모양', B:'B 가운데 큰 사진 + 개수', C:'C 머리 줄에 합치기' },
+  'el-split': { A:'A 밑줄 탭 2개', B:'B 섞고 표찰', C:'C 섞고 칩 거르기' },
+};
+function apply(id, v) {
+  const sec = document.getElementById(id); sec.dataset.chosen = v;
+  sec.querySelectorAll('.cand').forEach(c => c.classList.toggle('chosen', c.dataset.id === v));
+  const key = id.replace('el-', '');
+  document.getElementById('sp-' + key).textContent = v ? NAMES[id][v] : '—';
+  document.getElementById('st-' + key).textContent = v ? '확인' : '결정 전';
+}
+document.querySelectorAll('select[data-for]').forEach(s => { s.addEventListener('change', () => apply(s.dataset.for, s.value)); if (s.value) apply(s.dataset.for, s.value); });
+</script>
+</body>
+</html>

@@ -247,6 +247,7 @@ async def post_detail(
 
     row, count, (reacted, saved) = await run_db(request.app.state.engine, tx)
     return post_public(
+        request,
         with_image_url(request, row),
         viewer=viewer,
         nickname=row.nickname,
@@ -301,6 +302,7 @@ async def edit_post(
 
     row, count, (reacted, saved) = await run_db(request.app.state.engine, tx)
     return post_public(
+        request,
         with_image_url(request, row),
         viewer=user,
         nickname=row.nickname,

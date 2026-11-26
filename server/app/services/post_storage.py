@@ -4,15 +4,30 @@
 """
 
 import base64
+import re
 import threading
 import urllib.error
 import urllib.request
 from typing import Protocol
-from urllib.parse import quote
+from urllib.parse import quote, unquote, urlsplit
+from uuid import UUID
 
 from app.settings import Settings
 
 STORAGE_TIMEOUT_SECONDS = 10
+
+
+def avatar_object_path(avatar_url: str, owner_id: UUID) -> str | None:
+    try:
+        path = unquote(urlsplit(avatar_url).path)
+    except ValueError:
+        return None
+    match = re.search(rf"/(avatars/{owner_id}/[0-9a-f-]{{36}}\.jpg)$", path)
+    return match[1] if match else None
+
+
+def avatar_url_contains_owner(avatar_url: str, owner_id: UUID) -> bool:
+    return str(owner_id) in unquote(avatar_url).lower()
 
 
 class PostImageStorage(Protocol):
@@ -21,6 +36,8 @@ class PostImageStorage(Protocol):
     def exists(self, path: str) -> bool: ...
 
     def public_url(self, path: str) -> str: ...
+
+    def read(self, path: str, max_bytes: int) -> bytes | None: ...
 
 
 class SupabasePostImageStorage:
@@ -65,6 +82,15 @@ class SupabasePostImageStorage:
     def public_url(self, path: str) -> str:
         return f"{self.base_url}/storage/v1/object/public/{self.bucket}/{quote(path)}"
 
+    def read(self, path: str, max_bytes: int) -> bytes | None:
+        try:
+            with urllib.request.urlopen(self.public_url(path), timeout=STORAGE_TIMEOUT_SECONDS) as resp:
+                return resp.read(max_bytes + 1)
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404:
+                return None
+            raise
+
 
 class MemoryPostImageStorage:
     """시험·키 미설정 환경용. 공개 주소는 저장한 바이트의 data URL(서버를 다시 켜면 사라진다)."""
@@ -88,6 +114,11 @@ class MemoryPostImageStorage:
             return f"memory://post-images/{path}"
         data, content_type = stored
         return f"data:{content_type};base64,{base64.b64encode(data).decode('ascii')}"
+
+    def read(self, path: str, max_bytes: int) -> bytes | None:
+        with self._lock:
+            stored = self.files.get(path)
+        return stored[0][:max_bytes + 1] if stored is not None else None
 
 
 def build_post_storage(settings: Settings) -> PostImageStorage:

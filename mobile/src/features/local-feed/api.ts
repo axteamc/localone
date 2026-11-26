@@ -67,7 +67,8 @@ export type Post = PostStyle & {
   image_color: ColorToken | null;
   overlay_text: string | null;
   body: string | null;
-  author: { nickname: string };
+  /** C-97 MY-4: profile_id는 공개용 id(탈퇴 등이면 null), 내부 user_id는 없다 */
+  author: { nickname: string; profile_id?: string | null; avatar_url?: string | null };
   is_mine: boolean;
   reaction_count: number;
   my_reaction: boolean;
@@ -100,7 +101,8 @@ async function send<T>(path: string, init: RequestInit, signal?: AbortSignal): P
   return response.json() as Promise<T>;
 }
 
-export type ReportKind = "post" | "guestbook" | "club" | "club_comment" | "stamp"; // stamp: C-92 공개 스탬프(한마디)
+// stamp: C-92 공개 스탬프(한마디). user: C-97 사용자 신고(id = profile_id)
+export type ReportKind = "post" | "guestbook" | "club" | "club_comment" | "stamp" | "user";
 export type ReportReason = "spam" | "abuse" | "privacy" | "other";
 
 export async function reportTarget(

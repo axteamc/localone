@@ -86,7 +86,7 @@
 | 24 | `POST /api/v1/posts` | 필수 | 올리기(이때 공개된다). 이미지 종류 사진/표지/단색 + M2(`LOCAL-3`) `template`(`minimal`·`ink`) 및 `reading_log_id`, 본문 없이도 됨 | LOCAL-01·02·07, AC-PUBLISH | `확정` (2026-11-19 D, C-75) |
 | 25 | `POST /api/v1/posts/{post_id}/withdraw` | 필수(작성자만) | 철회. 바로 목록·직접 주소에서 안 보인다 | LOCAL-01, R10 | `확정` |
 | 26 | `GET /api/v1/libraries/{library_id}/posts?sort=latest&cursor=&expand=` | 선택 | 기본은 그 도서관의 공개 게시물. 홈 첫 조회에서 선택 `expand=region`으로 부족분을 같은 구 → 시·도 순으로 보충(M1 방문 페이지 및 홈 하단 창 `VISIT-1b` `useHomeFeed`가 사용; M2 방문 페이지 혼합 피드는 `#32`로 분리) | LOCAL-03, VISIT-02·06 | 범위별 최신순·홈 보충(2026-11-23 D) `확정`(2026-11-19 D) · `sort=popular`는 `미확인(임시)` Q-31 · 파일럿 공개 범위 `미확인(임시)` Q-54 |
-| 27 | `GET /api/v1/posts/{post_id}` | 선택 | 게시물 상세(본문·작성자 닉네임·공감 수·내 공감·내 북마크·책·M2 `from_reading_log`) | LOCAL-04·07 | `확정` · 철회·숨김은 `404 POST_NOT_AVAILABLE` |
+| 27 | `GET /api/v1/posts/{post_id}` | 선택 | 게시물 상세(본문·작성자 닉네임/공개 프로필 id/사진·공감 수·내 공감·내 북마크·책·`posts.origin`을 반영한 `from_reading_log`) | LOCAL-04·07, MY-4 | `확정` · 철회·숨김은 `404 POST_NOT_AVAILABLE` |
 | 28 | `GET /api/v1/books/{isbn13}/posts?exclude=&cursor=` | 선택 | 같은 책의 다른 공개 게시물(다른 도서관 포함) | LOCAL-05 | `확정` |
 | 29 | `PUT /api/v1/posts/{post_id}/reaction` · `DELETE …/reaction` | 필수 | 공감 누르기·취소(몇 번 눌러도 결과 같음) | LOCAL-06, R14 | `확정` |
 | 30 | `PUT /api/v1/posts/{post_id}/bookmark` · `DELETE …/bookmark` | 필수 | 게시물 북마크 저장·해제 | LOCAL-03, C-46 D4 | `확정` (`0006`) |
@@ -110,7 +110,7 @@
 | 34 | `POST /api/v1/guestbook/{entry_id}/withdraw` | 필수(작성자만) | 내 방명록 글 철회(멱등, 남의 글·없는 글은 같은 `404 NOT_FOUND`, B `VISIT-3`) | VISIT-03, R10 | `확정` (2026-11-19 D) |
 | 35 | `GET /api/v1/libraries/{library_id}/stamps/today` | 필수 | 오늘(서울 날짜) 내 방문 스탬프 조회(B `VISIT-4`) | VISIT-05 | `확정` (2026-11-19 D) |
 | 36 | `PUT /api/v1/libraries/{library_id}/stamps/today` | 필수 | 오늘 방문 스탬프("다녀왔어요") 찍기·공개 여부(`private`/`public`) 바꾸기(멱등, 날짜는 서버 `today_kst()`, B `VISIT-4`). **C-92**: 선택 `body`(한마디 1~140자, 키 없으면 그대로·null/빈 글자는 비움, 141자 이상 422 `body`) — 스탬프=방명록 통합, 응답 `MyStamp.body`·피드 `StampItem.body` | VISIT-05, R11 | `확정` · 입장 조건·표시 이름 `미확인(임시)` Q-45 |
-| 37 | `POST /api/v1/reports` | 필수 | 게시물·방명록·모임·모임 댓글·**공개 스탬프(한마디, `stamp`, C-92 후속)** 신고(중복 신고 멱등, 내 글 신고 불가 `422`, 신고자 비공개, B `LOCAL-4`) | LOCAL-08, AC-MOD | `확정` (2026-11-19 D) |
+| 37 | `POST /api/v1/reports` | 필수 | 게시물·방명록·모임·모임 댓글·공개 스탬프·사용자(`user`, 대상은 공개 `profile_id`) 신고. 중복 신고는 멱등이며 본인이나 내 글 신고는 `422` | LOCAL-08, AC-MOD, MY-4 | `확정` (LOCAL-4, MY-4 C-97) |
 | 69 | `PUT /api/v1/stamps/{stamp_id}/bookmark` · `DELETE …/bookmark` | 필수 | 공개 방문 스탬프 카드 북마크 저장·해제(멱등, 재저장 시 `saved_at` 갱신, 비공개·없는 스탬프 `PUT`은 `404`, B `VISIT-4`) | C-46 D3~D5 | `확정` (2026-11-19 D, C-75) |
 
 ### 2.7 내 정보 모음 (`my-collection`, A)
@@ -124,6 +124,10 @@
 | 38 | `PATCH /api/v1/me/profile` | 필수 | 내 프로필 부분 수정(닉네임·한 줄 소개·`avatar_path`, 보낸 칸만 갱신, A `MY-2`) | C-46 F1 | `확정` (2026-11-19 D) |
 | 39 | `POST /api/v1/uploads/avatar` | 필수 | 내 프로필 사진 올리기(서버가 EXIF 위치 제거 후 `avatars/<user_id>/<uuid>.jpg` 반환, `post_storage.py` 재사용, A `MY-2`) | C-46 F1, NFR-05 | `확정` (2026-11-19 D) |
 | 40 | `GET /api/v1/me/visited-libraries?cursor=&limit=` | 필수 | 내 도서관 방문 모음(스탬프 1개 이상 또는 공개 방명록 1개 이상 남긴 도서관, `last_on DESC, library_id ASC`, A `MY-3`) | 00 제안 표, VISIT-03·05, USR-02 | `확정` (2026-11-19 D, C-75) |
+| 74 | `GET /api/v1/users/{profile_id}` | 선택 | 활성 사용자의 공개 닉네임·소개·사진·탭별 공개 글 수·본인 여부. 없는 계정과 탈퇴 계정은 `404 NOT_FOUND` | MY-4, C-97 | `확정` (`my-collection.md` MY-4 C2·C3·C6) |
+| 75 | `GET /api/v1/users/{profile_id}/posts?origin=&cursor=&limit=` | 선택 | 작성자의 공개 글 목록을 `origin=post\|reading_log`로 구분. `published_at DESC, id DESC` 커서 | MY-4, C-97 | `확정` (`my-collection.md` MY-4 C2·C3·C6) |
+| 76 | `GET /api/v1/users/{profile_id}/avatar` | 공개 | 활성 작성자의 저장소 아바타 JPEG. 공개 프로필 ID로 조회하며 원본 URL은 응답에 포함하지 않는다 | MY-4, C-97 | `확정` (MY-4 C3a, 없음 `404` · 저장소 오류 `503`) |
+| 77 | `GET /api/v1/posts/{post_id}/image` | 공개 | 공개 중인 게시물의 사진 JPEG. 게시물 ID로 조회하며 원본 URL은 응답에 포함하지 않는다 | MY-4, C-97 | `확정` (MY-4 C3a, 없음 `404` · 저장소 오류 `503`) |
 
 ### 2.8 독서 기록 (`reading-log`, A)
 
@@ -143,7 +147,7 @@
 | 47 | `GET /api/v1/me/inbox/unread` | 필수 | 읽지 않은 알림 유무 `{ "has_unread": bool }`(내 정보 머리 `InboxBell` 점 표시용, D `M2-0-P1` / A `MY-2`) | C-47 G1, R19 | `확정` (2026-11-19 D, C-75) |
 | 48 | `GET /api/v1/me/inbox?cursor=&limit=` | 필수 | 내 알림함 목록(모임 확정·변경·취소·종료·다음 모임·운영 처리 안내; 읽을 때 지난 종료 안내 1회 생성, D `M2-0-P1` / B `CLUB-2`) | C-46 C5, C-47 G1, R19 | `확정` (2026-11-19 D, C-75) |
 | 49 | `POST /api/v1/me/inbox/read` | 필수 | 내 알림 읽음 처리(`{ "ids": [...] }` 또는 `{ "all": true }`, 멱등, D `M2-0-P1` / B `CLUB-2`) | C-47 G1, R19 | `확정` (2026-11-19 D) |
-| OPS-1 | `GET /api/v1/ops/reports?status=open` · `POST /api/v1/ops/reports/{id}/resolve` | 필수(운영자만, 비운영자 `404`) | 신고 목록 조회 및 처리(D `M2-0-P2`, 앱 `/ops`) | LOCAL-08, AC-MOD | `확정` (2026-11-19 D, C-75) |
+| OPS-1 | `GET /api/v1/ops/reports?status=open` · `POST /api/v1/ops/reports/{id}/resolve` | 필수(운영자만, 비운영자 `404`) | 신고 목록 조회와 처리. 사용자 신고는 계정 상태·닉네임을 표시하고 기각만 할 수 있다 | LOCAL-08, AC-MOD, MY-4 | `확정` (C-75, C-97) |
 | OPS-2 | `POST /api/v1/ops/targets/{kind}/{id}/hide` · `POST …/restore` | 필수(운영자만, 비운영자 `404`) | 게시물·방명록·모임·댓글·공개 스탬프(`stamp`, C-92 후속) 운영 숨김 및 복구(사유 필수, `moderation_actions` 기록, 숨김 시 작성자 알림함 안내, D `M2-0-P2`) | LOCAL-08, R10·R19 | `확정` (2026-11-19 D) |
 | OPS-3 | `POST /api/v1/ops/club-comment-requests/{id}/decide` | 필수(운영자만, 비운영자 `404`) | 모임 댓글 운영 요청 처리(삭제만 / 삭제와 참가 제한 / 기각, D `M2-0-P2`) | C-46 B1·B2·B6 | `확정` (2026-11-19 D) |
 | OPS-4 | `POST /api/v1/ops/restrictions` · `POST /api/v1/ops/restrictions/{id}/lift` | 필수(운영자만, 비운영자 `404`) | 참가·댓글 제한 생성 및 해제(사유 필수, 운영자만 해제 가능, D `M2-0-P2`) | C-46 B1~B5, R18 | `확정` (2026-11-19 D) |

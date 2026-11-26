@@ -3,7 +3,7 @@
 import urllib.error
 import urllib.request
 from email.message import Message
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -71,3 +71,19 @@ def test_supabase_storage_exists_reraises_server_and_network_errors() -> None:
     with patch("urllib.request.urlopen", side_effect=urllib.error.URLError("down")):
         with pytest.raises(urllib.error.URLError):
             storage.exists("avatars/u1/a.jpg")
+
+
+def test_supabase_storage_read_bounds_the_body_and_uses_the_configured_bucket() -> None:
+    storage = SupabasePostImageStorage("https://proj.supabase.co", "service-key", "post-images")
+    body = MagicMock()
+    body.__enter__.return_value.read.return_value = b"image"
+    with patch("urllib.request.urlopen", return_value=body) as open_url:
+        assert storage.read("avatars/u1/a.jpg", 4) == b"image"
+    open_url.assert_called_once_with(
+        "https://proj.supabase.co/storage/v1/object/public/post-images/avatars/u1/a.jpg", timeout=10,
+    )
+    body.__enter__.return_value.read.assert_called_once_with(5)
+
+    missing = urllib.error.HTTPError("https://proj.supabase.co/x", 404, "Not Found", Message(), None)
+    with patch("urllib.request.urlopen", side_effect=missing):
+        assert storage.read("avatars/u1/a.jpg", 4) is None

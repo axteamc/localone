@@ -16,7 +16,8 @@ from app.routers.ops import TARGETS, lock_target
 
 router = APIRouter(prefix="/api/v1")
 
-ReportKind = Literal["post", "guestbook", "club", "club_comment", "stamp"]  # stamp: C-92 공개 스탬프(한마디)
+# stamp: C-92 공개 스탬프(한마디). user: C-97 사람 신고(target_id = 공개용 profile_id, 저장은 users.id)
+ReportKind = Literal["post", "guestbook", "club", "club_comment", "stamp", "user"]
 
 
 class ReportIn(BaseModel):
@@ -46,6 +47,16 @@ def select_visible_author(c: Connection, kind: ReportKind, target_id: UUID) -> U
     return target.owner_id
 
 
+def select_reported_user(c: Connection, profile_id: UUID) -> UUID:
+    """C-97 M4-8: 공개용 profile_id → users.id. 탈퇴했거나 없으면 404."""
+    uid = c.execute(
+        text("SELECT id FROM users WHERE public_id = :pid AND status = 'active' FOR SHARE"), {"pid": profile_id},
+    ).scalar_one_or_none()
+    if uid is None:
+        raise not_found()
+    return uid
+
+
 INSERT_REPORT = text(
     "INSERT INTO reports (reporter_id, target_kind, target_id, reason, text) "
     "VALUES (:reporter, :kind, :id, :reason, :text) "
@@ -67,11 +78,16 @@ async def create_report(
 
     def tx(c: Connection) -> bool:
         lock_active_user(c, user.id)
-        author = select_visible_author(c, body.target_kind, body.target_id)
+        if body.target_kind == "user":
+            author = select_reported_user(c, body.target_id)
+            target_id = author  # reports에는 내부 users.id로 남긴다(운영자 목록이 닉네임을 붙인다)
+        else:
+            author = select_visible_author(c, body.target_kind, body.target_id)
+            target_id = body.target_id
         if author == user.id:
             raise ApiError(422, "VALIDATION_ERROR", "내 글은 신고할 수 없어요", "target_id")
         return c.execute(INSERT_REPORT, {
-            "reporter": user.id, "kind": body.target_kind, "id": body.target_id,
+            "reporter": user.id, "kind": body.target_kind, "id": target_id,
             "reason": body.reason, "text": detail,
         }).first() is not None
 

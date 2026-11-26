@@ -9,8 +9,10 @@ import { ApiCallError } from "../../lib/publicApi";
 import { actionColors, cardSurface, panel, theme, type as T } from "../../theme";
 
 type TargetKind = "post" | "guestbook" | "club" | "club_comment" | "stamp";
+/** 신고 목록에는 사람 신고(C-97 MY-4 M4-9)도 섞인다. 사람은 숨기지 않고 기각만 */
+type ReportTargetKind = TargetKind | "user";
 type Report = {
-  id: string; target_kind: TargetKind; target_id: string; reason: string; text: string | null;
+  id: string; target_kind: ReportTargetKind; target_id: string; reason: string; text: string | null;
   status: string; created_at: string; target_status: string | null; target_preview: string | null;
 };
 type CommentRequest = {
@@ -29,6 +31,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "reviews", label: "재검토" },
   { key: "direct", label: "직접 처리" },
 ];
+const USER_LABEL = "사용자";
 const KIND_LABEL: Record<TargetKind, string> = {
   post: "게시물", guestbook: "방명록", club: "모임", club_comment: "모임 댓글", stamp: "방문 기록(한마디)",
 };
@@ -143,12 +146,14 @@ export function OpsScreen() {
       {tab === "reports" && (reports.length === 0 ? <Text style={styles.empty}>열린 신고가 없어요</Text> :
         reports.map((r) => (
           <View key={r.id} style={styles.card}>
-            <Text style={styles.meta}>{KIND_LABEL[r.target_kind]} · {r.target_status ?? "없음"} · 사유 {r.reason}</Text>
+            <Text style={styles.meta}>{r.target_kind === "user" ? USER_LABEL : KIND_LABEL[r.target_kind]} · {r.target_status ?? "없음"} · 사유 {r.reason}</Text>
             <Text style={styles.body} numberOfLines={3}>{r.target_preview ?? "(내용 없음)"}</Text>
             {r.text !== null && <Text style={styles.sub}>신고 내용: {r.text}</Text>}
             <View style={styles.row}>
-              <Btn label="숨기기" primary disabled={busy}
-                onPress={() => act(`targets/${r.target_kind}/${r.target_id}/hide`, {}, "숨겼어요. 작성자에게 안내가 갔어요.")} />
+              {r.target_kind !== "user" ? (
+                <Btn label="숨기기" primary disabled={busy}
+                  onPress={() => act(`targets/${r.target_kind}/${r.target_id}/hide`, {}, "숨겼어요. 작성자에게 안내가 갔어요.")} />
+              ) : null}
               <Btn label="기각" disabled={busy} onPress={() => act(`reports/${r.id}/resolve`, {}, "기각했어요.")} />
             </View>
           </View>

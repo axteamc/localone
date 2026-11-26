@@ -214,14 +214,18 @@ REPORT_SQL = f"""
 SELECT r.id, r.target_kind, r.target_id, r.reason, r.text, r.status, r.created_at,
        COALESCE(p.status, g.status, cl.status, cc.status,
                 CASE WHEN vs.status = 'hidden' THEN 'hidden' WHEN vs.visibility = 'public' THEN 'published'
-                     WHEN vs.id IS NOT NULL THEN 'private' END) AS target_status,
-       LEFT(COALESCE(p.overlay_text, p.body, g.body, cl.name, cc.body, vs.body), {PREVIEW_MAX}) AS target_preview
+                     WHEN vs.id IS NOT NULL THEN 'private' END,
+                ru.status) AS target_status,
+       LEFT(COALESCE(p.overlay_text, p.body, g.body, cl.name, cc.body, vs.body, rup.nickname,
+                     CASE WHEN ru.id IS NOT NULL THEN '이웃' END), {PREVIEW_MAX}) AS target_preview
 FROM reports r
 LEFT JOIN posts p ON r.target_kind = 'post' AND p.id = r.target_id
 LEFT JOIN guestbook_entries g ON r.target_kind = 'guestbook' AND g.id = r.target_id
 LEFT JOIN clubs cl ON r.target_kind = 'club' AND cl.id = r.target_id
 LEFT JOIN club_comments cc ON r.target_kind = 'club_comment' AND cc.id = r.target_id
 LEFT JOIN visit_stamps vs ON r.target_kind = 'stamp' AND vs.id = r.target_id
+LEFT JOIN users ru ON r.target_kind = 'user' AND ru.id = r.target_id
+LEFT JOIN user_profiles rup ON rup.user_id = ru.id
 """
 
 
