@@ -10,6 +10,7 @@ from typing import Any, Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
+from fastapi.responses import Response
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
@@ -18,7 +19,8 @@ from app.common import ApiError
 from app.db import run_db
 from app.routers.feed import feed_post, my_flags
 from app.routers.my_collection import DEFAULT_NICKNAME, LimitQuery, decode_cursor, encode_cursor
-from app.routers.posts import POST_COLUMNS, POST_JOINS
+from app.routers.posts import POST_COLUMNS, POST_JOINS, public_avatar_url, stored_jpeg_response
+from app.services.post_storage import avatar_object_path
 
 router = APIRouter(prefix="/api/v1")
 
@@ -57,11 +59,26 @@ async def get_user_profile(
         "profile_id": str(profile_id),
         "nickname": profile.nickname if profile is not None else DEFAULT_NICKNAME,
         "bio": profile.bio if profile is not None else None,
-        "avatar_url": profile.avatar_url if profile is not None else None,
+        "avatar_url": public_avatar_url(request, profile.avatar_url, uid, profile_id) if profile is not None else None,
         "post_count": int(counts.get("post", 0)),
         "reading_log_count": int(counts.get("reading_log", 0)),
         "is_me": viewer is not None and viewer.id == uid,
     }
+
+
+@router.get("/users/{profile_id}/avatar")
+async def get_public_avatar(request: Request, profile_id: UUID) -> Response:
+    def tx(c: Connection) -> str | None:
+        row = c.execute(text(
+            "SELECT u.id, p.avatar_url FROM users u JOIN user_profiles p ON p.user_id = u.id "
+            "WHERE u.public_id = :id AND u.status = 'active' AND p.avatar_url IS NOT NULL"
+        ), {"id": profile_id}).one_or_none()
+        return avatar_object_path(row.avatar_url, row.id) if row is not None else None
+
+    path = await run_db(request.app.state.engine, tx)
+    if path is None:
+        raise not_found()
+    return await stored_jpeg_response(request, path)
 
 
 @router.get("/users/{profile_id}/posts")

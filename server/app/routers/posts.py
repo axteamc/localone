@@ -8,7 +8,7 @@ from typing import Any, Literal
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Depends, File, Request, UploadFile
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from pydantic import BaseModel, ConfigDict, field_validator
 from sqlalchemy import text
 from sqlalchemy.engine import Connection
@@ -17,6 +17,7 @@ from sqlalchemy.exc import IntegrityError
 from app.auth import CurrentUser, get_current_user, lock_active_user
 from app.common import ApiError, now_kst
 from app.db import run_db
+from app.services.post_storage import avatar_object_path, avatar_url_contains_owner
 from app.services.provider_engine import BookRecord, isbn13_is_valid
 
 POST_IMAGE_MAX_BYTES = 10_000_000  # F5
@@ -256,10 +257,60 @@ def post_origin(body: PostCreate) -> str:
     return "reading_log" if body.reading_log_id is not None or body.image_kind == "template" else "post"
 
 
+def public_image_url(request: Request, route: str, **params: str) -> str:
+    url = request.url_for(route, **params)
+    if request.app.state.settings.app_env == "production":
+        url = url.replace(scheme="https")
+    return str(url)
+
+
+def public_avatar_url(request: Request, avatar_url: str | None, owner_id: UUID,
+                      profile_id: UUID | None) -> str | None:
+    if avatar_url is None or profile_id is None:
+        return None
+    if avatar_object_path(avatar_url, owner_id) is not None:
+        return public_image_url(request, "get_public_avatar", profile_id=str(profile_id))
+    if avatar_url_contains_owner(avatar_url, owner_id):
+        return None
+    return avatar_url
+
+
+async def stored_jpeg_response(request: Request, path: str) -> Response:
+    storage = request.app.state.post_storage
+    try:
+        data = await asyncio.to_thread(storage.read, path, POST_IMAGE_MAX_BYTES)
+    except OSError as exc:
+        raise ApiError(503, "PROVIDER_UNAVAILABLE", "사진을 불러오지 못했어요.") from exc
+    if data is None:
+        raise ApiError(404, "NOT_FOUND", MSG_NOT_FOUND)
+    if len(data) > POST_IMAGE_MAX_BYTES or not data.startswith(b"\xff\xd8\xff"):
+        raise ApiError(503, "PROVIDER_UNAVAILABLE", "사진을 불러오지 못했어요.")
+    return Response(data, media_type="image/jpeg", headers={
+        "Cache-Control": "no-store", "X-Content-Type-Options": "nosniff",
+    })
+
+
+@router.get("/posts/{post_id}/image")
+async def get_public_post_image(request: Request, post_id: UUID) -> Response:
+    def tx(c: Connection) -> str | None:
+        row = c.execute(text(
+            "SELECT user_id, image_value FROM posts "
+            "WHERE id = :id AND image_kind = 'photo' AND status = 'published'"
+        ), {"id": post_id}).one_or_none()
+        if row is None or not re.fullmatch(rf"{row.user_id}/[0-9a-f-]{{36}}\.jpg", row.image_value):
+            return None
+        return row.image_value
+
+    path = await run_db(request.app.state.engine, tx)
+    if path is None:
+        raise ApiError(404, "NOT_FOUND", MSG_NOT_FOUND)
+    return await stored_jpeg_response(request, path)
+
+
 def with_image_url(request: Request, row: Any) -> SimpleNamespace:
-    """조회 행에 공개 이미지 주소를 붙인다. photo: 저장소 주소, cover: 책 표지 주소, color: None."""
+    """로컬원 사진의 공개 주소와 도서 표지의 원래 주소를 구분한다."""
     if row.image_kind == "photo":
-        url = request.app.state.post_storage.public_url(row.image_value)
+        url = public_image_url(request, "get_public_post_image", post_id=str(row.id))
     elif row.image_kind == "cover":
         url = row.image_value
     else:
@@ -268,6 +319,7 @@ def with_image_url(request: Request, row: Any) -> SimpleNamespace:
 
 
 def post_public(
+    request: Request,
     row: Any,
     *,
     viewer: CurrentUser | None,
@@ -302,7 +354,7 @@ def post_public(
         "author": {
             "nickname": nickname,
             "profile_id": str(row.author_profile_id) if row.author_profile_id is not None else None,
-            "avatar_url": row.author_avatar_url,
+            "avatar_url": public_avatar_url(request, row.author_avatar_url, row.user_id, row.author_profile_id),
         },
         "is_mine": viewer is not None and viewer.id == row.user_id,
         "reaction_count": reaction_count,
@@ -380,6 +432,7 @@ async def create_post(
             raise ApiError(409, "ALREADY_PUBLISHED", "이미 올린 기록이에요") from exc
         raise
     content = post_public(
+        request,
         with_image_url(request, row),
         viewer=user,
         nickname=row.nickname,

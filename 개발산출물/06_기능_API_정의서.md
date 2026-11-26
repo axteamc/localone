@@ -126,6 +126,8 @@
 | 40 | `GET /api/v1/me/visited-libraries?cursor=&limit=` | 필수 | 내 도서관 방문 모음(스탬프 1개 이상 또는 공개 방명록 1개 이상 남긴 도서관, `last_on DESC, library_id ASC`, A `MY-3`) | 00 제안 표, VISIT-03·05, USR-02 | `확정` (2026-11-19 D, C-75) |
 | 74 | `GET /api/v1/users/{profile_id}` | 선택 | 활성 사용자의 공개 닉네임·소개·사진·탭별 공개 글 수·본인 여부. 없는 계정과 탈퇴 계정은 `404 NOT_FOUND` | MY-4, C-97 | `확정` (`my-collection.md` MY-4 C2·C3·C6) |
 | 75 | `GET /api/v1/users/{profile_id}/posts?origin=&cursor=&limit=` | 선택 | 작성자의 공개 글 목록을 `origin=post\|reading_log`로 구분. `published_at DESC, id DESC` 커서 | MY-4, C-97 | `확정` (`my-collection.md` MY-4 C2·C3·C6) |
+| 76 | `GET /api/v1/users/{profile_id}/avatar` | 공개 | 활성 작성자의 저장소 아바타 JPEG. 공개 프로필 ID로 조회하며 원본 URL은 응답에 포함하지 않는다 | MY-4, C-97 | `확정` (MY-4 C3a, 없음 `404` · 저장소 오류 `503`) |
+| 77 | `GET /api/v1/posts/{post_id}/image` | 공개 | 공개 중인 게시물의 사진 JPEG. 게시물 ID로 조회하며 원본 URL은 응답에 포함하지 않는다 | MY-4, C-97 | `확정` (MY-4 C3a, 없음 `404` · 저장소 오류 `503`) |
 
 ### 2.8 독서 기록 (`reading-log`, A)
 

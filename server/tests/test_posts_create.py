@@ -219,12 +219,15 @@ def test_create_photo_post_then_read_fields(client, auth, db_engine):
     assert response.status_code == 201
     post = response.json()
     assert set(post) == POST_FIELDS
-    assert "user_id" not in response.text and USER_A_ID not in response.text.replace(path, "")
+    assert "user_id" not in response.text and USER_A_ID not in response.text
     UUID(post["id"])
     assert post["library"] == {"id": LIBRARY_ID, "name": "정독도서관"}
     assert post["book"] == {"isbn13": isbn(0), "title": "표지 있는 책", "author": "김작가",
                             "cover_url": "https://img.test/cover0.jpg"}
-    assert post["image_kind"] == "photo" and post["image_url"].startswith("data:image/jpeg;base64,")
+    assert post["image_kind"] == "photo" and post["image_url"] == f"http://testserver/api/v1/posts/{post['id']}/image"
+    image = client.get(post["image_url"])
+    assert image.status_code == 200 and image.headers["content-type"] == "image/jpeg"
+    assert image.content.startswith(b"\xff\xd8\xff")
     assert post["image_color"] is None
     assert post["overlay_text"] == "밑줄 친 문장" and post["body"] == "좋았어요"
     # C-97 MY-4: 공개용 profile_id·사진이 더해졌고 내부 user_id는 여전히 없다
