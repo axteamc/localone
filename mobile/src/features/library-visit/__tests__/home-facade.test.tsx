@@ -195,18 +195,21 @@ describe("VISIT-1 home cubes", () => {
     expect(mockPush).toHaveBeenNthCalledWith(3, { pathname: "/libraries/[libraryId]", params: { libraryId: "203" } });
   });
 
-  test("지도 보기 opens the map mode: nearest 5 around the origin, name·distance labels, scale, back restores (C-96)", async () => {
+  test("지도 보기 opens the map mode: nearest 4 around the origin, distance rings, name·distance labels, count, back restores (C-96 v2)", async () => {
     await render(<HomeScreen />);
     await screen.findByText("정독");
     await fireEvent.press(screen.getByLabelText("지도로 주변 도서관 보기"));
     expect(await screen.findByTestId("facade-map")).toBeTruthy();
-    await waitFor(() => expect(m.fetchLibrariesNearest).toHaveBeenCalledWith(37.5815, 126.9831, 5, expect.anything()));
+    await waitFor(() => expect(m.fetchLibrariesNearest).toHaveBeenCalledWith(37.5815, 126.9831, 4, expect.anything()));
     expect(screen.queryByTestId("facade-hero")).toBeNull();
     for (const id of [101, 102, 103]) expect(await screen.findByTestId(`map-cube-${id}`)).toBeTruthy();
     // 이름표: 이름(사람 목소리) + 거리(계기판 목소리, 대문자)
     expect(screen.getByTestId("map-label-101")).toHaveTextContent(/정독도서관/);
     expect(screen.getByTestId("map-label-101")).toHaveTextContent(/\d+M|KM/);
-    expect(screen.getByTestId("map-scale")).toHaveTextContent(/반경 .+ · 3곳/);
+    expect(screen.getByTestId("map-scale")).toHaveTextContent("가까운 3곳");
+    expect(screen.getByTestId("map-rings")).toBeTruthy(); // 바닥 A: 거리 고리 + N(격자 없음)
+    expect(screen.getByText("N")).toBeTruthy();
+    expect(screen.queryByTestId("facade-grid")).toBeNull();
     expect(screen.getByText("현위치")).toBeTruthy(); // 지도 모드 기점은 위치 이름
     expect(screen.queryByTestId("map-locate")).toBeNull(); // 현위치가 판 안이면 현위치 버튼 없음
     // 큐브를 누르면 그 도서관 방문 화면

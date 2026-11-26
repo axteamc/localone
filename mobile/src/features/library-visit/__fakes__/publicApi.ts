@@ -271,7 +271,7 @@ export function searchRegions(q: string, limit = 10): Region[] {
 // ── lib/policy (core APP-0 C2, K18) ───────────────────────────────────
 export const NEARBY_DEFAULT_RADIUS_KM = 3;
 export const HOME_RADIUS_KM = 2; // C-96
-export const MAP_NEAREST_COUNT = 5; // C-96
+export const MAP_NEAREST_COUNT = 4; // C-96
 export const DEFAULT_START = { lat: 37.5665, lng: 126.978, dtlRegion: "11020", label: "서울 중구" } as const;
 
 // ── lib/latest (core APP-0 P4 골격 그대로) ─────────────────────────────
