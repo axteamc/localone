@@ -27,7 +27,7 @@ import {
   type FeedItem,
   type ShelfResponse,
 } from "./api";
-import { Bookshelf, SHELF_FADE_HEIGHT, SHELF_HEIGHT } from "./Bookshelf";
+import { Bookshelf } from "./Bookshelf";
 import { ComposeChooser } from "./ComposeChooser";
 import { LibraryFeed } from "./LibraryFeed";
 import { StampButton } from "./StampButton";
@@ -71,9 +71,11 @@ const itemKey = (item: unknown): string | undefined =>
 
 const END_REACHED_PX = 600; // 바닥에서 이만큼 남으면 다음 묶음
 const FAB_SIZE = 52; // C-92 V3-O3: 유리 원 + (책장 넘김 버튼과 같은 유리, 누르는 자리 52)
-const FAB_BOTTOM = SHELF_HEIGHT + 12; // VISIT-3 V3-O3: 책장 바로 위 오른쪽(책장 위 12)
+/** 2026-11-25 mac: 서가가 피드 안으로 들어가 + 는 화면 오른쪽 아래에 고정(이전: 책장 위 12) */
+export const FAB_BOTTOM = 24;
 const POP_GAP = 8; // + 와 작은 카드 사이
-const TOAST_BOTTOM = FAB_BOTTOM + FAB_SIZE + 24; // 한 줄 안내는 + 위에
+const TOAST_BOTTOM = FAB_BOTTOM + FAB_SIZE + 16; // 한 줄 안내는 + 위에
+const CONTENT_BOTTOM = FAB_BOTTOM + FAB_SIZE + 28; // 피드 끝이 + 에 가리지 않게
 
 type LibState =
   | { kind: "loading" }
@@ -126,9 +128,6 @@ function VisitScreenInner({
   feedRef.current = feed;
   const moreCursor = useRef<string | null>(null); // 지금 받는 중이거나 받은 커서(같은 커서 두 번 요청 금지)
   const [folded, setFolded] = useState(false);
-  // 책장 실제 높이(P2: 높이를 내용에 맞춤). 처음엔 SHELF_HEIGHT, 재면 그만큼 글쓰기·안내·피드 아래 여백을 옮긴다
-  const [shelfHeight, setShelfHeight] = useState(SHELF_HEIGHT);
-  const shelfShift = libraryId !== null ? shelfHeight - SHELF_HEIGHT : 0;
   const [ment, setMent] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
   const [loginSheet, setLoginSheet] = useState(false);
@@ -418,9 +417,21 @@ function VisitScreenInner({
       />
     ));
 
+  // VISIT-3 오늘의 서가: 2026-11-25 mac부터 피드 안(INLINE_SHELF_AFTER개 뒤)에 끼워 피드를 내리다 보이게. 이전: 화면 아래 고정
+  const shelf =
+    libraryId !== null ? (
+      <Bookshelf
+        libraryId={libraryId}
+        load={loadShelf}
+        onOpenBook={(isbn13) => router.push({ pathname: "/books/[isbn13]", params: { isbn13 } })}
+        onWriteRecord={() => router.push("/reading/new")}
+      />
+    ) : null;
+  const shelfInFeed = feed.kind === "items" && !renderFeed; // LibraryFeed가 직접 끼운다
+
   return (
     <View style={styles.screen} testID="visit-screen">
-      <ScrollView onScroll={onScroll} scrollEventThrottle={16} testID="visit-scroll" contentContainerStyle={[styles.content, { paddingBottom: SHELF_HEIGHT + shelfShift + SHELF_FADE_HEIGHT + 24 }]}>
+      <ScrollView onScroll={onScroll} scrollEventThrottle={16} testID="visit-scroll" contentContainerStyle={styles.content}>
         {lib.kind === "error" ? (
           <View style={styles.libError}>
             <Pressable accessibilityRole="button" accessibilityLabel="지도 홈으로 돌아가기" onPress={goBack} style={styles.textButton}>
@@ -476,28 +487,19 @@ function VisitScreenInner({
                 items={feed.items as FeedItem[]}
                 onNotice={showText}
                 onReload={() => libraryId !== null && void refreshFeed(libraryId)}
+                inlineSlot={shelf}
               />
             )
           )}
+          {shelfInFeed ? null : shelf}
         </View>
       </ScrollView>
-
-      {/* VISIT-3 오늘의 서가: 방문 페이지 아래 고정(V3-1, G9). 책장 실패·빈 책장은 책장 자리 안에서만 */}
-      {libraryId !== null ? (
-        <Bookshelf
-          libraryId={libraryId}
-          load={loadShelf}
-          onOpenBook={(isbn13) => router.push({ pathname: "/books/[isbn13]", params: { isbn13 } })}
-          onWriteRecord={() => router.push("/reading/new")}
-          onHeight={setShelfHeight}
-        />
-      ) : null}
 
       {folded && lib.kind === "ok" ? <VisitHeaderFolded name={name} onBack={goBack} more={moreNode} /> : null}
 
       <ComposeChooser
         visible={chooser}
-        bottom={FAB_BOTTOM + shelfShift + FAB_SIZE + POP_GAP}
+        bottom={FAB_BOTTOM + FAB_SIZE + POP_GAP}
         onClose={() => setChooser(false)}
         onPost={() => {
           setChooser(false);
@@ -511,13 +513,13 @@ function VisitScreenInner({
         accessibilityState={{ expanded: chooser }}
         onPress={() => setChooser((v) => !v)}
         testID="visit-fab"
-        style={({ pressed }) => [styles.fab, shelfShift !== 0 && { bottom: FAB_BOTTOM + shelfShift }, pressed && GLASS_PRESSED]}
+        style={({ pressed }) => [styles.fab, pressed && GLASS_PRESSED]}
       >
         <Text style={styles.fabText}>+</Text>
       </Pressable>
 
       {ment ? (
-        <View style={[styles.ment, shelfShift !== 0 && { bottom: TOAST_BOTTOM + shelfShift }]} pointerEvents="none" testID="visit-ment" accessibilityLiveRegion="polite">
+        <View style={styles.ment} pointerEvents="none" testID="visit-ment" accessibilityLiveRegion="polite">
           <Text style={styles.mentText}>{ment}</Text>
         </View>
       ) : null}
@@ -526,7 +528,7 @@ function VisitScreenInner({
 
       {notice ? (
         <View
-          style={[styles.ment, shelfShift !== 0 && { bottom: TOAST_BOTTOM + shelfShift }, notice.action && styles.noticeRow]}
+          style={[styles.ment, notice.action && styles.noticeRow]}
           pointerEvents={notice.action ? "box-none" : "none"}
           testID="visit-notice"
           accessibilityLiveRegion="polite"
@@ -582,7 +584,7 @@ const makeStyles = (theme: Theme) => {
   const { C, T, ACT, panel } = lookKit(theme);
   return StyleSheet.create({
   screen: { flex: 1, backgroundColor: panel.backgroundColor },
-  content: { paddingBottom: SHELF_HEIGHT + SHELF_FADE_HEIGHT + 24, minHeight: "100%" },
+  content: { paddingBottom: CONTENT_BOTTOM, minHeight: "100%" },
   center: { alignItems: "center", justifyContent: "center", padding: 24, gap: 6 },
   libError: { minHeight: 115, paddingHorizontal: 16, justifyContent: "flex-end", gap: 4 },
   backText: {

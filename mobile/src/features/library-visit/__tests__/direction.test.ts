@@ -174,22 +174,22 @@ describe("cube layout", () => {
     expect(s.origin.y + 22).toBeLessThanOrEqual(H);
   });
 
-  test("E2-2 at 390x325: scale 1.36, 299px wide (77% of the board)", () => {
+  test("E2-2 at 390x325: hero fits the height (2026-11-25 mac: 폭 86%까지)", () => {
     const hero = heroOf(heroScene(around(), 1, 390, 325));
-    expect(hero.scale).toBeCloseTo(1.365, 2);
-    expect(Math.round(CUBE_W * hero.scale)).toBe(300);
+    expect(hero.scale).toBeCloseTo((325 * 0.94) / CUBE_H, 2); // 폭 86%(1.52)보다 높이 94%가 먼저 닿는다
+    expect(Math.round(CUBE_W * hero.scale)).toBe(326);
     expect(heroOf(heroScene(around(), 1, 375, 220)).scale).toBeCloseTo((220 * 0.94) / CUBE_H);
   });
 
   test("hero leans toward its direction and the origin sits in the opposite corner", () => {
     const north = heroScene(around(), 1, 390, 325);
     expect(north.origin.y).toBeGreaterThan(heroOf(north).cy);
-    expect(north.origin.y).toBeCloseTo(325 * 0.92 - 4);
+    expect(north.origin.y).toBeCloseTo(Math.min(325 * 0.94 - 6, 325 - 22 - 8)); // 받침이 판 안에 남게 잘린다
     const east = heroScene(around(), 2, 390, 325);
-    expect(east.origin.x).toBeCloseTo(390 * 0.08 + 16);
+    expect(east.origin.x).toBeCloseTo(390 * 0.06 + 12);
     expect(heroOf(east).cx).toBeGreaterThan(195);
     const west = heroScene(around(), 4, 390, 325);
-    expect(west.origin.x).toBeCloseTo(390 * 0.92 - 16);
+    expect(west.origin.x).toBeCloseTo(390 * 0.94 - 12);
     expect(heroOf(west).cx).toBeLessThan(195);
     const south = heroScene(around(), 3, 390, 325);
     expect(south.origin.y).toBeLessThan(heroOf(south).cy);
