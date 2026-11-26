@@ -15,6 +15,12 @@ def public_reference_data(db_engine):
             (105, "a_b%\\", None, None, None, "11020"),
         ]
         rows += [(200 + i, f"이름도서관{i:02}", None, None, None, "99000") for i in range(25)]
+        # 이름 검색 단어 나누기·주소·순서(2026-11-26): 실제 운영 이름(정보나루 통합 기관명)과 같은 모양
+        rows += [
+            (301, "전남광주통합특별시교육청중앙도서관", "광주광역시 동구 제봉로 155", None, None, "98000"),
+            (302, "새벽중앙도서관", "광주광역시 북구 우치로 1", None, None, "98000"),
+            (303, "중앙도서관", "부산광역시 중구 대청로 1", None, None, "98000"),
+        ]
         for id_, name, address, lat, lng, region in rows:
             conn.execute(text("""
                 INSERT INTO libraries (id, provider_lib_code, name, address, latitude, longitude,

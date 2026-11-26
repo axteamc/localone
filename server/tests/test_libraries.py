@@ -79,6 +79,20 @@ def test_search_by_name_partial_and_limit(client):
     assert [x["name"] for x in data["items"]] == [f"이름도서관{i:02}" for i in range(20)]
 
 
+@pytest.mark.parametrize("q, ids", [
+    ("교육청중앙", [301]),
+    ("광주 중앙", [301, 302]),  # 단어마다 이름·주소, 이름에 둘 다 맞은 301이 먼저
+    ("광주 교육청중앙", [301]),
+    ("  광주   교육청중앙 ", [301]),  # 공백 여러 개
+    ("중앙도서관", [303, 302, 301]),  # 이름이 검색어로 시작 → 짧은 이름 순
+    ("광주 남산", []),  # 모든 단어가 맞아야 한다
+])
+def test_search_by_name_words_address_and_order(client, q, ids):
+    response = client.get("/api/v1/libraries", params={"q": q})
+    assert response.status_code == 200
+    assert [x["id"] for x in response.json()["items"]] == ids
+
+
 @pytest.mark.parametrize("q, ids", [("%", [105]), ("_", [105]), ("\\", [105]), ("a_b", [105]), ("없는%", [])])
 def test_search_by_name_escapes_wildcards(client, q, ids):
     response = client.get("/api/v1/libraries", params={"q": q})
