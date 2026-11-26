@@ -138,7 +138,30 @@ describe("PostCard", () => {
     expect(screen.queryByLabelText("카드 메뉴")).toBeNull();
   });
 
+  // ⋯는 마우스 데스크톱 웹에서만(2026-11-26 모바일 웹에서 ⋯가 떠도 눌리지 않던 문제)
+  const asWeb = (desktop: boolean) => {
+    Object.defineProperty(Platform, "OS", { value: "web", configurable: true });
+    (window as { matchMedia?: unknown }).matchMedia = () => ({ matches: desktop });
+  };
+  const realOS = Platform.OS;
+  const realMatch = (window as { matchMedia?: unknown }).matchMedia;
+  afterEach(() => {
+    Object.defineProperty(Platform, "OS", { value: realOS, configurable: true });
+    (window as { matchMedia?: unknown }).matchMedia = realMatch;
+  });
+
+  test("mobile web touch never shows dots; long press opens the menu", async () => {
+    asWeb(false);
+    const onMenu = jest.fn();
+    await render(<PostCard post={post("p1")} onPress={jest.fn()} onMenu={onMenu} width={160} />);
+    await fireEvent(screen.getByTestId("post-box-p1"), "pointerEnter");
+    expect(screen.queryByLabelText("카드 메뉴")).toBeNull();
+    await fireEvent(screen.getByTestId("post-card-p1"), "longPress");
+    expect(onMenu).toHaveBeenCalledWith(expect.objectContaining({ id: "p1" }));
+  });
+
   test("web hover shows dots button that opens the menu", async () => {
+    asWeb(true);
     const onMenu = jest.fn();
     await render(<PostCard post={post("p1")} onPress={jest.fn()} onMenu={onMenu} width={160} />);
     expect(screen.queryByLabelText("카드 메뉴")).toBeNull();
@@ -149,6 +172,7 @@ describe("PostCard", () => {
 
   // 시연 전 개선 S1: 웹 <button> 안 <button> 금지 — ⋯는 카드 버튼 밖(형제), 상자를 벗어나면 숨는다
   test("dots button is not nested inside the card button", async () => {
+    asWeb(true);
     await render(<PostCard post={post("p1")} onPress={jest.fn()} onMenu={jest.fn()} width={160} />);
     await fireEvent(screen.getByTestId("post-box-p1"), "pointerEnter");
     expect(within(screen.getByTestId("post-card-p1")).queryByLabelText("카드 메뉴")).toBeNull();

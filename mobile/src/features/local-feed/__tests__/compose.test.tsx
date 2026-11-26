@@ -500,6 +500,17 @@ describe("내리기", () => {
     expect(screen.queryByText(TEXT.withdrawMenu)).toBeNull();
   });
 
+  // 2026-11-26 모바일 웹: 확인 창이 ⋯ 칸 안에 그려져 세로로 눌렸다 → 화면 전체 Modal로 띄운다
+  test("withdraw confirm opens in a full-screen modal, not inside the button slot", async () => {
+    await render(<PostMoreMenu post={{ id: "mine", is_mine: true }} onWithdrawn={jest.fn()} />);
+    await fireEvent.press(screen.getByLabelText("더 보기"));
+    await fireEvent.press(screen.getByText(TEXT.withdrawMenu));
+    type Node = { type: unknown; parent: Node | null };
+    const types: unknown[] = [];
+    for (let n = screen.getByText(TEXT.withdrawTitle) as unknown as Node | null; n; n = n.parent) types.push(n.type);
+    expect(types).toContain("Modal");
+  });
+
   test("cancel in withdraw confirm keeps post", async () => {
     await render(<PostMoreMenu post={{ id: "mine", is_mine: true }} onWithdrawn={jest.fn()} />);
     await fireEvent.press(screen.getByLabelText("더 보기"));
