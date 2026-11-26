@@ -23,11 +23,12 @@ export type LibrarySummary = {
 };
 
 export type LibraryListResponse = {
-  mode: "nearby" | "region" | "search";
+  mode: "nearby" | "region" | "search" | "nearest";
   radius_km: number | null;
   dtl_region: string | null;
   q: string | null;
   items: LibrarySummary[];
+  nearest?: LibrarySummary | null;
 };
 
 export type LibraryDetail = LibrarySummary & {
@@ -90,10 +91,20 @@ export const FAKE_LIBRARIES: LibrarySummary[] = [
 export async function fetchLibrariesNearby(
   _lat: number,
   _lng: number,
-  radiusKm: 3 | 5 = 3,
+  radiusKm: 2 | 3 | 5 = 3,
   _signal?: AbortSignal
 ): Promise<LibraryListResponse> {
-  return { mode: "nearby", radius_km: radiusKm, dtl_region: null, q: null, items: FAKE_LIBRARIES };
+  return { mode: "nearby", radius_km: radiusKm, dtl_region: null, q: null, items: FAKE_LIBRARIES, nearest: null };
+}
+
+/** C-96 홈 지도 모드: 가까운 n곳(가짜는 FAKE_LIBRARIES 앞쪽) */
+export async function fetchLibrariesNearest(
+  _lat: number,
+  _lng: number,
+  n: number,
+  _signal?: AbortSignal
+): Promise<LibraryListResponse> {
+  return { mode: "nearest", radius_km: null, dtl_region: null, q: null, items: FAKE_LIBRARIES.slice(0, n), nearest: null };
 }
 
 export async function fetchLibrariesInRegion(
@@ -259,6 +270,8 @@ export function searchRegions(q: string, limit = 10): Region[] {
 
 // ── lib/policy (core APP-0 C2, K18) ───────────────────────────────────
 export const NEARBY_DEFAULT_RADIUS_KM = 3;
+export const HOME_RADIUS_KM = 2; // C-96
+export const MAP_NEAREST_COUNT = 5; // C-96
 export const DEFAULT_START = { lat: 37.5665, lng: 126.978, dtlRegion: "11020", label: "서울 중구" } as const;
 
 // ── lib/latest (core APP-0 P4 골격 그대로) ─────────────────────────────

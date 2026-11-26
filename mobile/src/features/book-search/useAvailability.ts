@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createLatestRunner } from "../../lib/latest";
 import { locate, type LocateResult } from "../../lib/platform";
-import { NEARBY_DEFAULT_RADIUS_KM } from "../../lib/policy";
+import { getSearchRadius } from "../../lib/searchRadius";
 import {
   ApiCallError,
   fetchAvailabilityInCity,
@@ -23,7 +23,7 @@ export const AVAILABILITY_FAILED = "지금은 도서관 정보를 불러오지 �
 export type AvailabilityStatus = "locating" | "loading" | "ready" | "empty" | "error" | "need_region";
 
 // TODO(연결): D(AUTH-2) — 로그인했으면 내 설정 반경. 그 전까지 3(A1).
-const RADIUS_KM = NEARBY_DEFAULT_RADIUS_KM;
+// C-96: 검색 반경은 설정(2·3·5km, 기기 저장, 기본 3)을 그때그때 읽는다
 
 class AbortError extends Error {
   constructor() {
@@ -127,7 +127,7 @@ export function useAvailability(isbn13: string): {
       setStatus("loading");
       return {
         kind: "data",
-        res: await fetchAvailabilityNearby(isbn13, loc.lat, loc.lng, RADIUS_KM, sig),
+        res: await fetchAvailabilityNearby(isbn13, loc.lat, loc.lng, await getSearchRadius(), sig),
       };
     });
     if (r.status === "stale") return; // 다른 책·언마운트 뒤 늦은 응답·오류는 무시(V-6·V-10)
@@ -183,7 +183,7 @@ export function useAvailability(isbn13: string): {
     if (!loc) return loadNearby();
     setStatus("loading");
     setErrorMessage(null);
-    const r = await runner.run((sig) => fetchAvailabilityNearby(isbn13, loc.lat, loc.lng, RADIUS_KM, sig));
+    const r = await runner.run(async (sig) => fetchAvailabilityNearby(isbn13, loc.lat, loc.lng, await getSearchRadius(), sig));
     if (r.status === "stale") return;
     if (r.status === "error") return fail(r.error);
     apply(r.value);

@@ -4,7 +4,16 @@
 import { useFocusEffect, useRouter } from "expo-router";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { getHeroRule, getRecentVisitedLibraryId, setHeroRule, type LibrarySummary, type Region } from "./deps";
+import {
+  fetchLibrariesNearest,
+  getHeroRule,
+  getRecentVisitedLibraryId,
+  MAP_NEAREST_COUNT,
+  setHeroRule,
+  type LatLng,
+  type LibrarySummary,
+  type Region,
+} from "./deps";
 import type { HeroRule } from "./direction";
 import { theme, actionColors } from "../../theme";
 import { PlacePicker } from "../../lib/PlacePicker";
@@ -22,10 +31,11 @@ const TEXT = {
   error: "지금은 도서관을 불러올 수 없어요.",
   empty: "가까운 곳에서 도서관을 찾지 못했어요.",
   noCoords: "이 지역 도서관은 위치 정보가 없어 여기에 놓지 못했어요.",
-  widen: "더 넓게 찾기",
   pickRegion: "지역 골라 시작",
   backToCurrent: "현재 위치로",
   here: "현위치",
+  /** 주인공 보기의 기점 = 지도 모드로 가는 버튼(C-96) */
+  toMap: "지도 보기",
   start: "임시 시작점",
   moved: "이동한 지역",
 };
@@ -33,6 +43,11 @@ const TEXT = {
 export function HomeScreen() {
   const router = useRouter();
   const home = useHomeLibraries();
+  // C-96 지도 모드: 화면 가운데에서 가까운 5곳(반경과 상관없이)
+  const loadNearest = useCallback(
+    async (at: LatLng, signal: AbortSignal) => (await fetchLibrariesNearest(at.lat, at.lng, MAP_NEAREST_COUNT, signal)).items,
+    []
+  );
   const [visitRefresh, refreshVisits] = useState(0);
   const hasFocused = useRef(false);
 
@@ -169,10 +184,6 @@ export function HomeScreen() {
           <Pressable accessibilityRole="button" onPress={() => setFindOpen(true)} style={styles.ghostButton}>
             <Text style={styles.ghostText}>{TEXT.pickRegion}</Text>
           </Pressable>
-        ) : home.radiusKm === 3 ? (
-          <Pressable accessibilityRole="button" onPress={home.widen} style={styles.ghostButton}>
-            <Text style={styles.ghostText}>{TEXT.widen}</Text>
-          </Pressable>
         ) : null}
       </View>
     ) : home.status === "ready" &&
@@ -233,7 +244,8 @@ export function HomeScreen() {
           viewSeq={home.viewSeq}
           libraries={home.libraries}
           originTitle={originTitle}
-          originSub={`${home.radiusKm}KM`}
+          heroOriginTitle={TEXT.toMap}
+          loadNearest={loadNearest}
           selectedId={home.selectedId}
           heroRule={heroRule}
           recentId={recent.shown}

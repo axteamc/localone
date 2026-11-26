@@ -56,12 +56,13 @@ const m = api as unknown as {
   requestLocationPermission: jest.Mock<typeof api.requestLocationPermission>;
 };
 
-const nearby = (items: api.LibrarySummary[], radius: 3 | 5 = 3): api.LibraryListResponse => ({
+const nearby = (items: api.LibrarySummary[], radius: 2 | 3 | 5 = 2, nearest: api.LibrarySummary | null = null): api.LibraryListResponse => ({
   mode: "nearby",
   radius_km: radius,
   dtl_region: null,
   q: null,
   items,
+  nearest,
 });
 
 beforeEach(() => {
@@ -99,9 +100,9 @@ test("P8 guest discards stale candidates, persists only selection and returns to
   await fireEvent.changeText(screen.getByLabelText("건물 이름 검색"), "우체국");
   await fireEvent.press(await screen.findByText("우체국 · 광주광역시 동구"));
   expect(JSON.parse((await AsyncStorage.getItem(key))!)).toEqual({ lat: 35, lng: 127, area_label: place.area_label });
-  await waitFor(() => expect(m.fetchLibrariesNearby).toHaveBeenLastCalledWith(35, 127, 3, expect.anything()));
+  await waitFor(() => expect(m.fetchLibrariesNearby).toHaveBeenLastCalledWith(35, 127, 2, expect.anything()));
   await act(async () => writeRoughStart(null));
-  await waitFor(() => expect(m.fetchLibrariesNearby).toHaveBeenLastCalledWith(37.5815, 126.9831, 3, expect.anything()));
+  await waitFor(() => expect(m.fetchLibrariesNearby).toHaveBeenLastCalledWith(37.5815, 126.9831, 2, expect.anything()));
   expect(await AsyncStorage.getItem(key)).toBeNull();
 });
 
@@ -122,9 +123,9 @@ test("P8 empty and failed searches keep region selection, failed storage can be 
   jest.spyOn(AsyncStorage, "setItem").mockRejectedValueOnce(new Error("storage"));
   await fireEvent.press(row);
   expect(await screen.findByText(/위치를 저장하지 못했어요/)).toBeTruthy();
-  expect(m.fetchLibrariesNearby).not.toHaveBeenCalledWith(36, 127, 3, expect.anything());
+  expect(m.fetchLibrariesNearby).not.toHaveBeenCalledWith(36, 127, 2, expect.anything());
   await fireEvent.press(row);
-  await waitFor(() => expect(m.fetchLibrariesNearby).toHaveBeenLastCalledWith(36, 127, 3, expect.anything()));
+  await waitFor(() => expect(m.fetchLibrariesNearby).toHaveBeenLastCalledWith(36, 127, 2, expect.anything()));
   await screen.unmount();
   await writeRoughStart(null);
 });
@@ -138,7 +139,7 @@ describe("VISIT-1-P1 home list", () => {
     expect(screen.getByText("종로")).toBeTruthy();
     expect(screen.getByText("남산")).toBeTruthy();
     expect(m.fetchLibrariesNearby).toHaveBeenCalledTimes(1);
-    expect(m.fetchLibrariesNearby).toHaveBeenCalledWith(37.5815, 126.9831, 3, expect.anything());
+    expect(m.fetchLibrariesNearby).toHaveBeenCalledWith(37.5815, 126.9831, 2, expect.anything());
     expect(screen.queryByText("위치 허용하기")).toBeNull();
   });
 
@@ -149,7 +150,7 @@ describe("VISIT-1-P1 home list", () => {
     expect(m.fetchLibrariesNearby).toHaveBeenCalledWith(
       api.DEFAULT_START.lat,
       api.DEFAULT_START.lng,
-      3,
+      2,
       expect.anything()
     );
     expect(screen.queryByText("현재 위치로")).toBeNull();
@@ -161,7 +162,7 @@ describe("VISIT-1-P1 home list", () => {
     await render(<HomeScreen />);
     await waitFor(() => expect(m.fetchLibrariesNearby).toHaveBeenCalled());
     expect(m.fetchLibrary).toHaveBeenCalledWith(101);
-    expect(m.fetchLibrariesNearby).toHaveBeenCalledWith(37.5815, 126.9831, 3, expect.anything());
+    expect(m.fetchLibrariesNearby).toHaveBeenCalledWith(37.5815, 126.9831, 2, expect.anything());
   });
 
   test("allow location reloads at current position", async () => {
@@ -169,7 +170,7 @@ describe("VISIT-1-P1 home list", () => {
     await render(<HomeScreen />);
     await fireEvent.press(await screen.findByText("위치 허용하기"));
     await waitFor(() =>
-      expect(m.fetchLibrariesNearby).toHaveBeenLastCalledWith(37.5815, 126.9831, 3, expect.anything())
+      expect(m.fetchLibrariesNearby).toHaveBeenLastCalledWith(37.5815, 126.9831, 2, expect.anything())
     );
     expect(m.requestLocationPermission).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.queryByText("위치 허용하기")).toBeNull());
@@ -200,16 +201,21 @@ describe("VISIT-1-P1 home list", () => {
     expect(screen.queryByText("지금은 도서관을 불러올 수 없어요.")).toBeNull();
   });
 
-  test("empty radius shows widen and uses 5km", async () => {
-    m.fetchLibrariesNearby.mockImplementation(async (_a, _b, r) => nearby([], r ?? 3));
+  test("home asks 2km; empty radius shows the nearest library as hero without a notice (C-96)", async () => {
+    const far = { ...actual.FAKE_LIBRARIES[0]!, distance_m: 12400 };
+    m.fetchLibrariesNearby.mockImplementation(async (_a, _b, r) => nearby([], r ?? 2, far));
+    await render(<HomeScreen />);
+    expect(await screen.findByText("정독")).toBeTruthy(); // 가장 가까운 곳이 주인공
+    expect(m.fetchLibrariesNearby).toHaveBeenLastCalledWith(37.5815, 126.9831, 2, expect.anything());
+    expect(screen.queryByText("가까운 곳에서 도서관을 찾지 못했어요.")).toBeNull();
+    expect(screen.queryByText("더 넓게 찾기")).toBeNull(); // 더 넓게 찾기는 없앴다
+  });
+
+  test("old server without nearest keeps the empty notice but no widen button", async () => {
+    m.fetchLibrariesNearby.mockImplementation(async (_a, _b, r) => ({ ...nearby([], r ?? 2), nearest: undefined }));
     await render(<HomeScreen />);
     expect(await screen.findByText("가까운 곳에서 도서관을 찾지 못했어요.")).toBeTruthy();
-    await fireEvent.press(screen.getByText("더 넓게 찾기"));
-    await waitFor(() =>
-      expect(m.fetchLibrariesNearby).toHaveBeenLastCalledWith(37.5815, 126.9831, 5, expect.anything())
-    );
-    await waitFor(() => expect(screen.queryByText("더 넓게 찾기")).toBeNull());
-    expect(screen.getByText("가까운 곳에서 도서관을 찾지 못했어요.")).toBeTruthy();
+    expect(screen.queryByText("더 넓게 찾기")).toBeNull();
   });
 
   test("loading shows small pill", async () => {

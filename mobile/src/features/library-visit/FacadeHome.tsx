@@ -1,30 +1,34 @@
 // 홈 파사드 — 등각 큐브(C2) + 주인공 포커스·모서리 이웃 (VISIT-1 V3·V18, 2026-11-18 "홈 큐브 배치" · 2026-11-19 홈 큐브 개편 E1-A·E2-2·E3-2).
 // 기준 시안: 개발산출물/시안/홈_큐브_개편_시안.html(배열·주인공 크기·이름), 큐브 모양은 홈_파사드_큐브_시안.html. 지도는 쓰지 않는다. 색·곡률은 theme 토큰만.
 // 세 플랫폼 같은 코드: 큐브 면은 View 세 겹(회전·축 확대·회전, AffineBox — Android는 skew를 못 그림), 끌기는 PanResponder, 움직임은 Animated(useNativeDriver: false — 웹과 같게).
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   Animated,
   Easing,
   PanResponder,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
   type LayoutChangeEvent,
 } from "react-native";
+import Svg, { Polygon } from "react-native-svg";
 import { affineLayers, composeMat, rotateMat, scaleMat, skewXMat, skewYMat } from "../../lib/affine";
 import { mix, onFill, theme, type as T } from "../../theme";
 import { CLOSED_CUBE_LID_INK, CUBE_PALETTE } from "../../theme/tokens";
+import { createLatestRunner } from "../../lib/latest";
 import type { LatLng, LibrarySummary } from "./deps";
 import {
   CUBE_H,
   CUBE_W,
   assignSpineTones,
+  computeDistanceMeters,
   facadeItems,
   heroScene,
   initialHeroId,
+  paletteIndexOf,
   pickByDragScene,
-  ringScene,
   shownItems,
   type CubePlace,
   type FacadeItem,
@@ -36,6 +40,21 @@ import { formatDistance } from "./format";
 import { HERO_MENU_TEXT } from "./heroText";
 import { cubeNames, type CubeName } from "./shortName";
 import { snapOffsets } from "./useHomeSheet";
+import {
+  gaugeKm,
+  movedCenter,
+  niceRadius,
+  offBoard,
+  placeLabel,
+  pxPerKm,
+  scaleBar,
+  toKm,
+  toLatLng,
+  toScreen,
+  MAP_TILT,
+  type KmPoint,
+  type Rect,
+} from "./mapMode";
 
 const { colors: C, radii: R } = theme;
 
@@ -57,9 +76,12 @@ export type FacadeHomeProps = {
   /** 보는 위치를 다시 정할 때마다 바뀐다. 바뀌면 주인공·전체 보기를 처음으로 되돌린다 */
   viewSeq?: number;
   libraries: LibrarySummary[];
-  /** 기점에 새기는 이름. 예: "현위치", "임시 시작점" */
+  /** 기점에 새기는 이름(지도 모드). 예: "현위치", "임시 시작점" */
   originTitle: string;
-  originSub: string;
+  /** 주인공 보기의 기점 이름 — 누르면 지도 모드라 "지도 보기"(C-96). 없으면 originTitle */
+  heroOriginTitle?: string;
+  /** 지도 모드: 그 좌표에서 가까운 몇 곳(C-96 #10 nearest). 없으면 지금 목록만 그린다 */
+  loadNearest?(at: LatLng, signal: AbortSignal): Promise<LibrarySummary[]>;
   /** 찾기 창에서 고른 도서관(V12). 판에 있으면 그곳이 주인공 */
   selectedId: number | null;
   /** 처음 주인공 설정(기기 저장). 기본 "nearest" */
@@ -72,8 +94,9 @@ export type FacadeHomeProps = {
 
 const TEXT = {
   ...HERO_MENU_TEXT,
-  ring: "주변 도서관 전체 보기",
+  ring: "지도로 주변 도서관 보기",
   back: "원래 도서관 크게 보기",
+  locate: "현위치로",
 };
 
 export function cubeLidColors(tone: SpineTone): { fill: string; ink: string } {
@@ -272,7 +295,7 @@ function OriginGrid({ origin, w, h }: { origin: Animated.ValueXY; w: number; h: 
 }
 
 export function FacadeHome(props: FacadeHomeProps) {
-  const { center, viewSeq, libraries, originTitle, originSub, selectedId, onLibraryPress } = props;
+  const { center, viewSeq, libraries, originTitle, selectedId, onLibraryPress } = props;
   const heroRule = props.heroRule ?? "nearest";
   const recentId = props.recentId ?? null;
 
@@ -304,8 +327,9 @@ export function FacadeHome(props: FacadeHomeProps) {
   const shown = useMemo(() => shownItems(items, heroId), [items, heroId]);
   const titles = useMemo(() => cubeNames(shown.map((it) => it.lib)), [shown]);
   const scene: FacadeScene = useMemo(
-    () => (heroId == null ? { origin: { x: W / 2, y: H / 2 }, cubes: [] } : ring ? ringScene(shown, W, H) : heroScene(shown, heroId, W, H)),
-    [shown, heroId, ring, W, H]
+    // 지도 모드(ring)는 MapBoard가 따로 그린다. 그동안 주인공 장면은 그대로 둬서 돌아올 때 튀지 않는다
+    () => (heroId == null ? { origin: { x: W / 2, y: H / 2 }, cubes: [] } : heroScene(shown, heroId, W, H)),
+    [shown, heroId, W, H]
   );
 
   // 큐브마다 움직임 값. 처음 보이는 큐브는 그 자리에서 시작하고, 그 뒤 바뀐 자리로는 0.8초에 걸쳐 옮긴다
@@ -376,8 +400,21 @@ export function FacadeHome(props: FacadeHomeProps) {
     props.onHeroRuleChange?.(rule);
   };
 
+  const fallbackNearest = useCallback(async () => libraries, [libraries]);
+
   return (
     <View style={styles.board} testID="facade-board" onLayout={onLayout} {...responder.panHandlers}>
+      {ring ? (
+        <MapBoard
+          home={center}
+          W={W}
+          H={H}
+          originTitle={originTitle}
+          loadNearest={props.loadNearest ?? fallbackNearest}
+          onLibraryPress={onLibraryPress}
+          onBack={() => setRing(false)}
+        />
+      ) : (
       <Animated.View style={[StyleSheet.absoluteFill, { transform: pan.getTranslateTransform() }]} pointerEvents="box-none">
         <OriginGrid origin={origin} w={W} h={Math.max(H, boardH)} />
         {scene.cubes.map((c) => {
@@ -417,13 +454,13 @@ export function FacadeHome(props: FacadeHomeProps) {
             style={styles.plinth}
           >
             <Text style={styles.plus}>+</Text>
-            <Text style={styles.plinthTitle}>{originTitle}</Text>
-            <Text style={styles.plinthSub}>{originSub}</Text>
+            <Text style={styles.plinthTitle}>{props.heroOriginTitle ?? originTitle}</Text>
           </Pressable>
         </Animated.View>
       </Animated.View>
+      )}
 
-      {menuOpen && heroPlace ? (
+      {menuOpen && heroPlace && !ring ? (
         <>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenuOpen(false)} accessibilityLabel="메뉴 닫기" />
           <View
@@ -452,6 +489,185 @@ export function FacadeHome(props: FacadeHomeProps) {
             ))}
           </View>
         </>
+      ) : null}
+    </View>
+  );
+}
+
+// ── 지도 모드(C-96, 시안 홈_지도모드_시안.html 채택안 C) ─────────────────────────────
+/** 지도 모드 큐브 크기: 판 폭의 약 11%(시안 26/240). 면 글자는 없고 위에 이름표 */
+const MAP_CUBE_F = 0.11;
+const LABEL_H = 28;
+const LOCATE_SIZE = 40;
+
+type MapItem = { lib: LibrarySummary; at: KmPoint };
+
+/** 지도 모드 작은 큐브(시안 26×28 다각형): 윗면 = 도서관 색, 옆면 두 장, 진한 테두리. 면 글자는 없다 */
+function MapCube({ width, height, lid }: { width: number; height: number; lid: string }) {
+  return (
+    <Svg width={width} height={height} viewBox="0 0 26 28" pointerEvents="none">
+      <Polygon points="13,1 25,7 13,13 1,7" fill={lid} stroke={C.inkStrong} strokeWidth={0.7} strokeLinejoin="round" />
+      <Polygon points="1,7 13,13 13,27 1,21" fill={LEFT_FACE} stroke={C.inkStrong} strokeWidth={0.7} strokeLinejoin="round" />
+      <Polygon points="25,7 13,13 13,27 25,21" fill={C.surface2} stroke={C.inkStrong} strokeWidth={0.7} strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+/** 지도 모드 바닥 격자: 기점에 맞추고, 세로 간격은 기울기만큼 눌린다(끌면 같이 움직인다) */
+function MapGrid({ x, y, w, h }: { x: number; y: number; w: number; h: number }) {
+  const sx = GRID_STEP;
+  const sy = GRID_STEP * MAP_TILT;
+  const xs: number[] = [];
+  const ys: number[] = [];
+  for (let v = (((x % sx) + sx) % sx); v <= w; v += sx) xs.push(v);
+  for (let v = (((y % sy) + sy) % sy); v <= h; v += sy) ys.push(v);
+  return (
+    <View pointerEvents="none" style={[StyleSheet.absoluteFill, styles.mapGrid]} testID="facade-grid">
+      {xs.map((v) => (
+        <View key={`v${v}`} style={[styles.gridV, { left: v, top: 0, height: h }]} />
+      ))}
+      {ys.map((v) => (
+        <View key={`h${v}`} style={[styles.gridH, { top: v, left: 0, width: w }]} />
+      ))}
+    </View>
+  );
+}
+
+function MapBoard({ home, W, H, originTitle, loadNearest, onLibraryPress, onBack }: {
+  /** 현위치(기점) 좌표 */
+  home: LatLng;
+  W: number;
+  H: number;
+  originTitle: string;
+  loadNearest(at: LatLng, signal: AbortSignal): Promise<LibrarySummary[]>;
+  onLibraryPress(lib: LibrarySummary): void;
+  onBack(): void;
+}) {
+  const runner = useMemo(() => createLatestRunner(), []);
+  const [center, setCenter] = useState<KmPoint>({ x: 0, y: 0 });
+  const [view, setView] = useState<{ items: MapItem[]; radius: number; ppk: number } | null>(null);
+  const [drag, setDrag] = useState({ x: 0, y: 0 });
+  const live = useRef({ center, ppk: view?.ppk ?? 1 });
+  live.current = { center, ppk: view?.ppk ?? 1 };
+
+  // 가운데(km) 기준 가까운 5곳을 받는다. refit이면 다섯째가 들어오게 반경·축척을 다시 정하고, 아니면 축척 그대로
+  const fetchAt = useCallback(
+    async (c: KmPoint, refit: boolean) => {
+      const r = await runner.run((signal) => loadNearest(toLatLng(home, c), signal));
+      if (r.status !== "ok") return; // 실패·늦은 응답: 판은 마지막 그대로
+      const items: MapItem[] = r.value
+        .filter((l) => l.latitude != null && l.longitude != null)
+        .map((l) => ({ lib: l, at: toKm(home, { lat: l.latitude as number, lng: l.longitude as number }) }));
+      setView((prev) => {
+        if (!refit && prev) return { ...prev, items };
+        const far = Math.max(0.05, ...items.map((it) => Math.hypot(it.at.x - c.x, it.at.y - c.y)));
+        const radius = niceRadius(far);
+        return { items, radius, ppk: pxPerKm(radius, W, H) };
+      });
+    },
+    [runner, loadNearest, home, W, H]
+  );
+
+  useEffect(() => {
+    setCenter({ x: 0, y: 0 });
+    void fetchAt({ x: 0, y: 0 }, true);
+    return () => runner.cancel();
+  }, [fetchAt, runner]);
+
+  const responder = useMemo(
+    () =>
+      PanResponder.create({
+        // 웹 마우스는 움직임만으로는 넘겨받지 못해 누르는 순간 받는다(큐브·받침은 더 안쪽이라 먼저 받는다)
+        onStartShouldSetPanResponder: () => Platform.OS === "web",
+        onMoveShouldSetPanResponderCapture: (_, g) => Math.hypot(g.dx, g.dy) > 6,
+        onPanResponderTerminationRequest: () => false,
+        onPanResponderMove: (_, g) => setDrag({ x: g.dx, y: g.dy }),
+        onPanResponderRelease: (_, g) => {
+          setDrag({ x: 0, y: 0 });
+          if (Math.hypot(g.dx, g.dy) <= 6) return;
+          const next = movedCenter(live.current.center, g.dx, g.dy, live.current.ppk);
+          setCenter(next);
+          void fetchAt(next, false); // 축척은 그대로, 가운데 기준 5곳만 다시
+        },
+        onPanResponderTerminate: () => setDrag({ x: 0, y: 0 }),
+      }),
+    [fetchAt]
+  );
+
+  const ppk = view?.ppk ?? pxPerKm(2, W, H);
+  const o = toScreen({ x: 0, y: 0 }, center, ppk, W, H, drag);
+  // 시안 큐브(26×28) 비율, 폭 = 판 폭 × MAP_CUBE_F
+  const cw = Math.round(W * MAP_CUBE_F);
+  const ch = Math.round((cw * 28) / 26);
+
+  // 이름표가 피할 것: 받침과 모든 큐브 몸
+  const placed = (view?.items ?? []).map((it) => {
+    const p = toScreen(it.at, center, ppk, W, H, drag);
+    const top = p.y - ch * 0.75; // 큐브 아래쪽이 그 자리에 오게
+    return { it, p, body: [p.x - cw / 2, top, p.x + cw / 2, top + ch] as Rect, top };
+  });
+  const taken: Rect[] = [[o.x - PLINTH_W / 2, o.y - PLINTH_H / 2, o.x + PLINTH_W / 2, o.y + PLINTH_H / 2], ...placed.map((q) => q.body)];
+  const bar = scaleBar(ppk);
+
+  return (
+    <View style={StyleSheet.absoluteFill} testID="facade-map" {...responder.panHandlers}>
+      <MapGrid x={o.x} y={o.y} w={W} h={H} />
+      {placed.map(({ it, p, body, top }) => {
+        const m = Math.round(computeDistanceMeters(home, { lat: it.lib.latitude as number, lng: it.lib.longitude as number }));
+        const w = Math.max(it.lib.name.length * 11.5, 40);
+        const label = placeLabel(body, w, LABEL_H, taken);
+        const { fill } = cubeLidColors(it.lib.today.is_closed === true ? "closed" : paletteIndexOf(it.lib.id, CUBE_PALETTE.length));
+        return (
+          <React.Fragment key={it.lib.id}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={`${it.lib.name} ${formatDistance(m)}`}
+              testID={`map-cube-${it.lib.id}`}
+              onPress={() => onLibraryPress(it.lib)}
+              style={[styles.mapCube, { left: p.x - cw / 2, top, width: cw, height: ch }]}
+            >
+              <MapCube width={cw} height={ch} lid={fill} />
+            </Pressable>
+            {/* 이름표(C-96): 배경 없이 두 줄 왼쪽 정렬 — 이름 = 사람 목소리, 거리 = 계기판 목소리(DESIGN 규칙 1·3·4) */}
+            <View
+              pointerEvents="none"
+              testID={`map-label-${it.lib.id}`}
+              style={[styles.mapLabel, { left: label.rect[0], top: label.rect[1], width: label.rect[2] - label.rect[0] }, label.pos === "left" && styles.mapLabelEnd]}
+            >
+              <Text numberOfLines={1} style={styles.mapName}>{it.lib.name}</Text>
+              <Text style={styles.mapDist}>{gaugeKm(m / 1000)}</Text>
+            </View>
+          </React.Fragment>
+        );
+      })}
+      {/* 기점(현위치): 늘 맨 위. 누르면 주인공 보기로 */}
+      <View style={[styles.plinthWrap, { left: o.x - PLINTH_W / 2, top: o.y - PLINTH_H / 2 }]}>
+        <Pressable accessibilityRole="button" accessibilityLabel={TEXT.back} testID="facade-origin" onPress={onBack} style={styles.plinth}>
+          <Text style={styles.plus}>+</Text>
+          <Text style={styles.plinthTitle}>{originTitle}</Text>
+        </Pressable>
+      </View>
+      {/* 축척 막대 + 반경·곳 수(계기판 목소리), 왼쪽 아래 */}
+      <View pointerEvents="none" style={[styles.mapScale, { top: H - 46 }]} testID="map-scale">
+        <View style={[styles.mapBar, { width: bar.px }]} />
+        <Text style={styles.mapScaleText}>{gaugeKm(bar.km)}</Text>
+        {view ? <Text style={styles.mapScaleText}>{`반경 ${gaugeKm(view.radius)} · ${view.items.length}곳`}</Text> : null}
+      </View>
+      {/* 현위치가 판 밖으로 나가면 오른쪽 아래 현위치 버튼(지도 앱 표준) */}
+      {offBoard(o, W, H) ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={TEXT.locate}
+          testID="map-locate"
+          onPress={() => {
+            setCenter({ x: 0, y: 0 });
+            void fetchAt({ x: 0, y: 0 }, true);
+          }}
+          style={[styles.locate, { top: H - LOCATE_SIZE - 12 }]}
+        >
+          <View style={styles.locateRing} />
+          <View style={styles.locateDot} />
+        </Pressable>
       ) : null}
     </View>
   );
@@ -567,7 +783,37 @@ const styles = StyleSheet.create({
   },
   plus: { fontSize: 14, lineHeight: 14, color: onFill(C.inkStrong) },
   plinthTitle: { fontSize: 8.5, fontWeight: "500", color: onFill(C.inkStrong) },
-  plinthSub: { ...T.gauge, fontSize: 7, letterSpacing: 1, color: onFill(C.inkStrong), opacity: 0.85 },
+  // 지도 모드(C-96)
+  mapGrid: { opacity: 0.8 },
+  mapCube: { position: "absolute", zIndex: 3 },
+  mapLabel: { position: "absolute", zIndex: 4, alignItems: "flex-start" },
+  mapLabelEnd: { alignItems: "flex-end" },
+  // 사람 목소리(type.name 계열 500) / 계기판 목소리(type.gauge 계열). 상자 없이 판 색 번짐만
+  mapName: { fontSize: 12, lineHeight: 15, fontWeight: "500", color: C.text, textShadowColor: C.panelFrosted, textShadowRadius: 4 },
+  mapDist: { ...T.gauge, fontSize: 10, lineHeight: 13, textShadowColor: C.panelFrosted, textShadowRadius: 4 },
+  mapScale: { position: "absolute", left: 16, zIndex: 5, gap: 2 },
+  mapBar: { height: 5, borderLeftWidth: 1, borderRightWidth: 1, borderBottomWidth: 1, borderColor: C.inkStrong },
+  mapScaleText: { ...T.gauge, fontSize: 10 },
+  locate: {
+    position: "absolute",
+    right: 12,
+    zIndex: 8,
+    width: LOCATE_SIZE,
+    height: LOCATE_SIZE,
+    borderRadius: LOCATE_SIZE / 2,
+    backgroundColor: C.panelLit,
+    borderWidth: 1,
+    borderColor: C.seamHairline,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: C.inkStrong,
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  locateRing: { position: "absolute", width: 18, height: 18, borderRadius: 9, borderWidth: 2, borderColor: C.inkStrong },
+  locateDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: C.inkStrong },
   menu: {
     position: "absolute",
     zIndex: 9,

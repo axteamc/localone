@@ -51,6 +51,7 @@ jest.mock("../deps", () => {
   return {
     ...actual,
     fetchLibrariesNearby: jest.fn(),
+    fetchLibrariesNearest: jest.fn(actual.fetchLibrariesNearest),
     locate: jest.fn(),
     getDefaultLibrary: jest.fn(),
     getHeroRule: jest.fn(),
@@ -62,6 +63,7 @@ jest.mock("../deps", () => {
 const actual = jest.requireActual("../__fakes__/publicApi") as typeof import("../__fakes__/publicApi");
 const m = api as unknown as {
   fetchLibrariesNearby: jest.Mock<typeof api.fetchLibrariesNearby>;
+  fetchLibrariesNearest: jest.Mock<typeof api.fetchLibrariesNearest>;
   locate: jest.Mock<typeof api.locate>;
   getDefaultLibrary: jest.Mock<typeof api.getDefaultLibrary>;
   getHeroRule: jest.Mock<typeof api.getHeroRule>;
@@ -113,11 +115,12 @@ describe("VISIT-1 home cubes", () => {
     expect(screen.getByTestId("facade-grid")).toBeTruthy();
   });
 
-  test("origin says current location and radius, and there is no separate axis or ruler", async () => {
+  test("hero origin says 지도 보기 without a radius, and there is no separate axis or ruler (C-96)", async () => {
     await render(<HomeScreen />);
     await screen.findByText("정독");
-    expect(screen.getByText("현위치")).toBeTruthy();
-    expect(screen.getByText("3KM")).toBeTruthy();
+    expect(screen.getByText("지도 보기")).toBeTruthy();
+    expect(screen.queryByText("현위치")).toBeNull();
+    expect(screen.queryByText(/^\dKM$/)).toBeNull();
     expect(screen.queryByTestId("facade-ruler")).toBeNull();
     expect(screen.queryByTestId("facade-axis")).toBeNull();
   });
@@ -192,20 +195,27 @@ describe("VISIT-1 home cubes", () => {
     expect(mockPush).toHaveBeenNthCalledWith(3, { pathname: "/libraries/[libraryId]", params: { libraryId: "203" } });
   });
 
-  test("origin press shows every library as same-size cubes, a cube press focuses it, origin again restores", async () => {
+  test("지도 보기 opens the map mode: nearest 5 around the origin, name·distance labels, scale, back restores (C-96)", async () => {
     await render(<HomeScreen />);
     await screen.findByText("정독");
-    await fireEvent.press(screen.getByLabelText("주변 도서관 전체 보기"));
+    await fireEvent.press(screen.getByLabelText("지도로 주변 도서관 보기"));
+    expect(await screen.findByTestId("facade-map")).toBeTruthy();
+    await waitFor(() => expect(m.fetchLibrariesNearest).toHaveBeenCalledWith(37.5815, 126.9831, 5, expect.anything()));
     expect(screen.queryByTestId("facade-hero")).toBeNull();
-    for (const id of [101, 102, 103]) expect(role(`facade-cube-${id}`)).toBe("ring");
-    // 기점 다시 → 원래 주인공
+    for (const id of [101, 102, 103]) expect(await screen.findByTestId(`map-cube-${id}`)).toBeTruthy();
+    // 이름표: 이름(사람 목소리) + 거리(계기판 목소리, 대문자)
+    expect(screen.getByTestId("map-label-101")).toHaveTextContent(/정독도서관/);
+    expect(screen.getByTestId("map-label-101")).toHaveTextContent(/\d+M|KM/);
+    expect(screen.getByTestId("map-scale")).toHaveTextContent(/반경 .+ · 3곳/);
+    expect(screen.getByText("현위치")).toBeTruthy(); // 지도 모드 기점은 위치 이름
+    expect(screen.queryByTestId("map-locate")).toBeNull(); // 현위치가 판 안이면 현위치 버튼 없음
+    // 큐브를 누르면 그 도서관 방문 화면
+    await fireEvent.press(screen.getByTestId("map-cube-103"));
+    expect(mockPush).toHaveBeenCalledWith(expect.objectContaining({ params: expect.objectContaining({ libraryId: "103" }) }));
+    // 기점 다시 → 원래 주인공 보기
     await fireEvent.press(screen.getByLabelText("원래 도서관 크게 보기"));
     expect(screen.getByTestId("facade-hero")).toHaveTextContent(/정독/);
-    // 전체 보기에서 큐브 누르기 → 그 도서관이 주인공
-    await fireEvent.press(screen.getByLabelText("주변 도서관 전체 보기"));
-    await fireEvent.press(screen.getByLabelText("남산도서관 크게 보기"));
-    expect(screen.getByTestId("facade-hero")).toHaveTextContent(/남산/);
-    expect(mockPush).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("facade-map")).toBeNull();
   });
 
   test("long press on the hero opens the first-hero setting and saves it on the device", async () => {

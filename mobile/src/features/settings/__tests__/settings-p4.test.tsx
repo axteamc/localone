@@ -8,9 +8,18 @@ import * as reminders from "../../loan-assistant/reminders";
 import * as pref from "../../loan-assistant/reminderPref";
 import * as myApi from "../../my-collection/api";
 import { NOTIFY_TEXT, NotificationSettings } from "../NotificationSettings";
+import { SearchRadiusSetting } from "../SearchRadiusSetting";
+import * as radius from "../../../lib/searchRadius";
 
 const mockBack = jest.fn();
-jest.mock("expo-router", () => ({ useRouter: () => ({ back: mockBack, canGoBack: () => true }) }));
+jest.mock("expo-router", () => {
+  const R = jest.requireActual<typeof import("react")>("react");
+  return {
+    useRouter: () => ({ back: mockBack, canGoBack: () => true }),
+    useFocusEffect: (fn: () => void | (() => void)) => R.useEffect(fn, [fn]),
+  };
+});
+jest.mock("../../../lib/searchRadius", () => ({ getSearchRadius: jest.fn(async () => 3), setSearchRadius: jest.fn(async () => undefined) }));
 jest.mock("../../loan-assistant/notifications.platform", () => ({ NOTIFICATIONS_SUPPORTED: true }));
 jest.mock("../../loan-assistant/reminders", () => ({ clearLoanReminders: jest.fn(async () => undefined) }));
 jest.mock("../../loan-assistant/reminderPref", () => ({
@@ -26,6 +35,7 @@ const setLoan = jest.mocked(pref.setLoanRemindersEnabled);
 const clearLoan = jest.mocked(reminders.clearLoanReminders);
 const getHeroRule = jest.mocked(heroPref.getHeroRule);
 const setHeroRule = jest.mocked(heroPref.setHeroRule);
+const setSearchRadius = jest.mocked(radius.setSearchRadius);
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -81,5 +91,17 @@ describe("settings → 처음 크게 보일 도서관", () => {
     await fireEvent.press(screen.getByTestId("first-library-nearest"));
     expect(setHeroRule).not.toHaveBeenCalled();
     expect(mockBack).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("SearchRadiusSetting (C-96)", () => {
+  test("shows 2·3·5km with the saved one selected and saves a new choice on the device", async () => {
+    await render(<SearchRadiusSetting />);
+    await waitFor(() => expect(screen.getByTestId("settings-radius-3").props.accessibilityState.selected).toBe(true));
+    expect(screen.getByText("2km")).toBeTruthy();
+    expect(screen.getByText("5km")).toBeTruthy();
+    await fireEvent.press(screen.getByTestId("settings-radius-2"));
+    expect(setSearchRadius).toHaveBeenCalledWith(2);
+    expect(screen.getByTestId("settings-radius-2").props.accessibilityState.selected).toBe(true);
   });
 });

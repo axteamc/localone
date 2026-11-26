@@ -1,5 +1,5 @@
 // 지도 홈 상태 — 위치 → 주변 조회, 지도 실패는 목록 모드, 늦은 응답 폐기 (계약서 VISIT-1 C2·P4)
-// P1: 시작·위치 허용·더 넓게·목록 모드·새로고침. P3: 보는 위치 바꾸기(reloadHere·backToCurrent·showRegion·focusLibrary).
+// P1: 시작·위치 허용·목록 모드·새로고침(C-96: 반경 2km, 비면 가장 가까운 곳 — "더 넓게 찾기" 없앰). P3: 보는 위치 바꾸기(reloadHere·backToCurrent·showRegion·focusLibrary).
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   createLatestRunner,
@@ -9,8 +9,8 @@ import {
   fetchLibrary,
   getDefaultLibrary,
   getLastRegion,
+  HOME_RADIUS_KM,
   locate,
-  NEARBY_DEFAULT_RADIUS_KM,
   requestLocationPermission,
   setLastRegion,
   type LatLng,
@@ -32,12 +32,11 @@ export type HomeLibraries = {
   origin: Origin;
   libraries: LibrarySummary[];
   status: HomeStatus;
-  radiusKm: 3 | 5;
+  radiusKm: number;
   selectedId: number | null;
   /** stillHere: 응답이 왔을 때 false면(그 사이 지도를 또 옮김) 지도를 그 자리로 되돌리지 않는다 */
   reloadHere(center: LatLng, stillHere?: () => boolean): void;
   backToCurrent(): void;
-  widen(): void;
   showRegion(code: string): void;
   focusLibrary(lib: LibrarySummary): void;
   onMapError(): void;
@@ -45,8 +44,8 @@ export type HomeLibraries = {
   allowLocation(): Promise<void>;
 };
 
-// TODO(연결): D(AUTH-2) nearby_radius_km — 로그인했으면 내 설정 반경, 지금은 3 고정 (V2)
-const BASE_RADIUS = NEARBY_DEFAULT_RADIUS_KM as 3;
+// C-96(2026-11-26): 홈 큐브는 설정과 상관없이 늘 2km. 검색 반경 설정(2·3·5)은 책 "주변 찾기"에만 쓴다
+const BASE_RADIUS = HOME_RADIUS_KM as 2;
 
 const median = (xs: number[]): number => {
   const s = [...xs].sort((a, b) => a - b);
@@ -76,7 +75,7 @@ export function useHomeLibraries(): HomeLibraries {
   const [origin, setOrigin] = useState<Origin>("start");
   const [libraries, setLibraries] = useState<LibrarySummary[]>([]);
   const [status, setStatus] = useState<HomeStatus>("loading");
-  const [radiusKm, setRadiusKm] = useState<3 | 5>(BASE_RADIUS);
+  const [radiusKm, setRadiusKm] = useState<2 | 3 | 5>(BASE_RADIUS);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   const modeRef = useRef<HomeMode>("map");
@@ -86,7 +85,6 @@ export function useHomeLibraries(): HomeLibraries {
   const startingRef = useRef(true); // 첫 주변 조회가 끝나기 전에 지도가 실패하면 끝난 뒤 목록으로
   const aliveRef = useRef(true);
   const startAbort = useRef<AbortController | null>(null);
-  const searchedRef = useRef<LatLng | null>(null); // 마지막으로 결과를 받은 자리("더 넓게 찾기"가 쓴다)
 
   /** 현재 위치를 알면 옮긴 곳은 "moved", 모르면 계속 "start"(V10: "위치 허용하기"와 "현재 위치로"는 함께 뜨지 않음) */
   const movedOrigin = useCallback((): Origin => (currentRef.current ? "moved" : "start"), []);
@@ -116,7 +114,7 @@ export function useHomeLibraries(): HomeLibraries {
     async (
       at: LatLng,
       from: Origin,
-      radius: 3 | 5,
+      radius: 2 | 3 | 5,
       select: number | null = null,
       applyView: () => boolean = () => true
     ) => {
@@ -124,7 +122,6 @@ export function useHomeLibraries(): HomeLibraries {
       const r = await runner.run((signal) => fetchLibrariesNearby(at.lat, at.lng, radius, signal));
       if (r.status === "stale") return; // 예외 #3: 화면 무변경
       startingRef.current = false;
-      searchedRef.current = at;
       // V10: 요청 뒤 사용자가 지도를 또 옮겼으면 마지막으로 옮긴 자리를 지킨다
       if (applyView()) setCenter(at);
       setOrigin(from);
@@ -139,8 +136,10 @@ export function useHomeLibraries(): HomeLibraries {
         setStatus("error"); // 예외 #1
         return;
       }
-      setLibraries(r.value.items);
-      setStatus(r.value.items.length === 0 ? "empty" : "ready"); // 예외 #2
+      // C-96: 반경 안이 비면 안내 없이 가장 가까운 곳(서버 nearest)을 주인공으로. 예전 서버(칸 없음)면 지금처럼 비어 있음
+      const items = r.value.items.length === 0 && r.value.nearest ? [r.value.nearest] : r.value.items;
+      setLibraries(items);
+      setStatus(items.length === 0 ? "empty" : "ready"); // 예외 #2
     },
     [runner, loadRegion, setCenter]
   );
@@ -177,7 +176,6 @@ export function useHomeLibraries(): HomeLibraries {
         const mid = r.status === "ok" ? averageCenter(r.value.items) : null;
         if (r.status === "ok" && mid) {
           startingRef.current = false;
-          searchedRef.current = mid;
           setCenter(mid);
           setOrigin("start");
           setLibraries(r.value.items);
@@ -224,8 +222,6 @@ export function useHomeLibraries(): HomeLibraries {
     regionRef.current = null;
     void load(currentRef.current, "current", BASE_RADIUS);
   }, [load]);
-
-  const widen = useCallback(() => void load(searchedRef.current ?? center, origin, 5), [load, center, origin]);
 
   // V12: 지역 결과 — 지도 모드는 그 지역 도서관 평균 자리로 옮기고 핀을 그 결과로, 목록 모드는 그 지역 목록
   const showRegion = useCallback(
@@ -308,7 +304,6 @@ export function useHomeLibraries(): HomeLibraries {
     selectedId,
     reloadHere,
     backToCurrent,
-    widen,
     showRegion: (code: string) => void showRegion(code),
     focusLibrary,
     onMapError,
