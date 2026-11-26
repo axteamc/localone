@@ -197,18 +197,22 @@ POST_COLUMNS = (
     "p.overlay_pos, p.overlay_tone, p.image_fit, "
     "p.status, p.published_at, l.name AS library_name, b.isbn13 AS book_isbn13, "
     "b.title AS book_title, b.author AS book_author, b.cover_url AS book_cover_url, "
-    "COALESCE(up.nickname, '이웃') AS nickname"
+    "COALESCE(up.nickname, '이웃') AS nickname, p.origin, "
+    # C-97(MY-4): 공개용 프로필 id(내부 users.id는 내보내지 않는다)·사진. 탈퇴한 사람이면 profile_id는 null
+    "CASE WHEN au.status = 'active' THEN au.public_id END AS author_profile_id, up.avatar_url AS author_avatar_url"
 )
 POST_JOINS = (
     "FROM posts p JOIN libraries l ON l.id = p.library_id "
     "LEFT JOIN books b ON b.id = p.book_id "
-    "LEFT JOIN user_profiles up ON up.user_id = p.user_id"
+    "LEFT JOIN user_profiles up ON up.user_id = p.user_id "
+    "JOIN users au ON au.id = p.user_id"
 )
 
 INSERT_POST_ON_CONFLICT_DO_NOTHING_RETURNING = text(
     "INSERT INTO posts (user_id, library_id, book_id, image_kind, image_value, overlay_text, body, "
-    "client_request_id, reading_log_id, overlay_pos, overlay_tone, image_fit) VALUES (:uid, :library_id, :book_id, "
-    ":image_kind, :image_value, :overlay_text, :body, :rid, :reading_log_id, :overlay_pos, :overlay_tone, :image_fit) "
+    "client_request_id, reading_log_id, overlay_pos, overlay_tone, image_fit, origin) VALUES (:uid, :library_id, "
+    ":book_id, :image_kind, :image_value, :overlay_text, :body, :rid, :reading_log_id, :overlay_pos, :overlay_tone, "
+    ":image_fit, :origin) "
     "ON CONFLICT (user_id, client_request_id) DO NOTHING RETURNING id"
 )
 SELECT_BY_CLIENT_REQUEST_ID = text(
@@ -243,7 +247,13 @@ def params(body: PostCreate, user_id: UUID, book: BookRecord | None) -> dict[str
         "overlay_pos": body.overlay_pos,
         "overlay_tone": body.overlay_tone,
         "image_fit": body.image_fit,
+        "origin": post_origin(body),
     }
+
+
+def post_origin(body: PostCreate) -> str:
+    """C-97 M4-5: 독서 기록에서 올렸으면(기록 id 또는 템플릿) 'reading_log'. 올릴 때 정하고 바꾸지 않는다."""
+    return "reading_log" if body.reading_log_id is not None or body.image_kind == "template" else "post"
 
 
 def with_image_url(request: Request, row: Any) -> SimpleNamespace:
@@ -282,14 +292,18 @@ def post_public(
         "image_kind": row.image_kind,
         "image_url": row.image_url,
         "image_value": row.image_value if row.image_kind == "template" else None,
-        "from_reading_log": row.reading_log_id is not None,
+        "from_reading_log": row.origin == "reading_log",  # C-97 M4-6: 기록을 지워도 그대로
         "image_color": row.image_value if row.image_kind == "color" else None,
         "overlay_text": row.overlay_text,
         "overlay_pos": row.overlay_pos,
         "overlay_tone": row.overlay_tone,
         "image_fit": row.image_fit,
         "body": row.body,
-        "author": {"nickname": nickname},
+        "author": {
+            "nickname": nickname,
+            "profile_id": str(row.author_profile_id) if row.author_profile_id is not None else None,
+            "avatar_url": row.author_avatar_url,
+        },
         "is_mine": viewer is not None and viewer.id == row.user_id,
         "reaction_count": reaction_count,
         "my_reaction": my_reaction if viewer is not None else False,

@@ -19,15 +19,17 @@ import { RELATED_TEXT } from "../SameBookPosts";
 const mockPush = jest.fn();
 const mockBack = jest.fn();
 const mockReplace = jest.fn();
+const mockNavigate = jest.fn();
 jest.mock("expo-router", () => ({
-  useRouter: () => ({ push: mockPush, back: mockBack, replace: mockReplace, canGoBack: () => true }),
+  useRouter: () => ({ push: mockPush, back: mockBack, replace: mockReplace, navigate: mockNavigate, canGoBack: () => true }),
+  useNavigation: () => null,
 }));
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock")
 );
 jest.mock("expo-crypto", () => ({ randomUUID: () => "11111111-2222-4333-8444-555555555555" }));
 jest.mock("../imagePicker", () => ({ pickPostImage: jest.fn(), canUseCamera: jest.fn(() => true), buildImageFormData: jest.fn() }));
-jest.mock("../../../auth/AuthProvider", () => ({ useAuth: jest.fn() }));
+jest.mock("../../../auth/AuthProvider", () => ({ useAuth: jest.fn(), registerSignOutCleanup: jest.fn() }));
 jest.mock("../../../lib/platform", () => ({ openExternalUrl: jest.fn(async () => true) }));
 jest.mock("../../../lib/publicApi", () => ({
   ...jest.requireActual<object>("../../../lib/publicApi"),
@@ -42,6 +44,7 @@ jest.mock("../api", () => ({
   setBookmark: jest.fn(),
   withdrawPost: jest.fn(),
   editPost: jest.fn(),
+  reportTarget: jest.fn(),
 }));
 
 const fetchPost = jest.mocked(api.fetchPost);
@@ -146,7 +149,9 @@ describe("상세 구조와 대여/구매 (H9·H14)", () => {
     expect(screen.queryByText(/구매/)).toBeNull(); // 구매 버튼은 카드에서 뺐다(사용자 2026-11-25)
     expect(openExternalUrl).not.toHaveBeenCalled();
     expect(mockPush).not.toHaveBeenCalled();
-    expect(screen.getByText("책읽는이웃 · 정독도서관")).toBeTruthy();
+    const author = within(screen.getByTestId("author-row"));
+    expect(author.getByText("책읽는이웃")).toBeTruthy();
+    expect(author.getByText("정독도서관 · 2026.11.17")).toBeTruthy();
     expect(screen.getByText("마지막 장이 오래 남아요.")).toBeTruthy();
   });
 
@@ -261,6 +266,32 @@ describe("상세 구조와 대여/구매 (H9·H14)", () => {
     expect(heard).toEqual(["p1"]);
     off();
   });
+});
+
+test("author row opens the public profile and the menu reports that user", async () => {
+  mockedUseAuth.mockReturnValue({ status: "signedIn", userId: "viewer" } as ReturnType<typeof useAuth>);
+  await enter(post({ author: { nickname: "책읽는이웃", profile_id: "author-profile" } }));
+  await fireEvent.press(screen.getByTestId("author-open"));
+  expect(mockPush).toHaveBeenCalledWith({
+    pathname: "/users/[profileId]", params: { profileId: "author-profile" },
+  });
+
+  await fireEvent.press(screen.getByTestId("author-menu"));
+  await fireEvent.press(screen.getByText("사용자 신고"));
+  expect(await screen.findByText("사용자 신고")).toBeTruthy();
+  expect(screen.queryByText("신고하기")).toBeNull();
+  await fireEvent.press(screen.getByText("스팸 또는 광고"));
+  await fireEvent.press(screen.getByText("신고 보내기"));
+  expect(api.reportTarget).toHaveBeenCalledWith({ kind: "user", id: "author-profile" }, "spam", null);
+  expect(await screen.findByText("신고했어요")).toBeTruthy();
+  expect(screen.getByTestId("author-row")).toBeTruthy();
+});
+
+test("own post author row opens the me tab without an author menu", async () => {
+  await enter(post({ is_mine: true, author: { nickname: "내 이름", profile_id: "my-profile" } }));
+  await fireEvent.press(screen.getByTestId("author-open"));
+  expect(mockNavigate).toHaveBeenCalledWith("/me");
+  expect(screen.queryByTestId("author-menu")).toBeNull();
 });
 
 describe("공감·저장 (H5·H6·H-#5·H-#6)", () => {

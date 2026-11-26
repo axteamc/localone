@@ -118,7 +118,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | 17 | `visit_stamps` | "다녀왔어요" 방문 스탬프(사용자×도서관×서울 날짜, 비공개/공개) | B (VISIT-4) | `user_id` | VISIT-05, R11·R12 | `확정` · 입장 조건·이름 `미확인(임시)` Q-45 |
 | 18 | `stamp_bookmarks` | 공개 방문 스탬프 카드 북마크(내 정보 북마크 탭과 통합) | B (VISIT-4, 조회 합치기는 A MY-3) | `user_id` | C-46 D3~D5, R16 | `확정` (2026-11-19 D, C-75) |
 | 19 | `reading_logs` | 본인만 보는 비공개 독서 기록 | A (READ-1) | `user_id` | READ-01·02, R8·R12 | `확정` (`reading-log.md` READ-1) |
-| 20 | `reports` | 게시물·방명록·모임·모임 댓글에 대한 이용자 신고 | B (LOCAL-4) | `reporter_id` | LOCAL-08, AC-MOD | `확정` (`local-feed.md` LOCAL-4) |
+| 20 | `reports` | 게시물·방명록·모임·모임 댓글·공개 스탬프·사용자 신고 | B (LOCAL-4) | `reporter_id` | LOCAL-08, AC-MOD | `확정` (`local-feed.md` LOCAL-4) |
 | 21 | `clubs` | 도서관 기반 회차별 작은 모임 | B (CLUB-1) | `host_id`(만든 사람) | CLUB-01·02, C-46 A | `확정` (`book-club.md` CLUB-1) |
 | 22 | `club_participations` | 모임 참가 신청·취소·제한 제외 상태 | B (CLUB-1·2) | `user_id` | CLUB-01, C-46 A·B2 | `확정` |
 | 23 | `club_comments` | 모임 일정·장소 협의 댓글 | B (CLUB-1) | `user_id` | CLUB-01, C-43 | `확정` |
@@ -139,11 +139,12 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 
 ### 3.1 D 영역 (컬럼 수준)
 
-**`users`** — AUTH-1 계약서 §3.4와 같다. 다른 컬럼을 더하지 않는다(이메일·제공자 정보는 Supabase `auth` 스키마에만).
+**`users`** — AUTH-1 계약서 §3.4를 따르며, MY-4(C-97)에서 공개 식별자를 추가한다(이메일·제공자 정보는 Supabase `auth` 스키마에만).
 
 | 컬럼 | 타입 | 제약 | 설명 | 상태 |
 | --- | --- | --- | --- | --- |
 | `id` | `uuid` | PK | Supabase 사용자 id(토큰의 `sub`) | `확정` |
+| `public_id` | `uuid` | NOT NULL, UNIQUE, 기본 `gen_random_uuid()` | MY-4 공개 프로필 주소와 작성자 응답의 `profile_id` | `확정` (`0033`) |
 | `status` | `text` | NOT NULL, 기본 `'active'`, CHECK `IN ('active','withdrawn')` | 계정 상태. `withdrawn`은 AUTH-3 | `확정` |
 | `created_at` | `timestamptz` | NOT NULL, 기본 `now()` | 처음 `POST /auth/session` 시각 | `확정` |
 
@@ -308,14 +309,14 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | `loan_plans` | C (LIB-3) | `user_id` | 책(`book_id`), 도서관(`library_id`, **NULL 허용 = 도서관 미지정**, C-84), 상태(`planned`/`released`/`converted`), 만든 시각 | **부분 UNIQUE** (`user_id`, `book_id`, `library_id`) `WHERE status = 'planned'` — 활성 예정은 하나 + (`user_id`, `book_id`) `WHERE status = 'planned' AND library_id IS NULL` — 미지정 활성 예정도 하나(C-84, `0027_loan_plans_unassigned` 예정) | R3, AC-PLAN | `확정` |
 | `loans` | C (LOAN-1·2) | `user_id` | 책(`book_id`), 대출일 `loaned_on date`(서버 KST), 반납 예정일 `due_on date`, 상태(`on_loan`/`returned`), 실제 반납일(NULL 허용), 도서관(NULL 허용), 연결된 예정(NULL 허용) | **CHECK** `due_on >= loaned_on` · **CHECK** `(status = 'returned') = (returned_on IS NOT NULL)` · **UNIQUE** `plan_id`(예정 하나는 대출 하나에만) · 연타 방지 **부분 UNIQUE** (`user_id`, `book_id`) `WHERE status = 'on_loan'` | R4, AC-LOAN, AC-RETURN | `확정` · 마지막 부분 UNIQUE(같은 책을 두 권 동시에 못 빌림)는 `미확인(임시)` Q-21 |
 | `library_return_stats` | C (`0009` 표 생성) / D (M2-0-P4에서 `#22` 안 D 블록으로 쓰기) | **없음** | 도서관, 책, 반납일(서울 날짜), 건수 | **PK** (`library_id`, `book_id`, `returned_on`) · `user_id`·`loan_id` 컬럼을 **두지 않는다** · 도서관 없는 대출은 쌓지 않는다 · 동의(`user_settings.return_stats_consent`)가 있고 `RETURN_STATS_WRITE_ENABLED = True`일 때만 +1 | 02 §3·§4-9, R15 | `확정`(D 블록 구조, 2026-11-19 D) · 켜는 시점은 `미확인(임시)` Q-49(기본 `False`) |
-| `posts` | B (LOCAL-1, M2 LOCAL-3 확장) | `user_id`(작성자) | 도서관(`library_id`, NOT NULL), 책(`book_id`, NULL 허용), 이미지 종류(`photo`/`cover`/`color` + M2 `template`), 이미지 값(사진 경로·표지 주소·색·템플릿 키 `minimal`/`ink`), 이미지 위 글자(NULL 허용), 본문(NULL 허용), 독서 기록 연결(`reading_log_id`, M2 LOCAL-3, NULL 허용, `ON DELETE SET NULL`), 상태(`published`/`withdrawn`/`hidden`), 게시 시각 | **CHECK** 상태 세 값 · **CHECK** 이미지 종류와 이미지 값 일치 · **UNIQUE** (`user_id`, `client_request_id`) · **부분 UNIQUE** (`reading_log_id`) `WHERE reading_log_id IS NOT NULL AND status = 'published'`(기록당 공개 글 1개, LOCAL-3) · 응답에 `user_id`·`reading_log_id` 대신 `nickname`·`from_reading_log` 불리언만 | LOCAL-01·07, R8·R10, AC-PUBLISH | `확정` (2026-11-19 D, C-75) |
+| `posts` | B (LOCAL-1, M2 LOCAL-3 확장) | `user_id`(작성자) | 도서관(`library_id`, NOT NULL), 책(`book_id`, NULL 허용), 이미지 종류(`photo`/`cover`/`color` + M2 `template`), 이미지 값(사진 경로·표지 주소·색·템플릿 키 `minimal`/`ink`), 이미지 위 글자(NULL 허용), 본문(NULL 허용), 독서 기록 연결(`reading_log_id`, M2 LOCAL-3, NULL 허용, `ON DELETE SET NULL`), 상태(`published`/`withdrawn`/`hidden`), 게시 시각, 공개 탭 출처(`origin`, §8) | **CHECK** 상태 세 값 · **CHECK** 이미지 종류와 이미지 값 일치 · **UNIQUE** (`user_id`, `client_request_id`) · **부분 UNIQUE** (`reading_log_id`) `WHERE reading_log_id IS NOT NULL AND status = 'published'`(기록당 공개 글 1개, LOCAL-3) · 상세 응답은 작성자 닉네임·공개 프로필 id·사진과 `from_reading_log`를 반환하며 내부 사용자 id·기록 id는 제외(MY-4) | LOCAL-01·07, R8·R10, AC-PUBLISH | `확정` (2026-11-19 D, C-75) |
 | `post_reactions` | B (LOCAL-2) | `user_id` | 게시물(`post_id`), 누른 시각 | **PK** (`post_id`, `user_id`) — 사용자당 하나 | R14, AC-FEED | `확정` |
 | `post_bookmarks` | B (LOCAL-2) / 조회 A (MY-1) | `user_id` | 게시물(`post_id`), 저장 시각(다시 저장하면 새 시각) | **PK** (`user_id`, `post_id`) · 본인만 조회 | LOCAL-03, C-46 D4·D5, R16 | `확정` (`0006`, MY-1) |
 | `guestbook_entries` | B (VISIT-3) | `user_id`(작성자) | 도서관(`library_id`, NOT NULL), 본문(`body`), 상태(`published`/`withdrawn`/`hidden`), `client_request_id`, 게시 시각 | **CHECK** 상태 세 값 · **UNIQUE** (`user_id`, `client_request_id`) · 응답에 `user_id` 없음 | VISIT-03, R10·R11·R12 | `확정` (2026-11-19 D) |
 | `visit_stamps` | B (VISIT-4) | `user_id` | 도서관(`library_id`, NOT NULL), 서울 날짜(`stamped_on date`, 서버 `today_kst()`), 공개 여부(`private`/`public`) | **UNIQUE** (`user_id`, `library_id`, `stamped_on`) — 하루 한 도서관에 1행(연타 시 `visibility`만 갱신) · **CHECK** `visibility IN ('private','public')` · 비공개는 본인 외 노출 금지 | VISIT-05, R11·R12 | `확정` · 입장 조건·표시 이름 `미확인(임시)` Q-45 |
 | `stamp_bookmarks` | B (VISIT-4, 북마크 탭 통합은 A MY-3) | `user_id` | 스탬프(`stamp_id`, `ON DELETE CASCADE`), 저장 시각(`saved_at`, 재저장 시 갱신) | **PK** (`user_id`, `stamp_id`) · 공개(`visibility = 'public'`) 스탬프만 저장 가능 · 비공개 전환 시 행은 유지하되 목록에서 숨기고 재공개 시 복원 | C-46 D3~D5, R16 | `확정` (2026-11-19 D, C-75) |
 | `reading_logs` | A (READ-1) | `user_id` | 책(`book_id`, NOT NULL), 도서관(`library_id`, NULL 허용 — 자동 보정 금지), 대출 연결(`loan_id`, NULL 허용, `ON DELETE SET NULL`), 읽은 날(`read_on date`, 미래 불가), 감상(`note`), 문장(`quote`), `client_request_id` | **UNIQUE** (`user_id`, `client_request_id`) · 본인만 조회·수정·삭제(타인·없는 기록은 같은 `404`) · 남의 대출 연결 거부(`404`) | READ-01·02, R8·R12 | `확정` (2026-11-19 D, C-75) |
-| `reports` | B (LOCAL-4) | `reporter_id` | 대상 종류(`post`/`guestbook`/`club`/`club_comment`), 대상 id(`target_id`), 사유 코드(`reason`), 상세(`text`, NULL 허용), 상태(`open`/`actioned`/`dismissed`) | **UNIQUE** (`reporter_id`, `target_kind`, `target_id`)(중복 신고 멱등) · **CHECK** 대상 종류·상태 · 본인 글 신고 불가(`422`) · 신고자·신고 수 비공개 | LOCAL-08, AC-MOD | `확정` (2026-11-19 D) |
+| `reports` | B (LOCAL-4) | `reporter_id` | 대상 종류(`post`/`guestbook`/`club`/`club_comment`/`stamp`/`user`), 대상 id(`target_id`), 사유 코드(`reason`), 상세(`text`, NULL 허용), 상태(`open`/`actioned`/`dismissed`) | **UNIQUE** (`reporter_id`, `target_kind`, `target_id`)(중복 신고 멱등) · **CHECK** 대상 종류·상태 · 자신이나 본인 글 신고 불가(`422`) · 신고자·신고 수 비공개 | LOCAL-08, AC-MOD | `확정` (2026-11-19 D) |
 | `clubs` | B (CLUB-1) | `host_id`(만든 사람) | 도서관(`library_id`), 이름(`name`), 소개(`intro`), 책(`book_id`), 장소(`place`), 시작·종료 시각(`starts_at`·`ends_at`, 미정 NULL 허용), 정원(`capacity`, NULL 허용), 상태(`open`/`closed`/`canceled`/`hidden`), 취소 사유(`cancel_reason`), 이전 회차(`previous_club_id`), `client_request_id` | **CHECK** `ends_at > starts_at` · **CHECK** `status <> 'canceled' OR cancel_reason IS NOT NULL` · **UNIQUE** (`host_id`, `client_request_id`) · 시작 후 `starts_at` 변경 불가(`409 CLUB_STARTED`) | CLUB-01·02, C-46 A1~A6·C2 | `확정` (2026-11-19 D) |
 | `club_participations` | B (CLUB-1·2) | `user_id` | 모임(`club_id`), 상태(`joined`/`left`/`removed`), 참가·갱신 시각 | **PK** (`club_id`, `user_id`) · 참가 시 `clubs` 행 `FOR UPDATE` 잠금으로 정원 경합 차단 · 명단 응답에 `user_id` 없이 닉네임만 | CLUB-01, C-46 A1~A5·B2 | `확정` (2026-11-19 D) |
 | `club_comments` | B (CLUB-1) | `user_id` | 모임(`club_id`), 본문(`body`), 상태(`published`/`deleted`/`hidden`), `client_request_id` | **UNIQUE** (`user_id`, `client_request_id`) · **CHECK** 상태 세 값 | CLUB-01, C-43 | `확정` (2026-11-19 D) |
@@ -334,6 +335,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | 접근 경로 | 앱 → FastAPI → DB만. 앱에 `service_role`·secret 키를 넣지 않는다 | `확정`(NFR-04) |
 | `auth` 스키마 | `auth.users`에 FK를 걸지 않는다(시험 DB에 `auth` 스키마가 없다) | `기본값(Claude)`(AUTH-1 §3.4) |
 | 공개 데이터 | `libraries`·`books`·`availability_observations`·`popular_books_cache`·`curated_books_cache`·`book_purchase_links`·공개 상태의 `posts`는 로그인 없이 읽는다(02 §2 방문자). 파일럿 동안 게시물을 참여자에게만 보이는 방법은 `미확인(임시)` Q-54 | `확정` / Q-54 |
+| 작성자 공개 프로필 | 활성 계정을 `users.public_id`로 찾고 공개 상태의 게시물만 탭별로 읽는다. 응답에서 내부 `users.id`와 `reading_log_id`는 제외한다 | `확정` (MY-4 C-97) |
 
 ## 5. 04 규칙 → 제약 → 시험
 
@@ -375,6 +377,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 | --- | --- | --- |
 | 도서관 광장 최신순 | `posts (library_id, published_at DESC) WHERE status = 'published'` | LOCAL-2 |
 | 같은 책 이어 읽기 | `posts (book_id, published_at DESC) WHERE status = 'published'` | LOCAL-2 |
+| 작성자 공개 게시물 탭 | `posts (user_id, origin, published_at DESC, id DESC) WHERE status = 'published'` | MY-4 |
 | 내 대출·내 예정 | `loans (user_id, status)`, `loan_plans (user_id, status)` | LOAN-1, LIB-3 |
 | 주변 도서관 | `libraries (dtl_region_code)`. 반경 계산은 약 1,300곳이라 서버에서 직선거리로 계산한다(공간 인덱스·PostGIS 없음) | LIB-2 |
 
@@ -386,6 +389,7 @@ A(`library-visit`)는 M1에 자기 테이블이 없다. 지도·방문 페이지
 - 순번은 **머지 순서**로 매긴다. 두 파트가 같은 번호를 잡으면 나중에 머지되는 쪽이 번호를 올린다(`기본값(Claude)`).
 - 예상 순서(선행 관계만, 번호 아님): `users` → `user_profiles`·`user_settings` → `libraries`·`books` → `availability_observations`·`popular_books_cache`·`provider_daily_usage` → `loan_plans` → `loans`·`library_return_stats` / `posts` → `post_reactions`·`post_bookmarks`.
 - 탈퇴·삭제 처리와 보관 기간은 AUTH-3 계약서에서 정한다(Q-23, 출시 관문).
+- `0033_user_public_profile` (MY-4 C-97)은 `users.public_id`, `posts.origin`(`post` 또는 `reading_log`, 게시 시 고정), 공개 탭 인덱스와 `reports.target_kind='user'`를 추가한다. 기존 템플릿 또는 기록 연결 게시물은 `reading_log`로 분류한다. 사용자 신고의 저장 대상은 내부 사용자 id다. 세부 제약은 `my-collection.md` MY-4 C5를 따른다.
 - **번호가 바뀐 리비전과 옛 개발 DB(2026-11-17, PR #141 사후 검토 ②-5, C-65)**: 통합(PR #141, `1ee1bab`) 때 공감·북마크 마이그레이션이 `0005`에서 `0006_post_reactions_bookmarks.py`로 밀리고 `0005`는 `0005_loan_plans.py`가 됐다. 통합 전 `feat/local-feed-LOCAL-2` 브랜치에서 `alembic upgrade head`를 돌린 DB는 `alembic_version = 0005`가 옛 반응 테이블을 뜻해, main에서 다시 `upgrade head`하면 `loan_plans`를 건너뛰고 `0006`에서 이미 있는 테이블 때문에 실패한다. 이런 DB는 **개발 DB뿐이고 버려도 된다(사용자 확인)**: 컨테이너·볼륨을 지우고 새로 만든 뒤 `alembic upgrade head`(예: 저장소 루트 `docker compose down -v` → `docker compose up -d --wait db` → `server`에서 `uv run alembic upgrade head`). 다른 저장소의 컨테이너(예: `~/code/libtalk`의 `libtalk-db-1`)는 이 일과 관계없으니 지우지 않는다. 남겨야 할 데이터가 있는 DB라면 지우지 말고 D에게 먼저 알린다(백업·이력 대조 후 따로 복구). 새 DB의 리비전 사슬(`0001→…→0006`)은 정상이다
 
 ## 9. 계약서와 맞출 것

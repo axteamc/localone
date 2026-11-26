@@ -135,7 +135,7 @@ def test_deleting_reading_log_keeps_post(client, auth, db_engine):
     assert client.delete(f"{LOGS}/{log}", headers=auth["A"]).status_code == 204
     assert [(str(row.id), row.status, row.reading_log_id) for row in rows(db_engine)] == [(post_id, "published", None)]
     detail = client.get(f"{POSTS}/{post_id}").json()
-    assert detail["from_reading_log"] is False
+    assert detail["from_reading_log"] is True  # C-97 M4-5: 출처(origin)는 올릴 때 정하고 기록을 지워도 그대로
     assert (detail["image_kind"], detail["image_value"], detail["overlay_text"], detail["body"]) == (
         "template", "ink", "공개 문장", "공개 감상",
     )

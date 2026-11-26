@@ -11,6 +11,7 @@ export type ReportTarget = { kind: ReportKind; id: string };
 
 export const REPORT_TEXT = {
   open: "신고하기",
+  userTitle: "사용자 신고", // C-97 MY-4 M4-8
   done: "신고했어요",
   collapsed: "신고한 글",
   loginNeeded: "로그인하면 신고할 수 있어요",
@@ -142,7 +143,7 @@ function ReportForm({
     <Modal transparent animationType="fade" onRequestClose={close}><ModalFrame>
       <View style={styles.backdrop}>
         <ScrollView style={styles.sheet} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          <Text style={T.title}>{REPORT_TEXT.open}</Text>
+          <Text style={T.title}>{target.kind === "user" ? REPORT_TEXT.userTitle : REPORT_TEXT.open}</Text>
           {owner ? (
             <>
               {REASONS.map(({ code, label }) => (

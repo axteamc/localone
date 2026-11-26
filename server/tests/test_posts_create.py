@@ -227,7 +227,9 @@ def test_create_photo_post_then_read_fields(client, auth, db_engine):
     assert post["image_kind"] == "photo" and post["image_url"].startswith("data:image/jpeg;base64,")
     assert post["image_color"] is None
     assert post["overlay_text"] == "밑줄 친 문장" and post["body"] == "좋았어요"
-    assert post["author"] == {"nickname": "이웃-0000"}
+    # C-97 MY-4: 공개용 profile_id·사진이 더해졌고 내부 user_id는 여전히 없다
+    assert post["author"]["nickname"] == "이웃-0000" and post["author"]["avatar_url"] is None
+    assert post["author"]["profile_id"] not in (None, USER_A_ID)
     assert post["is_mine"] is True
     assert (post["reaction_count"], post["my_reaction"], post["my_bookmark"]) == (0, False, False)
     assert post["published_at"].endswith("+09:00")

@@ -144,6 +144,9 @@ def create_app(
     from app.routers.reports import router as reports_router
 
     app.include_router(reports_router)
+    from app.routers.users import router as users_router  # C-97 MY-4 남의 공개 프로필
+
+    app.include_router(users_router)
     from app.routers.stamps import router as stamps_router
 
     app.include_router(stamps_router)

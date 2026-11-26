@@ -11,6 +11,7 @@ import { fetchAvailabilityAt, type AvailabilityItem } from "../../lib/publicApi"
 import { actionColors, cardSurface, onFill, resolvePostColor, theme as baseTheme, type Theme } from "../../theme";
 import { LibraryLookProvider, lookKit, useLibraryLook, useLook } from "./useLibraryLook";
 import { ON_FILL_LIGHT } from "../../theme/tokens";
+import { AuthorRow } from "./AuthorRow";
 import { ApiCallError, emitPostReaction, emitPostWithdrawn, fetchPost, type Post } from "./api";
 import { PostImage, PostMoreMenu } from "./ComposeScreen";
 import { TemplateCard } from "./templates";
@@ -127,6 +128,7 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
   const [notice, setNotice] = useState<string | null>(null);
   const [reportFor, setReportFor] = useState<string | null>(null);
   const [othersMenu, setOthersMenu] = useState(false);
+  const [reportKind, setReportKind] = useState<"post" | "user">("post");
   const postRunner = useRef(createLatestRunner()).current;
   const loanRunner = useRef(createLatestRunner()).current;
   const noticeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -342,6 +344,7 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
                   {!authLoading ? (
                     <Pressable accessibilityRole="button" style={styles.smallMenuItem} onPress={() => {
                       setOthersMenu(false);
+                      setReportKind("post");
                       setReportFor(reportIdentity);
                     }}>
                       <Text style={styles.smallMenuText}>{REPORT_TEXT.open}</Text>
@@ -366,10 +369,15 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
         />
       </View>
 
-      <View style={styles.bylineGroup}>
-        <Text style={styles.byline}>{`${post.author.nickname} · ${post.library.name}`}</Text>
-        <Text style={T.gauge}>{post.published_at.slice(0, 10).replace(/-/g, ".")}</Text>
-      </View>
+      {/* C-97 MY-4 M4-1: 사진·닉네임 = 프로필, 줄 끝 ⋯ = 프로필 보기·사용자 신고 */}
+      <AuthorRow
+        post={post}
+        onReport={() => {
+          if (authLoading) return;
+          setReportKind("user");
+          setReportFor(reportIdentity);
+        }}
+      />
 
       {post.body ? <Text style={styles.body}>{post.body}</Text> : null}
 
@@ -441,7 +449,11 @@ function PostDetailInner({ postId, visitLibraryId }: PostDetailProps) {
       {login ? <LoginPrompt onClose={() => setLogin(false)} /> : null}
       {reportFor === reportIdentity ? (
         <ReportSheet
-          target={{ kind: "post", id: post.id }}
+          target={
+            reportKind === "user" && post.author.profile_id
+              ? { kind: "user", id: post.author.profile_id }
+              : { kind: "post", id: post.id }
+          }
           onClose={() => setReportFor(null)}
           onDone={() => { setReportFor(null); showNotice(REPORT_TEXT.done); }}
         />
@@ -513,7 +525,6 @@ const makeStyles = (theme: Theme) => {
   },
   smallMenuItem: { minHeight: 44, justifyContent: "center", paddingHorizontal: 14 },
   smallMenuText: { fontSize: 14, color: C.text, fontWeight: "500" },
-  bylineGroup: { gap: 2 },
   byline: { ...T.name, color: C.text },
   body: { fontSize: 14, lineHeight: 22, color: C.text },
   // 시안 .sns-card: 가로 2칸(책 정보 1fr | 필 auto), 세로 가운데, 간격 8, 안쪽 6/8
