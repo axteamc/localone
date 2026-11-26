@@ -53,8 +53,9 @@ SHELF_POPULAR_EXCLUDED_SERIES = ("빨간내복야코", "빨간 내복 야코", "
 SHELF_POPULAR_EXCLUDED_TITLE_PREFIXES = ("흔한남매",)
 
 # ── 도서관 목록·소장 조회(06 #10·#12·#13) ──
-NEARBY_RADII_KM = (3, 5)  # 02 LIB-02 `확정`(O-39)
-NEARBY_DEFAULT_RADIUS_KM = 3  # 02 LIB-02 `확정`
+NEARBY_RADII_KM = (2, 3, 5)  # 02 LIB-02 `확정`(O-39 → C-96: 홈 큐브 2km, 검색 기본 3km, 설정 2·3·5)
+NEARBY_DEFAULT_RADIUS_KM = 3  # 02 LIB-02 `확정` — 검색(소장 주변 찾기) 기본. 홈은 앱이 2를 보낸다(C-96)
+NEAREST_MAX = 10  # C-96 #10 `nearest=` 가까운 N곳 상한(홈 지도 모드는 5)
 
 # ── 구매 링크(06 #15) · YES24 큐레이션(C-81, K23) ──
 # 기본 폴백 검색 주소(키 미설정·미검색·오류·비판매 시)

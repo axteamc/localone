@@ -3,11 +3,12 @@
 export { createLatestRunner } from "../../lib/latest";
 export type { LatLng } from "../../lib/map/KakaoMap";
 export { locate, requestLocationPermission } from "../../lib/platform";
-export { DEFAULT_START, NEARBY_DEFAULT_RADIUS_KM } from "../../lib/policy";
+export { DEFAULT_START, HOME_RADIUS_KM, MAP_NEAREST_COUNT, NEARBY_DEFAULT_RADIUS_KM } from "../../lib/policy";
 export {
   fetchRecommendations,
   fetchLibrariesInRegion,
   fetchLibrariesNearby,
+  fetchLibrariesNearest,
   fetchLibrary,
   searchLibrariesByName,
   type Book,

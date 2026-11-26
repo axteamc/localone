@@ -1,5 +1,5 @@
 import { apiFetch } from "../auth/apiFetch";
-import { NEARBY_DEFAULT_RADIUS_KM } from "./policy";
+import { NEARBY_DEFAULT_RADIUS_KM, type RadiusKm } from "./policy";
 
 export type Book = {
   isbn13: string; title: string; author: string | null; publisher: string | null;
@@ -24,8 +24,10 @@ export type RecommendationResponse = {
   theme: null; books: Book[]; fetched_at: string | null; stale: boolean; fallback_reason: FallbackReason;
 };
 export type LibraryListResponse = {
-  mode: "nearby" | "region" | "search"; radius_km: number | null;
+  mode: "nearby" | "region" | "search" | "nearest"; radius_km: number | null;
   dtl_region: string | null; q: string | null; items: LibrarySummary[];
+  /** C-96: 주변 방식에서 반경 안이 비면 가장 가까운 1곳(그 밖에는 null). 예전 서버는 이 칸이 없다 */
+  nearest?: LibrarySummary | null;
 };
 export type AvailabilityItem = {
   library: Pick<LibrarySummary, "id" | "name" | "address" | "area_label" | "distance_m" | "today"> & { tel: string | null };
@@ -84,15 +86,19 @@ export function fetchBook(isbn13: string, signal?: AbortSignal): Promise<Book> {
 export function fetchRecommendations(libraryId?: number, signal?: AbortSignal): Promise<RecommendationResponse> {
   return get("books/recommendations", { library_id: libraryId }, signal);
 }
-export function fetchLibrariesNearby(lat: number, lng: number, radiusKm: 3 | 5 = NEARBY_DEFAULT_RADIUS_KM, signal?: AbortSignal): Promise<LibraryListResponse> {
+export function fetchLibrariesNearby(lat: number, lng: number, radiusKm: RadiusKm = NEARBY_DEFAULT_RADIUS_KM, signal?: AbortSignal): Promise<LibraryListResponse> {
   return get("libraries", { lat, lng, radius_km: radiusKm }, signal);
+}
+/** C-96 #10 `nearest=`: 반경과 상관없이 가까운 n곳(거리순) — 홈 지도 모드 */
+export function fetchLibrariesNearest(lat: number, lng: number, n: number, signal?: AbortSignal): Promise<LibraryListResponse> {
+  return get("libraries", { lat, lng, nearest: n }, signal);
 }
 export function fetchLibrariesInRegion(dtlRegion: string, signal?: AbortSignal): Promise<LibraryListResponse> {
   return get("libraries", { dtl_region: dtlRegion }, signal);
 }
 export function searchLibrariesByName(q: string, signal?: AbortSignal): Promise<LibraryListResponse> { return get("libraries", { q }, signal); }
 export function fetchLibrary(libraryId: number, signal?: AbortSignal): Promise<LibraryDetail> { return get(`libraries/${libraryId}`, {}, signal); }
-export function fetchAvailabilityNearby(isbn13: string, lat: number, lng: number, radiusKm: 3 | 5 = NEARBY_DEFAULT_RADIUS_KM, signal?: AbortSignal): Promise<AvailabilityResponse> {
+export function fetchAvailabilityNearby(isbn13: string, lat: number, lng: number, radiusKm: RadiusKm = NEARBY_DEFAULT_RADIUS_KM, signal?: AbortSignal): Promise<AvailabilityResponse> {
   return get(`${bookPath(isbn13)}/availability`, { scope: "nearby", lat, lng, radius_km: radiusKm }, signal);
 }
 export function fetchAvailabilityInCity(isbn13: string, dtlRegion: string, signal?: AbortSignal): Promise<AvailabilityResponse> {

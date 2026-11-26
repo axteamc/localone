@@ -155,7 +155,10 @@ describe("VISIT-1-P3 move and find", () => {
     // 용산구 결과는 남산도서관 한 곳 → 한 블록(MAIN)으로, 기준 위치는 그 지역
     await waitFor(() => expect(screen.getByTestId("facade-hero")).toHaveTextContent(/남산/));
     expect(screen.queryByText("정독")).toBeNull();
-    expect(screen.getByText("이동한 지역")).toBeTruthy();
+    // 주인공 보기의 기점은 "지도 보기"(C-96), 위치 이름은 지도 모드 기점에
+    expect(screen.getByText("지도 보기")).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText("지도로 주변 도서관 보기"));
+    expect(await screen.findByText("이동한 지역")).toBeTruthy();
     expect(mockPush).not.toHaveBeenCalled();
   });
 
@@ -176,8 +179,10 @@ describe("VISIT-1-P3 move and find", () => {
     await waitFor(() => expect(screen.getByTestId("facade-hero")).toHaveTextContent(/남산/));
     expect(m.fetchLibrariesInRegion).toHaveBeenCalledWith("11030", expect.anything());
     expect(m.fetchLibrariesNearby).not.toHaveBeenCalled();
-    expect(screen.getByText("임시 시작점")).toBeTruthy();
+    expect(screen.getByText("지도 보기")).toBeTruthy();
     expect(screen.getByText("위치 허용하기")).toBeTruthy();
+    await fireEvent.press(screen.getByLabelText("지도로 주변 도서관 보기"));
+    expect(await screen.findByText("임시 시작점")).toBeTruthy();
   });
 
   test("region center ignores one library with a far-off coordinate", () => {
@@ -195,7 +200,7 @@ describe("VISIT-1-P3 move and find", () => {
     m.fetchLibrariesInRegion.mockResolvedValue({ mode: "region", radius_km: null, dtl_region: "99999", q: null, items: [] });
     await render(<HomeScreen />);
     await waitFor(() =>
-      expect(m.fetchLibrariesNearby).toHaveBeenCalledWith(api.DEFAULT_START.lat, api.DEFAULT_START.lng, 3, expect.anything())
+      expect(m.fetchLibrariesNearby).toHaveBeenCalledWith(api.DEFAULT_START.lat, api.DEFAULT_START.lng, 2, expect.anything())
     );
   });
 
@@ -211,7 +216,7 @@ describe("VISIT-1-P3 move and find", () => {
     await fireEvent.press(await screen.findByText("서울 용산구"));
     await waitFor(() => expect(screen.getByTestId("facade-hero")).toHaveTextContent(/남산/));
     expect(m.setLastRegion).toHaveBeenCalledWith("11030");
-    expect(screen.getByText("임시 시작점")).toBeTruthy();
+    expect(screen.getByText("지도 보기")).toBeTruthy();
   });
 
   test("back to current restores current location", async () => {
@@ -222,11 +227,11 @@ describe("VISIT-1-P3 move and find", () => {
     await fireEvent.press(await screen.findByText("서울 용산구"));
     await fireEvent.press(await screen.findByText("현재 위치로"));
     await waitFor(() =>
-      expect(m.fetchLibrariesNearby).toHaveBeenLastCalledWith(CURRENT.lat, CURRENT.lng, 3, expect.anything())
+      expect(m.fetchLibrariesNearby).toHaveBeenLastCalledWith(CURRENT.lat, CURRENT.lng, 2, expect.anything())
     );
     await waitFor(() => expect(screen.queryByText("현재 위치로")).toBeNull());
     expect(await screen.findByText("정독")).toBeTruthy();
-    expect(screen.getByText("현위치")).toBeTruthy();
+    expect(screen.getByText("지도 보기")).toBeTruthy();
   });
 
   test("find sheet empty message", async () => {

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
 import { createLatestRunner } from "../../lib/latest";
 import { locate } from "../../lib/platform";
-import { NEARBY_DEFAULT_RADIUS_KM } from "../../lib/policy";
+import { getSearchRadius } from "../../lib/searchRadius";
 import { actionColors, cardSurface, theme, type as T } from "../../theme";
 import { ApiCallError, fetchPlansAvailability, type BatchAvailabilityResponse, type BatchCandidate } from "./api";
 import { checkedAtLabel, distanceLabel } from "./availabilityText";
@@ -68,7 +68,7 @@ export function BatchAvailabilityPanel({
       const loc = await locate(signal);
       if (!loc.ok) return null;
       return fetchPlansAvailability(
-        { planIds, lat: loc.lat, lng: loc.lng, radiusKm: NEARBY_DEFAULT_RADIUS_KM },
+        { planIds, lat: loc.lat, lng: loc.lng, radiusKm: await getSearchRadius() }, // C-96 검색 반경 설정
         signal
       );
     });

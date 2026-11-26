@@ -11,6 +11,7 @@ import { useAccountActions, useAuth } from "../src/auth/AuthProvider";
 import { actionColors, cardSurface, panel, theme, type as T } from "../src/theme";
 
 import { writeRoughStart } from "../src/lib/roughStart";
+import { SearchRadiusSetting } from "../src/features/settings/SearchRadiusSetting";
 
 function ClearRoughStart() {
   const [message, setMessage] = useState("");
@@ -191,6 +192,11 @@ export default function SettingsScreen() {
           <Text style={[styles.rowText, styles.dim]}>다크 모드</Text>
           <Text style={styles.rowValue}>준비 중</Text>
         </View>
+      </View>
+
+      <Text style={styles.groupTitle}>검색</Text>
+      <View style={styles.group}>
+        <SearchRadiusSetting />
       </View>
 
       <Text style={styles.groupTitle}>알림</Text>
