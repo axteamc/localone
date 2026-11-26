@@ -58,6 +58,26 @@ def test_nearby_5km_includes_more(client):
     assert [x["id"] for x in data["items"]] == [101, 102, 103]
 
 
+def test_nearby_2km_and_nearest_when_empty(client):
+    """C-96: 반경 2km 허용. 반경 안이 비면 가장 가까운 1곳을 nearest로(그 밖에는 null)."""
+    data = client.get("/api/v1/libraries", params={"lat": 0, "lng": 0, "radius_km": 2}).json()
+    assert data["radius_km"] == 2 and [x["id"] for x in data["items"]] == [101]
+    assert data["nearest"] is None
+    empty = client.get("/api/v1/libraries", params={"lat": 0, "lng": 0.1, "radius_km": 2}).json()  # 동쪽 약 11km
+    assert empty["items"] == []
+    assert empty["nearest"]["id"] == 101 and empty["nearest"]["distance_m"] > 11000
+
+
+def test_nearest_mode_ignores_radius(client):
+    """C-96 홈 지도 모드: 반경과 상관없이 가까운 N곳, 거리순."""
+    data = client.get("/api/v1/libraries", params={"lat": 0, "lng": 0, "nearest": 2}).json()
+    assert data["mode"] == "nearest" and data["radius_km"] is None
+    assert [x["id"] for x in data["items"]] == [101, 102]
+    assert [x["distance_m"] for x in data["items"]] == [1000, 2000]
+    far = client.get("/api/v1/libraries", params={"lat": 0, "lng": 0.1, "nearest": 3}).json()
+    assert [x["id"] for x in far["items"]] == [101, 102, 103]
+
+
 def test_nearby_excludes_libraries_without_coords(client):
     items = client.get("/api/v1/libraries?lat=0&lng=0").json()["items"]
     assert items and 104 not in [x["id"] for x in items]
@@ -107,6 +127,10 @@ def test_search_by_name_escapes_wildcards(client, q, ids):
     ({"dtl_region": "11010", "q": "a"}, "dtl_region,q"),
     ({"dtl_region": "11010", "radius_km": 3}, "dtl_region,radius_km"),
     ({"lat": 0, "lng": 0, "radius_km": 4}, "radius_km"),
+    ({"lat": 0, "lng": 0, "nearest": 0}, "nearest"),
+    ({"lat": 0, "lng": 0, "nearest": 11}, "nearest"),
+    ({"lat": 0, "nearest": 5}, "lng"),
+    ({"lat": 0, "lng": 0, "radius_km": 2, "nearest": 5}, "lat,lng,nearest,radius_km"),
     ({"lat": 91, "lng": 0}, "lat"), ({"lat": 0, "lng": -181}, "lng"),
     ({"lat": "nan", "lng": 0}, "lat"), ({"lat": 0, "lng": "inf"}, "lng"),
     ({"dtl_region": "123"}, "dtl_region"), ({"q": "  "}, "q"), ({"q": "a" * 31}, "q"),

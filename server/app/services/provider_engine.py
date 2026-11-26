@@ -586,6 +586,17 @@ def libraries_by_name(conn: Connection, q: str, limit: int) -> list[LibraryRow]:
     return [_library_row(row) for row in rows]
 
 
+def libraries_nearest(conn: Connection, lat: float, lng: float, limit: int) -> list[tuple[LibraryRow, float]]:
+    """C-96: 반경과 상관없이 가까운 순 limit곳(거리 같으면 id). 홈 지도 모드·반경 안이 빌 때 가장 가까운 곳."""
+    rows = conn.execute(text(f"SELECT {LIBRARY_COLUMNS} FROM libraries "
+                             "WHERE latitude IS NOT NULL AND longitude IS NOT NULL")).all()
+    found = []
+    for row in rows:
+        lib = _library_row(row)
+        found.append((lib, distance_km(lat, lng, lib.latitude, lib.longitude)))
+    return sorted(found, key=lambda pair: (pair[1], pair[0].id))[:limit]
+
+
 def libraries_nearby(conn: Connection, lat: float, lng: float, radius_km: float) -> list[tuple[LibraryRow, float]]:
     # 약 1,300곳: 극점·날짜변경선에서도 누락 없이 대권 거리를 적용한다.
     rows = conn.execute(text(f"SELECT {LIBRARY_COLUMNS} FROM libraries "

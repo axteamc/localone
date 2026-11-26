@@ -18,6 +18,7 @@ from app.services.looks import (
 )
 from app.services.provider_engine import (
     LibraryRow, ProviderEngine, get_library, libraries_by_name, libraries_in_region, libraries_nearby,
+    libraries_nearest,
 )
 
 router = APIRouter(prefix="/api/v1/libraries")
@@ -98,13 +99,25 @@ async def list_libraries(
     radius_km: int | None = Query(None),
     dtl_region: str | None = Query(None, pattern=r"^[0-9]{5}$"),
     q: str | None = Query(None),
+    nearest: int | None = Query(None),
 ) -> Any:
     modes = int(lat is not None or lng is not None or radius_km is not None) + int(dtl_region is not None) + int(q is not None)
-    if modes > 1:
+    if modes > 1 or (nearest is not None and (radius_km is not None or dtl_region is not None or q is not None)):
         raise validation_error(*(key for key, value in {"lat": lat, "lng": lng, "radius_km": radius_km,
-                                                       "dtl_region": dtl_region, "q": q}.items() if value is not None))
+                                                       "dtl_region": dtl_region, "q": q, "nearest": nearest}.items()
+                                 if value is not None))
     engine, today = request.app.state.engine, today_kst()
-    if dtl_region is not None:
+    closest = None  # C-96: 반경 안이 비면 가장 가까운 1곳(주변 방식만)
+    if nearest is not None:
+        # C-96 가까운 N곳: 반경과 상관없이 거리순(홈 지도 모드)
+        if lat is None or lng is None:
+            raise validation_error(*(["lat"] if lat is None else []), *(["lng"] if lng is None else []))
+        if not 1 <= nearest <= policy.NEAREST_MAX:
+            raise validation_error("nearest")
+        found = await run_db(engine, lambda c: libraries_nearest(c, lat, lng, nearest))
+        mode, radius = "nearest", None
+        items = [library_summary(lib, distance, today) for lib, distance in found]
+    elif dtl_region is not None:
         libs = await run_db(engine, lambda c: libraries_in_region(c, dtl_region))
         mode, radius = "region", None
         items = [library_summary(lib, None, today) for lib in libs]
@@ -122,7 +135,10 @@ async def list_libraries(
         found = await run_db(engine, lambda c: libraries_nearby(c, lat, lng, radius))
         mode = "nearby"
         items = [library_summary(lib, distance, today) for lib, distance in found]
-    return {"mode": mode, "radius_km": radius, "dtl_region": dtl_region, "q": q, "items": items}
+        if not items:
+            one = await run_db(engine, lambda c: libraries_nearest(c, lat, lng, 1))
+            closest = library_summary(one[0][0], one[0][1], today) if one else None
+    return {"mode": mode, "radius_km": radius, "dtl_region": dtl_region, "q": q, "items": items, "nearest": closest}
 
 
 def not_found() -> ApiError:
