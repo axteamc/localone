@@ -1,7 +1,8 @@
 // 피드 카드 한 장(contracts/local-feed.md LOCAL-2 H4·H10·H12·C2·C4). A의 홈 하단 창도 onMenu 없이 쓴다.
 // 이미지와 이미지 위 글자만 보인다. 제목·작성자·공감 수 줄은 넣지 않는다(H4).
 import React, { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, View } from "react-native";
+import { isDesktopPointer } from "../../theme/WebFrame";
 import { resolvePostColor, type Theme } from "../../theme";
 import { lookKit, useLook } from "./useLibraryLook";
 import type { FeedPost } from "./api";
@@ -27,6 +28,10 @@ export type PostCardProps = {
 export function PostCard({ post, onPress, onMenu, width, showLibraryName }: PostCardProps) {
   const { C, styles } = useLook(makeStyles);
   const [hover, setHover] = useState(false);
+  // ⋯는 마우스로 쓰는 데스크톱 웹에서만. 모바일 웹은 터치가 마우스 올림을 흉내 내 ⋯가 뜨지만 누르면 카드가 먼저 눌려
+  // 메뉴가 안 열렸다(2026-11-26 실기기, 독서 기록과 같은 문제) → 터치는 앱처럼 길게 누르기로 연다
+  const [desktop] = useState(isDesktopPointer);
+  const web = Platform.OS === "web";
   const template = post.image_kind === "template" ? post.image_value : null;
   const isColor = post.image_kind === "color";
   const bg = isColor ? resolvePostColor(post.image_color, C) : COVER_MAT; // 표지 여백은 흰색(2026-11-26)
@@ -41,9 +46,9 @@ export function PostCard({ post, onPress, onMenu, width, showLibraryName }: Post
   return (
     <View
       testID={`post-box-${post.id}`}
-      style={{ width, height }}
-      onPointerEnter={() => setHover(true)}
-      onPointerLeave={() => setHover(false)}
+      style={[{ width, height }, web && styles.noCallout]}
+      onPointerEnter={desktop ? () => setHover(true) : undefined}
+      onPointerLeave={desktop ? () => setHover(false) : undefined}
     >
       <Pressable
         testID={`post-card-${post.id}`}
@@ -82,14 +87,19 @@ export function PostCard({ post, onPress, onMenu, width, showLibraryName }: Post
           </View>
         ) : null}
       </Pressable>
-      {onMenu && hover ? (
+      {onMenu && desktop && hover ? (
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="카드 메뉴"
           onPress={() => onMenu(post)}
           style={styles.dots}
         >
-          <Text style={styles.dotsText}>⋯</Text>
+          {/* 글자 ⋯는 글꼴마다 아래로 처져 동그라미 가운데에 안 온다 → 점 3개를 직접 그린다 */}
+          <View style={styles.dotsRow} pointerEvents="none">
+            <View style={styles.dot} />
+            <View style={styles.dot} />
+            <View style={styles.dot} />
+          </View>
         </Pressable>
       ) : null}
     </View>
@@ -127,6 +137,9 @@ const makeStyles = (theme: Theme) => {
     alignItems: "center",
     justifyContent: "center",
   },
-  dotsText: { fontSize: 18, fontWeight: "500", color: C.text },
+  dotsRow: { flexDirection: "row", alignItems: "center", gap: 3 },
+  dot: { width: 4, height: 4, borderRadius: 2, backgroundColor: C.text },
+  // iOS 사파리가 길게 누르기를 이미지 미리보기·글자 선택으로 가져가지 않게(길게 누르기 = 카드 메뉴)
+  noCallout: { WebkitTouchCallout: "none", userSelect: "none" } as object,
   });
 };

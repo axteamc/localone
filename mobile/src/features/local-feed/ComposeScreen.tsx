@@ -6,6 +6,7 @@ import {
   ActivityIndicator,
   Image,
   Keyboard,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -40,6 +41,7 @@ import {
 import { TemplateCard, TEMPLATE_LABELS, type TemplateKey } from "./templates";
 import { canUseCamera, pickPostImage, type PickSource } from "./imagePicker";
 import { COVER_MAT, overlayColorOf, overlayPosOf, PostImageFill } from "./postLook";
+import { ModalFrame } from "../../theme/WebFrame";
 
 export type { ImageFit, OverlayPos, OverlayTone } from "./api";
 
@@ -348,15 +350,19 @@ export function PostMoreMenu({
         </View>
       ) : null}
       {confirming ? (
-        <Dialog
-          title={TEXT.withdrawTitle}
-          cancel={TEXT.cancel}
-          confirm={busy ? "내리는 중…" : TEXT.withdraw}
-          onCancel={() => setConfirming(false)}
-          onConfirm={() => void doWithdraw()}
-          error={error}
-          danger
-        />
+        // 상세에서는 ⋯ 버튼 칸(44px) 안에 놓여 창이 그 폭으로 눌려 글자가 세로로 섰다(2026-11-26 모바일 웹).
+        // 화면 전체 위에 띄운다
+        <Modal transparent animationType="fade" onRequestClose={() => setConfirming(false)}><ModalFrame>
+          <Dialog
+            title={TEXT.withdrawTitle}
+            cancel={TEXT.cancel}
+            confirm={busy ? "내리는 중…" : TEXT.withdraw}
+            onCancel={() => setConfirming(false)}
+            onConfirm={() => void doWithdraw()}
+            error={error}
+            danger
+          />
+        </ModalFrame></Modal>
       ) : null}
     </View>
   );
